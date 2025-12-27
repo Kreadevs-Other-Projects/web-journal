@@ -4,6 +4,7 @@ import { env } from "./configs/envs";
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { pool } from "./configs/db";
+import authRoute from "./routes/auth.route";
 
 const app = express();
 app.use(express.json());
@@ -17,7 +18,7 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-//   app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoute);
 //   app.use("/api/payment", paymentRoute);
 //   app.use("/api/journal", journalRoutes);
 //   app.use("/api/author", authorRoute);

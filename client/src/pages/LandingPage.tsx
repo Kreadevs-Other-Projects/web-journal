@@ -13,6 +13,16 @@ import {
   Shield,
   Clock,
   ChevronDown,
+  Filter,
+  Folder,
+  Calendar,
+  ArrowUpDown,
+  FileText,
+  User,
+  Building,
+  Hash,
+  Info,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -104,7 +114,7 @@ export default function LandingPage() {
             <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-serif-roboto text-xl font-semibold">
+            <span className="font-serif-roboto text-xl font-semibold text-foreground">
               JournalHub
             </span>
           </Link>
@@ -132,7 +142,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="btn-physics">
+              <Button variant="ghost" size="sm" className="btn-physics bg-muted/50 hover:bg-muted hover:text-white text-muted-foreground">
                 Sign In
               </Button>
             </Link>
@@ -214,26 +224,106 @@ export default function LandingPage() {
             </StaggerItem>
 
             <StaggerItem>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/login?action=submit">
-                  <Button
-                    size="lg"
-                    className="btn-physics bg-gradient-primary hover:opacity-90 text-lg px-8 py-6 glow-primary"
-                  >
-                    <Send className="mr-2 h-5 w-5" />
-                    Submit Your Paper
-                  </Button>
-                </Link>
-                <Link to="/browse">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="btn-physics text-lg px-8 py-6 border-border/50 hover:bg-muted"
-                  >
-                    <Search className="mr-2 h-5 w-5" />
-                    Explore Published Papers
-                  </Button>
-                </Link>
+              <div className="flex flex-col items-center justify-center gap-8">
+                {/* Horizontal Search Bar - Single Line */}
+                <div className="w-full max-w-6xl mx-auto">
+                  <div className="relative glass-card p-4 rounded-2xl border border-border/50 shadow-2xl">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      {/* Search Input - Left */}
+                      <div className="relative flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Search papers..."
+                          className="w-full pl-12 pr-4 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all text-muted-foreground"
+                        />
+                      </div>
+
+                      {/* Category Dropdown */}
+                      <div className="flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <select className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-muted-foreground appearance-none">
+                            <option value="">All Categories</option>
+                            <option value="physics">Physics</option>
+                            <option value="computer-science">
+                              Computer Science
+                            </option>
+                            <option value="mathematics">Mathematics</option>
+                            <option value="biology">Biology</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="engineering">Engineering</option>
+                            <option value="medicine">Medicine</option>
+                            <option value="social-sciences">
+                              Social Sciences
+                            </option>
+                          </select>
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Year Dropdown */}
+                      <div className="flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <select className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-muted-foreground appearance-none">
+                            <option value="">All Years</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2019">2019</option>
+                            <option value="2018">2018</option>
+                            <option value="older">Older</option>
+                          </select>
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Search Button */}
+                      <Link to="/login?action=submit">
+                        <Button className="bg-gradient-primary hover:opacity-90 text-primary-foreground px-6 py-3 whitespace-nowrap flex-shrink-0">
+                          <Search className="h-5 w-5 mr-2" />
+                          Search
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Original Buttons */}
+                {/* <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Link to="/login?action=submit">
+                    <Button
+                      size="lg"
+                      className="btn-physics bg-gradient-primary hover:opacity-90 text-lg px-8 py-6 glow-primary"
+                    >
+                      <Send className="mr-2 h-5 w-5" />
+                      Submit Your Paper
+                    </Button>
+                  </Link>
+                  <Link to="/browse">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="btn-physics text-lg px-8 py-6 border-border/50 hover:bg-muted"
+                    >
+                      <Search className="mr-2 h-5 w-5" />
+                      Browse All Papers
+                    </Button>
+                  </Link>
+                </div> */}
               </div>
             </StaggerItem>
           </StaggerContainer>

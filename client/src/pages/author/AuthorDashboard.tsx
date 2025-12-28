@@ -12,7 +12,7 @@ import { FileText, Clock, CheckCircle2, Send, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
-const sampleSubmissions = [
+export const sampleSubmissions = [
   {
     id: "SUB-2026-042",
     title: "Machine Learning Approaches for Climate Pattern Recognition",

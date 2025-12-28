@@ -116,7 +116,7 @@ export default function LoginPage() {
               <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center glow-primary">
                 <BookOpen className="h-8 w-8 text-primary-foreground" />
               </div>
-              <span className="font-serif-roboto text-3xl font-bold">
+              <span className="font-serif-roboto text-3xl font-bold text-muted-foreground">
                 JournalHub
               </span>
             </div>
@@ -282,14 +282,14 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="pl-10 input-glow"
+                      className="pl-10 pr-10 input-glow text-muted-foreground"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
+                  <Label htmlFor="password" className="text-sm font-medium text-muted-froreground">
                     Password
                   </Label>
                   <div className="relative">
@@ -300,7 +300,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-10 pr-10 input-glow"
+                      className="pl-10 pr-10 input-glow text-muted-foreground"
                       required
                     />
                     <button

@@ -16,6 +16,7 @@ interface PaperCardProps {
   className?: string;
   showTimeline?: boolean;
   isAnonymous?: boolean;
+  key?: string | number
 }
 
 const statusOrder: PaperStatus[] = [

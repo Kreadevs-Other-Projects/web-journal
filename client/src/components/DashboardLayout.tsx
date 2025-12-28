@@ -21,6 +21,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import MySubmissions from "@/pages/author/MySubmissions";
 
 type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
 
@@ -234,8 +235,8 @@ export function DashboardLayout({
           
           {sidebarOpen && (
             <div className="mt-4 flex gap-2">
-              <Button variant="ghost" size="sm" className="flex-1 justify-start">
-                <Settings className="h-4 w-4 mr-2" />
+              <Button size="sm" className="flex-1 justify-start bg-muted/50 hover:bg-muted text-muted-foreground">
+                <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
                 Settings
               </Button>
               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
@@ -275,7 +276,7 @@ export function DashboardLayout({
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-                  ⌘K
+                  ⌘
                 </kbd>
               </div>
             </div>
@@ -289,15 +290,15 @@ export function DashboardLayout({
                 className="h-9 w-9 p-0"
               >
                 {isDark ? (
-                  <Sun className="h-4 w-4" />
+                  <Sun className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <Moon className="h-4 w-4" />
+                  <Moon className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button>
 
               {/* Notifications */}
               <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative">
-                <Bell className="h-4 w-4" />
+                <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
               </Button>
             </div>

@@ -1,95 +1,87 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
-import { jwtDecode } from "jwt-decode";
+// contexts/AuthContext.tsx
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export type UserRole = "author" | "reviewer" | "chiefEditor" | "admin";
 
-interface JwtPayload {
-  user_id: number;
-  role: UserRole;
-  exp?: number;
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  username?: string;
 }
 
 interface AuthContextType {
-  authToken: string | null;
-  userId: number | null;
-  role: UserRole | null;
-  isAuthenticated: boolean;
-
-  login: (token: string) => void;
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+  login: (token: string, role: UserRole) => void;
   logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-
-  const isAuthenticated = !!authToken;
-
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    const storedToken = localStorage.getItem("authToken");
+    const initAuth = () => {
+      try {
+        const storedToken = localStorage.getItem("accessToken");
+        const storedUser = localStorage.getItem("role");
 
-    if (!storedToken) return;
-
-    try {
-      const decoded = jwtDecode<JwtPayload>(storedToken);
-
-      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-        logout();
-        return;
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error("Failed to initialize auth:", error);
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      setAuthToken(storedToken);
-      setUserId(decoded.user_id);
-      setRole(decoded.role);
-    } catch (error) {
-      console.error("Invalid token:", error);
-      logout();
-    }
+    initAuth();
   }, []);
 
-  const login = (token: string) => {
-    try {
-      localStorage.setItem("authToken", token);
-
-      const decoded = jwtDecode<JwtPayload>(token);
-
-      setAuthToken(token);
-      setUserId(decoded.user_id);
-      setRole(decoded.role);
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+  const login = (newToken: string, role: UserRole) => {
+    localStorage.setItem("accessToken", newToken);
+    localStorage.setItem("role", JSON.stringify(role));
+    setToken(newToken);
+    // setUser(role);
   };
 
   const logout = () => {
-    localStorage.removeItem("authToken");
-    setAuthToken(null);
-    setUserId(null);
-    setRole(null);
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("role");
+    setToken(null);
+    setUser(null);
+  };
+
+  const value = {
+    user,
+    token,
+    isLoading,
+    login,
+    logout,
+    isAuthenticated: !!token && !!user,
   };
 
   return (
     <AuthContext.Provider
       value={{
-        authToken,
-        userId,
-        role,
-        isAuthenticated,
+        user,
+        token,
+        isLoading,
         login,
         logout,
+        isAuthenticated: !!token && !!user,
       }}
     >
       {children}
@@ -99,10 +91,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-
   return context;
 };

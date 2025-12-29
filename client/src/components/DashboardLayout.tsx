@@ -16,12 +16,14 @@ import {
   Search,
   Moon,
   Sun,
+  Router,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import MySubmissions from "@/pages/author/MySubmissions";
+import { useAuth } from "@/context/AuthContext";
 // import {Link} from 'react-router-dom'
 
 type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
@@ -111,15 +113,55 @@ export function DashboardLayout({
   const [isDark, setIsDark] = useState(true);
   const location = useLocation();
   const config = roleConfig[role];
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle("dark");
   };
 
+  // inside AuthProvider
+  // const handleLogout = async () => {
+  //   try {
+  //     logout();
+  //   } catch (err) {
+  //     console.error("Logout failed", err);
+  //   }
+  // };
+
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      const refreshToken = localStorage.getItem("accessToken");
+
+      if (!refreshToken) {
+        console.log("refreshToken ,missing", refreshToken);
+      } else {
+        const response = await fetch("http://localhost:5000/api/auth/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        const result = await response.json();
+        console.log(result);
+
+        if (result.success) {
+          logout();
+          navigate("/login");
+        }
+      }
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -130,7 +172,6 @@ export function DashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
       <motion.aside
         initial={false}
         animate={{
@@ -148,7 +189,6 @@ export function DashboardLayout({
           "lg:translate-x-0"
         )}
       >
-        {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
           {sidebarOpen && (
             <motion.div
@@ -182,7 +222,6 @@ export function DashboardLayout({
           </Button>
         </div>
 
-        {/* Role badge */}
         <div
           className={cn(
             "mx-4 mt-4 rounded-lg bg-muted/50 p-3",
@@ -204,7 +243,6 @@ export function DashboardLayout({
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {config.navigation.map((item) => {
             const isActive = location.pathname === item.path;
@@ -231,7 +269,6 @@ export function DashboardLayout({
           })}
         </nav>
 
-        {/* User section */}
         <div className="border-t border-border/50 p-4">
           <div
             className={cn(
@@ -273,6 +310,7 @@ export function DashboardLayout({
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive"
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -281,14 +319,12 @@ export function DashboardLayout({
         </div>
       </motion.aside>
 
-      {/* Main content */}
       <div
         className={cn(
           "transition-all duration-300",
           sidebarOpen ? "lg:pl-[280px]" : "lg:pl-20"
         )}
       >
-        {/* Header */}
         <header className="sticky top-0 z-30 h-16 border-b border-border/50 bg-background/80 backdrop-blur-xl">
           <div className="flex h-full items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-4">
@@ -301,7 +337,6 @@ export function DashboardLayout({
                 <Menu className="h-5 w-5" />
               </Button>
 
-              {/* Search */}
               <div className="hidden md:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 w-[300px]">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <input
@@ -316,7 +351,6 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Theme toggle */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -330,7 +364,6 @@ export function DashboardLayout({
                 )}
               </Button>
 
-              {/* Notifications */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -343,7 +376,6 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

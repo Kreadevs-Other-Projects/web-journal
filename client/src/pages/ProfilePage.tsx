@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -37,10 +37,12 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { json } from "stream/consumers";
 
 const mockUserData = {
   id: "USR-2024-001",
-  name: "Dr. Michael Chen",
+  username: "Dr. Michael Chen",
   email: "michael.chen@research.edu",
   title: "Senior Research Scientist",
   affiliation: "Stanford University",
@@ -48,7 +50,7 @@ const mockUserData = {
   location: "Stanford, California, USA",
   bio: "Dr. Michael Chen is a Senior Research Scientist specializing in Machine Learning and Quantum Computing. With over 10 years of experience in academic research, he has published numerous papers in top-tier conferences and journals.",
   avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
-  joinDate: "2022-03-15",
+  created_at: "2022-03-15",
   lastActive: "2024-01-20",
   papersSubmitted: 24,
   papersReviewed: 42,
@@ -68,6 +70,8 @@ const mockUserData = {
   },
 };
 
+// const fetchProfileData =
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -77,9 +81,13 @@ export default function ProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const { authToken } = useAuth();
+  const [profile, setProfile] = useState(null);
+
+  const [loading, setLoading] = useState(false);
 
   const handleSave = () => {
-    console.log("Saving user data:", userData);
+    handleUpdate();
     setIsEditing(false);
   };
 
@@ -111,8 +119,85 @@ export default function ProfilePage() {
       .slice(0, 2);
   };
 
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `http://localhost:5000/api/profile/getProfile`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setUserData(result.user);
+      }
+
+      console.log(result.user);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchProfile();
+    setLoading(false);
+  }, []);
+
+  const handleUpdate = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `http://localhost:5000/api/profile/updateProfile`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            name: profile.username,
+            email: profile.email,
+          }),
+        }
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        setUserData(result.user);
+      }
+    } catch (error) {
+      console.log("failed to update");
+    }
+  };
+
+  // const handleDelete = async () => {
+  //   const confirmDelete = window.confirm(
+  //     "Are you sure you want to delete your profile?"
+  //   );
+
+  //   if (!confirmDelete) return;
+
+  //   try {
+  //     setLoading(true);
+  //     await deleteProfile();
+  //     logout();
+  //     navigate("/login");
+  //   } catch (error: any) {
+  //     alert(error.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   return (
-    <DashboardLayout role="reviewer" userName={userData.name}>
+    <DashboardLayout role="reviewer" userName={userData.username}>
       <PageTransition>
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -186,7 +271,7 @@ export default function ProfilePage() {
                           <Avatar className="h-24 w-24 border-4 border-background shadow-2xl">
                             <AvatarImage src={userData.avatar} />
                             <AvatarFallback className="text-lg bg-gradient-primary text-primary-foreground">
-                              {getInitials(userData.name)}
+                              {getInitials(userData.username)}
                             </AvatarFallback>
                           </Avatar>
                           {isEditing && (
@@ -203,18 +288,18 @@ export default function ProfilePage() {
                           <div>
                             {isEditing ? (
                               <Input
-                                value={userData.name}
+                                value={userData.username}
                                 onChange={(e) =>
                                   setUserData({
                                     ...userData,
-                                    name: e.target.value,
+                                    username: e.target.value,
                                   })
                                 }
                                 className="text-xl font-bold"
                               />
                             ) : (
                               <h2 className="text-xl font-bold text-foreground">
-                                {userData.name}
+                                {userData?.username || "username"}
                               </h2>
                             )}
                             {isEditing ? (
@@ -274,7 +359,7 @@ export default function ProfilePage() {
                               />
                             ) : (
                               <p className="text-foreground">
-                                {userData.email}
+                                {userData?.email || "email"}
                               </p>
                             )}
                           </div>
@@ -331,14 +416,13 @@ export default function ProfilePage() {
                               Member Since
                             </Label>
                             <p className="text-foreground">
-                              {new Date(userData.joinDate).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                }
-                              )}
+                              {new Date(
+                                userData?.created_at || "date"
+                              ).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
                             </p>
                           </div>
 
@@ -362,7 +446,7 @@ export default function ProfilePage() {
                           <div className="space-y-2">
                             <Label className="text-sm">User ID</Label>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {userData.id}
+                              {userData?.id || "id"}
                             </code>
                           </div>
                         </div>

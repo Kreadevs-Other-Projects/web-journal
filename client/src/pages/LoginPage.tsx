@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 type UserRole = "author" | "reviewer" | "editor" | "admin";
 
@@ -69,26 +70,47 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch(`http://localhost:5000/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const config = roleConfig[selectedRole];
-    navigate(config.route);
+      const result = await response.json();
+      console.log(result);
+
+      if (!response.ok || !result.token) {
+        throw new Error(result.message || "Login failed");
+      }
+
+      if (!result.token || !selectedRole) {
+        console.log("no token found ");
+        return;
+      }
+
+      login(result.token, selectedRole);
+      const config = roleConfig[selectedRole];
+      navigate(config.route);
+    } catch (error: any) {
+      alert(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <PageTransition className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute inset-0 animated-gradient" />
       <div className="absolute inset-0 bg-mesh-pattern opacity-50" />
       <div className="noise-overlay" />
 
-      {/* Floating decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{ rotate: 360 }}
@@ -102,9 +124,7 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Content */}
       <div className="relative z-10 min-h-screen flex">
-        {/* Left panel - Branding */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -271,7 +291,10 @@ export default function LoginPage() {
               {/* Login form */}
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
                     Email Address
                   </Label>
                   <div className="relative">
@@ -291,7 +314,7 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="password"
-                    className="text-sm font-medium text-muted-froreground"
+                    className="text-sm font-medium text-muted-foreground"
                   >
                     Password
                   </Label>

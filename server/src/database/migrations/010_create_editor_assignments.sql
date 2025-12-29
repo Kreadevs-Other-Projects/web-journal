@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
 
     CONSTRAINT paper_id_fkey
         FOREIGN KEY (paper_id)
-        REFERENCES research_papers(id)
+        REFERENCES papers(id)
         ON DELETE CASCADE,
 
     CONSTRAINT editor_id_fkey

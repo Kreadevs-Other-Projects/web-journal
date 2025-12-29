@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS papers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    journal_id UUID REFERENCES journal(id) ON DELETE CASCADE,
-    author_id UUID REFERENCES author(id) ON DELETE CASCADE,
+    journal_id UUID NOT NULL,
+    author_id UUID NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     version_id INT,
@@ -16,6 +16,6 @@ CREATE TABLE IF NOT EXISTS papers (
 
     CONSTRAINT fk_research_author
         FOREIGN KEY (author_id)
-        REFERENCES author(id)
+        REFERENCES users(id)
         ON DELETE CASCADE
 );

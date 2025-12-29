@@ -65,6 +65,7 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
         CREATE TYPE review_decision AS ENUM (
+            'pending',
             'accepted',
             'rejected',
             'major-revision',

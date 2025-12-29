@@ -5,6 +5,7 @@ import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { pool } from "./configs/db";
 import authRoute from "./routes/auth.route";
+import profileRoute from "./routes/profile.route";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,7 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use("/api/auth", authRoute);
+app.use("/api/profile", profileRoute);
 //   app.use("/api/payment", paymentRoute);
 //   app.use("/api/journal", journalRoutes);
 //   app.use("/api/author", authorRoute);

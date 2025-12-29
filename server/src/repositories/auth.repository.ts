@@ -19,3 +19,19 @@ export const findRefreshToken = async (token: string) => {
   );
   return result.rows[0];
 };
+
+export const deleteRefreshToken = async (token: string) => {
+  const result = await pool.query(
+    "DELETE FROM refresh_token WHERE token = $1 RETURNING id",
+    [token]
+  );
+  return result.rows[0]?.id;
+};
+
+export const deleteAllUserRefreshTokens = async (userId: string) => {
+  const result = await pool.query(
+    "DELETE FROM refresh_token WHERE user_id = id",
+    [userId]
+  );
+  return result.rows[0];
+};

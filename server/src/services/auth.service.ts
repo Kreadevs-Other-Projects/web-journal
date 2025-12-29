@@ -1,12 +1,17 @@
 import bcrypt from "bcrypt";
 import {
   findUserByEmail as findUserRepo,
+  findUserById as findUserByIdRepo,
   createUser as createUserRepo,
 } from "../repositories/user.repository";
 import { env } from "../configs/envs";
 
 export const findUserByEmail = async (email: string) => {
   return await findUserRepo(email);
+};
+
+export const findUserById = async (userId: string) => {
+  return await findUserByIdRepo(userId);
 };
 
 export const validatePassword = async (

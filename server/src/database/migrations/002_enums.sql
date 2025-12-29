@@ -38,5 +38,38 @@ BEGIN
             'expired'
         );
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
+        CREATE TYPE journal_status AS ENUM (
+            'offline',
+            'online'
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+        CREATE TYPE payment_status AS ENUM (
+            'pending',
+            'success',
+            'failed'
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
+        CREATE TYPE paper_status AS ENUM (
+            'draft',
+            'submitted',
+            'approved',
+            'rejected'
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
+        CREATE TYPE review_decision AS ENUM (
+            'accepted',
+            'rejected',
+            'major-revision',
+            'minor-revision'
+        );
+    END IF;
 END
 $$;

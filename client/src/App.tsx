@@ -14,9 +14,11 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import NotFound from "./pages/NotFound";
 import MySubmissions from "./pages/author/MySubmissions.tsx";
 import AssignedPapers from "./pages/reviewer/AssignedPapers.tsx";
-import Submissions from "./pages/cheifEditor/submissions.tsx";
+// import Submissions from "./pages/";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
+import SignupPage from "./pages/SignupPage.tsx";
+import ProfilePage from "./pages/ProfilePage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/browse" element={<BrowsePage />} />
               <Route path="/author" element={<AuthorDashboard />} />
               <Route path="/author/submissions" element={<MySubmissions />} />
@@ -40,16 +44,19 @@ const App = () => (
               <Route path="/reviewer/completed" element={<CompletedReview />} />
               {/* <Route path="/reviewer/*" element={<ReviewerDashboard />} /> */}
               <Route path="/chief-editor" element={<ChiefEditorDashboard />} />
-              <Route
+              {/* <Route
                 path="/chief-editor/submissions"
                 element={<Submissions />}
-              />
+              /> */}
               {/* <Route path="/chief-editor/*" element={<ChiefEditorDashboard />} /> */}
               <Route path="/sub-editor" element={<AuthorDashboard />} />
-              <Route path="/sub-editor/*" element={<Submissions />} />
+              {/* <Route path="/sub-editor/*" element={<Submissions />} /> */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
-              <Route path="/researchPapers/:paperId" element={<ResearchPaperDetail />}/>
+              <Route
+                path="/researchPapers/:paperId"
+                element={<ResearchPaperDetail />}
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AnimatePresence>

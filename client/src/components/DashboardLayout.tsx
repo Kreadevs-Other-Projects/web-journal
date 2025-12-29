@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { 
-  Home, 
-  FileText, 
-  Users, 
-  Settings, 
-  LogOut, 
+import {
+  Home,
+  FileText,
+  Users,
+  Settings,
+  LogOut,
   BookOpen,
   UserCheck,
   Shield,
@@ -15,13 +15,14 @@ import {
   Bell,
   Search,
   Moon,
-  Sun
+  Sun,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import MySubmissions from "@/pages/author/MySubmissions";
+// import {Link} from 'react-router-dom'
 
 type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
 
@@ -32,11 +33,14 @@ interface DashboardLayoutProps {
   userAvatar?: string;
 }
 
-const roleConfig: Record<UserRole, { 
-  label: string; 
-  color: string;
-  navigation: { label: string; path: string; icon: React.ElementType }[] 
-}> = {
+const roleConfig: Record<
+  UserRole,
+  {
+    label: string;
+    color: string;
+    navigation: { label: string; path: string; icon: React.ElementType }[];
+  }
+> = {
   admin: {
     label: "Super Admin",
     color: "text-destructive",
@@ -53,7 +57,11 @@ const roleConfig: Record<UserRole, {
     color: "text-accent",
     navigation: [
       { label: "Dashboard", path: "/chief-editor", icon: Home },
-      { label: "Submissions", path: "/chief-editor/submissions", icon: FileText },
+      {
+        label: "Submissions",
+        path: "/chief-editor/submissions",
+        icon: FileText,
+      },
       { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
       { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
@@ -74,7 +82,11 @@ const roleConfig: Record<UserRole, {
     navigation: [
       { label: "Dashboard", path: "/reviewer", icon: Home },
       { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
-      { label: "Completed Reviews", path: "/reviewer/completed", icon: UserCheck },
+      {
+        label: "Completed Reviews",
+        path: "/reviewer/completed",
+        icon: UserCheck,
+      },
     ],
   },
   author: {
@@ -88,11 +100,11 @@ const roleConfig: Record<UserRole, {
   },
 };
 
-export function DashboardLayout({ 
-  children, 
-  role, 
+export function DashboardLayout({
+  children,
+  role,
   userName = "John Doe",
-  userAvatar 
+  userAvatar,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -123,7 +135,11 @@ export function DashboardLayout({
         initial={false}
         animate={{
           width: sidebarOpen ? 280 : 80,
-          x: mobileMenuOpen ? 0 : (typeof window !== 'undefined' && window.innerWidth < 1024) ? -280 : 0,
+          x: mobileMenuOpen
+            ? 0
+            : typeof window !== "undefined" && window.innerWidth < 1024
+            ? -280
+            : 0,
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className={cn(
@@ -143,14 +159,16 @@ export function DashboardLayout({
               <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-serif text-lg font-semibold">JournalHub</span>
+              <span className="font-serif text-lg font-semibold">
+                JournalHub
+              </span>
             </motion.div>
           )}
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex h-8 w-8 p-0"
+            className="hidden lg:flex h-8 w-8 p-0 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-muted-foreground"
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -165,10 +183,12 @@ export function DashboardLayout({
         </div>
 
         {/* Role badge */}
-        <div className={cn(
-          "mx-4 mt-4 rounded-lg bg-muted/50 p-3",
-          !sidebarOpen && "mx-2 p-2"
-        )}>
+        <div
+          className={cn(
+            "mx-4 mt-4 rounded-lg bg-muted/50 p-3",
+            !sidebarOpen && "mx-2 p-2"
+          )}
+        >
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Shield className={cn("h-4 w-4", config.color)} />
@@ -213,14 +233,19 @@ export function DashboardLayout({
 
         {/* User section */}
         <div className="border-t border-border/50 p-4">
-          <div className={cn(
-            "flex items-center gap-3",
-            !sidebarOpen && "justify-center"
-          )}>
+          <div
+            className={cn(
+              "flex items-center gap-3",
+              !sidebarOpen && "justify-center"
+            )}
+          >
             <Avatar className="h-10 w-10 border-2 border-border">
               <AvatarImage src={userAvatar} />
               <AvatarFallback className="bg-primary/10 text-primary">
-                {userName.split(' ').map(n => n[0]).join('')}
+                {userName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
               </AvatarFallback>
             </Avatar>
             {sidebarOpen && (
@@ -228,18 +253,27 @@ export function DashboardLayout({
                 <p className="text-sm font-medium text-foreground truncate">
                   {userName}
                 </p>
-                <p className="text-xs text-muted-foreground">View Profile</p>
+                <Link to="/profile">
+                  <p className="text-xs text-muted-foreground">View Profile</p>
+                </Link>
               </div>
             )}
           </div>
-          
+
           {sidebarOpen && (
             <div className="mt-4 flex gap-2">
-              <Button size="sm" className="flex-1 justify-start bg-muted/50 hover:bg-muted text-muted-foreground">
+              <Button
+                size="sm"
+                className="flex-1 justify-start bg-muted/50 hover:bg-muted text-muted-foreground"
+              >
                 <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
                 Settings
               </Button>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -266,7 +300,7 @@ export function DashboardLayout({
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              
+
               {/* Search */}
               <div className="hidden md:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 w-[300px]">
                 <Search className="h-4 w-4 text-muted-foreground" />
@@ -297,7 +331,11 @@ export function DashboardLayout({
               </Button>
 
               {/* Notifications */}
-              <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 relative"
+              >
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
               </Button>
@@ -306,9 +344,7 @@ export function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">
-          {children}
-        </main>
+        <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );

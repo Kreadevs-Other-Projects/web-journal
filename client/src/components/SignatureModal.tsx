@@ -117,7 +117,7 @@ export function SignatureModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] glass-card border-border/50">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="font-serif-outfit text-xl flex items-center gap-2">
             {step === "success" ? (

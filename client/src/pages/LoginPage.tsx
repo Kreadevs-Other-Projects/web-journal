@@ -289,7 +289,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-muted-froreground">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm font-medium text-muted-froreground"
+                  >
                     Password
                   </Label>
                   <div className="relative">
@@ -355,7 +358,7 @@ export default function LoginPage() {
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
                   <a
-                    href="#"
+                    href="/signup"
                     className="text-primary font-medium hover:underline"
                   >
                     Register here

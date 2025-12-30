@@ -20,10 +20,11 @@ export const createUser = async (userData: {
   email: string;
   password: string;
   username: string;
+  role: string;
 }) => {
   const result = await pool.query(
-    "INSERT INTO users (email, password, username) VALUES ($1, $2, $3) RETURNING id, email, username",
-    [userData.email, userData.password, userData.username]
+    "INSERT INTO users (email, password, username, role) VALUES ($1, $2, $3, $4) RETURNING id",
+    [userData.email, userData.password, userData.username, userData.role]
   );
   return result.rows[0];
 };

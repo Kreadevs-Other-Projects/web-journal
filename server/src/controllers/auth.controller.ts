@@ -10,6 +10,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from "../repositories/auth.repository";
+import { env } from "../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -48,6 +49,13 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: false,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
   return res.status(200).json({
     success: true,
     message: "Login successful",
@@ -56,9 +64,9 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password, username } = req.body;
+  const { email, password, username, role } = req.body;
 
-  if (!email || !password || !username) {
+  if (!email || !password || !username || !role) {
     return res.status(400).json({
       success: false,
       message: "Email, password, and name are required",
@@ -78,6 +86,7 @@ export const signup = async (req: Request, res: Response) => {
     email,
     password: hashedPassword,
     username,
+    role,
   });
 
   if (!newUser) {
@@ -106,6 +115,13 @@ export const signup = async (req: Request, res: Response) => {
     });
   }
 
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: false,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
   return res.status(201).json({
     success: true,
     message: "Signup successful",
@@ -114,12 +130,13 @@ export const signup = async (req: Request, res: Response) => {
       id: newUser.id,
       email: newUser.email,
       username: newUser.username,
+      role: newUser.role,
     },
   });
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
+  const { refreshToken } = req.cookies;
 
   if (!refreshToken) {
     return res.status(400).json({

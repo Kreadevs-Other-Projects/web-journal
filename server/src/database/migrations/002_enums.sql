@@ -2,7 +2,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
         CREATE TYPE user_role AS ENUM (
-            'user',
+            'author',
             'admin',
             'chief-editor',
             'sub-editor',
@@ -70,6 +70,14 @@ BEGIN
             'rejected',
             'major-revision',
             'minor-revision'
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'approve') THEN
+        CREATE TYPE approve AS ENUM (
+            'pending',
+            'accepted',
+            'rejected'
         );
     END IF;
 END

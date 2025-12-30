@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import * as AuthService from "../services/auth.service";
+import { createEditorProfile } from "../repositories/editor.repository";
+import { createReviewerProfile } from "../repositories/reviewer.repository";
+
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -82,6 +85,7 @@ export const signup = async (req: Request, res: Response) => {
   }
 
   const hashedPassword = await AuthService.hashPassword(password);
+
   const newUser = await AuthService.createUser({
     email,
     password: hashedPassword,
@@ -96,24 +100,21 @@ export const signup = async (req: Request, res: Response) => {
     });
   }
 
+  if (role === "chief-editor" || role === "sub-editor") {
+    await createEditorProfile(newUser.id, role);
+  }
+
+  if (role === "reviewer") {
+    await createReviewerProfile(newUser.id);
+  }
+
   const accessToken = await generateAccessToken(newUser.id, newUser.role);
   const refreshToken = await generateRefreshToken(newUser.id, newUser.role);
 
   const expires_at = new Date();
   expires_at.setDate(expires_at.getDate() + 7);
 
-  const savedTokenId = await saveRefreshToken(
-    newUser.id,
-    refreshToken,
-    expires_at
-  );
-
-  if (!savedTokenId) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to save refresh token",
-    });
-  }
+  await saveRefreshToken(newUser.id, refreshToken, expires_at);
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: false,

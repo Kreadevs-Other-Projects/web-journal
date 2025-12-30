@@ -30,6 +30,7 @@ export const createUser = async (userData: {
   email: string;
   password: string;
   username: string;
+  role: string;
 }) => {
   return await createUserRepo(userData);
 };

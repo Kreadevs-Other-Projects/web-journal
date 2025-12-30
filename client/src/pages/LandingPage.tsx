@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   Send,
@@ -23,6 +23,7 @@ import {
   Hash,
   Info,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -32,6 +33,19 @@ import {
   StaggerItem,
   FloatingElement,
 } from "@/components/AnimationWrappers";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface SearchFilters {
+  query: string;
+  category: string;
+  year: string;
+}
 
 const stats = [
   { label: "Papers Submitted", value: 12847, suffix: "+" },
@@ -96,13 +110,76 @@ export default function LandingPage() {
 
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState<SearchFilters>({
+    query: "",
+    category: "",
+    year: "",
+  });
+  const [errors, setErrors] = useState<string>("");
+
+  const handleFilterChange = (field: keyof SearchFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+    if (errors) setErrors("");
+  };
+  const validateFilters = (): boolean => {
+    if (!filters.query && !filters.category && !filters.year) {
+      setErrors("Please select at least one search filter");
+      return false;
+    }
+    if (filters.query && filters.query.length < 2) {
+      setErrors("Search query must be at least 2 characters");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateFilters()) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (filters.query) params.append("q", filters.query);
+    if (filters.category) params.append("category", filters.category);
+    if (filters.year) params.append("year", filters.year);
+
+    navigate(`/browse?${params.toString()}`);
+  };
+
+  const categories = [
+    { value: "", label: "All Categories" },
+    { value: "physics", label: "Physics" },
+    { value: "computer-science", label: "Computer Science" },
+    { value: "mathematics", label: "Mathematics" },
+    { value: "biology", label: "Biology" },
+    { value: "chemistry", label: "Chemistry" },
+    { value: "engineering", label: "Engineering" },
+    { value: "medicine", label: "Medicine" },
+    { value: "social-sciences", label: "Social Sciences" },
+    { value: "arts-humanities", label: "Arts & Humanities" },
+    { value: "business-economics", label: "Business & Economics" },
+    { value: "environmental-science", label: "Environmental Science" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = [
+    { value: "", label: "All Years" },
+    ...Array.from({ length: currentYear - 1899 }, (_, i) => ({
+      value: (currentYear - i).toString(),
+      label: (currentYear - i).toString(),
+    })),
+    { value: "older", label: "Older than 1900" },
+  ];
 
   return (
     <PageTransition className="min-h-screen bg-background">
-      {/* Noise overlay */}
       <div className="noise-overlay" />
 
-      {/* Navigation */}
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -142,7 +219,11 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="btn-physics bg-muted/50 hover:bg-muted hover:text-white text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="btn-physics bg-muted/50 hover:bg-muted hover:text-white text-muted-foreground"
+              >
                 Sign In
               </Button>
             </Link>
@@ -228,102 +309,98 @@ export default function LandingPage() {
                 {/* Horizontal Search Bar - Single Line */}
                 <div className="w-full max-w-6xl mx-auto">
                   <div className="relative glass-card p-4 rounded-2xl border border-border/50 shadow-2xl">
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
-                      {/* Search Input - Left */}
-                      <div className="relative flex-1 min-w-0 w-full sm:w-auto">
-                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                          <Search className="h-5 w-5 text-muted-foreground" />
+                    <form onSubmit={handleSearch}>
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        {/* Search Input - Left */}
+                        <div className="relative flex-1 min-w-0 w-full sm:w-auto">
+                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                            <Search className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Search papers by title, author, or keywords..."
+                            value={filters.query}
+                            onChange={(e) =>
+                              handleFilterChange("query", e.target.value)
+                            }
+                            className="w-full pl-12 pr-4 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all text-foreground placeholder:text-muted-foreground"
+                          />
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Search papers..."
-                          className="w-full pl-12 pr-4 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all text-muted-foreground"
-                        />
-                      </div>
 
-                      {/* Category Dropdown */}
-                      <div className="flex-1 min-w-0 w-full sm:w-auto">
-                        <div className="relative">
-                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <select className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-muted-foreground appearance-none">
-                            <option value="">All Categories</option>
-                            <option value="physics">Physics</option>
-                            <option value="computer-science">
-                              Computer Science
-                            </option>
-                            <option value="mathematics">Mathematics</option>
-                            <option value="biology">Biology</option>
-                            <option value="chemistry">Chemistry</option>
-                            <option value="engineering">Engineering</option>
-                            <option value="medicine">Medicine</option>
-                            <option value="social-sciences">
-                              Social Sciences
-                            </option>
-                          </select>
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Year Dropdown */}
-                      <div className="flex-1 min-w-0 w-full sm:w-auto">
-                        <div className="relative">
-                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <select className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-muted-foreground appearance-none">
-                            <option value="">All Years</option>
-                            <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                            <option value="2021">2021</option>
-                            <option value="2020">2020</option>
-                            <option value="2019">2019</option>
-                            <option value="2018">2018</option>
-                            <option value="older">Older</option>
-                          </select>
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        {/* Category Dropdown */}
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
+                          <div className="relative">
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <select
+                              value={filters.category}
+                              onChange={(e) =>
+                                handleFilterChange("category", e.target.value)
+                              }
+                              className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-foreground appearance-none cursor-pointer"
+                            >
+                              {categories.map((cat) => (
+                                <option key={cat.value} value={cat.value}>
+                                  {cat.label}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Search Button */}
-                      <Link to="/login?action=submit">
-                        <Button className="bg-gradient-primary hover:opacity-90 text-primary-foreground px-6 py-3 whitespace-nowrap flex-shrink-0">
+                        {/* Year Dropdown */}
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
+                          <div className="relative">
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <select
+                              value={filters.year}
+                              onChange={(e) =>
+                                handleFilterChange("year", e.target.value)
+                              }
+                              className="w-full pl-10 pr-10 py-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-foreground appearance-none cursor-pointer"
+                            >
+                              {years.map((year) => (
+                                <option key={year.value} value={year.value}>
+                                  {year.label}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Search Button */}
+                        <Button
+                          type="submit"
+                          className="bg-gradient-primary hover:opacity-90 text-primary-foreground px-6 py-3 whitespace-nowrap flex-shrink-0"
+                        >
                           <Search className="h-5 w-5 mr-2" />
                           Search
                         </Button>
-                      </Link>
-                    </div>
+                      </div>
+                    </form>
                   </div>
-                </div>
 
-                {/* Original Buttons */}
-                {/* <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link to="/login?action=submit">
-                    <Button
-                      size="lg"
-                      className="btn-physics bg-gradient-primary hover:opacity-90 text-lg px-8 py-6 glow-primary"
+                  {/* Error Message */}
+                  {errors && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3 flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20"
                     >
-                      <Send className="mr-2 h-5 w-5" />
-                      Submit Your Paper
-                    </Button>
-                  </Link>
-                  <Link to="/browse">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="btn-physics text-lg px-8 py-6 border-border/50 hover:bg-muted"
-                    >
-                      <Search className="mr-2 h-5 w-5" />
-                      Browse All Papers
-                    </Button>
-                  </Link>
-                </div> */}
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errors}</span>
+                    </motion.div>
+                  )}
+                </div>
               </div>
             </StaggerItem>
           </StaggerContainer>

@@ -19,8 +19,16 @@ import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { jwtDecode } from "jwt-decode";
+import { useToast } from "@/hooks/use-toast";
 
-type UserRole = "author" | "reviewer" | "editor" | "admin";
+// type UserRole = "author" | "reviewer" | "editor" | "admin";
+type UserRole = "author" | "reviewer" | "editor" | "publisher";
+
+interface JwtPayload {
+  id: string;
+  role: UserRole;
+}
 
 const roleConfig: Record<
   UserRole,
@@ -53,12 +61,12 @@ const roleConfig: Record<
     color: "text-accent",
     route: "/chief-editor",
   },
-  admin: {
+  publisher: {
     icon: Shield,
-    label: "Admin",
-    description: "System administration and oversight",
+    label: "Publisher",
+    description: "Journal publisher",
     color: "text-destructive",
-    route: "/admin",
+    route: "/publisher",
   },
 };
 
@@ -71,35 +79,137 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.trim() || !password.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 8) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 8 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedRole) {
+      toast({
+        title: "Role Not Selected",
+        description: "Please select your role to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/login`, {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const result = await response.json();
-      console.log(result);
 
-      if (!response.ok || !result.token) {
-        throw new Error(result.message || "Login failed");
+      if (!result.token) {
+        throw new Error("Invalid email or password");
       }
 
-      if (!result.token || !selectedRole) {
-        console.log("no token found ");
+      let decoded: { role: UserRole };
+      try {
+        decoded = jwtDecode<{ role: UserRole }>(result.token);
+      } catch (decodeError) {
+        throw new Error("Invalid authentication token received.");
+      }
+
+      const actualRole = decoded.role;
+
+      if (!actualRole) {
+        throw new Error("Your account role could not be determined.");
+      }
+
+      if (selectedRole !== actualRole) {
+        const roleLabels: Record<UserRole, string> = {
+          author: "Author",
+          reviewer: "Reviewer",
+          editor: "Editor",
+          publisher: "Publisher",
+        };
+
+        toast({
+          title: "Role Mismatch",
+          description: `Your account is registered as "${roleLabels[actualRole]}". Please select "${roleLabels[actualRole]}" to continue.`,
+          variant: "destructive",
+        });
         return;
       }
 
-      login(result.token, selectedRole);
-      const config = roleConfig[selectedRole];
-      navigate(config.route);
-    } catch (error: any) {
-      alert(error.message || "Login failed");
+      login(result.token);
+
+      if (result.user) {
+        localStorage.setItem("user", JSON.stringify(result.user));
+      }
+
+      const config = roleConfig[actualRole];
+      if (!config) {
+        throw new Error(
+          `Access configuration for "${actualRole}" role not found.`
+        );
+      }
+
+      toast({
+        title: "Login Successful!",
+        description: `Welcome back! Redirecting to ${config.label} dashboard...`,
+        variant: "default",
+        duration: 3000,
+      });
+
+      setTimeout(() => {
+        navigate(config.route, { replace: true });
+      }, 1500);
+    } catch (err: any) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+
+      let errorTitle = "Login Failed";
+      let errorMessage =
+        err.message || "An unexpected error occurred. Please try again.";
+
+      if (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("Network")
+      ) {
+        errorTitle = "Connection Error";
+        errorMessage =
+          "Unable to connect to the server. Please check your internet connection.";
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -214,7 +324,7 @@ export default function LoginPage() {
                       <p>✓ Access analytics dashboard</p>
                     </>
                   )}
-                  {selectedRole === "admin" && (
+                  {selectedRole === "publisher" && (
                     <>
                       <p>✓ System-wide oversight</p>
                       <p>✓ User management</p>

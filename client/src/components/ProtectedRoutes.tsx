@@ -1,26 +1,31 @@
-// src/routes/ProtectedRoute.tsx
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import LoginPage from "@/pages/LoginPage";
 
-type Role = "author" | "reviewer" | "chiefEditor" | "admin";
+type Role = "author" | "reviewer" | "editor" | "admin";
 
 interface ProtectedRouteProps {
   allowedRoles?: Role[];
 }
 
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, role } = useAuth();
+  const { role, isAuthenticated, isLoading } = useAuth();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Checking access...
+      </div>
+    );
   }
-
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  return <Outlet />;
+  if (allowedRoles && !allowedRoles.includes(role.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (role) return <Outlet />;
 };
 
 export default ProtectedRoute;

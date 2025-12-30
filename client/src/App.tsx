@@ -22,6 +22,8 @@ import ProfilePage from "./pages/ProfilePage.tsx";
 import ProtectedRoute from "./components/ProtectedRoutes.tsx";
 import Unauthorized from "./pages/Unauthorized.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
+import PublicRoute from "./components/PublicRoutes.tsx";
+import InitialAuthCheck from "./components/InitialCheckout.tsx";
 
 const queryClient = new QueryClient();
 
@@ -34,56 +36,68 @@ const App = () => (
         <BrowserRouter>
           <div className="dark">
             <AnimatePresence mode="wait">
-              <Routes>
-                {/* {Public Routes} */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/browse" element={<BrowsePage />} />
-                <Route
-                  path="/researchPapers/:paperId"
-                  element={<ResearchPaperDetail />}
-                />
-                <Route path="/unauthorized" element={<Unauthorized />} />
-                {/* {Author Routes} */}
-                <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
-                  <Route path="/author" element={<AuthorDashboard />} />
+              <InitialAuthCheck>
+                <Routes>
+                  {/* {Public Routes} */}
+                  <Route path="/" element={<LandingPage />} />
                   <Route
-                    path="/author/submissions"
-                    element={<MySubmissions />}
+                    path="/initialCheckout"
+                    element={<InitialAuthCheck children={""} />}
                   />
-                </Route>
-                {/* {Reviewer Routes} */}
-                <Route element={<ProtectedRoute allowedRoles={["reviewer"]} />}>
-                  <Route path="/reviewer" element={<ReviewerDashboard />} />
-                  <Route path="/reviewer/papers" element={<AssignedPapers />} />
+                  <Route element={<PublicRoute />}>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
+                  </Route>
+
+                  <Route path="/browse" element={<BrowsePage />} />
                   <Route
-                    path="/reviewer/completed"
-                    element={<CompletedReview />}
+                    path="/researchPapers/:paperId"
+                    element={<ResearchPaperDetail />}
                   />
-                </Route>
-                {/* {Chief-Editor Routes} */}
-                <Route
-                  element={<ProtectedRoute allowedRoles={["chiefEditor"]} />}
-                >
+                  <Route path="/unauthorized" element={<Unauthorized />} />
+                  {/* {Author Routes} */}
+                  <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
+                    <Route path="/author" element={<AuthorDashboard />} />
+                    <Route
+                      path="/author/submissions"
+                      element={<MySubmissions />}
+                    />
+                  </Route>
+                  {/* {Reviewer Routes} */}
                   <Route
-                    path="/chief-editor"
-                    element={<ChiefEditorDashboard />}
-                  />
-                  <Route
-                    path="/chief-editor/submissions"
-                    element={<Submissions />}
-                  />
-                </Route>
-                {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/*" element={<AdminDashboard />} />
-                <Route path="*" element={<NotFound />} />
-                {/* {Any logged in users Routes} */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/profile" element={<ProfilePage />} />
-                </Route>
-              </Routes>
+                    element={<ProtectedRoute allowedRoles={["reviewer"]} />}
+                  >
+                    <Route path="/reviewer" element={<ReviewerDashboard />} />
+                    <Route
+                      path="/reviewer/papers"
+                      element={<AssignedPapers />}
+                    />
+                    <Route
+                      path="/reviewer/completed"
+                      element={<CompletedReview />}
+                    />
+                  </Route>
+                  {/* {Chief-Editor Routes} */}
+                  <Route element={<ProtectedRoute allowedRoles={["editor"]} />}>
+                    <Route
+                      path="/chief-editor"
+                      element={<ChiefEditorDashboard />}
+                    />
+                    <Route
+                      path="/chief-editor/submissions"
+                      element={<Submissions />}
+                    />
+                  </Route>
+                  {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
+                  <Route path="*" element={<NotFound />} />
+                  {/* {Any logged in users Routes} */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
+                </Routes>
+              </InitialAuthCheck>
             </AnimatePresence>
           </div>
         </BrowserRouter>

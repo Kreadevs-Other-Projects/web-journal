@@ -24,7 +24,7 @@ import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
-// import {Link} from 'react-router-dom'
+import { useToast } from "@/hooks/use-toast";
 
 type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
 
@@ -116,20 +116,12 @@ export function DashboardLayout({
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle("dark");
   };
-
-  // inside AuthProvider
-  // const handleLogout = async () => {
-  //   try {
-  //     logout();
-  //   } catch (err) {
-  //     console.error("Logout failed", err);
-  //   }
-  // };
 
   const handleLogout = async () => {
     try {
@@ -148,15 +140,25 @@ export function DashboardLayout({
         });
 
         const result = await response.json();
-        console.log(result);
 
         if (result.success) {
+          toast({
+            title: "Successful",
+            description: "You are logged out successfully",
+          });
           logout();
-          navigate("/login");
+          setTimeout(() => {
+            navigate("/login");
+          }, 800);
         }
       }
     } catch (err) {
-      console.error("Logout failed", err);
+      toast({
+        title: "Failed",
+        description: "Failed to logout, Please try again later",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 

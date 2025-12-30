@@ -2,10 +2,17 @@ import { pool } from "../configs/db";
 
 export const getEditorProfileById = async (id: string) => {
   const result = await pool.query(
-    "SELECT * FROM editor_profiles WHERE id = $1",
+    "SELECT * FROM editor_profiles WHERE user_id = $1",
     [id]
   );
   return result.rows[0];
+};
+
+export const getEditorProfileByEmail = async (email: string) => {
+  const res = await pool.query(`SELECT id, email FROM users WHERE email = $1`, [
+    email,
+  ]);
+  return res.rows[0];
 };
 
 export const createEditorProfile = async (userId: string, type: string) => {

@@ -11,6 +11,9 @@ import {
   CheckCircle2,
   ArrowRight,
   Shield,
+  Settings,
+  Edit,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,33 +25,80 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { app_url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
+
+type UserRole = "author" | "reviewer" | "editor" | "admin";
+
+const roleConfig: Record<
+  UserRole,
+  {
+    icon: React.ElementType;
+    label: string;
+    description: string;
+    color: string;
+    route: string;
+  }
+> = {
+  author: {
+    icon: User,
+    label: "Author",
+    description: "Submit and track your research papers",
+    color: "text-success",
+    route: "/author",
+  },
+  reviewer: {
+    icon: UserCheck,
+    label: "Reviewer",
+    description: "Evaluate submissions assigned to you",
+    color: "text-info",
+    route: "/reviewer",
+  },
+  editor: {
+    icon: User,
+    label: "Editor",
+    description: "Manage paper assignments and reviews",
+    color: "text-accent",
+    route: "/chief-editor",
+  },
+  admin: {
+    icon: Shield,
+    label: "admin",
+    description: "System administration and oversight",
+    color: "text-destructive",
+    route: "/admin",
+  },
+};
 
 export default function SignupPage() {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
-    agreeTerms: false,
   });
+
+  const [selectedRole, setSelectedRole] = useState<UserRole>("author"); // default role
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleRoleSelect = (role: UserRole) => {
+    setSelectedRole(role);
   };
 
   const validateForm = () => {
@@ -91,7 +141,7 @@ export default function SignupPage() {
     setErrors({});
 
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/signup`, {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,59 +150,26 @@ export default function SignupPage() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
+          role: selectedRole,
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        if (response.status === 409) {
-          throw new Error("User already exists with this email!");
-        } else if (response.status === 400) {
-          throw new Error("Email, password, and username are required");
-        } else {
-          throw new Error(
-            result.message || `Signup failed with status ${response.status}`
-          );
-        }
-      }
-
-      if (!result.success) {
         throw new Error(result.message || "Signup failed");
       }
 
-      if (result.token) {
-        localStorage.setItem("accessToken", result.token);
-      }
-
-      if (result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-      }
-      alert("Signup successful! Redirecting to login...");
-
-      navigate("/login", {
-        state: {
-          message: "Signup successful! Please login with your credentials.",
-        },
+      toast({
+        title: "Successful",
+        description: "Signup successful! Redirecting to login...",
       });
-    } catch (error: any) {
-      console.error("Signup error:", error);
 
-      if (error.message.includes("User already exists")) {
-        setErrors({
-          email:
-            "This email is already registered. Please use a different email or try logging in.",
-        });
-      } else if (error.message.includes("network")) {
-        setErrors({
-          general:
-            "Network error. Please check your internet connection and try again.",
-        });
-      } else {
-        setErrors({
-          general: error.message || "Signup failed. Please try again.",
-        });
-      }
+      navigate("/login");
+    } catch (error: any) {
+      setErrors({
+        general: error.message || "Signup failed. Please try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -382,6 +399,57 @@ export default function SignupPage() {
                 )}
               </div>
 
+              <div className="space-y-3 pt-2">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <Settings className="h-4 w-4 text-primary" />
+                  Select Your Role
+                </Label>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+                    const config = roleConfig[role];
+                    const Icon = config.icon;
+                    const isSelected = selectedRole === role;
+
+                    return (
+                      <motion.button
+                        key={role}
+                        type="button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleRoleSelect(role)}
+                        className={cn(
+                          "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border",
+                          isSelected
+                            ? "bg-primary text-primary-foreground shadow-glow border-primary"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted border-border"
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span className="text-[10px] font-medium uppercase tracking-wider">
+                          {config.label}
+                        </span>
+                        {isSelected && (
+                          <motion.div
+                            layoutId="roleIndicator"
+                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-6 rounded-full bg-primary"
+                          />
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground text-center">
+                    <span className="font-medium text-foreground">
+                      {roleConfig[selectedRole].label}
+                    </span>{" "}
+                    - {roleConfig[selectedRole].description}
+                  </p>
+                </div>
+              </div>
+
               {errors.general && (
                 <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                   <p className="text-sm text-destructive text-center">
@@ -408,7 +476,7 @@ export default function SignupPage() {
                 )}
               </Button>
 
-              <div className="text-center pt-4">
+              <div className="text-center pt-2">
                 <p className="text-sm text-muted-foreground">
                   Already have an account?{" "}
                   <Link
@@ -423,6 +491,7 @@ export default function SignupPage() {
           </CardContent>
         </Card>
 
+        {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

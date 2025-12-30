@@ -73,6 +73,7 @@ BEGIN
         );
     END IF;
 
+
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'approve') THEN
         CREATE TYPE approve AS ENUM (
             'pending',
@@ -80,5 +81,6 @@ BEGIN
             'rejected'
         );
     END IF;
+
 END
 $$;

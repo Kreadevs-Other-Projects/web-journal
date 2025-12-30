@@ -3,8 +3,9 @@ CREATE TABLE IF NOT EXISTS editor_profiles (
     user_id UUID NOT NULL,
     type TEXT NOT NULL,
     expertise TEXT[] NOT NULL,
-    approved_by UUID NOT NULL,
-    approved_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_approved approve NOT NULL DEFAULT 'pending',
+    approved_by UUID,
+    approved_at TIMESTAMP,
 
     CONSTRAINT editor_profiles_user_id_fkey
         FOREIGN KEY (user_id)

@@ -73,17 +73,14 @@ BEGIN
         );
     END IF;
 
-    DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_type WHERE typname = 'approve'
-    ) THEN
-        CREATE TYPE review_decision AS ENUM (
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'approve') THEN
+        CREATE TYPE approve AS ENUM (
             'pending',
             'accepted',
             'rejected'
         );
     END IF;
-END$$;
+
 END
 $$;

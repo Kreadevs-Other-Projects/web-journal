@@ -2,7 +2,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
         CREATE TYPE user_role AS ENUM (
-            'user',
+            'author',
             'admin',
             'chief-editor',
             'sub-editor',
@@ -72,5 +72,18 @@ BEGIN
             'minor-revision'
         );
     END IF;
+
+    DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'approve'
+    ) THEN
+        CREATE TYPE review_decision AS ENUM (
+            'pending',
+            'accepted',
+            'rejected'
+        );
+    END IF;
+END$$;
 END
 $$;

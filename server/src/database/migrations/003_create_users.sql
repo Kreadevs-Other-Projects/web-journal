@@ -1,15 +1,18 @@
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role user_role NOT NULL DEFAULT 'user',
-    status user_status NOT NULL DEFAULT 'offline',
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role user_role NOT NULL,
+  status user_status NOT NULL DEFAULT 'active',
+  approved_by UUID REFERENCES users(id),
+  approved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE users
-ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
-
-ALTER TABLE users
-ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  qualifications TEXT,
+  expertise TEXT,
+  certifications TEXT
+);

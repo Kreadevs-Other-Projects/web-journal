@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon",
-    "migrate": "ts-node src/database/migrate.ts"
+    "create": "ts-node src/database/create.db.ts",
+    "drop": "ts-node src/database/drop.db.ts",
+    "migrate": "ts-node src/database/migrate.db.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,165 @@
+import { transporter } from "../configs/email";
+import { env } from "../configs/envs";
+
+const baseEmailTemplate = (title: string, content: string) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0B1220;
+      font-family: Arial, sans-serif;
+      color: #FFFFFF;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #111827;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #1F2937;
+    }
+    .header {
+      padding: 24px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #1E3A8A, #2563EB);
+    }
+    .content {
+      padding: 24px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #E5E7EB;
+    }
+    .code {
+      margin: 24px 0;
+      padding: 16px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      color: #2563EB;
+      background-color: #0B1220;
+      border-radius: 8px;
+      border: 1px dashed #2563EB;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      background-color: #2563EB;
+      color: #FFFFFF !important;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .footer {
+      padding: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #9CA3AF;
+      border-top: 1px solid #1F2937;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">${title}</div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      © ${new Date().getFullYear()} JournalHub. This is an automated email.
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+export const sendOTPEmail = async (email: string, otpCode: string) => {
+  try {
+    await transporter.sendMail({
+      from: `"JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Your OTP Code",
+      html: baseEmailTemplate(
+        "OTP Verification",
+        `
+          <p>Hello,</p>
+          <p>Please use the following code to verify your email:</p>
+          <div class="code">${otpCode}</div>
+          <p>This code will expire in <strong>10 minutes</strong>.</p>
+          <p>If you didn’t request this, you can safely ignore this email.</p>
+        `
+      ),
+      text: `Your OTP code is ${otpCode}. It will expire in 10 minutes.`,
+    });
+
+    console.log("OTP email sent to:", email);
+    return true;
+  } catch (error) {
+    console.error("Failed to send OTP email:", error);
+    throw new Error("OTP email sending failed");
+  }
+};
+
+export const sendWelcomeEmail = async (email: string, username: string) => {
+  try {
+    await transporter.sendMail({
+      from: `"JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Welcome to JournalHub",
+      html: baseEmailTemplate(
+        "Welcome to JournalHub",
+        `
+          <p>Hi <strong>${username}</strong>,</p>
+          <p>Welcome to <strong>JournalHub</strong> — your platform for scientific publishing and peer review.</p>
+          <p>You can now submit, review, and manage your research papers with confidence.</p>
+        `
+      ),
+      text: `Hi ${username}, welcome to JournalHub!`,
+    });
+
+    console.log("Welcome email sent to:", email);
+    return true;
+  } catch (error) {
+    console.error("Failed to send welcome email:", error);
+    return false;
+  }
+};
+
+export const sendPasswordResetEmail = async (
+  email: string,
+  otpCode: string
+) => {
+  try {
+    await transporter.sendMail({
+      from: `"JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Password Reset Request",
+      html: baseEmailTemplate(
+        "Password Reset",
+        `
+          <p>Hello,</p>
+          <p>You requested to reset your password. Use the code below:</p>
+          <div class="code">${otpCode}</div>
+          <p>This code will expire in <strong>10 minutes</strong>.</p>
+          <p>If this wasn’t you, please ignore this email.</p>
+        `
+      ),
+      text: `Your password reset code is ${otpCode}. It will expire in 10 minutes.`,
+    });
+
+    console.log("Password reset email sent to:", email);
+    return true;
+  } catch (error) {
+    console.error("Failed to send password reset email:", error);
+    throw new Error("Password reset email failed");
+  }
+};

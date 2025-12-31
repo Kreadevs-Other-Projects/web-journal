@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import * as AuthService from "../services/auth.service";
+import { createEditorProfile } from "../repositories/editor.repository";
+import { createReviewerProfile } from "../repositories/reviewer.repository";
+
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -10,6 +13,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from "../repositories/auth.repository";
+import { env } from "../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -48,17 +52,24 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: false,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
   return res.status(200).json({
     success: true,
     message: "Login successful",
-    token: accessToken,
+    token: refreshToken,
   });
 };
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password, username } = req.body;
+  const { email, password, username, role } = req.body;
 
-  if (!email || !password || !username) {
+  if (!email || !password || !username || !role) {
     return res.status(400).json({
       success: false,
       message: "Email, password, and name are required",
@@ -74,10 +85,12 @@ export const signup = async (req: Request, res: Response) => {
   }
 
   const hashedPassword = await AuthService.hashPassword(password);
+
   const newUser = await AuthService.createUser({
     email,
     password: hashedPassword,
     username,
+    role,
   });
 
   if (!newUser) {
@@ -87,24 +100,28 @@ export const signup = async (req: Request, res: Response) => {
     });
   }
 
+  if (role === "chief-editor" || role === "sub-editor") {
+    await createEditorProfile(newUser.id, role);
+  }
+
+  if (role === "reviewer") {
+    await createReviewerProfile(newUser.id);
+  }
+
   const accessToken = await generateAccessToken(newUser.id, newUser.role);
   const refreshToken = await generateRefreshToken(newUser.id, newUser.role);
 
   const expires_at = new Date();
   expires_at.setDate(expires_at.getDate() + 7);
 
-  const savedTokenId = await saveRefreshToken(
-    newUser.id,
-    refreshToken,
-    expires_at
-  );
+  await saveRefreshToken(newUser.id, refreshToken, expires_at);
 
-  if (!savedTokenId) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to save refresh token",
-    });
-  }
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: false,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 
   return res.status(201).json({
     success: true,
@@ -114,12 +131,13 @@ export const signup = async (req: Request, res: Response) => {
       id: newUser.id,
       email: newUser.email,
       username: newUser.username,
+      role: newUser.role,
     },
   });
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
+  const { refreshToken } = req.cookies;
 
   if (!refreshToken) {
     return res.status(400).json({

@@ -18,8 +18,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { jwtDecode } from "jwt-decode";
+import { useToast } from "@/hooks/use-toast";
 
-type UserRole = "author" | "reviewer" | "editor" | "admin";
+// type UserRole = "author" | "reviewer" | "editor" | "admin";
+type UserRole = "author" | "reviewer" | "editor" | "publisher";
+
+interface JwtPayload {
+  id: string;
+  role: UserRole;
+}
 
 const roleConfig: Record<
   UserRole,
@@ -52,12 +61,12 @@ const roleConfig: Record<
     color: "text-accent",
     route: "/chief-editor",
   },
-  admin: {
+  publisher: {
     icon: Shield,
-    label: "Admin",
-    description: "System administration and oversight",
+    label: "Publisher",
+    description: "Journal publisher",
     color: "text-destructive",
-    route: "/admin",
+    route: "/publisher",
   },
 };
 
@@ -69,26 +78,149 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.trim() || !password.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 8) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 8 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedRole) {
+      toast({
+        title: "Role Not Selected",
+        description: "Please select your role to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate login
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-    const config = roleConfig[selectedRole];
-    navigate(config.route);
+      const result = await response.json();
+
+      if (!result.token) {
+        throw new Error("Invalid email or password");
+      }
+
+      let decoded: { role: UserRole };
+      try {
+        decoded = jwtDecode<{ role: UserRole }>(result.token);
+      } catch (decodeError) {
+        throw new Error("Invalid authentication token received.");
+      }
+
+      const actualRole = decoded.role;
+
+      if (!actualRole) {
+        throw new Error("Your account role could not be determined.");
+      }
+
+      if (selectedRole !== actualRole) {
+        const roleLabels: Record<UserRole, string> = {
+          author: "Author",
+          reviewer: "Reviewer",
+          editor: "Editor",
+          publisher: "Publisher",
+        };
+
+        toast({
+          title: "Role Mismatch",
+          description: `Your account is registered as "${roleLabels[actualRole]}". Please select "${roleLabels[actualRole]}" to continue.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      login(result.token);
+
+      if (result.user) {
+        localStorage.setItem("user", JSON.stringify(result.user));
+      }
+
+      const config = roleConfig[actualRole];
+      if (!config) {
+        throw new Error(
+          `Access configuration for "${actualRole}" role not found.`
+        );
+      }
+
+      toast({
+        title: "Login Successful!",
+        description: `Welcome back! Redirecting to ${config.label} dashboard...`,
+        variant: "default",
+        duration: 3000,
+      });
+
+      setTimeout(() => {
+        navigate(config.route, { replace: true });
+      }, 1500);
+    } catch (err: any) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+
+      let errorTitle = "Login Failed";
+      let errorMessage =
+        err.message || "An unexpected error occurred. Please try again.";
+
+      if (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("Network")
+      ) {
+        errorTitle = "Connection Error";
+        errorMessage =
+          "Unable to connect to the server. Please check your internet connection.";
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <PageTransition className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute inset-0 animated-gradient" />
       <div className="absolute inset-0 bg-mesh-pattern opacity-50" />
       <div className="noise-overlay" />
 
-      {/* Floating decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{ rotate: 360 }}
@@ -102,9 +234,7 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Content */}
       <div className="relative z-10 min-h-screen flex">
-        {/* Left panel - Branding */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -194,7 +324,7 @@ export default function LoginPage() {
                       <p>✓ Access analytics dashboard</p>
                     </>
                   )}
-                  {selectedRole === "admin" && (
+                  {selectedRole === "publisher" && (
                     <>
                       <p>✓ System-wide oversight</p>
                       <p>✓ User management</p>
@@ -271,7 +401,10 @@ export default function LoginPage() {
               {/* Login form */}
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
                     Email Address
                   </Label>
                   <div className="relative">
@@ -291,7 +424,7 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="password"
-                    className="text-sm font-medium text-muted-froreground"
+                    className="text-sm font-medium text-muted-foreground"
                   >
                     Password
                   </Label>

@@ -1,25 +1,41 @@
-import {
-  findUserById as findUserByIdRepo,
-  findUserByEmail as findUserByEmailRepo,
-  updateUser as updateUserRepo,
-  softDeleteUser as softDeleteUserRepo,
-} from "../repositories/user.repository";
+import * as UserRepo from "../repositories/user.repository";
+import * as EditorRepo from "../repositories/editor.repository";
+import * as ReviewerRepo from "../repositories/reviewer.repository";
 
-export const getUserProfile = async (userId: string) => {
-  return await findUserByIdRepo(userId);
+export const getFullProfile = async (userId: string) => {
+  const user = await UserRepo.findUserById(userId);
+  if (!user) return null;
+
+  let roleProfile = null;
+
+  if (["chief-editor", "sub-editor"].includes(user.role)) {
+    roleProfile = await EditorRepo.getEditorProfileById(userId);
+  }
+
+  if (user.role === "reviewer") {
+    roleProfile = await ReviewerRepo.getReviewerProfileByUserId(userId);
+  }
+
+  return {
+    user,
+    role_profile: roleProfile,
+  };
 };
 
-export const findUserByEmail = async (email: string) => {
-  return await findUserByEmailRepo(email);
-};
-
-export const updateUserProfile = async (
+export const updateProfile = async (
   userId: string,
   data: { username?: string; email?: string }
 ) => {
-  return await updateUserRepo(userId, data);
+  if (data.email) {
+    const existing = await UserRepo.findUserByEmail(data.email);
+    if (existing && existing.id !== userId) {
+      throw new Error("EMAIL_EXISTS");
+    }
+  }
+
+  return UserRepo.updateUser(userId, data);
 };
 
-export const softDeleteUser = async (userId: string) => {
-  return await softDeleteUserRepo(userId);
+export const deleteProfile = async (userId: string) => {
+  return UserRepo.softDeleteUser(userId);
 };

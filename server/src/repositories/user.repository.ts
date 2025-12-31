@@ -8,22 +8,26 @@ export const findUserByEmail = async (email: string) => {
   return result.rows[0];
 };
 
-export const findUserById = async (userId: string) => {
-  const result = await pool.query(
-    "SELECT id, email, username, created_at FROM users WHERE id = $1 AND deleted_at IS NULL",
-    [userId]
+export const findUserById = async (id: string) => {
+  const res = await pool.query(
+    `SELECT id, email, username, role, created_at
+     FROM users
+     WHERE id = $1 AND deleted_at IS NULL`,
+    [id]
   );
-  return result.rows[0];
+
+  return res.rows[0];
 };
 
 export const createUser = async (userData: {
   email: string;
   password: string;
   username: string;
+  role: string;
 }) => {
   const result = await pool.query(
-    "INSERT INTO users (email, password, username) VALUES ($1, $2, $3) RETURNING id, email, username",
-    [userData.email, userData.password, userData.username]
+    "INSERT INTO users (email, password, username, role) VALUES ($1, $2, $3, $4) RETURNING id",
+    [userData.email, userData.password, userData.username, userData.role]
   );
   return result.rows[0];
 };

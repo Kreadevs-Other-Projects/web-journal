@@ -13,4 +13,8 @@ export const env = {
   JWT_LONG_EXPIRY: process.env.JWT_LONG_EXPIRY as StringValue,
 
   CORS_ORIGIN: process.env.CORS_ORIGIN,
+
+  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+  EMAIL_FROM: process.env.EMAIL_USER,
 };

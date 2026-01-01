@@ -59,7 +59,7 @@ const timelineEvents = [
 
 export default function AuthorDashboard() {
   return (
-    <DashboardLayout role="author" userName="Dr. Sarah Chen">
+    <DashboardLayout role="author" userName="">
       <PageTransition>
         <div className="space-y-8">
           {/* Header */}
@@ -80,7 +80,6 @@ export default function AuthorDashboard() {
             </Link>
           </div>
 
-          {/* Stats */}
           <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               {

@@ -9,18 +9,16 @@ const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (role) {
-        const config = roleConfig[role.role];
-        if (config) {
-          navigate(config.route, { replace: true });
-        }
+    if (!isLoading && role) {
+      const config = roleConfig[role.role as keyof typeof roleConfig];
+      if (config) {
+        navigate(config.route, { replace: true });
       }
     }
   }, [isLoading, role, navigate]);
 
   if (isLoading) {
-    return <LoadingSpinner text="Initializing JournalHub..." />;
+    return <LoadingSpinner text="Checking authentication..." />;
   }
 
   return <>{children}</>;

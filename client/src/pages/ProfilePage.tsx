@@ -70,8 +70,6 @@ const mockUserData = {
   },
 };
 
-// const fetchProfileData =
-
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -147,9 +145,9 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    console.log(token);
+    
     fetchProfile();
-    setLoading(false);
   }, []);
 
   const handleUpdate = async () => {

@@ -87,7 +87,6 @@ import {
   Bar,
 } from "recharts";
 
-// Sample data
 const users = [
   {
     id: "USR-001",
@@ -246,7 +245,6 @@ export default function AdminDashboard() {
   const [isStreaming, setIsStreaming] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Simulate streaming logs
   useEffect(() => {
     if (!isStreaming) return;
 
@@ -327,7 +325,6 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout role="admin" userName="Admin User">
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-serif-outfit text-3xl font-bold">
@@ -343,7 +340,6 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {

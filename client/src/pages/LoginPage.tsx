@@ -1,3 +1,4 @@
+// LoginPage.tsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -21,14 +22,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import { useToast } from "@/hooks/use-toast";
+import OtpVerification from "@/components/OtpVerification";
 
-// type UserRole = "author" | "reviewer" | "editor" | "admin";
 type UserRole = "author" | "reviewer" | "editor" | "publisher";
-
-interface JwtPayload {
-  id: string;
-  role: UserRole;
-}
 
 const roleConfig: Record<
   UserRole,
@@ -80,6 +76,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [tempUser, setTempUser] = useState<any>(null);
+  const [tempRole, setTempRole] = useState<UserRole | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,29 +165,13 @@ export default function LoginPage() {
         return;
       }
 
-      login(result.token);
+      setTempToken(result.token);
+      setTempUser(result.user);
+      setTempRole(actualRole);
+      
+      setOtpEmail(email.trim());
+      setShowOtpModal(true);
 
-      if (result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-      }
-
-      const config = roleConfig[actualRole];
-      if (!config) {
-        throw new Error(
-          `Access configuration for "${actualRole}" role not found.`
-        );
-      }
-
-      toast({
-        title: "Login Successful!",
-        description: `Welcome back! Redirecting to ${config.label} dashboard...`,
-        variant: "default",
-        duration: 3000,
-      });
-
-      setTimeout(() => {
-        navigate(config.route, { replace: true });
-      }, 1500);
     } catch (err: any) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
@@ -212,6 +197,47 @@ export default function LoginPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpEmail }),
+      });
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("Failed to resend OTP:", error);
+      return false;
+    }
+  };
+
+  const handleVerificationSuccess = () => {
+    if (tempToken && tempRole) {
+      // Complete the login process
+      login(tempToken);
+      
+      if (tempUser) {
+        localStorage.setItem("user", JSON.stringify(tempUser));
+      }
+
+      const config = roleConfig[tempRole];
+      if (config) {
+        toast({
+          title: "Login Successful!",
+          description: `Welcome back! Redirecting to ${config.label} dashboard...`,
+          variant: "default",
+          duration: 3000,
+        });
+
+        setTimeout(() => {
+          navigate(config.route, { replace: true });
+        }, 1500);
+      }
     }
   };
 
@@ -500,7 +526,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Demo credentials hint */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -514,6 +539,20 @@ export default function LoginPage() {
           </motion.div>
         </div>
       </div>
+
+      <OtpVerification
+        isOpen={showOtpModal}
+        onClose={() => {
+          setShowOtpModal(false);
+          setTempToken(null);
+          setTempUser(null);
+          setTempRole(null);
+        }}
+        email={otpEmail}
+        type="login"
+        onVerificationSuccess={handleVerificationSuccess}
+        resendOtp={handleResendOtp}
+      />
     </PageTransition>
   );
 }

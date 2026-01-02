@@ -37,7 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "../url";
 
-const defaultUserData = {
+const defaultUserDataa = {
   id: "",
   username: "",
   email: "",

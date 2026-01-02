@@ -38,12 +38,12 @@ const App = () => (
             <AnimatePresence mode="wait">
               <InitialAuthCheck>
                 <Routes>
-                  <Route path="/" element={<LandingPage />} />
                   <Route
                     path="/initialCheckout"
                     element={<InitialAuthCheck children={""} />}
                   />
                   <Route element={<PublicRoute />}>
+                    <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                   </Route>

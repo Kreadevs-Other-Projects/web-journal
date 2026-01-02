@@ -1,3 +1,4 @@
+// LoginPage.tsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -11,11 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { url } from "../url";
 
 type UserRole = "author" | "reviewer" | "editor" | "publisher";
-
-interface JwtPayload {
-  id: string;
-  role: UserRole;
-}
 
 const roleConfig: Record<
   UserRole,
@@ -71,6 +67,11 @@ export default function LoginPage() {
 
   const { login } = useAuth();
   const { toast } = useToast();
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [tempUser, setTempUser] = useState<any>(null);
+  const [tempRole, setTempRole] = useState<UserRole | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +135,6 @@ export default function LoginPage() {
       });
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.message || "OTP verification failed");
       }
@@ -160,6 +160,50 @@ export default function LoginPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/resend-otp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: otpEmail }),
+        }
+      );
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("Failed to resend OTP:", error);
+      return false;
+    }
+  };
+
+  const handleVerificationSuccess = () => {
+    if (tempToken && tempRole) {
+      // Complete the login process
+      login(tempToken);
+
+      if (tempUser) {
+        localStorage.setItem("user", JSON.stringify(tempUser));
+      }
+
+      const config = roleConfig[tempRole];
+      if (config) {
+        toast({
+          title: "Login Successful!",
+          description: `Welcome back! Redirecting to ${config.label} dashboard...`,
+          variant: "default",
+          duration: 3000,
+        });
+
+        setTimeout(() => {
+          navigate(config.route, { replace: true });
+        }, 1500);
+      }
     }
   };
 

@@ -1,28 +1,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  BookOpen,
-  User,
-  Users,
-  UserCheck,
-  Shield,
-  Mail,
-  Lock,
-  ArrowRight,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { BookOpen, User, Users, UserCheck, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { jwtDecode } from "jwt-decode";
 import { useToast } from "@/hooks/use-toast";
+import { url } from "../url";
 
-// type UserRole = "author" | "reviewer" | "editor" | "admin";
 type UserRole = "author" | "reviewer" | "editor" | "publisher";
 
 interface JwtPayload {
@@ -78,137 +65,98 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
   const { login } = useAuth();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please enter both email and password",
+        title: "Missing Email",
+        description: "Enter your email",
         variant: "destructive",
       });
       return;
     }
-
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 8) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedRole) {
-      toast({
-        title: "Role Not Selected",
-        description: "Please select your role to continue",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      setIsLoading(true);
+
+      const response = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), purpose: "login" }),
       });
 
       const result = await response.json();
 
-      if (!result.token) {
-        throw new Error("Invalid email or password");
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to send OTP");
       }
 
-      let decoded: { role: UserRole };
-      try {
-        decoded = jwtDecode<{ role: UserRole }>(result.token);
-      } catch (decodeError) {
-        throw new Error("Invalid authentication token received.");
-      }
-
-      const actualRole = decoded.role;
-
-      if (!actualRole) {
-        throw new Error("Your account role could not be determined.");
-      }
-
-      if (selectedRole !== actualRole) {
-        const roleLabels: Record<UserRole, string> = {
-          author: "Author",
-          reviewer: "Reviewer",
-          editor: "Editor",
-          publisher: "Publisher",
-        };
-
-        toast({
-          title: "Role Mismatch",
-          description: `Your account is registered as "${roleLabels[actualRole]}". Please select "${roleLabels[actualRole]}" to continue.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      login(result.token);
-
-      if (result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-      }
-
-      const config = roleConfig[actualRole];
-      if (!config) {
-        throw new Error(
-          `Access configuration for "${actualRole}" role not found.`
-        );
-      }
-
+      toast({ title: "OTP Sent", description: "Check your email for the OTP" });
+      setOtpSent(true);
+      setStep("otp");
+    } catch (error: any) {
       toast({
-        title: "Login Successful!",
-        description: `Welcome back! Redirecting to ${config.label} dashboard...`,
-        variant: "default",
-        duration: 3000,
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!otp.trim() || otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Enter a 6-digit OTP",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(`${url}/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp, purpose: "login" }),
       });
 
-      setTimeout(() => {
-        navigate(config.route, { replace: true });
-      }, 1500);
-    } catch (err: any) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
+      const result = await response.json();
 
-      let errorTitle = "Login Failed";
-      let errorMessage =
-        err.message || "An unexpected error occurred. Please try again.";
-
-      if (
-        err.message.includes("Failed to fetch") ||
-        err.message.includes("Network")
-      ) {
-        errorTitle = "Connection Error";
-        errorMessage =
-          "Unable to connect to the server. Please check your internet connection.";
+      if (!response.ok) {
+        throw new Error(result.message || "OTP verification failed");
       }
 
+      if (!result.token) {
+        throw new Error("Token not returned from server");
+      }
+
+      toast({ title: "OTP Verified", description: "Login successful!" });
+
+      login(result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
+
+      localStorage.setItem("refreshToken", result.refreshToken);
+
+      const userRole = result.user.role as UserRole;
+      navigate(roleConfig[userRole].route, { replace: true });
+    } catch (error: any) {
       toast({
-        title: errorTitle,
-        description: errorMessage,
+        title: "Error",
+        description: error.message,
         variant: "destructive",
-        duration: 5000,
       });
     } finally {
       setIsLoading(false);
@@ -259,7 +207,6 @@ export default function LoginPage() {
               publications.
             </p>
 
-            {/* Role-specific welcome message */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={selectedRole}
@@ -337,7 +284,6 @@ export default function LoginPage() {
           </motion.div>
         </div>
 
-        {/* Right panel - Login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -345,7 +291,6 @@ export default function LoginPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="w-full max-w-md"
           >
-            {/* Mobile logo */}
             <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
               <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
                 <BookOpen className="h-6 w-6 text-primary-foreground" />
@@ -363,7 +308,6 @@ export default function LoginPage() {
                 Choose your role and enter your credentials
               </p>
 
-              {/* Role selector */}
               <div className="grid grid-cols-4 gap-2 mb-6">
                 {(Object.keys(roleConfig) as UserRole[]).map((role) => {
                   const config = roleConfig[role];
@@ -398,93 +342,62 @@ export default function LoginPage() {
                 })}
               </div>
 
-              {/* Login form */}
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="email"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Email Address
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <form
+                onSubmit={
+                  step === "credentials" ? handleLogin : handleVerifyOtp
+                }
+                className="space-y-4"
+              >
+                {step === "credentials" && (
+                  <>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="pl-10 pr-10 input-glow text-muted-foreground"
+                      className="pl-5 pr-10 input-glow text-muted-foreground"
                       required
                     />
-                  </div>
-                </div>
+                  </>
+                )}
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="password"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                {step === "otp" && (
+                  <>
+                    <p className="text-sm input-glow text-muted-foreground">
+                      Enter the OTP sent to <strong>{email}</strong>
+                    </p>
                     <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="pl-10 pr-10 input-glow text-muted-foreground"
+                      id="otp"
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
                       required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+                  </>
+                )}
 
-                <div className="flex items-center justify-between text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="rounded border-border" />
-                    <span className="text-muted-foreground">Remember me</span>
-                  </label>
-                  <a href="#" className="text-primary hover:underline">
-                    Forgot password?
-                  </a>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full btn-physics bg-gradient-primary hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                      className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
-                    />
-                  ) : (
-                    <>
-                      Sign In as {roleConfig[selectedRole].label}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                <Button type="submit" disabled={isLoading}>
+                  {step === "credentials"
+                    ? isLoading
+                      ? "Sending..."
+                      : "Send OTP"
+                    : isLoading
+                    ? "Verifying..."
+                    : "Verify OTP"}
                 </Button>
+
+                {step === "otp" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setStep("credentials")}
+                  >
+                    Change Email
+                  </Button>
+                )}
               </form>
 
               <div className="mt-6 pt-6 border-t border-border/50 text-center">
@@ -500,7 +413,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Demo credentials hint */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

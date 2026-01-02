@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { url } from "../url";
 
 type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
 
@@ -126,36 +127,51 @@ export function DashboardLayout({
   const handleLogout = async () => {
     try {
       setLoading(true);
-      const refreshToken = localStorage.getItem("accessToken");
+
+      const refreshToken = localStorage.getItem("refreshToken");
 
       if (!refreshToken) {
-        console.log("refreshToken ,missing", refreshToken);
-      } else {
-        const response = await fetch("http://localhost:5000/api/auth/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refreshToken }),
+        return toast({
+          title: "Error",
+          description: "Refresh token is missing, cannot logout",
+        });
+      }
+
+      const response = await fetch(`${url}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Successful",
+          description: "You are logged out successfully",
         });
 
-        const result = await response.json();
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
 
-        if (result.success) {
-          toast({
-            title: "Successful",
-            description: "You are logged out successfully",
-          });
-          logout();
-          setTimeout(() => {
-            navigate("/login");
-          }, 800);
-        }
+        logout();
+
+        setTimeout(() => {
+          navigate("/login");
+        }, 800);
+      } else {
+        toast({
+          title: "Failed",
+          description: result.message || "Failed to logout, please try again",
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error("🔥 Error during logout:", err);
       toast({
         title: "Failed",
-        description: "Failed to logout, Please try again later",
+        description: err.message || "Failed to logout, Please try again later",
       });
     } finally {
       setLoading(false);

@@ -38,7 +38,6 @@ const App = () => (
             <AnimatePresence mode="wait">
               <InitialAuthCheck>
                 <Routes>
-                  {/* {Public Routes} */}
                   <Route path="/" element={<LandingPage />} />
                   <Route
                     path="/initialCheckout"
@@ -91,11 +90,10 @@ const App = () => (
                   {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/*" element={<AdminDashboard />} />
-                  <Route path="*" element={<NotFound />} />
-                  {/* {Any logged in users Routes} */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                   </Route>
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </InitialAuthCheck>
             </AnimatePresence>

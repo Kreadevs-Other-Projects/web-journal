@@ -1,1 +1,3 @@
-export const app_url = import.meta.env.REACT_APP_URL;
+// export const url = import.meta.env.VITE_API_URL;
+
+export const url = "http://localhost:5000/api";

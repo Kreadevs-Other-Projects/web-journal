@@ -3,6 +3,10 @@ import { asyncHandler } from "../utils/asyncHandler";
 import {
   login,
   signup,
+  requestOTP,
+  verify,
+  verifyLoginOTP,
+  resendOTP,
   refreshToken,
   logout,
 } from "../controllers/auth.controller";
@@ -13,11 +17,20 @@ import {
   refreshTokenSchema,
   logoutSchema,
 } from "../schemas/auth.schema";
+import {
+  createOTPSchema,
+  verifyOTPSchema,
+  resendOTPSchema,
+} from "../schemas/otp.schema";
 
 const router = Router();
 
 router.post("/signup", validate(signupSchema), asyncHandler(signup));
 router.post("/login", validate(loginSchema), asyncHandler(login));
+router.post("/create", validate(createOTPSchema), asyncHandler(requestOTP));
+router.post("/verifysignup", validate(verifyOTPSchema), asyncHandler(verify));
+router.post("/verify", validate(verifyOTPSchema), asyncHandler(verifyLoginOTP));
+router.post("/resend", validate(resendOTPSchema), asyncHandler(resendOTP));
 router.post("/token", validate(refreshTokenSchema), asyncHandler(refreshToken));
 router.post("/logout", validate(logoutSchema), asyncHandler(logout));
 

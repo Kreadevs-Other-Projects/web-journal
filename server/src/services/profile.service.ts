@@ -1,41 +1,56 @@
-import * as UserRepo from "../repositories/user.repository";
-import * as EditorRepo from "../repositories/editor.repository";
-import * as ReviewerRepo from "../repositories/reviewer.repository";
+import {
+  findUserById,
+  findUserByEmail,
+  findUserProfile,
+  updateUser,
+  updateUserProfile,
+  softDeleteUser,
+} from "../repositories/user.repository";
 
 export const getFullProfile = async (userId: string) => {
-  const user = await UserRepo.findUserById(userId);
+  const user = await findUserById(userId);
   if (!user) return null;
 
-  let roleProfile = null;
-
-  if (["chief-editor", "sub-editor"].includes(user.role)) {
-    roleProfile = await EditorRepo.getEditorProfileById(userId);
-  }
-
-  if (user.role === "reviewer") {
-    roleProfile = await ReviewerRepo.getReviewerProfileByUserId(userId);
-  }
+  const profile = await findUserProfile(userId);
 
   return {
     user,
-    role_profile: roleProfile,
+    profile: profile || {},
   };
 };
 
-export const updateProfile = async (
+export const updateProfileService = async (
   userId: string,
-  data: { username?: string; email?: string }
+  userData: { username?: string; email?: string },
+  profileData?: {
+    qualifications?: string | null;
+    expertise?: string[] | null;
+    certifications?: string | null;
+  }
 ) => {
-  if (data.email) {
-    const existing = await UserRepo.findUserByEmail(data.email);
+  if (userData.email) {
+    const existing = await findUserByEmail(userData.email);
     if (existing && existing.id !== userId) {
       throw new Error("EMAIL_EXISTS");
     }
   }
 
-  return UserRepo.updateUser(userId, data);
+  let updatedUser = null;
+  if (Object.keys(userData).length > 0) {
+    updatedUser = await updateUser(userId, userData);
+  }
+
+  let updatedProfile = null;
+  if (profileData && Object.keys(profileData).length > 0) {
+    updatedProfile = await updateUserProfile(userId, profileData);
+  }
+
+  return {
+    user: updatedUser,
+    profile: updatedProfile,
+  };
 };
 
 export const deleteProfile = async (userId: string) => {
-  return UserRepo.softDeleteUser(userId);
+  return softDeleteUser(userId);
 };

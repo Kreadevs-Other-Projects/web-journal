@@ -1,23 +1,38 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { roleConfig } from "../lib/roles";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 
 const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { role, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (role) {
-        const config = roleConfig[role.role];
-        if (config) {
-          navigate(config.route, { replace: true });
-        }
+    if (isLoading) {
+      return;
+    }
+
+    if (!role) {
+      return;
+    }
+
+    if (hasRedirected.current) {
+      return;
+    }
+
+    if (location.pathname === "/" || location.pathname === "/login") {
+      const config = roleConfig[role.role];
+
+      if (config?.route) {
+        hasRedirected.current = true;
+        navigate(config.route, { replace: true });
       }
     }
-  }, [isLoading, role, navigate]);
+  }, [isLoading, role, location.pathname, navigate]);
 
   if (isLoading) {
     return <LoadingSpinner text="Initializing JournalHub..." />;

@@ -7,10 +7,21 @@ export const updateProfileSchema = z
       .min(3, "Username must be at least 3 characters")
       .optional(),
     email: z.string().email("Invalid email format").optional(),
+    qualifications: z.string().nullable().optional(),
+    expertise: z.array(z.string()).nullable().optional(),
+    certifications: z.string().nullable().optional(),
   })
-  .refine((data) => data.username || data.email, {
-    message: "At least one field (username or email) must be provided",
-  });
+  .refine(
+    (data) =>
+      data.username ||
+      data.email ||
+      data.qualifications ||
+      data.expertise ||
+      data.certifications,
+    {
+      message: "At least one field must be provided",
+    }
+  );
 
 export const getProfileSchema = z.object({}).optional();
 export const deleteProfileSchema = z.object({}).optional();

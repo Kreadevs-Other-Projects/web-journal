@@ -5,8 +5,6 @@ import {
   User,
   Mail,
   Calendar,
-  Building,
-  Globe,
   Briefcase,
   Award,
   FileText,
@@ -36,54 +34,37 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { json } from "stream/consumers";
+import { url } from "../url";
 
-const mockUserData = {
-  id: "USR-2024-001",
-  username: "Dr. Michael Chen",
-  email: "michael.chen@research.edu",
-  title: "Senior Research Scientist",
-  affiliation: "Stanford University",
-  department: "Computer Science Department",
-  location: "Stanford, California, USA",
-  bio: "Dr. Michael Chen is a Senior Research Scientist specializing in Machine Learning and Quantum Computing. With over 10 years of experience in academic research, he has published numerous papers in top-tier conferences and journals.",
-  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
-  created_at: "2022-03-15",
-  lastActive: "2024-01-20",
-  papersSubmitted: 24,
-  papersReviewed: 42,
-  citationCount: 1560,
-  hIndex: 18,
-  expertise: [
-    "Machine Learning",
-    "Quantum Computing",
-    "Artificial Intelligence",
-    "Data Science",
-  ],
-  links: {
-    googleScholar: "https://scholar.google.com/citations?user=michaelchen",
-    orcid: "0000-0002-1825-0097",
-    github: "michaelchen-research",
-    linkedin: "michaelchen-research",
-  },
+const defaultUserData = {
+  id: "",
+  username: "",
+  email: "",
+  title: "",
+  avatar: "",
+  created_at: "",
+  lastActive: "",
+  papersSubmitted: 0,
+  papersReviewed: 0,
+  citationCount: 0,
+  hIndex: 0,
+  expertise: [],
+  qualifications: null,
+  certifications: null,
+  role: "author",
 };
-
-// const fetchProfileData =
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [userData, setUserData] = useState(mockUserData);
+  const [userData, setUserData] = useState(defaultUserData);
   const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { token } = useAuth();
-  const [profile, setProfile] = useState(null);
-
   const [loading, setLoading] = useState(false);
 
   const handleSave = () => {
@@ -92,7 +73,7 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
-    setUserData(mockUserData);
+    fetchProfile();
     setIsEditing(false);
   };
 
@@ -122,24 +103,45 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `http://localhost:5000/api/profile/getProfile`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${url}/profile/getProfile`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const result = await response.json();
 
       if (result.success) {
-        setUserData(result.user);
-      }
+        const apiUser = result.data.user;
+        const apiProfile = result.data.profile;
 
-      console.log(result.user);
+        setUserData({
+          id: apiUser.id,
+          username: apiUser.username,
+          email: apiUser.email,
+          role: apiUser.role,
+          created_at: apiUser.created_at,
+          title: "",
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username
+            ?.charAt(0)
+            .toUpperCase()}`,
+          lastActive: new Date().toISOString(),
+          papersSubmitted: 0,
+          papersReviewed: 0,
+          citationCount: 0,
+          hIndex: 0,
+          expertise: apiProfile.expertise
+            ? Array.isArray(apiProfile.expertise)
+              ? apiProfile.expertise
+              : []
+            : [],
+          qualifications: apiProfile.qualifications,
+          certifications: apiProfile.certifications,
+        });
+      }
     } catch (error: any) {
+      console.error("Error fetching profile:", error);
       alert(error.message);
     } finally {
       setLoading(false);
@@ -147,57 +149,51 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    setLoading(true);
     fetchProfile();
-    setLoading(false);
   }, []);
 
   const handleUpdate = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `http://localhost:5000/api/profile/updateProfile`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: profile.username,
-            email: profile.email,
-          }),
-        }
-      );
+
+      const payload: any = {
+        username: userData.username,
+        email: userData.email,
+      };
+
+      if (userData.qualifications)
+        payload.qualifications = userData.qualifications;
+      if (userData.expertise) payload.expertise = userData.expertise;
+      if (userData.certifications)
+        payload.certifications = userData.certifications;
+
+      const response = await fetch(`${url}/profile/updateProfile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
       const result = await response.json();
 
       if (result.success) {
-        setUserData(result.user);
+        await fetchProfile();
+        alert("Profile updated successfully");
+      } else {
+        alert(result.message || "Failed to update profile");
       }
     } catch (error) {
-      console.log("failed to update");
+      console.error("Failed to update profile:", error);
+      alert("Failed to update profile");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // const handleDelete = async () => {
-  //   const confirmDelete = window.confirm(
-  //     "Are you sure you want to delete your profile?"
-  //   );
-
-  //   if (!confirmDelete) return;
-
-  //   try {
-  //     setLoading(true);
-  //     await deleteProfile();
-  //     logout();
-  //     navigate("/login");
-  //   } catch (error: any) {
-  //     alert(error.message);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   return (
-    <DashboardLayout role="reviewer" userName={userData.username}>
+    <DashboardLayout role={userData.role} userName={userData.username}>
       <PageTransition>
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -214,6 +210,7 @@ export default function ProfilePage() {
                 <Button
                   onClick={() => setIsEditing(true)}
                   className="gap-2 bg-gradient-primary hover:opacity-90"
+                  disabled={loading}
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit Profile
@@ -224,6 +221,7 @@ export default function ProfilePage() {
                     variant="outline"
                     onClick={handleCancel}
                     className="gap-2 border-border hover:bg-muted text-muted-foreground hover:text-muted-foreground"
+                    disabled={loading}
                   >
                     <X className="h-4 w-4" />
                     Cancel
@@ -231,9 +229,10 @@ export default function ProfilePage() {
                   <Button
                     onClick={handleSave}
                     className="gap-2 bg-gradient-primary hover:opacity-90"
+                    disabled={loading}
                   >
                     <Save className="h-4 w-4" />
-                    Save Changes
+                    {loading ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               )}
@@ -271,7 +270,9 @@ export default function ProfilePage() {
                           <Avatar className="h-24 w-24 border-4 border-background shadow-2xl">
                             <AvatarImage src={userData.avatar} />
                             <AvatarFallback className="text-lg bg-gradient-primary text-primary-foreground">
-                              {getInitials(userData.username)}
+                              {userData.username
+                                ? getInitials(userData.username)
+                                : "U"}
                             </AvatarFallback>
                           </Avatar>
                           {isEditing && (
@@ -299,24 +300,28 @@ export default function ProfilePage() {
                               />
                             ) : (
                               <h2 className="text-xl font-bold text-foreground">
-                                {userData?.username || "username"}
+                                {userData.username || "No username"}
                               </h2>
                             )}
                             {isEditing ? (
                               <Input
-                                value={userData.title}
+                                value={userData.role}
                                 onChange={(e) =>
                                   setUserData({
                                     ...userData,
-                                    title: e.target.value,
+                                    role: e.target.value,
                                   })
                                 }
                                 className="mt-1"
+                                placeholder="role"
                               />
                             ) : (
-                              <p className="text-primary font-medium">
-                                {userData.title}
-                              </p>
+                              <div className="flex gap-2 items-center">
+                                <span>Role:</span>
+                                <p className="text-primary font-medium">
+                                  {userData.role || "No role"}
+                                </p>
+                              </div>
                             )}
                           </div>
 
@@ -359,51 +364,7 @@ export default function ProfilePage() {
                               />
                             ) : (
                               <p className="text-foreground">
-                                {userData?.email || "email"}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm">
-                              <Building className="h-4 w-4 text-muted-foreground" />
-                              Affiliation
-                            </Label>
-                            {isEditing ? (
-                              <Input
-                                value={userData.affiliation}
-                                onChange={(e) =>
-                                  setUserData({
-                                    ...userData,
-                                    affiliation: e.target.value,
-                                  })
-                                }
-                              />
-                            ) : (
-                              <p className="text-foreground">
-                                {userData.affiliation}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm">
-                              <Globe className="h-4 w-4 text-muted-foreground" />
-                              Location
-                            </Label>
-                            {isEditing ? (
-                              <Input
-                                value={userData.location}
-                                onChange={(e) =>
-                                  setUserData({
-                                    ...userData,
-                                    location: e.target.value,
-                                  })
-                                }
-                              />
-                            ) : (
-                              <p className="text-foreground">
-                                {userData.location}
+                                {userData.email || "No email"}
                               </p>
                             )}
                           </div>
@@ -416,13 +377,15 @@ export default function ProfilePage() {
                               Member Since
                             </Label>
                             <p className="text-foreground">
-                              {new Date(
-                                userData?.created_at || "date"
-                              ).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
+                              {userData.created_at
+                                ? new Date(
+                                    userData.created_at
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })
+                                : "N/A"}
                             </p>
                           </div>
 
@@ -432,42 +395,25 @@ export default function ProfilePage() {
                               Last Active
                             </Label>
                             <p className="text-foreground">
-                              {new Date(userData.lastActive).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                }
-                              )}
+                              {userData.lastActive
+                                ? new Date(
+                                    userData.lastActive
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })
+                                : "N/A"}
                             </p>
                           </div>
 
                           <div className="space-y-2">
                             <Label className="text-sm">User ID</Label>
-                            <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {userData?.id || "id"}
+                            <code className="text-xs bg-muted px-2 py-1 rounded block truncate">
+                              {userData.id || "N/A"}
                             </code>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm">Bio</Label>
-                        {isEditing ? (
-                          <Textarea
-                            value={userData.bio}
-                            onChange={(e) =>
-                              setUserData({ ...userData, bio: e.target.value })
-                            }
-                            rows={4}
-                            className="min-h-[120px]"
-                          />
-                        ) : (
-                          <p className="text-muted-foreground leading-relaxed">
-                            {userData.bio}
-                          </p>
-                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -475,25 +421,89 @@ export default function ProfilePage() {
                         <div className="flex flex-wrap gap-2">
                           {isEditing ? (
                             <Input
-                              value={userData.expertise.join(", ")}
+                              value={
+                                Array.isArray(userData.expertise)
+                                  ? userData.expertise.join(", ")
+                                  : ""
+                              }
                               onChange={(e) =>
                                 setUserData({
                                   ...userData,
                                   expertise: e.target.value
                                     .split(",")
-                                    .map((e) => e.trim()),
+                                    .map((e) => e.trim())
+                                    .filter((e) => e.length > 0),
                                 })
                               }
                               placeholder="Enter expertise separated by commas"
                             />
-                          ) : (
+                          ) : userData.expertise &&
+                            userData.expertise.length > 0 ? (
                             userData.expertise.map((skill, index) => (
                               <Badge key={index} variant="secondary">
                                 {skill}
                               </Badge>
                             ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No expertise added yet
+                            </p>
                           )}
                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Qualifications</Label>
+                        {isEditing ? (
+                          <Textarea
+                            value={userData.qualifications || ""}
+                            onChange={(e) =>
+                              setUserData({
+                                ...userData,
+                                qualifications: e.target.value,
+                              })
+                            }
+                            rows={3}
+                            placeholder="Enter your qualifications"
+                          />
+                        ) : (
+                          <p className="text-muted-foreground leading-relaxed">
+                            {userData.qualifications ||
+                              "No qualifications added yet"}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Certifications</Label>
+                        {isEditing ? (
+                          <Textarea
+                            value={userData.certifications || ""}
+                            onChange={(e) =>
+                              setUserData({
+                                ...userData,
+                                certifications: e.target.value,
+                              })
+                            }
+                            rows={3}
+                            placeholder="Enter your certifications"
+                          />
+                        ) : (
+                          <p className="text-muted-foreground leading-relaxed">
+                            {userData.certifications ||
+                              "No certifications added yet"}
+                          </p>
+                        )}
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Role</Label>
+                        <Badge variant="default" className="text-sm">
+                          {userData.role.charAt(0).toUpperCase() +
+                            userData.role.slice(1)}
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>

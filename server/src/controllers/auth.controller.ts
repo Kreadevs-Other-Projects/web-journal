@@ -1,8 +1,18 @@
 import { Request, Response } from "express";
-import * as AuthService from "../services/auth.service";
-import { createEditorProfile } from "../repositories/editor.repository";
-import { createReviewerProfile } from "../repositories/reviewer.repository";
-
+import {
+  findUserByEmail,
+  findUserById,
+  hashPassword,
+  createUser,
+  validatePassword,
+  createUserProfile,
+} from "../services/auth.service";
+import {
+  createOTP,
+  verifyOTP,
+  checkOTPVerified,
+  deleteOTP,
+} from "../services/otp.service";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -13,12 +23,13 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from "../repositories/auth.repository";
+import { sendOTPEmail } from "../services/email.service";
 import { env } from "../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, purpose } = req.body;
 
-  const user = await AuthService.findUserByEmail(email);
+  const user = await findUserByEmail(email);
   if (!user) {
     return res.status(404).json({
       success: false,
@@ -26,7 +37,7 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  const isValid = await AuthService.validatePassword(password, user.password);
+  const isValid = await validatePassword(password, user.password);
   if (!isValid) {
     return res.status(400).json({
       success: false,
@@ -34,105 +45,200 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  const accessToken = await generateAccessToken(user.id, user.role);
-  const refreshToken = await generateRefreshToken(user.id, user.role);
-
-  const expires_at = new Date();
-  expires_at.setDate(expires_at.getDate() + 7);
-
-  const savedTokenId = await saveRefreshToken(
-    user.id,
-    refreshToken,
-    expires_at
-  );
-  if (!savedTokenId) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to save refresh token",
-    });
-  }
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: false,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  await createOTP(email, purpose);
 
   return res.status(200).json({
     success: true,
-    message: "Login successful",
-    token: refreshToken,
+    message: "OTP sent to email",
   });
 };
 
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
 
-  if (!email || !password || !username || !role) {
-    return res.status(400).json({
+  const otpVerified = await checkOTPVerified(email);
+  if (!otpVerified) {
+    return res.status(403).json({
       success: false,
-      message: "Email, password, and name are required",
+      message: "Email not verified via OTP",
     });
   }
 
-  const existingUser = await AuthService.findUserByEmail(email);
+  const existingUser = await findUserByEmail(email);
   if (existingUser) {
     return res.status(409).json({
       success: false,
-      message: "User already exists with this email!",
+      message: "User already exists",
     });
   }
 
-  const hashedPassword = await AuthService.hashPassword(password);
+  const hashedPassword = await hashPassword(password);
 
-  const newUser = await AuthService.createUser({
+  const newUser = await createUser({
     email,
     password: hashedPassword,
     username,
     role,
   });
 
-  if (!newUser) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create user",
-    });
-  }
+  await createUserProfile(newUser.id);
 
-  if (role === "chief-editor" || role === "sub-editor") {
-    await createEditorProfile(newUser.id, role);
-  }
-
-  if (role === "reviewer") {
-    await createReviewerProfile(newUser.id);
-  }
-
-  const accessToken = await generateAccessToken(newUser.id, newUser.role);
-  const refreshToken = await generateRefreshToken(newUser.id, newUser.role);
-
-  const expires_at = new Date();
-  expires_at.setDate(expires_at.getDate() + 7);
-
-  await saveRefreshToken(newUser.id, refreshToken, expires_at);
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: false,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  await deleteOTP(email);
 
   return res.status(201).json({
     success: true,
     message: "Signup successful",
-    token: accessToken,
-    user: {
-      id: newUser.id,
-      email: newUser.email,
-      username: newUser.username,
-      role: newUser.role,
+  });
+};
+
+export const verify = async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+
+  const otpRecord = await verifyOTP(email, otp);
+
+  if (!otpRecord) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid or expired OTP",
+    });
+  }
+
+  await verifyOTP(email, otp);
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP verified successfully",
+    data: {
+      email: otpRecord.email,
+      verified: true,
     },
+  });
+};
+
+export const requestOTP = async (req: Request, res: Response) => {
+  const { email, purpose } = req.body;
+
+  if (!email || !purpose) {
+    return res.status(400).json({
+      success: false,
+      message: "Email and purpose are required",
+    });
+  }
+
+  if (purpose !== "signup") {
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email",
+      });
+    }
+  }
+
+  const otp = await createOTP(email, purpose);
+
+  await sendOTPEmail(email, otp.otp_code);
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP sent successfully",
+    expiresAt: otp.expiry_at,
+  });
+};
+
+export const verifyLoginOTP = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    const otpRecord = await verifyOTP(email, otp);
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email",
+      });
+    }
+
+    await deleteOTP(email);
+
+    const accessToken = await generateAccessToken(user.id, user.role);
+    const refreshToken = await generateRefreshToken(user.id, user.role);
+
+    const expires_at = new Date();
+    expires_at.setDate(expires_at.getDate() + 7);
+
+    const savedTokenId = await saveRefreshToken(
+      user.id,
+      refreshToken,
+      expires_at
+    );
+    if (!savedTokenId) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save refresh token",
+      });
+    }
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token: accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const resendOTP = async (req: Request, res: Response) => {
+  const { email, purpose } = req.body;
+
+  const user = await findUserByEmail(email);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "No account found with this email",
+    });
+  }
+
+  const otp = await createOTP(email, purpose);
+
+  await sendOTPEmail(email, otp.otp_code);
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP resent successfully to your email",
+    expiresAt: otp.expiry_at,
   });
 };
 
@@ -164,7 +270,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     });
   }
 
-  const user = await AuthService.findUserById(storedToken.user_id);
+  const user = await findUserById(storedToken.user_id);
   if (!user) {
     return res.status(404).json({
       success: false,

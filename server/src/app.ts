@@ -5,10 +5,9 @@ import { env } from "./configs/envs";
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { pool } from "./configs/db";
-import authRoute from "./routes/auth.route";
-import profileRoute from "./routes/profile.route";
-import otpRoute from "./routes/otp.route";
-import editRoute from "./routes/editorProfile.routes";
+import authRoutes from "./routes/auth.route";
+import profileRoutes from "./routes/profile.route";
+import editorRoutes from "./routes/editorProfile.routes";
 import reviewerRoutes from "./routes/reviewer.route";
 
 const app = express();
@@ -24,14 +23,12 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use("/api/auth", authRoute);
-app.use("/api/profile", profileRoute);
-app.use("/api/otp", otpRoute);
-app.use("/api/edit", editRoute);
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
 //   app.use("/api/payment", paymentRoute);
 //   app.use("/api/journal", journalRoutes);
 //   app.use("/api/author", authorRoute);
-//   app.use("/api/editor", editorRoutes);
+app.use("/api/editor", editorRoutes);
 app.use("/api/reviewer", reviewerRoutes);
 //   app.use("/api/admin", adminRoutes);
 

@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { url } from "../url";
 
 type UserRole = "author" | "reviewer" | "editor" | "admin";
 
@@ -79,9 +80,12 @@ export default function SignupPage() {
     password: "",
   });
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>("author"); // default role
+  const [selectedRole, setSelectedRole] = useState<UserRole>("author");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [step, setStep] = useState<"FORM" | "OTP">("FORM");
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -141,11 +145,79 @@ export default function SignupPage() {
     setErrors({});
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch(`${url}/auth/create`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          purpose: "signup",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to send OTP");
+      }
+
+      toast({
+        title: "OTP Sent",
+        description: "Please check your email for OTP",
+      });
+
+      setStep("OTP");
+    } catch (error: any) {
+      setErrors({
+        general: error.message || "Failed to send OTP",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    console.log("Starting OTP verification process...");
+    console.log("Entered OTP:", otp);
+
+    if (otp.length !== 6) {
+      setErrors({ general: "OTP must be 6 digits" });
+      console.warn("OTP length invalid:", otp.length);
+      return;
+    }
+
+    setOtpLoading(true);
+    setErrors({});
+
+    try {
+      // --- Step 1: Verify OTP ---
+      console.log(
+        "Sending OTP verification request to:",
+        `${url}/auth/verifysignup`
+      );
+      const verifyRes = await fetch(`${url}/auth/verifysignup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          otp,
+        }),
+      });
+
+      const verifyResult = await verifyRes.json();
+      console.log("OTP verification response:", verifyResult);
+
+      if (!verifyRes.ok) {
+        console.error("OTP verification failed:", verifyResult.message);
+        throw new Error(verifyResult.message || "Invalid OTP");
+      }
+
+      console.log("OTP verified successfully!");
+
+      // --- Step 2: Signup user ---
+      console.log("Sending signup request to:", `${url}/auth/signup`);
+      const signupRes = await fetch(`${url}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
@@ -154,24 +226,29 @@ export default function SignupPage() {
         }),
       });
 
-      const result = await response.json();
+      const signupResult = await signupRes.json();
+      console.log("Signup response:", signupResult);
 
-      if (!response.ok) {
-        throw new Error(result.message || "Signup failed");
+      if (!signupRes.ok) {
+        console.error("Signup failed:", signupResult.message);
+        throw new Error(signupResult.message || "Signup failed");
       }
 
+      console.log("Signup successful! Redirecting to login...");
       toast({
-        title: "Successful",
+        title: "Account Created",
         description: "Signup successful! Redirecting to login...",
       });
 
       navigate("/login");
     } catch (error: any) {
+      console.error("Error during OTP verification/signup:", error);
       setErrors({
-        general: error.message || "Signup failed. Please try again.",
+        general: error.message || "OTP verification failed",
       });
     } finally {
-      setIsLoading(false);
+      setOtpLoading(false);
+      console.log("OTP verification process completed.");
     }
   };
 
@@ -242,6 +319,33 @@ export default function SignupPage() {
           </CardHeader>
 
           <CardContent>
+            {step === "OTP" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Enter OTP
+                </Label>
+
+                <Input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  className="text-center tracking-widest"
+                />
+
+                <Button
+                  type="button"
+                  className="w-full bg-gradient-primary mt-2"
+                  onClick={handleVerifyOTP}
+                  disabled={otpLoading}
+                >
+                  {otpLoading ? "Verifying..." : "Verify OTP"}
+                </Button>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label
@@ -461,7 +565,7 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 className="w-full btn-physics bg-gradient-primary hover:opacity-90 py-6 text-base font-medium"
-                disabled={isLoading}
+                disabled={isLoading || step === "OTP"}
               >
                 {isLoading ? (
                   <>

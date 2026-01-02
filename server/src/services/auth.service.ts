@@ -3,6 +3,7 @@ import {
   findUserByEmail as findUserRepo,
   findUserById as findUserByIdRepo,
   createUser as createUserRepo,
+  createUserProfile as createUserProfileRepo,
 } from "../repositories/user.repository";
 import { env } from "../configs/envs";
 
@@ -33,4 +34,8 @@ export const createUser = async (userData: {
   role: string;
 }) => {
   return await createUserRepo(userData);
+};
+
+export const createUserProfile = async (userId: string) => {
+  return await createUserProfileRepo(userId);
 };

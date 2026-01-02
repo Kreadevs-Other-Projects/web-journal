@@ -4,8 +4,8 @@ import { validate } from "../middlewares/validate.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import {
   getProfile,
-  updateProfile,
-  deleteProfile,
+  editProfile,
+  removeProfile,
 } from "../controllers/profile.controller";
 import { updateProfileSchema } from "../schemas/profile.schema";
 
@@ -16,8 +16,8 @@ router.put(
   "/updateProfile",
   authMiddleware,
   validate(updateProfileSchema),
-  asyncHandler(updateProfile)
+  asyncHandler(editProfile)
 );
-router.delete("/deleteProfile", authMiddleware, asyncHandler(deleteProfile));
+router.delete("/deleteProfile", authMiddleware, asyncHandler(removeProfile));
 
 export default router;

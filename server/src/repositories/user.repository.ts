@@ -19,6 +19,14 @@ export const findUserById = async (id: string) => {
   return res.rows[0];
 };
 
+export const findUserProfile = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM user_profiles WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows[0];
+};
+
 export const createUser = async (userData: {
   email: string;
   password: string;
@@ -32,42 +40,128 @@ export const createUser = async (userData: {
   return result.rows[0];
 };
 
+export const createUserProfile = async (userId: string) => {
+  const result = await pool.query(
+    `INSERT INTO user_profiles (user_id)
+     VALUES ($1)
+     RETURNING user_id`,
+    [userId]
+  );
+
+  return result.rows[0];
+};
+
 export const updateUser = async (
   userId: string,
   data: { username?: string; email?: string }
 ) => {
-  const updates: string[] = [];
+  const fields: string[] = [];
   const values: any[] = [];
-  let paramIndex = 1;
+  let paramCount = 1;
 
   if (data.username !== undefined) {
-    updates.push(`username = $${paramIndex}`);
+    fields.push(`username = $${paramCount++}`);
     values.push(data.username);
-    paramIndex++;
   }
 
   if (data.email !== undefined) {
-    updates.push(`email = $${paramIndex}`);
+    fields.push(`email = $${paramCount++}`);
     values.push(data.email);
-    paramIndex++;
   }
 
-  if (updates.length === 0) {
+  if (fields.length === 0) {
     return null;
   }
 
-  updates.push(`updated_at = NOW()`);
   values.push(userId);
 
-  const query = `
-    UPDATE users 
-    SET ${updates.join(", ")} 
-    WHERE id = $${paramIndex} AND deleted_at IS NULL
-    RETURNING id, email, username, updated_at
-  `;
+  const result = await pool.query(
+    `UPDATE users 
+     SET ${fields.join(", ")}
+     WHERE id = $${paramCount} AND deleted_at IS NULL
+     RETURNING *`,
+    values
+  );
 
-  const result = await pool.query(query, values);
   return result.rows[0];
+};
+
+export const updateUserProfile = async (
+  userId: string,
+  data: {
+    qualifications?: string | null;
+    expertise?: string[] | null;
+    certifications?: string | null;
+  }
+) => {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
+
+  if (data.qualifications !== undefined) {
+    fields.push(`qualifications = $${paramCount++}`);
+    values.push(data.qualifications);
+  }
+
+  if (data.expertise !== undefined) {
+    fields.push(`expertise = $${paramCount++}`);
+    values.push(
+      data.expertise && data.expertise.length > 0 ? data.expertise : null
+    );
+  }
+
+  if (data.certifications !== undefined) {
+    fields.push(`certifications = $${paramCount++}`);
+    values.push(data.certifications);
+  }
+
+  if (fields.length === 0) {
+    return null;
+  }
+
+  values.push(userId);
+
+  const result = await pool.query(
+    `UPDATE user_profiles 
+     SET ${fields.join(", ")}
+     WHERE user_id = $${paramCount}
+     RETURNING *`,
+    values
+  );
+
+  return result.rows[0];
+};
+
+export const updateProfile = async (
+  userId: string,
+  userData: { username?: string; email?: string },
+  profileData?: {
+    qualifications?: string | null;
+    expertise?: string[] | null;
+    certifications?: string | null;
+  }
+) => {
+  if (userData.email) {
+    const existing = await findUserByEmail(userData.email);
+    if (existing && existing.id !== userId) {
+      throw new Error("EMAIL_EXISTS");
+    }
+  }
+
+  let updatedUser = null;
+  if (Object.keys(userData).length > 0) {
+    updatedUser = await updateUser(userId, userData);
+  }
+
+  let updatedProfile = null;
+  if (profileData && Object.keys(profileData).length > 0) {
+    updatedProfile = await updateUserProfile(userId, profileData);
+  }
+
+  return {
+    user: updatedUser,
+    profile: updatedProfile,
+  };
 };
 
 export const softDeleteUser = async (userId: string) => {

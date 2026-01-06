@@ -1,13 +1,5 @@
 import { Request, Response } from "express";
 import {
-  findUserByEmail,
-  findUserById,
-  hashPassword,
-  createUser,
-  validatePassword,
-  createUserProfile,
-} from "../services/auth.service";
-import {
   createOTP,
   verifyOTP,
   checkOTPVerified,

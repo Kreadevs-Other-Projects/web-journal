@@ -1,10 +1,12 @@
 CREATE TABLE IF NOT EXISTS journals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  publisher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
   issn TEXT,
   website_url TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
 );

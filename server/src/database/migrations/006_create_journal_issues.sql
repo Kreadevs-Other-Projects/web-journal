@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS journal_issues (
   issue INT,
   label TEXT NOT NULL,
   published_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
   UNIQUE (journal_id, label)
 );

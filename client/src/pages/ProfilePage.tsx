@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -37,12 +37,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "../url";
 
-const defaultUserDataa = {
+const defaultUserData = {
   id: "",
   username: "",
   email: "",
   title: "",
-  avatar: "",
+  profile_pic: "",
   created_at: "",
   lastActive: "",
   papersSubmitted: 0,
@@ -64,6 +64,8 @@ export default function ProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [profilePic, setProfilePic] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -75,12 +77,6 @@ export default function ProfilePage() {
   const handleCancel = () => {
     fetchProfile();
     setIsEditing(false);
-  };
-
-  const handleDeleteAccount = () => {
-    console.log("Deleting account:", userData.id);
-    setShowDeleteConfirm(false);
-    navigate("/login");
   };
 
   const handleChangePassword = () => {
@@ -123,9 +119,9 @@ export default function ProfilePage() {
           role: apiUser.role,
           created_at: apiUser.created_at,
           title: "",
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username
-            ?.charAt(0)
-            .toUpperCase()}`,
+          profile_pic:
+            apiUser.profile_pic ||
+            `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username}`,
           lastActive: new Date().toISOString(),
           papersSubmitted: 0,
           papersReviewed: 0,
@@ -156,24 +152,29 @@ export default function ProfilePage() {
     try {
       setLoading(true);
 
-      const payload: any = {
-        username: userData.username,
-        email: userData.email,
-      };
+      const formData = new FormData();
+      formData.append("username", userData.username);
+      formData.append("email", userData.email);
 
       if (userData.qualifications)
-        payload.qualifications = userData.qualifications;
-      if (userData.expertise) payload.expertise = userData.expertise;
+        formData.append("qualifications", userData.qualifications);
+
+      if (userData.expertise)
+        formData.append("expertise", JSON.stringify(userData.expertise));
+
       if (userData.certifications)
-        payload.certifications = userData.certifications;
+        formData.append("certifications", userData.certifications);
+
+      if (profilePic) {
+        formData.append("profilePic", profilePic);
+      }
 
       const response = await fetch(`${url}/profile/updateProfile`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       const result = await response.json();
@@ -182,18 +183,50 @@ export default function ProfilePage() {
         await fetchProfile();
         alert("Profile updated successfully");
       } else {
-        alert(result.message || "Failed to update profile");
+        alert(result.message);
       }
-    } catch (error) {
-      console.error("Failed to update profile:", error);
-      alert("Failed to update profile");
+    } catch (err) {
+      console.error(err);
+      alert("Profile update failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userData.id) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${url}/profile/deleteProfile`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert(result.message);
+        navigate("/login");
+      } else {
+        alert(result.message || "Failed to delete account");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete account");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <DashboardLayout role={userData.role} userName={userData.username}>
+    <DashboardLayout
+      role={userData.role}
+      userName={userData.username}
+      profile_pic={userData.profile_pic}
+    >
       <PageTransition>
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -268,7 +301,7 @@ export default function ProfilePage() {
                       <div className="flex flex-col sm:flex-row items-start gap-6">
                         <div className="relative">
                           <Avatar className="h-24 w-24 border-4 border-background shadow-2xl">
-                            <AvatarImage src={userData.avatar} />
+                            <AvatarImage src={userData.profile_pic} />
                             <AvatarFallback className="text-lg bg-gradient-primary text-primary-foreground">
                               {userData.username
                                 ? getInitials(userData.username)
@@ -276,12 +309,32 @@ export default function ProfilePage() {
                             </AvatarFallback>
                           </Avatar>
                           {isEditing && (
-                            <Button
-                              size="icon"
-                              className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-lg"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
+                            <>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    const file = e.target.files[0];
+                                    setProfilePic(file);
+                                    setUserData({
+                                      ...userData,
+                                      profile_pic: URL.createObjectURL(file),
+                                    });
+                                  }
+                                }}
+                              />
+
+                              <Button
+                                size="icon"
+                                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-lg"
+                                onClick={() => fileInputRef.current?.click()}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
 
@@ -498,13 +551,13 @@ export default function ProfilePage() {
 
                       <Separator />
 
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <Label className="text-sm font-semibold">Role</Label>
                         <Badge variant="default" className="text-sm">
                           {userData.role.charAt(0).toUpperCase() +
                             userData.role.slice(1)}
                         </Badge>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
                 </div>

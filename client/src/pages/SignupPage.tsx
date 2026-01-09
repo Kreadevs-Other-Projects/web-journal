@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { url } from "../url";
 
-type UserRole = "author" | "reviewer" | "editor" | "admin";
+type UserRole = "author" | "reviewer" | "editor" | "admin" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -68,6 +68,13 @@ const roleConfig: Record<
     description: "System administration and oversight",
     color: "text-destructive",
     route: "/admin",
+  },
+  owner: {
+    icon: Shield,
+    label: "owner",
+    description: "System administration and oversight",
+    color: "text-destructive",
+    route: "/owner",
   },
 };
 
@@ -176,9 +183,6 @@ export default function SignupPage() {
   };
 
   const handleVerifyOTP = async () => {
-    console.log("Starting OTP verification process...");
-    console.log("Entered OTP:", otp);
-
     if (otp.length !== 6) {
       setErrors({ general: "OTP must be 6 digits" });
       console.warn("OTP length invalid:", otp.length);
@@ -189,11 +193,6 @@ export default function SignupPage() {
     setErrors({});
 
     try {
-      // --- Step 1: Verify OTP ---
-      console.log(
-        "Sending OTP verification request to:",
-        `${url}/auth/verifysignup`
-      );
       const verifyRes = await fetch(`${url}/auth/verifysignup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -204,17 +203,11 @@ export default function SignupPage() {
       });
 
       const verifyResult = await verifyRes.json();
-      console.log("OTP verification response:", verifyResult);
 
       if (!verifyRes.ok) {
-        console.error("OTP verification failed:", verifyResult.message);
         throw new Error(verifyResult.message || "Invalid OTP");
       }
 
-      console.log("OTP verified successfully!");
-
-      // --- Step 2: Signup user ---
-      console.log("Sending signup request to:", `${url}/auth/signup`);
       const signupRes = await fetch(`${url}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,14 +220,11 @@ export default function SignupPage() {
       });
 
       const signupResult = await signupRes.json();
-      console.log("Signup response:", signupResult);
 
       if (!signupRes.ok) {
-        console.error("Signup failed:", signupResult.message);
         throw new Error(signupResult.message || "Signup failed");
       }
 
-      console.log("Signup successful! Redirecting to login...");
       toast({
         title: "Account Created",
         description: "Signup successful! Redirecting to login...",
@@ -242,13 +232,11 @@ export default function SignupPage() {
 
       navigate("/login");
     } catch (error: any) {
-      console.error("Error during OTP verification/signup:", error);
       setErrors({
         general: error.message || "OTP verification failed",
       });
     } finally {
       setOtpLoading(false);
-      console.log("OTP verification process completed.");
     }
   };
 
@@ -509,7 +497,7 @@ export default function SignupPage() {
                   Select Your Role
                 </Label>
 
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {(Object.keys(roleConfig) as UserRole[]).map((role) => {
                     const config = roleConfig[role];
                     const Icon = config.icon;

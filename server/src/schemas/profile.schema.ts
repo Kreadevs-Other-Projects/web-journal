@@ -2,13 +2,17 @@ import { z } from "zod";
 
 export const updateProfileSchema = z
   .object({
-    username: z
-      .string()
-      .min(3, "Username must be at least 3 characters")
-      .optional(),
-    email: z.string().email("Invalid email format").optional(),
+    username: z.string().min(3).optional(),
+    email: z.string().email().optional(),
     qualifications: z.string().nullable().optional(),
-    expertise: z.array(z.string()).nullable().optional(),
+
+    expertise: z
+      .union([
+        z.array(z.string()),
+        z.string().transform((val) => JSON.parse(val)),
+      ])
+      .optional(),
+
     certifications: z.string().nullable().optional(),
   })
   .refine(

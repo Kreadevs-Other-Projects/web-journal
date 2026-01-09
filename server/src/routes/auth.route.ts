@@ -14,14 +14,12 @@ import { validate } from "../middlewares/validate.middleware";
 import {
   loginSchema,
   signupSchema,
-  refreshTokenSchema,
-  logoutSchema,
-} from "../schemas/auth.schema";
-import {
   createOTPSchema,
   verifyOTPSchema,
   resendOTPSchema,
-} from "../schemas/otp.schema";
+  refreshTokenSchema,
+  logoutSchema,
+} from "../schemas/auth.schema";
 
 const router = Router();
 

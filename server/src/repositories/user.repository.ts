@@ -10,7 +10,7 @@ export const findUserByEmail = async (email: string) => {
 
 export const findUserById = async (id: string) => {
   const res = await pool.query(
-    `SELECT id, email, username, role, created_at
+    `SELECT id, email, username, role, created_at, profile_pic
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
     [id]
@@ -53,7 +53,7 @@ export const createUserProfile = async (userId: string) => {
 
 export const updateUser = async (
   userId: string,
-  data: { username?: string; email?: string }
+  data: { username?: string; email?: string; profile_pic?: string | null }
 ) => {
   const fields: string[] = [];
   const values: any[] = [];
@@ -67,6 +67,11 @@ export const updateUser = async (
   if (data.email !== undefined) {
     fields.push(`email = $${paramCount++}`);
     values.push(data.email);
+  }
+
+  if (data.profile_pic !== undefined) {
+    fields.push(`profile_pic = $${paramCount++}`);
+    values.push(data.profile_pic);
   }
 
   if (fields.length === 0) {

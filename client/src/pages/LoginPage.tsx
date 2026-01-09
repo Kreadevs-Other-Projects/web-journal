@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { url } from "../url";
 
-type UserRole = "author" | "reviewer" | "editor" | "publisher";
+type UserRole = "author" | "reviewer" | "editor" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -44,12 +44,12 @@ const roleConfig: Record<
     color: "text-accent",
     route: "/chief-editor",
   },
-  publisher: {
+  owner: {
     icon: Shield,
-    label: "Publisher",
-    description: "Journal publisher",
+    label: "Owner",
+    description: "Journal owner",
     color: "text-destructive",
-    route: "/publisher",
+    route: "/admin",
   },
 };
 
@@ -165,14 +165,11 @@ export default function LoginPage() {
 
   const handleResendOtp = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/resend-otp",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: otpEmail }),
-        }
-      );
+      const response = await fetch(`${url}/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpEmail }),
+      });
 
       const result = await response.json();
       return result.success;
@@ -184,7 +181,6 @@ export default function LoginPage() {
 
   const handleVerificationSuccess = () => {
     if (tempToken && tempRole) {
-      // Complete the login process
       login(tempToken);
 
       if (tempUser) {
@@ -315,7 +311,7 @@ export default function LoginPage() {
                       <p>✓ Access analytics dashboard</p>
                     </>
                   )}
-                  {selectedRole === "publisher" && (
+                  {selectedRole === "owner" && (
                     <>
                       <p>✓ System-wide oversight</p>
                       <p>✓ User management</p>

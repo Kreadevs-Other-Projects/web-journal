@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   role user_role NOT NULL,
   status user_status NOT NULL DEFAULT 'active',
+  profile_pic TEXT,
   approved_by UUID REFERENCES users(id),
   approved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

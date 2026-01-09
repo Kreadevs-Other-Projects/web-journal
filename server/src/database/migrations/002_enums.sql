@@ -6,7 +6,7 @@ DO $$ BEGIN
       'sub_editor',
       'reviewer',
       'author',
-      'publisher'
+      'owner'
     );
   END IF;
 

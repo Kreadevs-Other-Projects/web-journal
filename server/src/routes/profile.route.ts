@@ -8,6 +8,7 @@ import {
   removeProfile,
 } from "../controllers/profile.controller";
 import { updateProfileSchema } from "../schemas/profile.schema";
+import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.get("/getProfile", authMiddleware, asyncHandler(getProfile));
 router.put(
   "/updateProfile",
   authMiddleware,
+  upload.single("profilePic"),
   validate(updateProfileSchema),
   asyncHandler(editProfile)
 );

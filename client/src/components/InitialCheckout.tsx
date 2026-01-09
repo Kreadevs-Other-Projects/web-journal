@@ -14,36 +14,21 @@ const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    if (isLoading) return;
+    if (!role) return;
+    if (hasRedirected.current) return;
 
-    if (!role) {
-      return;
-    }
+    const isPublicEntry =
+      location.pathname === "/" || location.pathname === "/login";
 
-    if (hasRedirected.current) {
-      return;
-    }
-
-    if (location.pathname === "/" || location.pathname === "/login") {
+    if (isPublicEntry) {
       const config = roleConfig[role.role];
-
       if (config?.route) {
         hasRedirected.current = true;
         navigate(config.route, { replace: true });
       }
     }
   }, [isLoading, role, location.pathname, navigate]);
-
-  useEffect(() => {
-    if (!isLoading && role) {
-      const config = roleConfig[role.role as keyof typeof roleConfig];
-      if (config) {
-        navigate(config.route, { replace: true });
-      }
-    }
-  }, [isLoading, role, navigate, location]);
 
   if (isLoading) {
     return <LoadingSpinner text="Checking authentication..." />;

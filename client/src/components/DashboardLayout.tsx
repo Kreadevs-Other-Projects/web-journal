@@ -33,7 +33,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   role: UserRole;
   userName?: string;
-  userAvatar?: string;
+  profile_pic?: string;
 }
 
 const roleConfig: Record<
@@ -107,7 +107,7 @@ export function DashboardLayout({
   children,
   role,
   userName = "John Doe",
-  userAvatar,
+  profile_pic,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -248,13 +248,13 @@ export function DashboardLayout({
         >
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Shield className={cn("h-4 w-4", config.color)} />
+              {/* <Shield className={cn("h-4 w-4", config.color)} /> */}
             </div>
             {sidebarOpen && (
               <div>
-                <p className={cn("text-sm font-semibold", config.color)}>
+                {/* <p className={cn("text-sm font-semibold", config.color)}>
                   {config.label}
-                </p>
+                </p> */}
                 <p className="text-xs text-muted-foreground">Active Session</p>
               </div>
             )}
@@ -262,7 +262,7 @@ export function DashboardLayout({
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {config.navigation.map((item) => {
+          {/* {config.navigation.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path}>
@@ -284,7 +284,7 @@ export function DashboardLayout({
                 </motion.div>
               </Link>
             );
-          })}
+          })} */}
         </nav>
 
         <div className="border-t border-border/50 p-4">
@@ -295,7 +295,7 @@ export function DashboardLayout({
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-border">
-              <AvatarImage src={userAvatar} />
+              <AvatarImage src={profile_pic} />
               <AvatarFallback className="bg-primary/10 text-primary">
                 {userName
                   .split(" ")

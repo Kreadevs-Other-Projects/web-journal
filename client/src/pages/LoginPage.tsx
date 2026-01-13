@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { url } from "../url";
 
-type UserRole = "author" | "reviewer" | "editor" | "owner";
+type UserRole = "author" | "reviewer" | "chief_editor" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -37,12 +37,12 @@ const roleConfig: Record<
     color: "text-info",
     route: "/reviewer",
   },
-  editor: {
+  chief_editor: {
     icon: Users,
     label: "Editor",
     description: "Manage paper assignments and reviews",
     color: "text-accent",
-    route: "/chief-editor",
+    route: "/chief_editor",
   },
   owner: {
     icon: Shield,
@@ -76,10 +76,10 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim()) {
+    if (!email.trim() || !password.trim()) {
       toast({
-        title: "Missing Email",
-        description: "Enter your email",
+        title: "Missing credentials",
+        description: "Enter email and password",
         variant: "destructive",
       });
       return;
@@ -88,16 +88,21 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${url}/auth/create`, {
+      const response = await fetch(`${url}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), purpose: "login" }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password.trim(),
+          role: selectedRole,
+          purpose: "login",
+        }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to send OTP");
+        throw new Error(result.message || "Login failed");
       }
 
       toast({ title: "OTP Sent", description: "Check your email for the OTP" });
@@ -107,6 +112,7 @@ export default function LoginPage() {
       toast({
         title: "Error",
         description: error.message,
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -131,27 +137,27 @@ export default function LoginPage() {
       const response = await fetch(`${url}/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), otp, purpose: "login" }),
+        body: JSON.stringify({ email: email.trim(), otp }),
       });
 
       const result = await response.json();
+
       if (!response.ok) {
         throw new Error(result.message || "OTP verification failed");
       }
 
-      if (!result.token) {
-        throw new Error("Token not returned from server");
-      }
-
-      toast({ title: "OTP Verified", description: "Login successful!" });
-
       login(result.token);
       localStorage.setItem("user", JSON.stringify(result.user));
-
       localStorage.setItem("refreshToken", result.refreshToken);
 
       const userRole = result.user.role as UserRole;
       navigate(roleConfig[userRole].route, { replace: true });
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome ${roleConfig[userRole].label}!`,
+        variant: "default",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -304,7 +310,7 @@ export default function LoginPage() {
                       <p>✓ Track review deadlines</p>
                     </>
                   )}
-                  {selectedRole === "editor" && (
+                  {selectedRole === "chief_editor" && (
                     <>
                       <p>✓ Manage paper assignments</p>
                       <p>✓ Coordinate review process</p>
@@ -396,6 +402,15 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
+                      className="pl-5 pr-10 input-glow text-muted-foreground"
+                      required
+                    />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Password"
                       className="pl-5 pr-10 input-glow text-muted-foreground"
                       required
                     />

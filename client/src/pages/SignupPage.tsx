@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { url } from "../url";
 
-type UserRole = "author" | "reviewer" | "editor" | "admin" | "owner";
+type UserRole = "author" | "reviewer" | "chief_editor" | "admin" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -55,7 +55,7 @@ const roleConfig: Record<
     color: "text-info",
     route: "/reviewer",
   },
-  editor: {
+  chief_editor: {
     icon: User,
     label: "Editor",
     description: "Manage paper assignments and reviews",
@@ -141,17 +141,23 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("handleSubmit triggered with formData:", formData);
 
     const validationErrors = validateForm();
+    console.log("Validation errors:", validationErrors);
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      console.warn("Form validation failed:", validationErrors);
       return;
     }
 
     setIsLoading(true);
     setErrors({});
+    console.log("Loading state set to true, errors cleared");
 
     try {
+      console.log("Sending OTP request to:", `${url}/auth/create`);
       const response = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,7 +167,9 @@ export default function SignupPage() {
         }),
       });
 
+      console.log("OTP response status:", response.status);
       const result = await response.json();
+      console.log("OTP response JSON:", result);
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to send OTP");
@@ -171,18 +179,24 @@ export default function SignupPage() {
         title: "OTP Sent",
         description: "Please check your email for OTP",
       });
+      console.log("Toast shown: OTP Sent");
 
       setStep("OTP");
+      console.log("Step updated to OTP");
     } catch (error: any) {
+      console.error("Error in handleSubmit:", error);
       setErrors({
         general: error.message || "Failed to send OTP",
       });
     } finally {
       setIsLoading(false);
+      console.log("Loading state set to false");
     }
   };
 
   const handleVerifyOTP = async () => {
+    console.log("handleVerifyOTP triggered with OTP:", otp);
+
     if (otp.length !== 6) {
       setErrors({ general: "OTP must be 6 digits" });
       console.warn("OTP length invalid:", otp.length);
@@ -191,8 +205,10 @@ export default function SignupPage() {
 
     setOtpLoading(true);
     setErrors({});
+    console.log("OTP loading set to true, errors cleared");
 
     try {
+      console.log("Verifying OTP with:", `${url}/auth/verifysignup`);
       const verifyRes = await fetch(`${url}/auth/verifysignup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -202,11 +218,15 @@ export default function SignupPage() {
         }),
       });
 
+      console.log("Verify response status:", verifyRes.status);
       const verifyResult = await verifyRes.json();
+      console.log("Verify response JSON:", verifyResult);
 
       if (!verifyRes.ok) {
         throw new Error(verifyResult.message || "Invalid OTP");
       }
+
+      console.log("OTP verified successfully, proceeding to signup");
 
       const signupRes = await fetch(`${url}/auth/signup`, {
         method: "POST",
@@ -219,7 +239,9 @@ export default function SignupPage() {
         }),
       });
 
+      console.log("Signup response status:", signupRes.status);
       const signupResult = await signupRes.json();
+      console.log("Signup response JSON:", signupResult);
 
       if (!signupRes.ok) {
         throw new Error(signupResult.message || "Signup failed");
@@ -229,14 +251,18 @@ export default function SignupPage() {
         title: "Account Created",
         description: "Signup successful! Redirecting to login...",
       });
+      console.log("Toast shown: Account Created");
 
       navigate("/login");
+      console.log("Navigating to /login");
     } catch (error: any) {
+      console.error("Error in handleVerifyOTP:", error);
       setErrors({
         general: error.message || "OTP verification failed",
       });
     } finally {
       setOtpLoading(false);
+      console.log("OTP loading set to false");
     }
   };
 

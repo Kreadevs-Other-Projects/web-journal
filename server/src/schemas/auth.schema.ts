@@ -4,7 +4,7 @@ export const signupSchema = z.object({
   username: z.string().min(3, "Username must be al least 3 characters"),
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["author", "chief-editor", "sub-editor", "reviewer", "owner"]),
+  role: z.enum(["author", "chief_editor", "sub_editor", "reviewer", "owner"]),
 });
 
 export const loginSchema = z.object({

@@ -27,7 +27,21 @@ import { sendOTPEmail } from "../services/email.service";
 import { env } from "../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password, purpose } = req.body;
+  const { email, password, role, purpose } = req.body;
+
+  if (!email || !password || !role || !purpose) {
+    return res.status(400).json({
+      success: false,
+      message: "Email, password, role and purpose are required",
+    });
+  }
+
+  if (!["login", "signup", "reset"].includes(purpose)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid purpose",
+    });
+  }
 
   const user = await findUserByEmail(email);
   if (!user) {
@@ -45,11 +59,21 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  await createOTP(email, purpose);
+  if (user.role !== role) {
+    return res.status(403).json({
+      success: false,
+      message: "Invalid role selected for this account",
+    });
+  }
+
+  const otp = await createOTP(email, purpose);
+
+  await sendOTPEmail(email, otp.otp_code);
 
   return res.status(200).json({
     success: true,
-    message: "OTP sent to email",
+    message: "OTP sent successfully",
+    expiresAt: otp.expiry_at,
   });
 };
 

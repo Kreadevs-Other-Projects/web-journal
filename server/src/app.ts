@@ -10,6 +10,8 @@ import authRoutes from "./routes/auth.route";
 import profileRoutes from "./routes/profile.route";
 import paperRoutes from "./routes/paper.route";
 import paperVersionRoutes from "./routes/paperVersion.route";
+import journalRoutes from "./routes/journal.route";
+import publisherRoutes from "./routes/publisher.route";
 
 const app = express();
 app.use(express.json());
@@ -31,7 +33,8 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
 //   app.use("/api/payment", paymentRoute);
-//   app.use("/api/journal", journalRoutes);
+app.use("/api/journal", journalRoutes);
+app.use("/api/publisher", publisherRoutes);
 //   app.use("/api/author", authorRoute);
 //   app.use("/api/admin", adminRoutes);
 

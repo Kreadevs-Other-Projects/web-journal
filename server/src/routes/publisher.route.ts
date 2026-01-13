@@ -6,5 +6,7 @@ import {
 
 const router = Router();
 
-router.post("/publisher/journals/:id", addJournal);
-router.get("/publisher/journal/:id", getPublisherJournal);
+router.post("/journals/:id", addJournal);
+router.get("/journal/:id", getPublisherJournal);
+
+export default router;

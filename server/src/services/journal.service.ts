@@ -33,12 +33,9 @@ export const getJournalService = async (id: string) => {
   }
 };
 
-export const updateJournalService = async (
-  publisher_id: string,
-  data: Journal
-) => {
+export const updateJournalService = async (id: string, data: Journal) => {
   try {
-    const result = await updateJournalById(publisher_id, data);
+    const result = await updateJournalById(id, data);
     return result;
   } catch (error) {
     console.log(error);
@@ -46,9 +43,9 @@ export const updateJournalService = async (
   }
 };
 
-export const deleteJournalService = async (publisher_id: string) => {
+export const deleteJournalService = async (id: string) => {
   try {
-    const result = await delteJournalById(publisher_id);
+    const result = await delteJournalById(id);
     return result;
   } catch (error) {
     console.log(error);

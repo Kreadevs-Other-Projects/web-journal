@@ -13,6 +13,7 @@ import {
   Shield,
   Settings,
   Edit,
+  Users,
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,8 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { UserRole } from "@/lib/roles";
 import { url } from "../url";
-
-type UserRole = "author" | "reviewer" | "chief_editor" | "admin" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -55,26 +55,33 @@ const roleConfig: Record<
     color: "text-info",
     route: "/reviewer",
   },
-  chief_editor: {
-    icon: User,
-    label: "Editor",
+  editor: {
+    icon: Users,
+    label: "Chief Editor",
     description: "Manage paper assignments and reviews",
     color: "text-accent",
     route: "/chief-editor",
   },
-  admin: {
+  publisher: {
     icon: Shield,
-    label: "admin",
-    description: "System administration and oversight",
+    label: "Publisher",
+    description: "Journal publisher",
     color: "text-destructive",
-    route: "/admin",
+    route: "/publisher",
   },
   owner: {
     icon: Shield,
-    label: "owner",
-    description: "System administration and oversight",
+    label: "Owner",
+    description: "Journal owner",
     color: "text-destructive",
-    route: "/owner",
+    route: "/publisher",
+  },
+  admin: {
+    icon: Shield,
+    label: "Admin",
+    description: "System owner with full access",
+    color: "text-destructive",
+    route: "/admin",
   },
 };
 
@@ -334,33 +341,55 @@ export default function SignupPage() {
 
           <CardContent>
             {step === "OTP" && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-primary" />
-                  Enter OTP
-                </Label>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4 text-center"
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-primary" />
+                  </div>
 
-                <Input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  maxLength={6}
-                  placeholder="Enter 6-digit OTP"
-                  className="text-center tracking-widest"
-                />
+                  <h3 className="text-lg font-semibold">Verify your email</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    We’ve sent a 6-digit verification code to
+                    <span className="font-medium text-foreground block">
+                      {formData.email}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="flex justify-center">
+                  <Input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    maxLength={6}
+                    autoFocus
+                    placeholder="••••••"
+                    className="text-center tracking-[0.35em] text-lg w-48 h-12"
+                  />
+                </div>
 
                 <Button
                   type="button"
-                  className="w-full bg-gradient-primary mt-2"
+                  className="w-full bg-gradient-primary"
                   onClick={handleVerifyOTP}
                   disabled={otpLoading}
                 >
                   {otpLoading ? "Verifying..." : "Verify OTP"}
                 </Button>
-              </div>
+              </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={handleSubmit}
+              className={cn(
+                "space-y-6 transition-opacity",
+                step === "OTP" && "opacity-40 pointer-events-none"
+              )}
+            >
               <div className="space-y-2">
                 <Label
                   htmlFor="username"

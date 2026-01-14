@@ -4,7 +4,9 @@ import { env } from "../configs/envs";
 
 const ACCESS_TOKEN = env.JWT_SECRET as string;
 
-export type AuthUser = Request & { user?: { id: string; role: string } };
+export type AuthUser = Request & {
+  user?: { id: string; role: string; email: string; username: string };
+};
 
 export const authMiddleware = async (
   req: AuthUser,
@@ -21,7 +23,13 @@ export const authMiddleware = async (
 
   try {
     const payload = jwt.verify(token, ACCESS_TOKEN) as any;
-    req.user = { id: payload.id, role: payload.role };
+    req.user = {
+      id: payload.id,
+      role: payload.role,
+      email: payload.email,
+      username: payload.username,
+    };
+
     next();
   } catch (error) {
     return res.status(401).json({ success: false, message: "Invalid Token!" });

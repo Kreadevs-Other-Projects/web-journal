@@ -5,6 +5,7 @@ import { Search, Filter, ChevronDown, StickyNote } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const allSubmissions = [
   {
@@ -88,6 +89,10 @@ export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) return null;
 
   const filteredSubmissions = allSubmissions.filter((submission) => {
     const matchesSearch =
@@ -97,19 +102,22 @@ export default function MySubmissions() {
       submission.keywords.some((keyword) =>
         keyword.toLowerCase().includes(searchQuery.toLowerCase())
       );
-    
-    const matchesStatus = 
-      statusFilter === "all" || 
-      submission.status === statusFilter;
-    
+
+    const matchesStatus =
+      statusFilter === "all" || submission.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
   const sortedSubmissions = [...filteredSubmissions].sort((a, b) => {
     if (sortBy === "newest") {
-      return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+      return (
+        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
     } else if (sortBy === "oldest") {
-      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+      return (
+        new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+      );
     } else if (sortBy === "title") {
       return a.title.localeCompare(b.title);
     }
@@ -139,7 +147,7 @@ export default function MySubmissions() {
   };
 
   return (
-    <DashboardLayout role="author" userName="Dr. Sarah Chen">
+    <DashboardLayout role={user.role} userName={user.username}>
       <PageTransition>
         <div className="space-y-6">
           {/* Header */}
@@ -177,7 +185,7 @@ export default function MySubmissions() {
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                     <StickyNote className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <select 
+                  <select
                     value={statusFilter}
                     onChange={(e) => handleStatusChange(e.target.value)}
                     className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-foreground appearance-none cursor-pointer"
@@ -202,7 +210,7 @@ export default function MySubmissions() {
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                     <Filter className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <select 
+                  <select
                     value={sortBy}
                     onChange={(e) => handleSortChange(e.target.value)}
                     className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-foreground appearance-none cursor-pointer"
@@ -218,7 +226,9 @@ export default function MySubmissions() {
               </div>
 
               {/* Clear Filters Button */}
-              {(searchQuery || statusFilter !== "all" || sortBy !== "newest") && (
+              {(searchQuery ||
+                statusFilter !== "all" ||
+                sortBy !== "newest") && (
                 <div className="sm:self-center">
                   <Button
                     variant="ghost"
@@ -237,24 +247,34 @@ export default function MySubmissions() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-sm">
             <div className="text-muted-foreground">
               <p>
-                Showing {currentSubmissions.length} of {sortedSubmissions.length} submissions
+                Showing {currentSubmissions.length} of{" "}
+                {sortedSubmissions.length} submissions
                 {searchQuery && (
-                  <span className="text-foreground font-medium"> for "{searchQuery}"</span>
+                  <span className="text-foreground font-medium">
+                    {" "}
+                    for "{searchQuery}"
+                  </span>
                 )}
                 {statusFilter !== "all" && (
                   <span className="ml-2">
-                    • Status: <span className="text-foreground font-medium capitalize">
-                      {statusFilter.replace('_', ' ')}
+                    • Status:{" "}
+                    <span className="text-foreground font-medium capitalize">
+                      {statusFilter.replace("_", " ")}
                     </span>
                   </span>
                 )}
               </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <div className="text-muted-foreground">
-                Sorted by: <span className="text-foreground font-medium capitalize">
-                  {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Title"}
+                Sorted by:{" "}
+                <span className="text-foreground font-medium capitalize">
+                  {sortBy === "newest"
+                    ? "Newest"
+                    : sortBy === "oldest"
+                    ? "Oldest"
+                    : "Title"}
                 </span>
               </div>
             </div>
@@ -295,12 +315,14 @@ export default function MySubmissions() {
               <div className="text-sm text-muted-foreground">
                 Page {currentPage} of {totalPages}
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   className="text-foreground border-border hover:bg-muted"
                 >
@@ -323,9 +345,15 @@ export default function MySubmissions() {
                     return (
                       <Button
                         key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
+                        variant={
+                          currentPage === pageNum ? "default" : "outline"
+                        }
                         size="sm"
-                        className={`w-10 ${currentPage === pageNum ? "bg-primary text-primary-foreground" : "text-foreground border-border hover:bg-muted"}`}
+                        className={`w-10 ${
+                          currentPage === pageNum
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground border-border hover:bg-muted"
+                        }`}
                         onClick={() => setCurrentPage(pageNum)}
                       >
                         {pageNum}

@@ -1,14 +1,13 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-
-type Role = "author" | "reviewer" | "editor" | "admin";
+import type { UserRole } from "@/lib/roles";
 
 interface ProtectedRouteProps {
-  allowedRoles?: Role[];
+  allowedRoles?: UserRole[];
 }
 
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const { role, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -17,15 +16,16 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
       </div>
     );
   }
-  if (!isAuthenticated) {
+
+  if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role.role)) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  if (role) return <Outlet />;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

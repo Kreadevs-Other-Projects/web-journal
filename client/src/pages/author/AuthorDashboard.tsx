@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import { FileText, Clock, CheckCircle2, Send, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 export const sampleSubmissions = [
   {
@@ -58,15 +60,23 @@ const timelineEvents = [
 ];
 
 export default function AuthorDashboard() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) return null;
+
+  useEffect(() => {
+    console.log("padi", user);
+  });
+
   return (
-    <DashboardLayout role="author" userName="">
+    <DashboardLayout role={user.role} userName={user.username}>
       <PageTransition>
         <div className="space-y-8">
-          {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="font-serif-outfit text-3xl font-bold text-foreground">
-                Welcome back, Dr. Chen
+                Welcome back, {user.username || "Author"}
               </h1>
               <p className="text-muted-foreground">
                 Track your submissions and manage your research papers.
@@ -120,7 +130,6 @@ export default function AuthorDashboard() {
           </StaggerContainer>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Recent submissions */}
             <div className="lg:col-span-2 space-y-4">
               <h2 className="font-serif-outfit text-xl font-semibold text-foreground">
                 Recent Submissions
@@ -130,9 +139,8 @@ export default function AuthorDashboard() {
               ))}
             </div>
 
-            {/* Timeline */}
             <div className="space-y-4">
-              <h2 className="font-serif-outfit-outfit text-xl font-semibold text-foreground">
+              <h2 className="font-serif-outfit text-xl font-semibold text-foreground">
                 Latest Activity
               </h2>
               <div className="glass-card p-4">

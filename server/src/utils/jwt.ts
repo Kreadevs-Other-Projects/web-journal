@@ -3,9 +3,11 @@ import { env } from "../configs/envs";
 
 export const generateAccessToken = async (
   userId: string,
-  role: string = "user"
+  role: string = "user",
+  email?: string,
+  username?: string
 ) => {
-  return jwt.sign({ id: userId, role }, env.JWT_SECRET, {
+  return jwt.sign({ id: userId, role, email, username }, env.JWT_SECRET, {
     expiresIn: env.JWT_SHORT_EXPIRY,
   });
 };

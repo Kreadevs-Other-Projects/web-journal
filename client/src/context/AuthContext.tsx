@@ -1,28 +1,49 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import type { UserRole } from "@/lib/roles";
+import { url } from "@/url";
 
-export type UserRole = "author" | "reviewer" | "editor" | "admin";
-
-interface User {
+export interface AuthUser {
   id: string;
   role: UserRole;
+  email?: string;
+  username?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  profile_pic: string;
+  created_at?: string;
+  title?: string;
+  lastActive?: string;
+  papersSubmitted?: number;
+  papersReviewed?: number;
+  citationCount?: number;
+  hIndex?: number;
+  expertise?: string[];
+  qualifications?: string;
+  certifications?: string;
 }
 
 interface JwtPayload {
   id: string;
-  email: string;
   role: UserRole;
+  email?: string;
   username?: string;
   exp: number;
 }
 
 interface AuthContextType {
-  role: User | null;
+  user: AuthUser | null;
+  userData: UserProfile | null;
   token: string | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (token: string) => void;
   logout: () => void;
-  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,36 +51,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [role, setRole] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      await new Promise((res) => setTimeout(res, 2000));
-
+    const initAuth = () => {
       const storedToken = localStorage.getItem("accessToken");
 
-      if (storedToken) {
-        try {
-          const decoded = jwtDecode<{
-            id: string;
-            role: UserRole;
-            exp: number;
-          }>(storedToken);
-
-          if (decoded.exp * 1000 > Date.now()) {
-            setRole({ id: decoded.id, role: decoded.role });
-            setToken(storedToken);
-          } else {
-            logout();
-          }
-        } catch {
-          logout();
-        }
+      if (!storedToken) {
+        setIsLoading(false);
+        return;
       }
 
-      setIsLoading(false);
+      try {
+        const decoded = jwtDecode<JwtPayload>(storedToken);
+
+        if (decoded.exp * 1000 < Date.now()) {
+          logout();
+          setIsLoading(false);
+          return;
+        }
+
+        setUser({
+          id: decoded.id,
+          role: decoded.role,
+          email: decoded.email,
+          username: decoded.username,
+        });
+
+        setToken(storedToken);
+      } catch {
+        logout();
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initAuth();
@@ -68,34 +95,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = (newToken: string) => {
     const decoded = jwtDecode<JwtPayload>(newToken);
 
-    const userData: User = {
+    const authUser: AuthUser = {
       id: decoded.id,
       role: decoded.role,
+      email: decoded.email,
+      username: decoded.username,
     };
 
     localStorage.setItem("accessToken", newToken);
-    localStorage.setItem("user", JSON.stringify(userData));
 
+    setUser(authUser);
     setToken(newToken);
-    setRole(userData);
   };
 
   const logout = () => {
     localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+    setUser(null);
     setToken(null);
-    setRole(null);
   };
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`${url}/profile/getProfile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          const { user: apiUser, profile: apiProfile } = data.data;
+          setUserData({
+            id: apiUser.id,
+            username: apiUser.username,
+            email: apiUser.email,
+            role: apiUser.role,
+            profile_pic:
+              apiUser.profile_pic ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username}`,
+            created_at: apiUser.created_at,
+            title: apiUser.title || "",
+            lastActive: apiProfile.lastActive || "",
+            papersSubmitted: apiProfile.papersSubmitted || 0,
+            papersReviewed: apiProfile.papersReviewed || 0,
+            citationCount: apiProfile.citationCount || 0,
+            hIndex: apiProfile.hIndex || 0,
+            expertise: Array.isArray(apiProfile.expertise)
+              ? apiProfile.expertise
+              : [],
+            qualifications: apiProfile.qualifications || "",
+            certifications: apiProfile.certifications || "",
+          });
+        } else {
+          console.error("Failed to fetch profile:", data.message);
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+
+    fetchProfile();
+  }, [token]);
 
   return (
     <AuthContext.Provider
       value={{
-        role,
+        user,
+        userData,
         token,
         isLoading,
+        isAuthenticated: !!user && !!token,
         login,
         logout,
-        isAuthenticated: !!token && !!role,
       }}
     >
       {children}

@@ -1,4 +1,3 @@
-// LoginPage.tsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -9,9 +8,8 @@ import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { UserRole } from "@/lib/roles";
 import { url } from "../url";
-
-type UserRole = "author" | "reviewer" | "chief_editor" | "owner";
 
 const roleConfig: Record<
   UserRole,
@@ -37,17 +35,31 @@ const roleConfig: Record<
     color: "text-info",
     route: "/reviewer",
   },
-  chief_editor: {
+  editor: {
     icon: Users,
-    label: "Editor",
+    label: "Chief Editor",
     description: "Manage paper assignments and reviews",
     color: "text-accent",
-    route: "/chief_editor",
+    route: "/chief-editor",
+  },
+  publisher: {
+    icon: Shield,
+    label: "Publisher",
+    description: "Journal publisher",
+    color: "text-destructive",
+    route: "/publisher",
   },
   owner: {
     icon: Shield,
     label: "Owner",
     description: "Journal owner",
+    color: "text-destructive",
+    route: "/owner",
+  },
+  admin: {
+    icon: Shield,
+    label: "Admin",
+    description: "System owner with full access",
     color: "text-destructive",
     route: "/admin",
   },
@@ -134,7 +146,7 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${url}/auth/verify`, {
+      const response = await fetch(`${url}/auth/verifyLoginOTP`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), otp }),
@@ -310,7 +322,7 @@ export default function LoginPage() {
                       <p>✓ Track review deadlines</p>
                     </>
                   )}
-                  {selectedRole === "chief_editor" && (
+                  {selectedRole === "editor" && (
                     <>
                       <p>✓ Manage paper assignments</p>
                       <p>✓ Coordinate review process</p>
@@ -430,6 +442,7 @@ export default function LoginPage() {
                       placeholder="Enter 6-digit OTP"
                       maxLength={6}
                       required
+                      className="pl-5 pr-10 input-glow text-muted-foreground"
                     />
                   </>
                 )}

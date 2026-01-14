@@ -2,10 +2,8 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { roleConfig } from "@/lib/roles";
 
-type UserRole = "author" | "reviewer" | "editor" | "publisher";
-
 const PublicRoute = () => {
-  const { isAuthenticated, isLoading, role } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,8 +12,9 @@ const PublicRoute = () => {
       </div>
     );
   }
-  if (isAuthenticated && role) {
-    return <Navigate to={roleConfig[role.role].route} replace />;
+
+  if (isAuthenticated && user) {
+    return <Navigate to={roleConfig[user.role].route} replace />;
   }
 
   return <Outlet />;

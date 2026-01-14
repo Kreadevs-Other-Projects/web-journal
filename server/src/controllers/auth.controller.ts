@@ -199,7 +199,12 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     await deleteOTP(email);
 
-    const accessToken = await generateAccessToken(user.id, user.role);
+    const accessToken = await generateAccessToken(
+      user.id,
+      user.role,
+      user.email,
+      user.username
+    );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
     const expires_at = new Date();

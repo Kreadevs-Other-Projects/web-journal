@@ -18,106 +18,39 @@ import {
   Sun,
   Router,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { url } from "../url";
+import { UserRole, roleConfig } from "@/lib/roles";
 
-type UserRole = "admin" | "chief_editor" | "sub_editor" | "reviewer" | "author";
+import { url } from "../url";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   role: UserRole;
   userName?: string;
-  profile_pic?: string;
 }
-
-const roleConfig: Record<
-  UserRole,
-  {
-    label: string;
-    color: string;
-    navigation: { label: string; path: string; icon: React.ElementType }[];
-  }
-> = {
-  admin: {
-    label: "Super Admin",
-    color: "text-destructive",
-    navigation: [
-      { label: "Dashboard", path: "/admin", icon: Home },
-      { label: "Users", path: "/admin/users", icon: Users },
-      { label: "All Papers", path: "/admin/papers", icon: FileText },
-      { label: "System Logs", path: "/admin/logs", icon: BarChart3 },
-      { label: "Settings", path: "/admin/settings", icon: Settings },
-    ],
-  },
-  chief_editor: {
-    label: "Chief Editor",
-    color: "text-accent",
-    navigation: [
-      { label: "Dashboard", path: "/chief-editor", icon: Home },
-      {
-        label: "Submissions",
-        path: "/chief-editor/submissions",
-        icon: FileText,
-      },
-      { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
-      { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
-    ],
-  },
-  sub_editor: {
-    label: "Sub-Editor",
-    color: "text-primary",
-    navigation: [
-      { label: "Dashboard", path: "/sub-editor", icon: Home },
-      { label: "Assigned Papers", path: "/sub-editor/papers", icon: FileText },
-      { label: "Reviewers", path: "/sub-editor/reviewers", icon: UserCheck },
-      { label: "Mediation", path: "/sub-editor/mediation", icon: BookOpen },
-    ],
-  },
-  reviewer: {
-    label: "Reviewer",
-    color: "text-info",
-    navigation: [
-      { label: "Dashboard", path: "/reviewer", icon: Home },
-      { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
-      {
-        label: "Completed Reviews",
-        path: "/reviewer/completed",
-        icon: UserCheck,
-      },
-    ],
-  },
-  author: {
-    label: "Author",
-    color: "text-success",
-    navigation: [
-      { label: "Dashboard", path: "/author", icon: Home },
-      { label: "My Submissions", path: "/author/submissions", icon: FileText },
-      { label: "Submit Paper", path: "/author/submit", icon: BookOpen },
-    ],
-  },
-};
 
 export function DashboardLayout({
   children,
   role,
-  userName = "John Doe",
-  profile_pic,
+  userName,
 }: DashboardLayoutProps) {
+  const { logout, userData } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
-  const location = useLocation();
-  const config = roleConfig[role];
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+
   const { toast } = useToast();
+  const config = roleConfig[role];
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -126,8 +59,6 @@ export function DashboardLayout({
 
   const handleLogout = async () => {
     try {
-      setLoading(true);
-
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (!refreshToken) {
@@ -174,7 +105,6 @@ export function DashboardLayout({
         description: err.message || "Failed to logout, Please try again later",
       });
     } finally {
-      setLoading(false);
     }
   };
 
@@ -248,13 +178,13 @@ export function DashboardLayout({
         >
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              {/* <Shield className={cn("h-4 w-4", config.color)} /> */}
+              <Shield className={cn("h-4 w-4", config.color)} />
             </div>
             {sidebarOpen && (
               <div>
-                {/* <p className={cn("text-sm font-semibold", config.color)}>
+                <p className={cn("text-sm font-semibold", config.color)}>
                   {config.label}
-                </p> */}
+                </p>
                 <p className="text-xs text-muted-foreground">Active Session</p>
               </div>
             )}
@@ -262,7 +192,7 @@ export function DashboardLayout({
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {/* {config.navigation.map((item) => {
+          {config.navigation.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path}>
@@ -284,7 +214,7 @@ export function DashboardLayout({
                 </motion.div>
               </Link>
             );
-          })} */}
+          })}
         </nav>
 
         <div className="border-t border-border/50 p-4">
@@ -295,7 +225,7 @@ export function DashboardLayout({
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-border">
-              <AvatarImage src={profile_pic} />
+              <AvatarImage src={userData.profile_pic} />
               <AvatarFallback className="bg-primary/10 text-primary">
                 {userName
                   .split(" ")

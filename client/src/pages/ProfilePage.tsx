@@ -35,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
+import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 
 const defaultUserData = {
@@ -49,96 +50,73 @@ const defaultUserData = {
   papersReviewed: 0,
   citationCount: 0,
   hIndex: 0,
-  expertise: [],
-  qualifications: null,
-  certifications: null,
-  role: "author",
+  expertise: [] as string[],
+  qualifications: "" as string | null,
+  certifications: "" as string | null,
+  role: null as UserRole | null,
 };
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
+  const { token } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [userData, setUserData] = useState(defaultUserData);
+  const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profilePic, setProfilePic] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
-    handleUpdate();
-    setIsEditing(false);
-  };
+  const config = userData.role ? roleConfig[userData.role] : null;
 
-  const handleCancel = () => {
-    fetchProfile();
-    setIsEditing(false);
-  };
-
-  const handleChangePassword = () => {
-    if (newPassword && newPassword === confirmPassword) {
-      console.log("Changing password");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-  };
-
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${url}/profile/getProfile`, {
+      const res = await fetch(`${url}/profile/getProfile`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      const result = await response.json();
-
+      const result = await res.json();
       if (result.success) {
-        const apiUser = result.data.user;
-        const apiProfile = result.data.profile;
-
+        const { user: apiUser, profile: apiProfile } = result.data;
         setUserData({
           id: apiUser.id,
           username: apiUser.username,
           email: apiUser.email,
           role: apiUser.role,
           created_at: apiUser.created_at,
-          title: "",
+          title: apiUser.title || "",
           profile_pic:
             apiUser.profile_pic ||
             `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username}`,
-          lastActive: new Date().toISOString(),
-          papersSubmitted: 0,
-          papersReviewed: 0,
-          citationCount: 0,
-          hIndex: 0,
-          expertise: apiProfile.expertise
-            ? Array.isArray(apiProfile.expertise)
-              ? apiProfile.expertise
-              : []
+          lastActive: apiProfile.lastActive || apiUser.lastActive || "",
+          papersSubmitted: apiProfile.papersSubmitted || 0,
+          papersReviewed: apiProfile.papersReviewed || 0,
+          citationCount: apiProfile.citationCount || 0,
+          hIndex: apiProfile.hIndex || 0,
+          expertise: Array.isArray(apiProfile.expertise)
+            ? apiProfile.expertise
             : [],
-          qualifications: apiProfile.qualifications,
-          certifications: apiProfile.certifications,
+          qualifications: apiProfile.qualifications || "",
+          certifications: apiProfile.certifications || "",
         });
       }
-    } catch (error: any) {
-      console.error("Error fetching profile:", error);
-      alert(error.message);
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to fetch profile");
     } finally {
       setLoading(false);
     }
@@ -151,64 +129,51 @@ export default function ProfilePage() {
   const handleUpdate = async () => {
     try {
       setLoading(true);
-
       const formData = new FormData();
       formData.append("username", userData.username);
       formData.append("email", userData.email);
-
       if (userData.qualifications)
         formData.append("qualifications", userData.qualifications);
-
-      if (userData.expertise)
-        formData.append("expertise", JSON.stringify(userData.expertise));
-
       if (userData.certifications)
         formData.append("certifications", userData.certifications);
+      if (userData.expertise.length)
+        formData.append("expertise", JSON.stringify(userData.expertise));
+      if (profilePic) formData.append("profilePic", profilePic);
 
-      if (profilePic) {
-        formData.append("profilePic", profilePic);
-      }
-
-      const response = await fetch(`${url}/profile/updateProfile`, {
+      const res = await fetch(`${url}/profile/updateProfile`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
-      const result = await response.json();
-
+      const result = await res.json();
       if (result.success) {
         await fetchProfile();
         alert("Profile updated successfully");
       } else {
-        alert(result.message);
+        alert(result.message || "Failed to update profile");
       }
     } catch (err) {
       console.error(err);
-      alert("Profile update failed");
+      alert("Failed to update profile");
     } finally {
       setLoading(false);
+      setIsEditing(false);
+      if (profilePic) URL.revokeObjectURL(userData.profile_pic);
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!userData.id) return;
-
     try {
       setLoading(true);
       const res = await fetch(`${url}/profile/deleteProfile`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const result = await res.json();
-
       if (result.success) {
-        alert(result.message);
+        alert("Account deleted");
         navigate("/login");
       } else {
         alert(result.message || "Failed to delete account");
@@ -221,11 +186,41 @@ export default function ProfilePage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await fetch(`${url}/auth/change-password`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert("Password updated successfully");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        alert(result.message || "Failed to update password");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout
-      role={userData.role}
+      role={userData.role || "author"}
       userName={userData.username}
-      profile_pic={userData.profile_pic}
     >
       <PageTransition>
         <div className="space-y-6">
@@ -245,26 +240,27 @@ export default function ProfilePage() {
                   className="gap-2 bg-gradient-primary hover:opacity-90"
                   disabled={loading}
                 >
-                  <Edit2 className="h-4 w-4" />
-                  Edit Profile
+                  <Edit2 className="h-4 w-4" /> Edit Profile
                 </Button>
               ) : (
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    onClick={handleCancel}
-                    className="gap-2 border-border hover:bg-muted text-muted-foreground hover:text-muted-foreground"
+                    onClick={() => {
+                      fetchProfile();
+                      setIsEditing(false);
+                    }}
+                    className="gap-2 border-border hover:bg-muted text-muted-foreground"
                     disabled={loading}
                   >
-                    <X className="h-4 w-4" />
-                    Cancel
+                    <X className="h-4 w-4" /> Cancel
                   </Button>
                   <Button
-                    onClick={handleSave}
+                    onClick={handleUpdate}
                     className="gap-2 bg-gradient-primary hover:opacity-90"
                     disabled={loading}
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className="h-4 w-4" />{" "}
                     {loading ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
@@ -279,8 +275,7 @@ export default function ProfilePage() {
           >
             <TabsList className="bg-muted/50">
               <TabsTrigger value="overview">
-                <User className="h-4 w-4 mr-2" />
-                Overview
+                <User className="h-4 w-4 mr-2" /> Overview
               </TabsTrigger>
             </TabsList>
 
@@ -290,8 +285,8 @@ export default function ProfilePage() {
                   <Card className="glass-card">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5 text-primary" />
-                        Personal Information
+                        <User className="h-5 w-5 text-primary" /> Personal
+                        Information
                       </CardTitle>
                       <CardDescription>
                         Your public profile information
@@ -302,10 +297,8 @@ export default function ProfilePage() {
                         <div className="relative">
                           <Avatar className="h-24 w-24 border-4 border-background shadow-2xl">
                             <AvatarImage src={userData.profile_pic} />
-                            <AvatarFallback className="text-lg bg-gradient-primary text-primary-foreground">
-                              {userData.username
-                                ? getInitials(userData.username)
-                                : "U"}
+                            <AvatarFallback>
+                              {getInitials(userData.username || "U")}
                             </AvatarFallback>
                           </Avatar>
                           {isEditing && (
@@ -318,15 +311,15 @@ export default function ProfilePage() {
                                 onChange={(e) => {
                                   if (e.target.files?.[0]) {
                                     const file = e.target.files[0];
+                                    const url = URL.createObjectURL(file);
                                     setProfilePic(file);
                                     setUserData({
                                       ...userData,
-                                      profile_pic: URL.createObjectURL(file),
+                                      profile_pic: url,
                                     });
                                   }
                                 }}
                               />
-
                               <Button
                                 size="icon"
                                 className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-lg"
@@ -339,56 +332,39 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="flex-1 space-y-4">
-                          <div>
-                            {isEditing ? (
-                              <Input
-                                value={userData.username}
-                                onChange={(e) =>
-                                  setUserData({
-                                    ...userData,
-                                    username: e.target.value,
-                                  })
-                                }
-                                className="text-xl font-bold"
-                              />
-                            ) : (
-                              <h2 className="text-xl font-bold text-foreground">
-                                {userData.username || "No username"}
-                              </h2>
-                            )}
-                            {isEditing ? (
-                              <Input
-                                value={userData.role}
-                                onChange={(e) =>
-                                  setUserData({
-                                    ...userData,
-                                    role: e.target.value,
-                                  })
-                                }
-                                className="mt-1"
-                                placeholder="role"
-                              />
-                            ) : (
-                              <div className="flex gap-2 items-center">
-                                <span>Role:</span>
-                                <p className="text-primary font-medium">
-                                  {userData.role || "No role"}
-                                </p>
-                              </div>
-                            )}
+                          {isEditing ? (
+                            <Input
+                              value={userData.username}
+                              onChange={(e) =>
+                                setUserData({
+                                  ...userData,
+                                  username: e.target.value,
+                                })
+                              }
+                              className="text-xl font-bold"
+                            />
+                          ) : (
+                            <h2 className="text-xl font-bold text-foreground">
+                              {userData.username || "No username"}
+                            </h2>
+                          )}
+                          <div className="flex gap-2 items-center">
+                            <span>Role:</span>
+                            <p className="text-primary font-medium capitalize">
+                              {userData.role}
+                            </p>
                           </div>
-
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline" className="gap-1">
-                              <FileText className="h-3 w-3" />
+                              <FileText className="h-3 w-3" />{" "}
                               {userData.papersSubmitted} papers
                             </Badge>
                             <Badge variant="outline" className="gap-1">
-                              <Award className="h-3 w-3" />
-                              h-index: {userData.hIndex}
+                              <Award className="h-3 w-3" /> h-index:{" "}
+                              {userData.hIndex}
                             </Badge>
                             <Badge variant="outline" className="gap-1">
-                              <Briefcase className="h-3 w-3" />
+                              <Briefcase className="h-3 w-3" />{" "}
                               {userData.papersReviewed} reviews
                             </Badge>
                           </div>
@@ -396,117 +372,74 @@ export default function ProfilePage() {
                       </div>
 
                       <Separator />
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              Email Address
-                            </Label>
-                            {isEditing ? (
-                              <Input
-                                value={userData.email}
-                                onChange={(e) =>
-                                  setUserData({
-                                    ...userData,
-                                    email: e.target.value,
-                                  })
-                                }
-                                type="email"
-                              />
-                            ) : (
-                              <p className="text-foreground">
-                                {userData.email || "No email"}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              Member Since
-                            </Label>
-                            <p className="text-foreground">
-                              {userData.created_at
-                                ? new Date(
-                                    userData.created_at
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  })
-                                : "N/A"}
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              Last Active
-                            </Label>
-                            <p className="text-foreground">
-                              {userData.lastActive
-                                ? new Date(
-                                    userData.lastActive
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  })
-                                : "N/A"}
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm">User ID</Label>
-                            <code className="text-xs bg-muted px-2 py-1 rounded block truncate">
-                              {userData.id || "N/A"}
-                            </code>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm">Areas of Expertise</Label>
-                        <div className="flex flex-wrap gap-2">
+                          <Label className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground" />{" "}
+                            Email Address
+                          </Label>
                           {isEditing ? (
                             <Input
-                              value={
-                                Array.isArray(userData.expertise)
-                                  ? userData.expertise.join(", ")
-                                  : ""
-                              }
+                              value={userData.email}
                               onChange={(e) =>
                                 setUserData({
                                   ...userData,
-                                  expertise: e.target.value
-                                    .split(",")
-                                    .map((e) => e.trim())
-                                    .filter((e) => e.length > 0),
+                                  email: e.target.value,
                                 })
                               }
-                              placeholder="Enter expertise separated by commas"
                             />
-                          ) : userData.expertise &&
-                            userData.expertise.length > 0 ? (
-                            userData.expertise.map((skill, index) => (
-                              <Badge key={index} variant="secondary">
-                                {skill}
-                              </Badge>
-                            ))
                           ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No expertise added yet
-                            </p>
+                            <p>{userData.email}</p>
                           )}
+                        </div>
+                        <div className="space-y-4">
+                          <Label className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />{" "}
+                            Member Since
+                          </Label>
+                          <p>
+                            {userData.created_at
+                              ? new Date(
+                                  userData.created_at
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm">Qualifications</Label>
+                      <div className="space-y-4">
+                        <Label>Areas of Expertise</Label>
+                        {isEditing ? (
+                          <Input
+                            value={userData.expertise.join(", ")}
+                            onChange={(e) =>
+                              setUserData({
+                                ...userData,
+                                expertise: e.target.value
+                                  .split(",")
+                                  .map((t) => t.trim())
+                                  .filter((t) => t),
+                              })
+                            }
+                            placeholder="Enter expertise separated by commas"
+                          />
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {userData.expertise.length ? (
+                              userData.expertise.map((skill, idx) => (
+                                <Badge key={idx} variant="secondary">
+                                  {skill}
+                                </Badge>
+                              ))
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No expertise added yet
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <Label>Qualifications</Label>
                         {isEditing ? (
                           <Textarea
                             value={userData.qualifications || ""}
@@ -517,18 +450,15 @@ export default function ProfilePage() {
                               })
                             }
                             rows={3}
-                            placeholder="Enter your qualifications"
                           />
                         ) : (
-                          <p className="text-muted-foreground leading-relaxed">
+                          <p>
                             {userData.qualifications ||
                               "No qualifications added yet"}
                           </p>
                         )}
-                      </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm">Certifications</Label>
+                        <Label>Certifications</Label>
                         {isEditing ? (
                           <Textarea
                             value={userData.certifications || ""}
@@ -539,25 +469,14 @@ export default function ProfilePage() {
                               })
                             }
                             rows={3}
-                            placeholder="Enter your certifications"
                           />
                         ) : (
-                          <p className="text-muted-foreground leading-relaxed">
+                          <p>
                             {userData.certifications ||
                               "No certifications added yet"}
                           </p>
                         )}
                       </div>
-
-                      <Separator />
-
-                      {/* <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Role</Label>
-                        <Badge variant="default" className="text-sm">
-                          {userData.role.charAt(0).toUpperCase() +
-                            userData.role.slice(1)}
-                        </Badge>
-                      </div> */}
                     </CardContent>
                   </Card>
                 </div>
@@ -566,8 +485,8 @@ export default function ProfilePage() {
                   <Card className="glass-card">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Lock className="h-5 w-5 text-primary" />
-                        Change Password
+                        <Lock className="h-5 w-5 text-primary" /> Change
+                        Password
                       </CardTitle>
                       <CardDescription>
                         Update your password to keep your account secure
@@ -578,7 +497,7 @@ export default function ProfilePage() {
                         <Label>New Password</Label>
                         <div className="relative">
                           <Input
-                            type={showPassword ? "text" : "password"}
+                            type={showNewPassword ? "text" : "password"}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             placeholder="Enter new password"
@@ -587,10 +506,10 @@ export default function ProfilePage() {
                           <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
                           >
-                            {showPassword ? (
+                            {showNewPassword ? (
                               <EyeOff className="h-4 w-4 text-muted-foreground" />
                             ) : (
                               <Eye className="h-4 w-4 text-muted-foreground" />
@@ -598,34 +517,46 @@ export default function ProfilePage() {
                           </button>
                         </div>
                       </div>
-
                       <div className="space-y-3">
-                        <Label>Confirm New Password</Label>
+                        <Label>Confirm Password</Label>
                         <div className="relative">
                           <Input
-                            type={showPassword ? "text" : "password"}
+                            type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Confirm new password"
                             className="pl-10"
                           />
                           <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
                         </div>
                       </div>
-
                       {newPassword &&
                         confirmPassword &&
                         newPassword !== confirmPassword && (
                           <div className="flex items-center gap-2 text-sm text-destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            Passwords do not match
+                            <AlertCircle className="h-4 w-4" /> Passwords do not
+                            match
                           </div>
                         )}
-
                       <Button
                         onClick={handleChangePassword}
                         disabled={
-                          !newPassword || newPassword !== confirmPassword
+                          !newPassword ||
+                          newPassword !== confirmPassword ||
+                          loading
                         }
                         className="w-full bg-gradient-primary hover:opacity-90"
                       >
@@ -646,34 +577,23 @@ export default function ProfilePage() {
                             back. Please be certain.
                           </p>
                         </div>
-
                         {!showDeleteConfirm ? (
                           <Button
                             variant="destructive"
                             className="w-full gap-2"
                             onClick={() => setShowDeleteConfirm(true)}
                           >
-                            <Trash2 className="h-4 w-4" />
-                            Delete Account
+                            <Trash2 className="h-4 w-4" /> Delete Account
                           </Button>
                         ) : (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
-                            className="space-y-4 p-4 rounded-lg border border-destructive/20 bg-destructive/5"
+                            className="flex flex-col gap-2"
                           >
-                            <div className="flex items-start gap-3">
-                              <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-destructive">
-                                  Are you absolutely sure?
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  This action cannot be undone. All your data
-                                  will be permanently deleted.
-                                </p>
-                              </div>
-                            </div>
+                            <p className="text-sm text-destructive">
+                              Are you sure? This action cannot be undone.
+                            </p>
                             <div className="flex gap-2">
                               <Button
                                 variant="outline"
@@ -684,11 +604,11 @@ export default function ProfilePage() {
                               </Button>
                               <Button
                                 variant="destructive"
-                                className="flex-1 gap-2"
+                                className="flex-1"
                                 onClick={handleDeleteAccount}
+                                disabled={loading}
                               >
-                                <Trash2 className="h-4 w-4" />
-                                Delete Account
+                                Yes, Delete
                               </Button>
                             </div>
                           </motion.div>

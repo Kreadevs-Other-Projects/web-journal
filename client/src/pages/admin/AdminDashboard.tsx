@@ -86,6 +86,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { useAuth } from "@/context/AuthContext";
 
 const users = [
   {
@@ -234,6 +235,7 @@ const submissionStats = [
 ];
 
 export default function AdminDashboard() {
+  const { user, isLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -322,8 +324,11 @@ export default function AdminDashboard() {
     }
   };
 
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) return null;
+
   return (
-    <DashboardLayout role="admin" userName="Admin User">
+    <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

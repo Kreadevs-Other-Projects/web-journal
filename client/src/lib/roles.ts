@@ -27,12 +27,24 @@ export const roleConfig: Record<
     route: string;
   }
 > = {
+  owner: {
+    icon: Home,
+    label: "Owner",
+    color: "text-destructive",
+    description: "Owner of the system",
+    route: "/admin",
+    navigation: [
+      { label: "Dashboard", path: "/admin", icon: Home },
+      { label: "System Settings", path: "/admin/settings", icon: Settings },
+    ],
+  },
+
   admin: {
-    icon: Home, // <-- required
-    label: "Super Admin",
+    icon: Home,
+    label: "Admin",
     color: "text-destructive",
     description: "Manage the entire system",
-    route: "/admin", // default landing route
+    route: "/admin",
     navigation: [
       { label: "Dashboard", path: "/admin", icon: Home },
       { label: "Users", path: "/admin/users", icon: Users },
@@ -96,17 +108,6 @@ export const roleConfig: Record<
       { label: "Dashboard", path: "/publisher", icon: Home },
       { label: "All Papers", path: "/publisher/papers", icon: FileText },
       { label: "Users", path: "/publisher/users", icon: Users },
-    ],
-  },
-  owner: {
-    icon: Home,
-    label: "Owner",
-    color: "text-destructive",
-    description: "Owner of the system",
-    route: "/owner",
-    navigation: [
-      { label: "Dashboard", path: "/owner", icon: Home },
-      { label: "System Settings", path: "/owner/settings", icon: Settings },
     ],
   },
 };

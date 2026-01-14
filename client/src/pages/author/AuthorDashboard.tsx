@@ -60,14 +60,10 @@ const timelineEvents = [
 ];
 
 export default function AuthorDashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, userData } = useAuth();
 
   if (isLoading) return <div>Loading...</div>;
   if (!user) return null;
-
-  useEffect(() => {
-    console.log("padi", user);
-  });
 
   return (
     <DashboardLayout role={user.role} userName={user.username}>

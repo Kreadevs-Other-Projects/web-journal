@@ -8,67 +8,13 @@ import { PageTransition } from "@/components/AnimationWrappers";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import type { UserRole } from "@/lib/roles";
+import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
-
-const roleConfig: Record<
-  UserRole,
-  {
-    icon: React.ElementType;
-    label: string;
-    description: string;
-    color: string;
-    route: string;
-  }
-> = {
-  author: {
-    icon: User,
-    label: "Author",
-    description: "Submit and track your research papers",
-    color: "text-success",
-    route: "/author",
-  },
-  reviewer: {
-    icon: UserCheck,
-    label: "Reviewer",
-    description: "Evaluate submissions assigned to you",
-    color: "text-info",
-    route: "/reviewer",
-  },
-  editor: {
-    icon: Users,
-    label: "Chief Editor",
-    description: "Manage paper assignments and reviews",
-    color: "text-accent",
-    route: "/chief-editor",
-  },
-  publisher: {
-    icon: Shield,
-    label: "Publisher",
-    description: "Journal publisher",
-    color: "text-destructive",
-    route: "/publisher",
-  },
-  owner: {
-    icon: Shield,
-    label: "Owner",
-    description: "Journal owner",
-    color: "text-destructive",
-    route: "/owner",
-  },
-  admin: {
-    icon: Shield,
-    label: "Admin",
-    description: "System owner with full access",
-    color: "text-destructive",
-    route: "/admin",
-  },
-};
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [selectedRole, setSelectedRole] = useState<UserRole>("author");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

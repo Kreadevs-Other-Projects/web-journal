@@ -225,14 +225,16 @@ export function DashboardLayout({
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-border">
-              <AvatarImage src={userData.profile_pic} />
+              <AvatarImage src={userData?.profile_pic} />
+
               <AvatarFallback className="bg-primary/10 text-primary">
-                {userName
+                {(userName || userData?.username || "U")
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </AvatarFallback>
             </Avatar>
+
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">

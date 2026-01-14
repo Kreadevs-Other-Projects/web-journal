@@ -88,10 +88,8 @@ const App = () => (
                     />
                   </Route>
                   {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
-                  <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/admin/*" element={<AdminDashboard />} />
-                  </Route>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                   </Route>

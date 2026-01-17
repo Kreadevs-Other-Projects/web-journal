@@ -1,28 +1,35 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthUser } from "../middlewares/auth.middleware";
 import {
   createPaperService,
-  getPaperByIdService,
+  getAllPapersService,
+  updatePaperStatusService,
 } from "../services/paper.service";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
-  const authorId = req.user!.id;
-  const paper = await createPaperService(req.body, authorId);
-
-  res.status(201).json({
-    success: true,
-    message: "Paper created successfully",
-    data: paper,
-  });
+  try {
+    const paper = await createPaperService(req.user!, req.body);
+    res.status(201).json({ success: true, paper });
+  } catch (e: any) {
+    res.status(403).json({ success: false, message: e.message });
+  }
 };
 
-export const getPaperById = async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const getAllPapers = async (_req: AuthUser, res: Response) => {
+  const papers = await getAllPapersService();
+  res.json({ success: true, papers });
+};
 
-  const paper = await getPaperByIdService(id);
+export const updatePaperStatus = async (req: AuthUser, res: Response) => {
+  try {
+    const paper = await updatePaperStatusService(
+      req.user!,
+      req.params.paperId,
+      req.body.status,
+    );
 
-  res.status(200).json({
-    success: true,
-    data: paper,
-  });
+    res.json({ success: true, paper });
+  } catch (e: any) {
+    res.status(403).json({ success: false, message: e.message });
+  }
 };

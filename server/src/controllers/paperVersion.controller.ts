@@ -1,36 +1,25 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthUser } from "../middlewares/auth.middleware";
 import {
-  createPaperVersionService,
+  uploadPaperVersionService,
   getPaperVersionsService,
 } from "../services/paperVersion.service";
 
-export const createPaperVersion = async (req: AuthUser, res: Response) => {
-  const userId = req.user!.id;
+export const uploadPaperVersion = async (req: AuthUser, res: Response) => {
+  try {
+    const version = await uploadPaperVersionService(
+      req.user!,
+      req.params.paperId,
+      req.body,
+    );
 
-  if (!userId) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized",
-    });
+    res.status(201).json({ success: true, version });
+  } catch (e: any) {
+    res.status(403).json({ success: false, message: e.message });
   }
-
-  const version = await createPaperVersionService(req.body, userId);
-
-  res.status(201).json({
-    success: true,
-    message: "Paper version uploaded successfully",
-    data: version,
-  });
 };
 
-export const getPaperVersions = async (req: Request, res: Response) => {
-  const { paperId } = req.params;
-
-  const versions = await getPaperVersionsService(paperId);
-
-  res.status(200).json({
-    success: true,
-    data: versions,
-  });
+export const getPaperVersions = async (req: AuthUser, res: Response) => {
+  const versions = await getPaperVersionsService(req.params.paperId);
+  res.json({ success: true, versions });
 };

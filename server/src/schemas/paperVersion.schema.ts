@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const createPaperVersionSchema = z.object({
-  paper_id: z.string().uuid(),
-  version_label: z.string(),
-  file_url: z.string().url(),
+  version_label: z.string().min(1, "Version label is required"),
+  file_url: z.string().url("Invalid file URL"),
 });

@@ -1,17 +1,25 @@
 import {
-  createPaperVersionRepo,
-  getPaperVersionsRepo,
+  createPaperVersion,
+  getPaperVersions,
 } from "../repositories/paperVersion.repository";
-import { updateCurrentVersion } from "../repositories/paper.repository";
+import { setCurrentVersion } from "../repositories/paper.repository";
 
-export const createPaperVersionService = async (data: any, userId: string) => {
-  const version = await createPaperVersionRepo(data, userId);
+export const uploadPaperVersionService = async (
+  user: { id: string; role: string },
+  paper_id: string,
+  data: any,
+) => {
+  if (user.role !== "publisher") {
+    throw new Error("Only publishers can upload versions");
+  }
 
-  await updateCurrentVersion(data.paper_id, version.id);
+  const version = await createPaperVersion(paper_id, user.id, data);
+
+  await setCurrentVersion(paper_id, version.id);
 
   return version;
 };
 
-export const getPaperVersionsService = async (paperId: string) => {
-  return getPaperVersionsRepo(paperId);
+export const getPaperVersionsService = async (paper_id: string) => {
+  return await getPaperVersions(paper_id);
 };

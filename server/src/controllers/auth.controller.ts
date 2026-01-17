@@ -119,7 +119,6 @@ export const verify = async (req: Request, res: Response) => {
   const { email, otp } = req.body;
 
   const otpRecord = await verifyOTP(email, otp);
-
   if (!otpRecord) {
     return res.status(400).json({
       success: false,
@@ -127,15 +126,9 @@ export const verify = async (req: Request, res: Response) => {
     });
   }
 
-  await verifyOTP(email, otp);
-
   return res.status(200).json({
     success: true,
     message: "OTP verified successfully",
-    data: {
-      email: otpRecord.email,
-      verified: true,
-    },
   });
 };
 
@@ -203,7 +196,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       user.id,
       user.role,
       user.email,
-      user.username
+      user.username,
     );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
@@ -213,7 +206,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
     const savedTokenId = await saveRefreshToken(
       user.id,
       refreshToken,
-      expires_at
+      expires_at,
     );
     if (!savedTokenId) {
       return res.status(500).json({

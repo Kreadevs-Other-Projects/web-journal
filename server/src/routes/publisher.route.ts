@@ -1,12 +1,14 @@
 import { Router } from "express";
 import {
   addJournal,
-  getPublisherJournal,
+  getOwnerJournal,
 } from "../controllers/publisher.controller";
+import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post("/journals/:id", addJournal);
-router.get("/journal/:id", getPublisherJournal);
+router.post("/journals", authMiddleware, authorize("owner"), addJournal);
+
+router.get("/journal/:id", getOwnerJournal);
 
 export default router;

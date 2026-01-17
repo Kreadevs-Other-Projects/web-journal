@@ -83,7 +83,7 @@ export const editProfile = async (req: AuthUser, res: Response) => {
     const updated = await updateProfileService(
       userId,
       userData,
-      Object.keys(profileData).length ? profileData : undefined
+      Object.keys(profileData).length ? profileData : undefined,
     );
 
     return res.status(200).json({

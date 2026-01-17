@@ -94,23 +94,18 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("handleSubmit triggered with formData:", formData);
 
     const validationErrors = validateForm();
-    console.log("Validation errors:", validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      console.warn("Form validation failed:", validationErrors);
       return;
     }
 
     setIsLoading(true);
     setErrors({});
-    console.log("Loading state set to true, errors cleared");
 
     try {
-      console.log("Sending OTP request to:", `${url}/auth/create`);
       const response = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,9 +115,7 @@ export default function SignupPage() {
         }),
       });
 
-      console.log("OTP response status:", response.status);
       const result = await response.json();
-      console.log("OTP response JSON:", result);
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to send OTP");
@@ -132,36 +125,27 @@ export default function SignupPage() {
         title: "OTP Sent",
         description: "Please check your email for OTP",
       });
-      console.log("Toast shown: OTP Sent");
 
       setStep("OTP");
-      console.log("Step updated to OTP");
     } catch (error: any) {
-      console.error("Error in handleSubmit:", error);
       setErrors({
         general: error.message || "Failed to send OTP",
       });
     } finally {
       setIsLoading(false);
-      console.log("Loading state set to false");
     }
   };
 
   const handleVerifyOTP = async () => {
-    console.log("handleVerifyOTP triggered with OTP:", otp);
-
     if (otp.length !== 6) {
       setErrors({ general: "OTP must be 6 digits" });
-      console.warn("OTP length invalid:", otp.length);
       return;
     }
 
     setOtpLoading(true);
     setErrors({});
-    console.log("OTP loading set to true, errors cleared");
 
     try {
-      console.log("Verifying OTP with:", `${url}/auth/verifysignup`);
       const verifyRes = await fetch(`${url}/auth/verifysignup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -171,15 +155,11 @@ export default function SignupPage() {
         }),
       });
 
-      console.log("Verify response status:", verifyRes.status);
       const verifyResult = await verifyRes.json();
-      console.log("Verify response JSON:", verifyResult);
 
       if (!verifyRes.ok) {
         throw new Error(verifyResult.message || "Invalid OTP");
       }
-
-      console.log("OTP verified successfully, proceeding to signup");
 
       const signupRes = await fetch(`${url}/auth/signup`, {
         method: "POST",
@@ -192,9 +172,7 @@ export default function SignupPage() {
         }),
       });
 
-      console.log("Signup response status:", signupRes.status);
       const signupResult = await signupRes.json();
-      console.log("Signup response JSON:", signupResult);
 
       if (!signupRes.ok) {
         throw new Error(signupResult.message || "Signup failed");
@@ -204,18 +182,14 @@ export default function SignupPage() {
         title: "Account Created",
         description: "Signup successful! Redirecting to login...",
       });
-      console.log("Toast shown: Account Created");
 
       navigate("/login");
-      console.log("Navigating to /login");
     } catch (error: any) {
-      console.error("Error in handleVerifyOTP:", error);
       setErrors({
         general: error.message || "OTP verification failed",
       });
     } finally {
       setOtpLoading(false);
-      console.log("OTP loading set to false");
     }
   };
 
@@ -333,7 +307,7 @@ export default function SignupPage() {
               onSubmit={handleSubmit}
               className={cn(
                 "space-y-6 transition-opacity",
-                step === "OTP" && "opacity-40 pointer-events-none"
+                step === "OTP" && "opacity-40 pointer-events-none",
               )}
             >
               <div className="space-y-2">
@@ -355,7 +329,7 @@ export default function SignupPage() {
                     className={cn(
                       "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
                       errors.username &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20"
+                        "border-destructive focus:border-destructive focus:ring-destructive/20",
                     )}
                     disabled={isLoading}
                   />
@@ -388,7 +362,7 @@ export default function SignupPage() {
                     className={cn(
                       "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
                       errors.email &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20"
+                        "border-destructive focus:border-destructive focus:ring-destructive/20",
                     )}
                     disabled={isLoading}
                   />
@@ -421,7 +395,7 @@ export default function SignupPage() {
                     className={cn(
                       "pl-10 pr-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
                       errors.password &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20"
+                        "border-destructive focus:border-destructive focus:ring-destructive/20",
                     )}
                     disabled={isLoading}
                   />
@@ -454,7 +428,7 @@ export default function SignupPage() {
                         transition={{ duration: 0.3 }}
                         className={cn(
                           "h-full",
-                          getStrengthColor(passwordStrength())
+                          getStrengthColor(passwordStrength()),
                         )}
                       />
                     </div>
@@ -470,7 +444,7 @@ export default function SignupPage() {
                       <CheckCircle2
                         className={cn(
                           "h-3 w-3 flex-shrink-0",
-                          req.met ? "text-success" : "text-muted-foreground/30"
+                          req.met ? "text-success" : "text-muted-foreground/30",
                         )}
                       />
                       <span
@@ -515,7 +489,7 @@ export default function SignupPage() {
                           "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border",
                           isSelected
                             ? "bg-primary text-primary-foreground shadow-glow border-primary"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted border-border"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted border-border",
                         )}
                       >
                         <Icon className="h-5 w-5" />

@@ -4,14 +4,20 @@ import { env } from "../configs/envs";
 
 const ACCESS_TOKEN = env.JWT_SECRET as string;
 
-export type AuthUser = Request & {
-  user?: { id: string; role: string; email: string; username: string };
-};
+export interface AuthUser extends Request {
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+  file?: Express.Multer.File;
+}
 
 export const authMiddleware = async (
   req: AuthUser,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";

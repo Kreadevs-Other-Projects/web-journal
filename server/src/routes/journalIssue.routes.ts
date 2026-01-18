@@ -13,21 +13,21 @@ import { validate } from "../middlewares/validate.middleware";
 const router = Router();
 
 router.post(
-  "/issues/:journalId",
+  "/addJournalIssue/:journalId",
   authMiddleware,
   authorize("owner"),
   addJournalIssue,
 );
 
 router.get(
-  "/issues/:journalId",
+  "/getJournalIssues/:journalId",
   authMiddleware,
   authorize("owner", "admin"),
   getJournalIssues,
 );
 
 router.put(
-  "/issues/:issueId",
+  "/updateJournalIssue/:issueId",
   authMiddleware,
   authorize("owner"),
   validate(updateJournalIssueSchema),
@@ -35,7 +35,7 @@ router.put(
 );
 
 router.delete(
-  "/issues/:issueId",
+  "/deleteJournalIssue/:issueId",
   authMiddleware,
   authorize("owner"),
   deleteJournalIssue,

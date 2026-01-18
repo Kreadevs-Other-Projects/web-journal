@@ -1,11 +1,27 @@
 import { z } from "zod";
 
 export const createJournalIssueSchema = z.object({
-  year: z.number().int().min(1900),
-  volume: z.number().int().positive().optional(),
-  issue: z.number().int().positive().optional(),
-  label: z.string().min(3),
-  published_at: z.string().datetime().optional(),
+  body: z.object({
+    year: z.number(),
+    label: z.string(),
+    volume: z.number().optional(),
+    issue: z.number().optional(),
+    published_at: z.string().optional(),
+  }),
 });
 
-export const updateJournalIssueSchema = createJournalIssueSchema.partial();
+export const updateJournalIssueSchema = z.object({
+  body: z.object({
+    year: z.number().optional(),
+    label: z.string().optional(),
+    volume: z.number().optional(),
+    issue: z.number().optional(),
+    published_at: z.string().optional(),
+  }),
+});
+
+export const deleteJournalIssueSchema = z.object({
+  params: z.object({
+    issueId: z.string().uuid("Invalid issue ID"),
+  }),
+});

@@ -10,9 +10,13 @@ import BrowsePage from "./pages/BrowsePage";
 import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/cheifEditor/ChiefEditorDashboard.tsx";
+import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
+import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import NotFound from "./pages/NotFound";
 import MySubmissions from "./pages/author/MySubmissions.tsx";
+import SubmitPaper from "./pages/author/SubmitPaper.tsx";
+import PaperVersions from "./pages/author//PaperVersions.tsx";
 import AssignedPapers from "./pages/reviewer/AssignedPapers.tsx";
 import Submissions from "./pages/cheifEditor/Submissions.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
@@ -54,15 +58,18 @@ const App = () => (
                     element={<ResearchPaperDetail />}
                   />
                   <Route path="/unauthorized" element={<Unauthorized />} />
-                  {/* {Author Routes} */}
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     <Route path="/author" element={<AuthorDashboard />} />
                     <Route
                       path="/author/submissions"
                       element={<MySubmissions />}
                     />
+                    <Route path="/author/submit" element={<SubmitPaper />} />
+                    <Route
+                      path="/author/version"
+                      element={<PaperVersions paperId={""} />}
+                    />
                   </Route>
-                  {/* {Reviewer Routes} */}
                   <Route
                     element={<ProtectedRoute allowedRoles={["reviewer"]} />}
                   >
@@ -76,7 +83,6 @@ const App = () => (
                       element={<CompletedReview />}
                     />
                   </Route>
-                  {/* {Chief-Editor Routes} */}
                   <Route element={<ProtectedRoute allowedRoles={["editor"]} />}>
                     <Route
                       path="/chief-editor"
@@ -86,6 +92,10 @@ const App = () => (
                       path="/chief-editor/submissions"
                       element={<Submissions />}
                     />
+                  </Route>
+                  <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>
+                    <Route path="/owner" element={<OwnerDashboard />} />
+                    <Route path="/journals" element={<Journals />} />
                   </Route>
                   {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
                   <Route path="/admin" element={<AdminDashboard />} />

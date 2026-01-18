@@ -8,7 +8,7 @@ export const createPaperService = async (
   user: { id: string; role: string },
   data: any,
 ) => {
-  if (user.role !== "publisher") {
+  if (user.role !== "author") {
     throw new Error("Only publishers can upload papers");
   }
 

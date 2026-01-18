@@ -14,7 +14,7 @@ const router = Router();
 router.post(
   "/createPaper",
   authMiddleware,
-  authorize("publisher"),
+  authorize("author"),
   validate(createPaperSchema),
   createPaper,
 );

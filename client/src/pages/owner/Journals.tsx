@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, BookOpen, Link, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  BookOpen,
+  Link as LinkIcon,
+  Pencil,
+  Trash2,
+  FilePlus2,
+  Edit3,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import JournalIssuesPage from "@/components/JournalIssues";
@@ -34,6 +42,20 @@ interface JournalForm {
   website_url: string;
 }
 
+interface JournalIssue {
+  id: string;
+  journal_id: string;
+  year: number;
+  volume?: number | null;
+  issue?: number | null;
+  label: string;
+  published_at?: string | null;
+  // backend may provide one of these:
+  status?: string | null; // "active" | "inactive"
+  is_active?: boolean | null;
+  created_at?: string;
+}
+
 const generateSlug = (value: string): string =>
   value
     .toLowerCase()
@@ -41,9 +63,13 @@ const generateSlug = (value: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
 
+const isActiveIssue = (issue: JournalIssue) =>
+  issue?.is_active === true || issue?.status === "active";
+
 export default function Journals(): JSX.Element {
   const { user, token, isLoading } = useAuth();
 
+  // Journals
   const [journals, setJournals] = useState<Journal[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -59,8 +85,43 @@ export default function Journals(): JSX.Element {
     website_url: "",
   });
 
+  // Journal Issues (modal for apply/edit issue)
+  const [issuesLoading, setIssuesLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingIssue, setEditingIssue] = useState<JournalIssue | null>(null);
+  const [activeJournalForIssue, setActiveJournalForIssue] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // Store issues per journal (so cards can decide Apply/Edit)
+  const [issuesByJournal, setIssuesByJournal] = useState<
+    Record<string, JournalIssue[]>
+  >({});
+
+  const [issueForm, setIssueForm] = useState({
+    year: new Date().getFullYear(),
+    volume: "",
+    issue: "",
+    label: "",
+    published_at: "",
+  });
+
   const [currentJournalId, setCurrentJournalId] = useState<string | null>(null);
   const [currentJournalName, setCurrentJournalName] = useState("");
+
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [pendingPaymentIssue, setPendingPaymentIssue] =
+    useState<JournalIssue | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
+
+  const [paymentForm, setPaymentForm] = useState({
+    cardBrand: "visa" as "visa" | "mastercard",
+    cardNumber: "",
+    expiry: "",
+    cvc: "",
+    name: "",
+  });
 
   const fetchJournals = async () => {
     if (!user?.id) return;
@@ -69,15 +130,62 @@ export default function Journals(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setJournals(data.journals ?? []);
+      const list: Journal[] = data.journals ?? [];
+      setJournals(list);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchIssuesForJournal = async (journalId: string) => {
+    setIssuesLoading(true);
+    try {
+      const res = await fetch(
+        `${url}/journal-issue/getJournalIssues/${journalId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json();
+      if (data.success) {
+        const list: JournalIssue[] = data.issues ?? [];
+        setIssuesByJournal((prev) => ({ ...prev, [journalId]: list }));
+        return list;
+      }
+      return [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  // After journals load, fetch issues for each (so cards show correct button)
+  const fetchAllIssuesForCards = async (list: Journal[]) => {
+    if (!list.length) return;
+    try {
+      // lightweight parallel fetch
+      await Promise.all(list.map((j) => fetchIssuesForJournal(j.id)));
     } catch (e) {
       console.error(e);
     }
   };
 
   useEffect(() => {
-    if (!isLoading && user) fetchJournals();
+    if (!isLoading && user) {
+      (async () => {
+        await fetchJournals();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoading]);
+
+  // Whenever journals state changes (after fetch), load issues per journal for button logic
+  useEffect(() => {
+    if (journals.length && token) {
+      fetchAllIssuesForCards(journals);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journals.length, token]);
 
   const createJournal = async () => {
     setLoading(true);
@@ -98,7 +206,7 @@ export default function Journals(): JSX.Element {
         issn: "",
         website_url: "",
       });
-      fetchJournals();
+      await fetchJournals();
     } catch (e) {
       console.error(e);
     } finally {
@@ -120,7 +228,7 @@ export default function Journals(): JSX.Element {
       });
       setEditOpen(false);
       setSelectedJournal(null);
-      fetchJournals();
+      await fetchJournals();
     } catch (e) {
       console.error(e);
     } finally {
@@ -138,7 +246,7 @@ export default function Journals(): JSX.Element {
       });
       setDeleteOpen(false);
       setSelectedJournal(null);
-      fetchJournals();
+      await fetchJournals();
     } catch (e) {
       console.error(e);
     } finally {
@@ -151,6 +259,144 @@ export default function Journals(): JSX.Element {
     setCurrentJournalName(name);
   };
 
+  // ---------------------------
+  // Issue Modal handlers
+  // ---------------------------
+  const handleIssueChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setIssueForm({ ...issueForm, [e.target.name]: e.target.value });
+
+  const resetIssueForm = () => {
+    setEditingIssue(null);
+    setIssueForm({
+      year: new Date().getFullYear(),
+      volume: "",
+      issue: "",
+      label: "",
+      published_at: "",
+    });
+  };
+
+  const openApplyIssueModal = async (journal: Journal) => {
+    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+    resetIssueForm();
+    setModalOpen(true);
+
+    // Ensure issues up-to-date for this journal (optional)
+    await fetchIssuesForJournal(journal.id);
+  };
+
+  const openEditActiveIssueModal = async (journal: Journal) => {
+    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+
+    const list =
+      issuesByJournal[journal.id] ?? (await fetchIssuesForJournal(journal.id));
+    const active = list.find(isActiveIssue);
+
+    if (!active) {
+      // fallback: no active issue found -> open apply modal instead
+      resetIssueForm();
+      setModalOpen(true);
+      return;
+    }
+
+    setEditingIssue(active);
+    setIssueForm({
+      year: active.year,
+      volume: active.volume?.toString() || "",
+      issue: active.issue?.toString() || "",
+      label: active.label || "",
+      published_at: active.published_at || "",
+    });
+    setModalOpen(true);
+  };
+
+  const handleIssueSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeJournalForIssue?.id) return;
+
+    const journalId = activeJournalForIssue.id;
+
+    setIssuesLoading(true);
+    try {
+      const endpoint = editingIssue
+        ? `${url}/journal-issue/updateJournalIssue/${editingIssue.id}`
+        : `${url}/journal-issue/addJournalIssue/${journalId}`;
+      const method = editingIssue ? "PUT" : "POST";
+
+      const payload: any = {
+        ...issueForm,
+        year: Number(issueForm.year),
+        volume: issueForm.volume ? Number(issueForm.volume) : undefined,
+        issue: issueForm.issue ? Number(issueForm.issue) : undefined,
+        published_at: issueForm.published_at || undefined,
+        label: issueForm.label?.trim(),
+        // OPTIONAL: if your backend supports it, enforce pending on create
+        // status: "pending",
+      };
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // refresh card logic
+        await fetchIssuesForJournal(journalId);
+
+        // close issue modal
+        setModalOpen(false);
+
+        // if it was an APPLY (create), show payment modal after save
+        if (!editingIssue) {
+          // try to read created issue from API response
+          const createdIssue: JournalIssue | null =
+            data.issue ?? data.journalIssue ?? data.createdIssue ?? null;
+
+          // fallback: if API doesn't return issue, we can refetch and pick the latest
+          let issueToPayFor = createdIssue;
+
+          if (!issueToPayFor) {
+            const list = await fetchIssuesForJournal(journalId);
+            // pick the most recent issue (you can adjust sorting based on your API)
+            issueToPayFor = list?.[0] ?? null;
+          }
+
+          setPendingPaymentIssue(issueToPayFor);
+          setPaymentOpen(true);
+        }
+
+        setEditingIssue(null);
+        setActiveJournalForIssue(null);
+        setIssueForm({
+          year: new Date().getFullYear(),
+          volume: "",
+          issue: "",
+          label: "",
+          published_at: "",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  // For card button logic
+  const journalHasActiveIssue = (journalId: string) => {
+    const list = issuesByJournal[journalId] ?? [];
+    return list.some(isActiveIssue);
+  };
+
+  // ---------------------------
+  // Guards
+  // ---------------------------
   if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Unauthorized</div>;
 
@@ -164,6 +410,11 @@ export default function Journals(): JSX.Element {
       />
     );
 
+  const closeCreateEdit = () => {
+    setOpen(false);
+    setEditOpen(false);
+  };
+
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
@@ -176,73 +427,110 @@ export default function Journals(): JSX.Element {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {journals.map((j) => (
-            <Card key={j.id} className="glass-card">
-              <CardHeader>
-                <CardTitle
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => openJournalIssues(j.id, j.name)}
-                >
-                  <BookOpen className="h-5 w-5" />
-                  {j.name}
-                </CardTitle>
-              </CardHeader>
+          {journals.map((j) => {
+            const hasActive = journalHasActiveIssue(j.id);
 
-              <CardContent className="space-y-2">
-                <p className="text-xs">Slug: {j.slug}</p>
-                <p className="text-xs">ISSN: {j.issn}</p>
-                {j.website_url && (
-                  <a
-                    href={j.website_url}
-                    target="_blank"
-                    className="flex items-center gap-1 text-sm text-primary"
+            return (
+              <Card key={j.id} className="glass-card">
+                <CardHeader>
+                  <CardTitle
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => openJournalIssues(j.id, j.name)}
                   >
-                    <Link className="h-4 w-4" />
-                    Website
-                  </a>
-                )}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedJournal(j);
-                      setForm({
-                        name: j.name,
-                        slug: j.slug,
-                        description: j.description ?? "",
-                        issn: j.issn,
-                        website_url: j.website_url ?? "",
-                      });
-                      setEditOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      setSelectedJournal(j);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <BookOpen className="h-5 w-5" />
+                    {j.name}
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-2">
+                  <p className="text-xs">Slug: {j.slug}</p>
+                  <p className="text-xs">ISSN: {j.issn}</p>
+
+                  {j.website_url ? (
+                    <a
+                      href={j.website_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-sm text-primary"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                      Website
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Website: <span className="italic">Optional</span>
+                    </p>
+                  )}
+
+                  {/* Apply/Edit Issue button rule */}
+                  <div className="pt-2">
+                    {!hasActive ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full btn-physics"
+                        onClick={() => openApplyIssueModal(j)}
+                      >
+                        <FilePlus2 className="h-4 w-4 mr-2" />
+                        Apply for Issue
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full btn-physics"
+                        onClick={() => openEditActiveIssueModal(j)}
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Edit Issue
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedJournal(j);
+                        setForm({
+                          name: j.name,
+                          slug: j.slug,
+                          description: j.description ?? "",
+                          issn: j.issn,
+                          website_url: j.website_url ?? "",
+                        });
+                        setEditOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        setSelectedJournal(j);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
+      {/* Create/Edit Journal Dialog */}
       <Dialog
         open={open || editOpen}
         onOpenChange={() => {
-          setOpen(false);
-          setEditOpen(false);
+          closeCreateEdit();
         }}
       >
         <DialogContent>
@@ -256,6 +544,7 @@ export default function Journals(): JSX.Element {
             <div>
               <Label>Journal Name</Label>
               <Input
+                placeholder="e.g., International Journal of Computing"
                 value={form.name}
                 onChange={(e) =>
                   setForm({
@@ -266,29 +555,50 @@ export default function Journals(): JSX.Element {
                 }
               />
             </div>
+
             <div>
               <Label>Slug (auto)</Label>
-              <Input value={form.slug} disabled />
-            </div>
-            <div>
-              <Label>Description</Label>
               <Input
+                placeholder="auto-generated from name"
+                value={form.slug}
+                disabled
+              />
+            </div>
+
+            <div>
+              <Label>
+                Description{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Optional)
+                </span>
+              </Label>
+              <Input
+                placeholder="Short description about the journal (optional)"
                 value={form.description}
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
               />
             </div>
+
             <div>
               <Label>ISSN</Label>
               <Input
+                placeholder="e.g., 1234-5678"
                 value={form.issn}
                 onChange={(e) => setForm({ ...form, issn: e.target.value })}
               />
             </div>
+
             <div>
-              <Label>Website URL</Label>
+              <Label>
+                Website URL{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Optional)
+                </span>
+              </Label>
               <Input
+                placeholder="e.g., https://journalwebsite.com (optional)"
                 value={form.website_url}
                 onChange={(e) =>
                   setForm({ ...form, website_url: e.target.value })
@@ -298,13 +608,7 @@ export default function Journals(): JSX.Element {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setOpen(false);
-                setEditOpen(false);
-              }}
-            >
+            <Button variant="ghost" onClick={closeCreateEdit}>
               Cancel
             </Button>
             <Button onClick={editOpen ? updateJournal : createJournal}>
@@ -314,15 +618,18 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Journal Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Journal</DialogTitle>
           </DialogHeader>
+
           <p>
             Are you sure you want to delete{" "}
             <strong>{selectedJournal?.name}</strong>? This cannot be undone.
           </p>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
               Cancel
@@ -331,6 +638,286 @@ export default function Journals(): JSX.Element {
               Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Modal (Apply/Edit Issue) */}
+      <Dialog open={modalOpen} onOpenChange={() => setModalOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingIssue ? "Edit Issue" : "Add Issue"}
+              {activeJournalForIssue?.name ? (
+                <span className="block text-sm text-muted-foreground font-normal mt-1">
+                  Journal: {activeJournalForIssue.name}
+                </span>
+              ) : null}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleIssueSubmit} className="space-y-3">
+            <div>
+              <Label>Year</Label>
+              <Input
+                name="year"
+                placeholder="e.g., 2026"
+                value={issueForm.year}
+                onChange={handleIssueChange}
+              />
+            </div>
+
+            <div>
+              <Label>
+                Volume{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Optional)
+                </span>
+              </Label>
+              <Input
+                name="volume"
+                placeholder="e.g., 1"
+                value={issueForm.volume}
+                onChange={handleIssueChange}
+              />
+            </div>
+
+            <div>
+              <Label>
+                Issue{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Optional)
+                </span>
+              </Label>
+              <Input
+                name="issue"
+                placeholder="e.g., 2"
+                value={issueForm.issue}
+                onChange={handleIssueChange}
+              />
+            </div>
+
+            <div>
+              <Label>Label</Label>
+              <Input
+                name="label"
+                placeholder="e.g., Special Issue on AI"
+                value={issueForm.label}
+                onChange={handleIssueChange}
+              />
+            </div>
+
+            <div>
+              <Label>
+                Published At{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Optional)
+                </span>
+              </Label>
+              <Input
+                type="datetime-local"
+                name="published_at"
+                value={issueForm.published_at}
+                onChange={handleIssueChange}
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={issuesLoading}>
+                {issuesLoading ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {/* Payment Modal (Stripe-like UI) */}
+      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-left">
+              Payment Details
+              {pendingPaymentIssue ? (
+                <span className="block text-sm text-muted-foreground font-normal mt-1">
+                  Issue saved as <span className="font-semibold">Pending</span>.
+                  Pay to activate.
+                </span>
+              ) : null}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            {/* Stripe-ish top summary */}
+            <div className="glass-card p-4 text-left">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Pay for</p>
+                  <p className="font-semibold truncate">
+                    {activeJournalForIssue?.name || "Journal Issue"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Status after save:{" "}
+                    <span className="font-semibold">Pending</span>
+                  </p>
+                </div>
+
+                {/* Card preview */}
+                <div className="shrink-0 rounded-2xl border border-border/60 bg-background/40 px-4 py-3 w-[180px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Card</span>
+                    <span className="text-xs font-semibold uppercase">
+                      {paymentForm.cardBrand === "visa" ? "VISA" : "MASTERCARD"}
+                    </span>
+                  </div>
+                  <div className="mt-4 text-sm tracking-widest text-foreground/90">
+                    •••• •••• ••••{" "}
+                    {paymentForm.cardNumber.replace(/\s/g, "").slice(-4) ||
+                      "----"}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>
+                      {paymentForm.name ? paymentForm.name : "Cardholder"}
+                    </span>
+                    <span>{paymentForm.expiry || "MM/YY"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stripe-style form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                // call your SafePay initiate payment here later
+              }}
+              className="space-y-4"
+            >
+              {/* Brand pills (optional) */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPaymentForm((p) => ({ ...p, cardBrand: "visa" }))
+                  }
+                  className={`btn-physics rounded-full px-3 py-1.5 text-xs font-semibold border ${
+                    paymentForm.cardBrand === "visa"
+                      ? "bg-primary/10 text-primary border-primary/30 glow-primary"
+                      : "bg-background/30 text-muted-foreground border-border/60"
+                  }`}
+                >
+                  VISA
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPaymentForm((p) => ({ ...p, cardBrand: "mastercard" }))
+                  }
+                  className={`btn-physics rounded-full px-3 py-1.5 text-xs font-semibold border ${
+                    paymentForm.cardBrand === "mastercard"
+                      ? "bg-primary/10 text-primary border-primary/30 glow-primary"
+                      : "bg-background/30 text-muted-foreground border-border/60"
+                  }`}
+                >
+                  MasterCard
+                </button>
+              </div>
+
+              {/* Billing name */}
+              <div className="text-left">
+                <Label>Billing name</Label>
+                <Input
+                  className="input-glow"
+                  placeholder="Name on card"
+                  value={paymentForm.name}
+                  onChange={(e) =>
+                    setPaymentForm((p) => ({ ...p, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              {/* Card Information block (Stripe-like) */}
+              <div className="text-left">
+                <Label>Card information</Label>
+
+                <div className="mt-2 rounded-2xl border border-border/60 bg-background/40 overflow-hidden">
+                  {/* Card number */}
+                  <div className="px-4 py-3">
+                    <Input
+                      className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
+                      placeholder="1234 1234 1234 1234"
+                      value={paymentForm.cardNumber}
+                      onChange={(e) =>
+                        setPaymentForm((p) => ({
+                          ...p,
+                          cardNumber: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="h-px bg-border/60" />
+
+                  {/* Exp + CVC row */}
+                  <div className="grid grid-cols-2">
+                    <div className="px-4 py-3">
+                      <Input
+                        className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
+                        placeholder="MM / YY"
+                        value={paymentForm.expiry}
+                        onChange={(e) =>
+                          setPaymentForm((p) => ({
+                            ...p,
+                            expiry: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="px-4 py-3 border-l border-border/60">
+                      <Input
+                        className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
+                        placeholder="CVC"
+                        value={paymentForm.cvc}
+                        onChange={(e) =>
+                          setPaymentForm((p) => ({ ...p, cvc: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Your issue stays{" "}
+                  <span className="font-semibold">Pending</span> if you close
+                  this and pay later.
+                </p>
+              </div>
+
+              <DialogFooter className="pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setPaymentOpen(false)}
+                  disabled={payLoading}
+                >
+                  Pay later
+                </Button>
+
+                <Button
+                  type="submit"
+                  className="btn-physics"
+                  disabled={payLoading}
+                >
+                  {payLoading ? "Processing..." : "Pay now"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

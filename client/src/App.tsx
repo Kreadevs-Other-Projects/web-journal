@@ -83,7 +83,9 @@ const App = () => (
                       element={<CompletedReview />}
                     />
                   </Route>
-                  <Route element={<ProtectedRoute allowedRoles={["editor"]} />}>
+                  <Route
+                    element={<ProtectedRoute allowedRoles={["chief_editor"]} />}
+                  >
                     <Route
                       path="/chief-editor"
                       element={<ChiefEditorDashboard />}

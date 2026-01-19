@@ -21,7 +21,7 @@ import reviewAssignmentRoutes from "./routes/reviewAssignment.routes";
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN }));
+app.use(cors());
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 

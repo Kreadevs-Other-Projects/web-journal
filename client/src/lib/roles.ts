@@ -11,10 +11,10 @@ import {
 export type UserRole =
   | "author"
   | "reviewer"
-  | "editor"
+  | "chief_editor"
   | "publisher"
   | "owner"
-  | "admin";
+  | "editor";
 
 export const roleConfig: Record<
   UserRole,
@@ -28,7 +28,7 @@ export const roleConfig: Record<
   }
 > = {
   owner: {
-    icon: Home,
+    icon: FileText,
     label: "Owner",
     color: "text-destructive",
     description: "Owner of the system",
@@ -40,18 +40,18 @@ export const roleConfig: Record<
     ],
   },
 
-  admin: {
-    icon: Home,
-    label: "Admin",
+  editor: {
+    icon: Users,
+    label: "Sub Editor",
     color: "text-destructive",
-    description: "Manage the entire system",
-    route: "/admin",
+    description: "Manage paper editions",
+    route: "/sub-editor",
     navigation: [
-      { label: "Dashboard", path: "/admin", icon: Home },
-      { label: "Users", path: "/admin/users", icon: Users },
-      { label: "All Papers", path: "/admin/papers", icon: FileText },
-      { label: "System Logs", path: "/admin/logs", icon: BarChart3 },
-      { label: "Settings", path: "/admin/settings", icon: Settings },
+      { label: "Dashboard", path: "/editor", icon: Home },
+      { label: "Users", path: "/editor/users", icon: Users },
+      { label: "All Papers", path: "/editor/papers", icon: FileText },
+      { label: "System Logs", path: "/editor/logs", icon: BarChart3 },
+      { label: "Settings", path: "/editor/settings", icon: Settings },
     ],
   },
   author: {
@@ -83,7 +83,7 @@ export const roleConfig: Record<
       },
     ],
   },
-  editor: {
+  chief_editor: {
     icon: Users,
     label: "Chief Editor",
     color: "text-accent",
@@ -101,7 +101,7 @@ export const roleConfig: Record<
     ],
   },
   publisher: {
-    icon: FileText,
+    icon: Home,
     label: "Publisher",
     color: "text-destructive",
     description: "Manage all papers and users",

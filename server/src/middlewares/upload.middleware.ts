@@ -14,16 +14,25 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `image-${Date.now()}${ext}`);
+    cb(null, `file-${Date.now()}${ext}`);
   },
 });
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      cb(new Error("Only image files allowed"));
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      cb(new Error("Only images, PDFs, and Word documents are allowed"));
     } else {
       cb(null, true);
     }

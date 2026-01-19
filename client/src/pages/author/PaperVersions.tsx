@@ -22,24 +22,47 @@ interface PaperVersion {
   created_at: string;
 }
 
-export default function PaperVersions({ paperId }: { paperId: string }) {
+interface Paper {
+  id: string;
+  title: string;
+}
+
+export default function PaperVersions() {
   const { user, token } = useAuth();
 
   const [versions, setVersions] = useState<PaperVersion[]>([]);
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [selectedPaperId, setSelectedPaperId] = useState("");
+
   const [open, setOpen] = useState(false);
 
-  const [form, setForm] = useState({
-    version_label: "",
-    file_url: "",
-  });
+  const [versionLabel, setVersionLabel] = useState("");
+  const paperId = selectedPaperId;
 
-  /* ---------------- FETCH VERSIONS ---------------- */
+  const [file, setFile] = useState<File | null>(null);
+
+  const fetchAuthorPapers = async () => {
+    if (!token) return;
+
+    const res = await fetch(`${url}/papers/getPapersByAuthor`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setPapers(Array.isArray(data.papers) ? data.papers : []);
+  };
 
   const fetchVersions = async () => {
+    if (!token || !paperId) return;
+
     const res = await fetch(
       `${url}/paper-versions/getPaperVersions/${paperId}`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
     );
 
@@ -49,20 +72,36 @@ export default function PaperVersions({ paperId }: { paperId: string }) {
 
   useEffect(() => {
     fetchVersions();
-  }, [paperId]);
+    fetchAuthorPapers();
+  }, [paperId, token]);
 
   const uploadVersion = async () => {
-    await fetch(`${url}/paper-versions/uploadPaperVersion/${paperId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    if (!selectedPaperId || !versionLabel || !file) {
+      alert("All fields are required");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("version_label", versionLabel);
+    formData.append("file", file);
+
+    const res = await fetch(
+      `${url}/paper-versions/uploadPaperVersion/${selectedPaperId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
       },
-      body: JSON.stringify(form),
-    });
+    );
+
+    const data = await res.json();
+    console.log("Upload response:", data);
 
     setOpen(false);
-    setForm({ version_label: "", file_url: "" });
+    setVersionLabel("");
+    setFile(null);
     fetchVersions();
   };
 
@@ -72,12 +111,11 @@ export default function PaperVersions({ paperId }: { paperId: string }) {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Paper Versions</h1>
 
-          {user?.role === "publisher" && (
+          {(user?.role === "publisher" || user?.role === "author") && (
             <Button onClick={() => setOpen(true)}>Upload Version</Button>
           )}
         </div>
 
-        {/* VERSION LIST */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {versions.map((v) => (
             <Card key={v.id} className="glass-card">
@@ -89,10 +127,12 @@ export default function PaperVersions({ paperId }: { paperId: string }) {
                 <a
                   href={v.file_url}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-primary underline"
                 >
                   View File
                 </a>
+
                 <p className="text-xs text-muted-foreground">
                   Uploaded on {new Date(v.created_at).toLocaleDateString()}
                 </p>
@@ -102,29 +142,46 @@ export default function PaperVersions({ paperId }: { paperId: string }) {
         </div>
       </div>
 
-      {/* UPLOAD MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload Paper Version</DialogTitle>
           </DialogHeader>
 
+          <div>
+            <Label>Select Paper</Label>
+            <select
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              value={selectedPaperId}
+              onChange={(e) => setSelectedPaperId(e.target.value)}
+            >
+              <option value="">-- Select Paper --</option>
+              {papers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="space-y-4">
             <div>
               <Label>Version Label</Label>
               <Input
-                value={form.version_label}
-                onChange={(e) =>
-                  setForm({ ...form, version_label: e.target.value })
-                }
+                placeholder="Accepted / Final Version"
+                value={versionLabel}
+                onChange={(e) => setVersionLabel(e.target.value)}
               />
             </div>
 
             <div>
-              <Label>File URL</Label>
+              <Label>Upload File (PDF)</Label>
               <Input
-                value={form.file_url}
-                onChange={(e) => setForm({ ...form, file_url: e.target.value })}
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) =>
+                  setFile(e.target.files ? e.target.files[0] : null)
+                }
               />
             </div>
           </div>

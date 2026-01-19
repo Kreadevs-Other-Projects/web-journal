@@ -23,6 +23,20 @@ export const getAllPapers = async () => {
   return result.rows;
 };
 
+export const getPapersByAuthor = async (author_id: string) => {
+  const result = await pool.query(
+    `
+      SELECT id, title
+      FROM papers
+      WHERE author_id = $1
+      ORDER BY created_at DESC
+      `,
+    [author_id],
+  );
+
+  return result.rows;
+};
+
 export const updatePaperStatus = async (paper_id: string, status: string) => {
   const result = await pool.query(
     `

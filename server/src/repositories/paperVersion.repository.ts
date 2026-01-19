@@ -31,3 +31,16 @@ export const getPaperVersions = async (paper_id: string) => {
   );
   return result.rows;
 };
+
+export const getAllPaperVersions = async () => {
+  const result = await pool.query(
+    `
+      SELECT pv.*, p.title AS paper_title
+FROM paper_versions pv
+JOIN papers p ON pv.paper_id = p.id
+ORDER BY pv.created_at DESC;
+
+      `,
+  );
+  return result.rows;
+};

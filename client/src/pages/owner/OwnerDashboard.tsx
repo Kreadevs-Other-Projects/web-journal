@@ -60,7 +60,7 @@ export default function OwnerDashboard(): JSX.Element {
       <div className="space-y-6">
         {/* HEADER */}
         <div>
-          <h1 className="text-3xl font-bold">Owner Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white">Owner Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Full authority over journals and editorial roles
           </p>

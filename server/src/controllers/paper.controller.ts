@@ -4,6 +4,7 @@ import {
   createPaperService,
   getAllPapersService,
   updatePaperStatusService,
+  getPapersByAuthorService,
 } from "../services/paper.service";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
@@ -18,6 +19,25 @@ export const createPaper = async (req: AuthUser, res: Response) => {
 export const getAllPapers = async (_req: AuthUser, res: Response) => {
   const papers = await getAllPapersService();
   res.json({ success: true, papers });
+};
+
+export const getPapersByAuthor = async (req: AuthUser, res: Response) => {
+  try {
+    const author_id = req.user!.id;
+
+    const papers = await getPapersByAuthorService(author_id);
+
+    res.json({
+      success: true,
+      papers,
+    });
+  } catch (error) {
+    console.error("Error fetching papers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch papers",
+    });
+  }
 };
 
 export const updatePaperStatus = async (req: AuthUser, res: Response) => {

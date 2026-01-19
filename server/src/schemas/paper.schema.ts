@@ -21,3 +21,5 @@ export const updatePaperSchema = z.object({
     ]),
   }),
 });
+
+export const getPapersByAuthorSchema = z.object({});

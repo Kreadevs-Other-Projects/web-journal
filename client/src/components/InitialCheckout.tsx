@@ -7,7 +7,7 @@ import { LoadingSpinner } from "./ui/LoadingSpinner";
 const PUBLIC_ENTRY_PATHS = ["/", "/login", "/signup", "/initialCheckout"];
 
 const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
-  const { role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -15,20 +15,20 @@ const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!role) return;
+    if (!user?.role) return;
     if (hasRedirected.current) return;
 
-    const isPublicEntry =
-      location.pathname === "/" || location.pathname === "/login";
+    const isPublicEntry = PUBLIC_ENTRY_PATHS.includes(location.pathname);
 
     if (isPublicEntry) {
-      const config = roleConfig[role.role];
+      const config = roleConfig[user.role];
+
       if (config?.route) {
         hasRedirected.current = true;
         navigate(config.route, { replace: true });
       }
     }
-  }, [isLoading, role, location.pathname, navigate]);
+  }, [isLoading, user?.role, location.pathname, navigate]);
 
   if (isLoading) {
     return <LoadingSpinner text="Checking authentication..." />;

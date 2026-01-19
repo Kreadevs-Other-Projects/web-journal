@@ -24,10 +24,16 @@ interface Paper {
   created_at: string;
 }
 
+interface Journal {
+  id: string;
+  name: string;
+}
+
 export default function Papers(): JSX.Element {
   const { user, token, isLoading } = useAuth();
 
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [journals, setJournals] = useState<Journal[]>([]);
   const [open, setOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
@@ -36,11 +42,22 @@ export default function Papers(): JSX.Element {
     title: "",
     abstract: "",
     category: "",
-    keywords: "",
+    keywords: [] as string[],
     journal_id: "",
   });
 
   const [status, setStatus] = useState("");
+
+  const fetchJournals = async () => {
+    const res = await fetch(`${url}/journal/getJournals`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setJournals(Array.isArray(data.journals) ? data.journals : []);
+  };
 
   const fetchPapers = async () => {
     const res = await fetch(`${url}/papers/getAllPapers`, {
@@ -54,12 +71,18 @@ export default function Papers(): JSX.Element {
 
   useEffect(() => {
     if (!isLoading && user) fetchPapers();
+    fetchJournals();
   }, [user, isLoading]);
 
   if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Unauthorized</div>;
 
   const submitPaper = async () => {
+    if (!form.journal_id) {
+      alert("Please select a journal");
+      return;
+    }
+
     await fetch(`${url}/papers/createPaper`, {
       method: "POST",
       headers: {
@@ -68,6 +91,7 @@ export default function Papers(): JSX.Element {
       },
       body: JSON.stringify(form),
     });
+
     setOpen(false);
     fetchPapers();
   };
@@ -152,13 +176,35 @@ export default function Papers(): JSX.Element {
               onChange={(e) => setForm({ ...form, category: e.target.value })}
             />
             <Input
-              placeholder="Keywords"
-              onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+              placeholder="Keywords (comma separated)"
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  keywords: e.target.value
+                    .split(",")
+                    .map((k) => k.trim())
+                    .filter(Boolean),
+                })
+              }
             />
-            <Input
-              placeholder="Journal ID"
-              onChange={(e) => setForm({ ...form, journal_id: e.target.value })}
-            />
+
+            <div className="space-y-1">
+              <Label>Select Journal</Label>
+              <select
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={form.journal_id}
+                onChange={(e) =>
+                  setForm({ ...form, journal_id: e.target.value })
+                }
+              >
+                <option value="">-- Select Journal --</option>
+                {journals.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <DialogFooter>

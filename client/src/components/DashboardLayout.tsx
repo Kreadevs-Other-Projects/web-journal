@@ -49,13 +49,13 @@ export function DashboardLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const [isDark, setIsDark] = useState(() =>
-    document.documentElement.classList.contains("dark")
+    document.documentElement.classList.contains("dark"),
   );
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
+  // const toggleTheme = () => {
+  //   setIsDark(!isDark);
+  //   document.documentElement.classList.toggle("dark");
+  // };
 
   const handleLogout = async () => {
     try {
@@ -127,14 +127,14 @@ export function DashboardLayout({
           x: mobileMenuOpen
             ? 0
             : typeof window !== "undefined" && window.innerWidth < 1024
-            ? -280
-            : 0,
+              ? -280
+              : 0,
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className={cn(
           "fixed left-0 top-0 z-50 h-screen border-r border-border/50 bg-card/80 backdrop-blur-xl",
           "flex flex-col",
-          "lg:translate-x-0"
+          "lg:translate-x-0",
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
@@ -147,7 +147,7 @@ export function DashboardLayout({
               <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-serif text-lg font-semibold">
+              <span className="font-serif text-lg font-semibold text-white">
                 JournalHub
               </span>
             </motion.div>
@@ -173,7 +173,7 @@ export function DashboardLayout({
         <div
           className={cn(
             "mx-4 mt-4 rounded-lg bg-muted/50 p-3",
-            !sidebarOpen && "mx-2 p-2"
+            !sidebarOpen && "mx-2 p-2",
           )}
         >
           <div className="flex items-center gap-3">
@@ -204,7 +204,7 @@ export function DashboardLayout({
                     isActive
                       ? "bg-primary text-primary-foreground shadow-glow"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    !sidebarOpen && "justify-center px-2"
+                    !sidebarOpen && "justify-center px-2",
                   )}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -221,7 +221,7 @@ export function DashboardLayout({
           <div
             className={cn(
               "flex items-center gap-3",
-              !sidebarOpen && "justify-center"
+              !sidebarOpen && "justify-center",
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-border">
@@ -245,9 +245,17 @@ export function DashboardLayout({
                 </Link>
               </div>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
 
-          {sidebarOpen && (
+          {/* {sidebarOpen && (
             <div className="mt-4 flex gap-2">
               <Button
                 size="sm"
@@ -256,23 +264,15 @@ export function DashboardLayout({
                 <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
                 Settings
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
-          )}
+          )} */}
         </div>
       </motion.aside>
 
       <div
         className={cn(
           "transition-all duration-300",
-          sidebarOpen ? "lg:pl-[280px]" : "lg:pl-20"
+          sidebarOpen ? "lg:pl-[280px]" : "lg:pl-20",
         )}
       >
         <header className="sticky top-0 z-30 h-16 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -301,7 +301,7 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleTheme}
@@ -312,16 +312,16 @@ export function DashboardLayout({
                 ) : (
                   <Moon className="h-4 w-4 text-muted-foreground" />
                 )}
-              </Button>
+              </Button> */}
 
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 className="h-9 w-9 p-0 relative"
               >
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-              </Button>
+              </Button> */}
             </div>
           </div>
         </header>

@@ -38,6 +38,7 @@ import {
   Maximize2,
   ArrowLeft,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 // Sample data
 const assignedPapers = [
@@ -130,6 +131,7 @@ const reviewCriteria = [
 ];
 
 export default function ReviewerDashboard() {
+  const { user } = useAuth();
   const [selectedPaper, setSelectedPaper] = useState<
     (typeof assignedPapers)[0] | null
   >(null);
@@ -186,13 +188,13 @@ export default function ReviewerDashboard() {
     const due = new Date(dueDate);
     const now = new Date();
     const diff = Math.ceil(
-      (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
     return diff;
   };
 
   return (
-    <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+    <DashboardLayout role={user.role} userName={user.username}>
       <AnimatePresence mode="wait">
         {selectedPaper ? (
           <motion.div
@@ -349,7 +351,7 @@ export default function ReviewerDashboard() {
                                         "h-5 w-5 transition-colors",
                                         star <= (ratings[criterion.id] || 0)
                                           ? "fill-accent text-accent"
-                                          : "text-muted-foreground/30"
+                                          : "text-muted-foreground/30",
                                       )}
                                     />
                                   </motion.button>
@@ -404,7 +406,7 @@ export default function ReviewerDashboard() {
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                               decision === "accept"
                                 ? "border-success bg-success/10"
-                                : "border-border hover:border-success/50"
+                                : "border-border hover:border-success/50",
                             )}
                             onClick={() => setDecision("accept")}
                           >
@@ -429,7 +431,7 @@ export default function ReviewerDashboard() {
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                               decision === "minor_revision"
                                 ? "border-info bg-info/10"
-                                : "border-border hover:border-info/50"
+                                : "border-border hover:border-info/50",
                             )}
                             onClick={() => setDecision("minor_revision")}
                           >
@@ -454,7 +456,7 @@ export default function ReviewerDashboard() {
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                               decision === "major_revision"
                                 ? "border-warning bg-warning/10"
-                                : "border-border hover:border-warning/50"
+                                : "border-border hover:border-warning/50",
                             )}
                             onClick={() => setDecision("major_revision")}
                           >
@@ -479,7 +481,7 @@ export default function ReviewerDashboard() {
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                               decision === "reject"
                                 ? "border-destructive bg-destructive/10"
-                                : "border-border hover:border-destructive/50"
+                                : "border-border hover:border-destructive/50",
                             )}
                             onClick={() => setDecision("reject")}
                           >
@@ -526,9 +528,8 @@ export default function ReviewerDashboard() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-6"
           >
-            {/* Header */}
             <div>
-              <h1 className="font-serif-outfit-outfit text-3xl font-bold">
+              <h1 className="font-serif-outfit-outfit text-3xl font-bold text-white">
                 Reviewer Dashboard
               </h1>
               <p className="text-muted-foreground mt-1">
@@ -536,7 +537,6 @@ export default function ReviewerDashboard() {
               </p>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
                 {
@@ -584,7 +584,7 @@ export default function ReviewerDashboard() {
                         <div
                           className={cn(
                             "h-10 w-10 rounded-lg flex items-center justify-center bg-muted/50",
-                            stat.color
+                            stat.color,
                           )}
                         >
                           <stat.icon className="h-5 w-5" />
@@ -628,7 +628,7 @@ export default function ReviewerDashboard() {
                                 <Badge
                                   className={cn(
                                     "text-xs",
-                                    getPriorityColor(paper.priority)
+                                    getPriorityColor(paper.priority),
                                   )}
                                 >
                                   {paper.priority} priority
@@ -655,7 +655,7 @@ export default function ReviewerDashboard() {
                                 <span className="text-muted-foreground">
                                   Submitted:{" "}
                                   {new Date(
-                                    paper.submittedDate
+                                    paper.submittedDate,
                                   ).toLocaleDateString()}
                                 </span>
                               </div>
@@ -668,8 +668,8 @@ export default function ReviewerDashboard() {
                                   daysLeft <= 3
                                     ? "bg-destructive/10 text-destructive"
                                     : daysLeft <= 7
-                                    ? "bg-warning/10 text-warning"
-                                    : "bg-muted text-muted-foreground"
+                                      ? "bg-warning/10 text-warning"
+                                      : "bg-muted text-muted-foreground",
                                 )}
                               >
                                 {daysLeft} days left
@@ -725,7 +725,7 @@ export default function ReviewerDashboard() {
                             <p className="text-sm text-muted-foreground mt-1">
                               Completed:{" "}
                               {new Date(
-                                review.completedDate
+                                review.completedDate,
                               ).toLocaleDateString()}
                             </p>
                           </div>
@@ -734,8 +734,8 @@ export default function ReviewerDashboard() {
                               review.decision === "accepted"
                                 ? "bg-success/10 text-success"
                                 : review.decision === "revision"
-                                ? "bg-warning/10 text-warning"
-                                : "bg-destructive/10 text-destructive"
+                                  ? "bg-warning/10 text-warning"
+                                  : "bg-destructive/10 text-destructive",
                             )}
                           >
                             {review.decision}

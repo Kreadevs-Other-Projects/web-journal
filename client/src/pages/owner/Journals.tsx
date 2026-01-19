@@ -50,8 +50,7 @@ interface JournalIssue {
   issue?: number | null;
   label: string;
   published_at?: string | null;
-  // backend may provide one of these:
-  status?: string | null; // "active" | "inactive"
+  status?: string | null;
   is_active?: boolean | null;
   created_at?: string;
 }
@@ -69,7 +68,6 @@ const isActiveIssue = (issue: JournalIssue) =>
 export default function Journals(): JSX.Element {
   const { user, token, isLoading } = useAuth();
 
-  // Journals
   const [journals, setJournals] = useState<Journal[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -85,7 +83,6 @@ export default function Journals(): JSX.Element {
     website_url: "",
   });
 
-  // Journal Issues (modal for apply/edit issue)
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<JournalIssue | null>(null);
@@ -94,7 +91,6 @@ export default function Journals(): JSX.Element {
     name: string;
   } | null>(null);
 
-  // Store issues per journal (so cards can decide Apply/Edit)
   const [issuesByJournal, setIssuesByJournal] = useState<
     Record<string, JournalIssue[]>
   >({});
@@ -159,11 +155,9 @@ export default function Journals(): JSX.Element {
     }
   };
 
-  // After journals load, fetch issues for each (so cards show correct button)
   const fetchAllIssuesForCards = async (list: Journal[]) => {
     if (!list.length) return;
     try {
-      // lightweight parallel fetch
       await Promise.all(list.map((j) => fetchIssuesForJournal(j.id)));
     } catch (e) {
       console.error(e);
@@ -176,15 +170,12 @@ export default function Journals(): JSX.Element {
         await fetchJournals();
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoading]);
 
-  // Whenever journals state changes (after fetch), load issues per journal for button logic
   useEffect(() => {
     if (journals.length && token) {
       fetchAllIssuesForCards(journals);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journals.length, token]);
 
   const createJournal = async () => {
@@ -259,9 +250,6 @@ export default function Journals(): JSX.Element {
     setCurrentJournalName(name);
   };
 
-  // ---------------------------
-  // Issue Modal handlers
-  // ---------------------------
   const handleIssueChange = (e: ChangeEvent<HTMLInputElement>) =>
     setIssueForm({ ...issueForm, [e.target.name]: e.target.value });
 
@@ -281,7 +269,6 @@ export default function Journals(): JSX.Element {
     resetIssueForm();
     setModalOpen(true);
 
-    // Ensure issues up-to-date for this journal (optional)
     await fetchIssuesForJournal(journal.id);
   };
 
@@ -293,7 +280,6 @@ export default function Journals(): JSX.Element {
     const active = list.find(isActiveIssue);
 
     if (!active) {
-      // fallback: no active issue found -> open apply modal instead
       resetIssueForm();
       setModalOpen(true);
       return;
@@ -330,8 +316,6 @@ export default function Journals(): JSX.Element {
         issue: issueForm.issue ? Number(issueForm.issue) : undefined,
         published_at: issueForm.published_at || undefined,
         label: issueForm.label?.trim(),
-        // OPTIONAL: if your backend supports it, enforce pending on create
-        // status: "pending",
       };
 
       const res = await fetch(endpoint, {
@@ -346,24 +330,18 @@ export default function Journals(): JSX.Element {
       const data = await res.json();
 
       if (data.success) {
-        // refresh card logic
         await fetchIssuesForJournal(journalId);
 
-        // close issue modal
         setModalOpen(false);
 
-        // if it was an APPLY (create), show payment modal after save
         if (!editingIssue) {
-          // try to read created issue from API response
           const createdIssue: JournalIssue | null =
             data.issue ?? data.journalIssue ?? data.createdIssue ?? null;
 
-          // fallback: if API doesn't return issue, we can refetch and pick the latest
           let issueToPayFor = createdIssue;
 
           if (!issueToPayFor) {
             const list = await fetchIssuesForJournal(journalId);
-            // pick the most recent issue (you can adjust sorting based on your API)
             issueToPayFor = list?.[0] ?? null;
           }
 
@@ -388,15 +366,11 @@ export default function Journals(): JSX.Element {
     }
   };
 
-  // For card button logic
   const journalHasActiveIssue = (journalId: string) => {
     const list = issuesByJournal[journalId] ?? [];
     return list.some(isActiveIssue);
   };
 
-  // ---------------------------
-  // Guards
-  // ---------------------------
   if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Unauthorized</div>;
 
@@ -462,7 +436,6 @@ export default function Journals(): JSX.Element {
                     </p>
                   )}
 
-                  {/* Apply/Edit Issue button rule */}
                   <div className="pt-2">
                     {!hasActive ? (
                       <Button
@@ -526,7 +499,6 @@ export default function Journals(): JSX.Element {
         </div>
       </div>
 
-      {/* Create/Edit Journal Dialog */}
       <Dialog
         open={open || editOpen}
         onOpenChange={() => {
@@ -618,7 +590,6 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Journal Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
@@ -641,7 +612,6 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      {/* Issue Modal (Apply/Edit Issue) */}
       <Dialog open={modalOpen} onOpenChange={() => setModalOpen(false)}>
         <DialogContent>
           <DialogHeader>
@@ -736,7 +706,6 @@ export default function Journals(): JSX.Element {
           </form>
         </DialogContent>
       </Dialog>
-      {/* Payment Modal (Stripe-like UI) */}
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -752,7 +721,6 @@ export default function Journals(): JSX.Element {
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* Stripe-ish top summary */}
             <div className="glass-card p-4 text-left">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -766,7 +734,6 @@ export default function Journals(): JSX.Element {
                   </p>
                 </div>
 
-                {/* Card preview */}
                 <div className="shrink-0 rounded-2xl border border-border/60 bg-background/40 px-4 py-3 w-[180px]">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Card</span>
@@ -789,15 +756,12 @@ export default function Journals(): JSX.Element {
               </div>
             </div>
 
-            {/* Stripe-style form */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                // call your SafePay initiate payment here later
               }}
               className="space-y-4"
             >
-              {/* Brand pills (optional) */}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -827,7 +791,6 @@ export default function Journals(): JSX.Element {
                 </button>
               </div>
 
-              {/* Billing name */}
               <div className="text-left">
                 <Label>Billing name</Label>
                 <Input
@@ -840,12 +803,10 @@ export default function Journals(): JSX.Element {
                 />
               </div>
 
-              {/* Card Information block (Stripe-like) */}
               <div className="text-left">
                 <Label>Card information</Label>
 
                 <div className="mt-2 rounded-2xl border border-border/60 bg-background/40 overflow-hidden">
-                  {/* Card number */}
                   <div className="px-4 py-3">
                     <Input
                       className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
@@ -862,7 +823,6 @@ export default function Journals(): JSX.Element {
 
                   <div className="h-px bg-border/60" />
 
-                  {/* Exp + CVC row */}
                   <div className="grid grid-cols-2">
                     <div className="px-4 py-3">
                       <Input

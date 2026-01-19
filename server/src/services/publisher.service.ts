@@ -1,6 +1,6 @@
 import {
   createJournal,
-  getPublisherJorunal,
+  getOwnerJournals,
 } from "../repositories/publisher.repository";
 
 export type Journal = {
@@ -12,24 +12,27 @@ export type Journal = {
 };
 
 export const addJournalService = async (
-  publisher_id: string,
-  data: Journal
+  user: { id: string; role: string },
+  data: Journal,
 ) => {
-  try {
-    const result = await createJournal(publisher_id, data);
-    return result;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to create journal!");
+  if (user.role !== "owner") {
+    throw new Error("Only owners can create journals");
   }
+
+  if (!data.name || !data.slug) {
+    throw new Error("Journal name and slug are required");
+  }
+
+  return await createJournal(user.id, data);
 };
 
-export const getPublisherJournalService = async (publisher_id: string) => {
-  try {
-    const result = await getPublisherJorunal(publisher_id);
-    return result;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to find journal!");
+export const getOwnerJournalService = async (user: {
+  id: string;
+  role: string;
+}) => {
+  if (user.role !== "owner") {
+    throw new Error("Only owners can access journals");
   }
+
+  return await getOwnerJournals(user.id);
 };

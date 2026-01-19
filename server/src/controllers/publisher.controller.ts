@@ -1,23 +1,53 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import { AuthUser } from "../middlewares/auth.middleware";
 import {
   addJournalService,
-  getPublisherJournalService,
+  getOwnerJournalService,
 } from "../services/publisher.service";
 
-export const addJournal = async (req: Request, res: Response) => {
-  await addJournalService(req.params.id, req.body);
+export const addJournal = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
-  return res.status(200).json({
-    success: true,
-    message: "Journal has been created successfully!",
-  });
+    const journal = await addJournalService(req.user, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: "Journal created successfully",
+      journal,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
-export const getPublisherJournal = async (req: Request, res: Response) => {
-  const journals = await getPublisherJournalService(req.params.id);
+export const getOwnerJournal = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
-  return res.status(200).json({
-    success: true,
-    journals,
-  });
+    const journals = await getOwnerJournalService(req.user);
+
+    return res.status(200).json({
+      success: true,
+      journals,
+    });
+  } catch (error: any) {
+    return res.status(403).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

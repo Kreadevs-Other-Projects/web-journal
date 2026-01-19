@@ -1,20 +1,22 @@
 import { Router } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
 import { validate } from "../middlewares/validate.middleware";
 import {
-  createPaperVersion,
+  uploadPaperVersion,
   getPaperVersions,
 } from "../controllers/paperVersion.controller";
 import { createPaperVersionSchema } from "../schemas/paperVersion.schema";
+import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 
 const router = Router();
 
 router.post(
-  "/createPaperVersion",
+  "/uploadPaperVersion/:paperId",
+  authMiddleware,
+  authorize("publisher"),
   validate(createPaperVersionSchema),
-  asyncHandler(createPaperVersion)
+  uploadPaperVersion,
 );
 
-router.get("getPaperVersions/:paperId", asyncHandler(getPaperVersions));
+router.get("/getPaperVersions/:paperId", authMiddleware, getPaperVersions);
 
 export default router;

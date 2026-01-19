@@ -11,7 +11,12 @@ import profileRoutes from "./routes/profile.route";
 import paperRoutes from "./routes/paper.route";
 import paperVersionRoutes from "./routes/paperVersion.route";
 import journalRoutes from "./routes/journal.route";
+import journalIssueRoutes from "./routes/journalIssue.routes";
 import publisherRoutes from "./routes/publisher.route";
+import editorAssignmentRoutes from "./routes/editorAssignment.routes";
+import publicationRoutes from "./routes/publication.routes";
+import reviewRoutes from "./routes/review.routes";
+import reviewAssignmentRoutes from "./routes/reviewAssignment.routes";
 
 const app = express();
 app.use(express.json());
@@ -30,12 +35,16 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/editorAssignment", editorAssignmentRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
 //   app.use("/api/payment", paymentRoute);
 app.use("/api/journal", journalRoutes);
+app.use("/api/journal-issue", journalIssueRoutes);
 app.use("/api/publisher", publisherRoutes);
-//   app.use("/api/author", authorRoute);
+app.use("/api/publication", publicationRoutes);
+app.use("/api/review", reviewRoutes);
+app.use("/api/reviewAssignment", reviewAssignmentRoutes);
 //   app.use("/api/admin", adminRoutes);
 
 app.use(notFound);

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { env } from "../configs/envs";
 
 const ACCESS_TOKEN = env.JWT_SECRET as string;
@@ -14,31 +14,47 @@ export interface AuthUser extends Request {
   file?: Express.Multer.File;
 }
 
-export const authMiddleware = async (
+interface TokenPayload extends JwtPayload {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+}
+
+export const authMiddleware = (
   req: AuthUser,
   res: Response,
   next: NextFunction,
 ) => {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const authHeader = req.headers.authorization;
 
-  if (!token)
-    return res
-      .status(401)
-      .json({ success: false, message: "Unauthorized or Missing Token" });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "Authorization token missing",
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
 
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN) as any;
+    const payload = jwt.verify(token, ACCESS_TOKEN, {
+      algorithms: ["HS256"],
+    }) as TokenPayload;
+
     req.user = {
       id: payload.id,
-      role: payload.role,
       email: payload.email,
       username: payload.username,
+      role: payload.role,
     };
 
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: "Invalid Token!" });
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
   }
 };
 
@@ -54,7 +70,7 @@ export const authorize = (...allowedRoles: string[]) => {
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Forbidden: You don't have permission to access this resource",
+        message: "Forbidden: Insufficient role",
       });
     }
 

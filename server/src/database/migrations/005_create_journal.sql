@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS journals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  publisher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   description TEXT,

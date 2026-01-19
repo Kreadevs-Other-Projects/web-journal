@@ -1,20 +1,32 @@
-import { createPaper, getPaperById } from "../repositories/paper.repository";
+import {
+  createPaper,
+  getAllPapers,
+  updatePaperStatus,
+} from "../repositories/paper.repository";
 
 export const createPaperService = async (
-  data: {
-    title: string;
-    abstract?: string;
-    category?: string;
-    keywords?: string[];
-    journal_id?: string;
-  },
-  authorId: string
+  user: { id: string; role: string },
+  data: any,
 ) => {
-  return createPaper(data, authorId);
+  if (user.role !== "author") {
+    throw new Error("Only publishers can upload papers");
+  }
+
+  return await createPaper(user.id, data);
 };
 
-export const getPaperByIdService = async (paperId: string) => {
-  const paper = await getPaperById(paperId);
-  if (!paper) throw new Error("Paper not found");
-  return paper;
+export const getAllPapersService = async () => {
+  return await getAllPapers();
+};
+
+export const updatePaperStatusService = async (
+  user: { role: string },
+  paper_id: string,
+  status: string,
+) => {
+  if (!["editor", "owner"].includes(user.role)) {
+    throw new Error("Unauthorized");
+  }
+
+  return await updatePaperStatus(paper_id, status);
 };

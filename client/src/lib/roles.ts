@@ -32,10 +32,11 @@ export const roleConfig: Record<
     label: "Owner",
     color: "text-destructive",
     description: "Owner of the system",
-    route: "/admin",
+    route: "/owner",
     navigation: [
-      { label: "Dashboard", path: "/admin", icon: Home },
-      { label: "System Settings", path: "/admin/settings", icon: Settings },
+      { label: "Dashboard", path: "/owner", icon: Home },
+      { label: "Journals", path: "/journals", icon: Home },
+      { label: "System Settings", path: "/owner/settings", icon: Settings },
     ],
   },
 
@@ -63,6 +64,7 @@ export const roleConfig: Record<
       { label: "Dashboard", path: "/author", icon: Home },
       { label: "My Submissions", path: "/author/submissions", icon: FileText },
       { label: "Submit Paper", path: "/author/submit", icon: BookOpen },
+      { label: "Paper Version", path: "/author/version", icon: BookOpen },
     ],
   },
   reviewer: {

@@ -2,6 +2,7 @@ import {
   createPaper,
   getAllPapers,
   updatePaperStatus,
+  getPapersByAuthor,
 } from "../repositories/paper.repository";
 
 export const createPaperService = async (
@@ -17,6 +18,11 @@ export const createPaperService = async (
 
 export const getAllPapersService = async () => {
   return await getAllPapers();
+};
+
+export const getPapersByAuthorService = async (author_id: string) => {
+  const papers = await getPapersByAuthor(author_id);
+  return papers;
 };
 
 export const updatePaperStatusService = async (

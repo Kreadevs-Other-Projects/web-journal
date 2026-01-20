@@ -70,6 +70,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { useAuth } from "@/context/AuthContext";
 
 // Sample data
 const incomingSubmissions = [
@@ -189,6 +190,7 @@ const categoryDistribution = [
 ];
 
 export default function ChiefEditorDashboard() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -211,7 +213,7 @@ export default function ChiefEditorDashboard() {
       "Assigning paper",
       selectedPaper?.id,
       "to editor",
-      selectedEditor
+      selectedEditor,
     );
     setAssignModalOpen(false);
     setSelectedPaper(null);
@@ -235,18 +237,20 @@ export default function ChiefEditorDashboard() {
       editor.expertise.some(
         (exp) =>
           paper.category.toLowerCase().includes(exp.toLowerCase()) ||
-          exp.toLowerCase().includes(paper.category.toLowerCase().split(" ")[0])
-      )
+          exp
+            .toLowerCase()
+            .includes(paper.category.toLowerCase().split(" ")[0]),
+      ),
     );
   };
 
   return (
-    <DashboardLayout role="chief_editor" userName="Dr. Lisa Park">
+    <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-serif-outfit text-3xl font-bold">
+            <h1 className="font-serif-outfit text-3xl font-bold text-white">
               Chief Editor Dashboard
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -313,7 +317,7 @@ export default function ChiefEditorDashboard() {
                     <div
                       className={cn(
                         "h-10 w-10 rounded-lg flex items-center justify-center bg-muted/50",
-                        stat.color
+                        stat.color,
                       )}
                     >
                       <stat.icon className="h-5 w-5" />
@@ -324,7 +328,7 @@ export default function ChiefEditorDashboard() {
                           "text-xs",
                           stat.trend === "up"
                             ? "bg-success/10 text-success"
-                            : "bg-info/10 text-info"
+                            : "bg-info/10 text-info",
                         )}
                       >
                         {stat.trend === "up" ? (
@@ -439,7 +443,7 @@ export default function ChiefEditorDashboard() {
                                   <p className="text-xs text-muted-foreground mb-2">
                                     by {submission.author} • Submitted{" "}
                                     {new Date(
-                                      submission.submittedDate
+                                      submission.submittedDate,
                                     ).toLocaleDateString()}
                                   </p>
 
@@ -641,7 +645,7 @@ export default function ChiefEditorDashboard() {
                           <span
                             className={cn(
                               "font-medium",
-                              getWorkloadColor(editor.workload)
+                              getWorkloadColor(editor.workload),
                             )}
                           >
                             {editor.workload}%
@@ -651,7 +655,7 @@ export default function ChiefEditorDashboard() {
                           value={editor.workload}
                           className={cn(
                             "h-1.5",
-                            getWorkloadBg(editor.workload)
+                            getWorkloadBg(editor.workload),
                           )}
                         />
 
@@ -766,7 +770,7 @@ export default function ChiefEditorDashboard() {
                             selectedEditor === editor.id
                               ? "border-primary bg-primary/5"
                               : "border-border hover:border-primary/50",
-                            isMatching && "ring-1 ring-accent/50"
+                            isMatching && "ring-1 ring-accent/50",
                           )}
                           onClick={() => setSelectedEditor(editor.id)}
                         >
@@ -808,7 +812,7 @@ export default function ChiefEditorDashboard() {
                               <div
                                 className={cn(
                                   "text-sm font-medium",
-                                  getWorkloadColor(editor.workload)
+                                  getWorkloadColor(editor.workload),
                                 )}
                               >
                                 {editor.workload}% load

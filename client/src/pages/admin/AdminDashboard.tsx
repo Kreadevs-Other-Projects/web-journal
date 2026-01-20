@@ -240,7 +240,7 @@ export default function AdminDashboard() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<(typeof users)[0] | null>(
-    null
+    null,
   );
   const [isEditing, setIsEditing] = useState(false);
   const [logs, setLogs] = useState(systemLogs);
@@ -332,7 +332,7 @@ export default function AdminDashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-serif-outfit text-3xl font-bold">
+            <h1 className="font-serif-outfit text-3xl font-bold text-white">
               Admin Dashboard
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -408,7 +408,7 @@ export default function AdminDashboard() {
                               "text-xs",
                               stat.trend === "up"
                                 ? "bg-success/10 text-success"
-                                : "bg-destructive/10 text-destructive"
+                                : "bg-destructive/10 text-destructive",
                             )}
                           >
                             {stat.trend === "up" ? (
@@ -424,7 +424,7 @@ export default function AdminDashboard() {
                     <div
                       className={cn(
                         "h-12 w-12 rounded-xl flex items-center justify-center bg-muted/50",
-                        stat.color
+                        stat.color,
                       )}
                     >
                       <stat.icon className="h-6 w-6" />
@@ -541,7 +541,7 @@ export default function AdminDashboard() {
                             <Badge
                               className={cn(
                                 "capitalize",
-                                getRoleColor(user.role)
+                                getRoleColor(user.role),
                               )}
                             >
                               {user.role.replace("_", " ")}
@@ -551,7 +551,7 @@ export default function AdminDashboard() {
                             <Badge
                               className={cn(
                                 "capitalize",
-                                getStatusColor(user.status)
+                                getStatusColor(user.status),
                               )}
                             >
                               {user.status}
@@ -680,7 +680,7 @@ export default function AdminDashboard() {
                             variant="outline"
                             className={cn(
                               "uppercase text-[10px] shrink-0 font-bold",
-                              getLogLevelStyle(log.level)
+                              getLogLevelStyle(log.level),
                             )}
                           >
                             {log.level}
@@ -741,7 +741,7 @@ export default function AdminDashboard() {
                         <div
                           className={cn(
                             "h-10 w-10 rounded-lg flex items-center justify-center bg-muted/50",
-                            stat.color
+                            stat.color,
                           )}
                         >
                           <stat.icon className="h-5 w-5" />

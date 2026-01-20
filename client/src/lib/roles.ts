@@ -36,7 +36,7 @@ export const roleConfig: Record<
     navigation: [
       { label: "Dashboard", path: "/owner", icon: Home },
       { label: "Journals", path: "/journals", icon: Home },
-      { label: "System Settings", path: "/owner/settings", icon: Settings },
+      // { label: "System Settings", path: "/owner/settings", icon: Settings },
     ],
   },
 

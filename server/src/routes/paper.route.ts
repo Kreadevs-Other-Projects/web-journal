@@ -6,6 +6,7 @@ import {
   createPaper,
   getAllPapers,
   updatePaperStatus,
+  getPapersByAuthor,
 } from "../controllers/paper.controller";
 import { createPaperSchema, updatePaperSchema } from "../schemas/paper.schema";
 
@@ -20,6 +21,13 @@ router.post(
 );
 
 router.get("/getAllPapers", authMiddleware, getAllPapers);
+
+router.get(
+  "/getPapersByAuthor",
+  authMiddleware,
+  authorize("author"),
+  getPapersByAuthor,
+);
 
 router.patch(
   "/updatePaperStatus/:paperId",

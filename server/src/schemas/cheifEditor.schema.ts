@@ -34,4 +34,5 @@ export const paperStatusSchema = z.object({
       "rejected",
     ]),
   }),
+  subEditorId: z.string().uuid(),
 });

@@ -46,12 +46,9 @@ export const roleConfig: Record<
     route: "/publisher",
     navigation: [
       { label: "Dashboard", path: "/publisher", icon: Home },
-      {
-        label: "Publish Paper",
-        path: "/publisher/publish-paper",
-        icon: FileText,
-      },
-      // { label: "Users", path: "/publisher/users", icon: Users },
+
+      { label: "All Papers", path: "/publisher/papers", icon: FileText },
+      { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },
   chief_editor: {
@@ -63,12 +60,12 @@ export const roleConfig: Record<
     navigation: [
       { label: "Dashboard", path: "/chief-editor", icon: Home },
       {
-        label: "Papers",
-        path: "/chief-editor/papers",
+        label: "Submissions",
+        path: "/chief-editor/submissions",
         icon: FileText,
       },
-      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
-      // { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
+      { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
+      { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
   },
   author: {
@@ -91,8 +88,11 @@ export const roleConfig: Record<
     description: "Manage paper editions",
     route: "/sub-editor",
     navigation: [
-      { label: "Dashboard", path: "/sub-editor", icon: Home },
-      { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
+      { label: "Dashboard", path: "/editor", icon: Home },
+      { label: "Users", path: "/editor/users", icon: Users },
+      { label: "All Papers", path: "/editor/papers", icon: FileText },
+      { label: "System Logs", path: "/editor/logs", icon: BarChart3 },
+      // { label: "Settings", path: "/editor/settings", icon: Settings },
     ],
   },
   reviewer: {
@@ -103,6 +103,7 @@ export const roleConfig: Record<
     route: "/reviewer",
     navigation: [
       { label: "Dashboard", path: "/reviewer", icon: Home },
+      { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
       {
         label: "Completed Reviews",
         path: "/reviewer/completed",

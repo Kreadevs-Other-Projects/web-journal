@@ -112,7 +112,7 @@ export default function ChiefEditorDashboard() {
     if (!statusForm) return;
     try {
       await fetch(`${url}/cheifEditor/updatePaperStatus/${paperId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

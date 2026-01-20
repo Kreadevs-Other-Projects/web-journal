@@ -160,7 +160,6 @@ export const createEditorDecision = async (
      RETURNING *`,
     [paperId, editorId, decision, note],
   );
-
   return result.rows[0];
 };
 

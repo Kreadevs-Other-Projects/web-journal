@@ -64,3 +64,4 @@ ALTER TABLE papers
   FOREIGN KEY (current_version_id)
   REFERENCES paper_versions(id)
   ON DELETE SET NULL;
+

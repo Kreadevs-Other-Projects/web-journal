@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
   sub_editor_id UUID NOT NULL REFERENCES users(id),
   assigned_by UUID NOT NULL REFERENCES users(id),
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(paper_id)
+  UNIQUE (paper_id, sub_editor_id)
 );
 
 CREATE TABLE IF NOT EXISTS review_assignments (

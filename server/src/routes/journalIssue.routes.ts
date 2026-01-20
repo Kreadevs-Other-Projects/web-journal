@@ -7,7 +7,10 @@ import {
   updateJournalIssue,
   deleteJournalIssue,
 } from "../controllers/journalIssue.controller";
-import { updateJournalIssueSchema } from "../schemas/journalIssue.schema";
+import {
+  createJournalIssueSchema,
+  updateJournalIssueSchema,
+} from "../schemas/journalIssue.schema";
 import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
@@ -15,21 +18,22 @@ const router = Router();
 router.post(
   "/addJournalIssue/:journalId",
   authMiddleware,
-  authorize("owner"),
+  authorize("owner", "publisher"),
+  validate(createJournalIssueSchema),
   addJournalIssue,
 );
 
 router.get(
   "/getJournalIssues/:journalId",
   authMiddleware,
-  authorize("owner", "admin"),
+  authorize("owner", "publisher"),
   getJournalIssues,
 );
 
 router.put(
   "/updateJournalIssue/:issueId",
   authMiddleware,
-  authorize("owner"),
+  authorize("owner", "publisher"),
   validate(updateJournalIssueSchema),
   updateJournalIssue,
 );
@@ -37,7 +41,7 @@ router.put(
 router.delete(
   "/deleteJournalIssue/:issueId",
   authMiddleware,
-  authorize("owner"),
+  authorize("owner", "publisher"),
   deleteJournalIssue,
 );
 

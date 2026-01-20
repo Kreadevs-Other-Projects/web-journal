@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS papers (
   category TEXT,
   keywords TEXT[],
   author_id UUID NOT NULL REFERENCES users(id),
+  journal_id UUID NOT NULL REFERENCES journals(id),
   status paper_status NOT NULL DEFAULT 'submitted',
   current_version UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -22,9 +23,7 @@ CREATE TABLE IF NOT EXISTS paper_versions (
 );
 
 ALTER TABLE papers
-    ADD CONSTRAINT fk_current_version
-    FOREIGN KEY (current_version) REFERENCES paper_versions(id);
-
-ALTER TABLE papers
-ADD COLUMN IF NOT EXISTS journal_id UUID REFERENCES journals(id);
-
+ADD CONSTRAINT fk_current_version
+FOREIGN KEY (current_version)
+REFERENCES paper_versions(id)
+DEFERRABLE INITIALLY DEFERRED;

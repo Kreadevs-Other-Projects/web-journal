@@ -1,38 +1,42 @@
-import {
-  createJournal,
-  getOwnerJournals,
-} from "../repositories/publisher.repository";
+import * as repo from "../repositories/publisher.repository";
 
 export type Journal = {
-  name: string;
-  slug: string;
-  description?: string;
-  issn?: string;
-  website_url?: string;
+  journalId: string;
+  year: number;
+  volume: number;
+  issue: number;
+  label: string;
 };
 
-export const addJournalService = async (
-  user: { id: string; role: string },
-  data: Journal,
+export const fetchPublisherJournals = async (publisherId: string) => {
+  return repo.getPublisherJournals(publisherId);
+};
+
+export const fetchJournalIssues = async (journalId: string) => {
+  return repo.getJournalIssues(journalId);
+};
+
+export const addJournalIssue = async (journalId: string, data: Journal) => {
+  return repo.createJournalIssue(
+    journalId,
+    data.year,
+    data.volume,
+    data.issue,
+    data.label,
+  );
+};
+
+export const setIssuePublished = async (issueId: string) => {
+  return repo.publishIssue(issueId);
+};
+
+export const fetchJournalPapers = async (journalId: string) => {
+  return repo.getJournalPapers(journalId);
+};
+
+export const setPaperPublished = async (
+  paperId: string,
+  publisherId: string,
 ) => {
-  if (user.role !== "owner") {
-    throw new Error("Only owners can create journals");
-  }
-
-  if (!data.name || !data.slug) {
-    throw new Error("Journal name and slug are required");
-  }
-
-  return await createJournal(user.id, data);
-};
-
-export const getOwnerJournalService = async (user: {
-  id: string;
-  role: string;
-}) => {
-  if (user.role !== "owner") {
-    throw new Error("Only owners can access journals");
-  }
-
-  return await getOwnerJournals(user.id);
+  return repo.publishPaper(paperId, publisherId);
 };

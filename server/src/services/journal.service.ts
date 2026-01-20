@@ -1,4 +1,7 @@
+import { pool } from "../configs/db";
 import {
+  createJournal,
+  getOwnerJournals,
   findJournals,
   findJournalById,
   updateJournalById,
@@ -11,6 +14,46 @@ export type Journal = {
   description?: string;
   issn?: string;
   website_url?: string;
+  publisher_id: string;
+};
+
+export const addJournalService = async (
+  user: { id: string; role: string },
+  data: Journal,
+) => {
+  if (user.role !== "owner") {
+    throw new Error("Only owners can create journals");
+  }
+
+  if (!data.name || !data.slug) {
+    throw new Error("Journal name and slug are required");
+  }
+
+  if (!data.publisher_id) {
+    throw new Error("Publisher must be selected");
+  }
+
+  const publisherCheck = await pool.query(
+    `SELECT id FROM users WHERE id = $1 AND role = 'publisher'`,
+    [data.publisher_id],
+  );
+
+  if (!publisherCheck.rowCount) {
+    throw new Error("Invalid publisher selected");
+  }
+
+  return await createJournal(user.id, data);
+};
+
+export const getOwnerJournalService = async (user: {
+  id: string;
+  role: string;
+}) => {
+  if (user.role !== "owner") {
+    throw new Error("Only owners can access journals");
+  }
+
+  return await getOwnerJournals(user.id);
 };
 
 export const getJournalsService = async () => {

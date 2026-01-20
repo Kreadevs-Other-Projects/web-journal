@@ -10,6 +10,7 @@ import BrowsePage from "./pages/BrowsePage";
 import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/cheifEditor/ChiefEditorDashboard.tsx";
+import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -65,10 +66,7 @@ const App = () => (
                       element={<MySubmissions />}
                     />
                     <Route path="/author/submit" element={<SubmitPaper />} />
-                    <Route
-                      path="/author/version"
-                      element={<PaperVersions paperId={""} />}
-                    />
+                    <Route path="/author/version" element={<PaperVersions />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["reviewer"]} />}
@@ -94,6 +92,11 @@ const App = () => (
                       path="/chief-editor/submissions"
                       element={<Submissions />}
                     />
+                  </Route>
+                  <Route
+                    element={<ProtectedRoute allowedRoles={["publisher"]} />}
+                  >
+                    <Route path="/publisher" element={<PublisherDashboard />} />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>
                     <Route path="/owner" element={<OwnerDashboard />} />

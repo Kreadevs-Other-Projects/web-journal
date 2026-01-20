@@ -1,19 +1,49 @@
 DO $$ BEGIN
+
+  /* =========================
+     USER & ROLE ENUMS
+  ========================== */
+
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
     CREATE TYPE user_role AS ENUM (
-      'admin',
+      'owner',
+      'publisher',
       'chief_editor',
       'sub_editor',
       'reviewer',
       'author',
-      'owner',
-      'publisher'
+      'admin'
     );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
-    CREATE TYPE user_status AS ENUM ('pending', 'active', 'rejected', 'banned');
+    CREATE TYPE user_status AS ENUM (
+      'pending',
+      'active',
+      'rejected',
+      'banned'
+    );
   END IF;
+
+
+  /* =========================
+     JOURNAL ENUMS
+  ========================== */
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
+    CREATE TYPE journal_status AS ENUM (
+      'draft',
+      'pending_payment',
+      'active',
+      'suspended',
+      'archived'
+    );
+  END IF;
+
+
+  /* =========================
+     PAPER & WORKFLOW ENUMS
+  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
     CREATE TYPE paper_status AS ENUM (
@@ -23,15 +53,45 @@ DO $$ BEGIN
       'pending_revision',
       'resubmitted',
       'accepted',
+      'rejected',
       'published'
     );
   END IF;
 
+
+  /* =========================
+     REVIEW ENUMS
+  ========================== */
+
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
-    CREATE TYPE review_decision AS ENUM ('accept', 'reject', 'minor_revision', 'major_revision');
+    CREATE TYPE review_decision AS ENUM (
+      'accept',
+      'minor_revision',
+      'major_revision',
+      'reject'
+    );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_assignment_status') THEN
-    CREATE TYPE review_assignment_status AS ENUM ('assigned', 'submitted', 'accepted', 'rejected', 'expired');
+    CREATE TYPE review_assignment_status AS ENUM (
+      'assigned',
+      'submitted',
+      'accepted',
+      'rejected',
+      'expired'
+    );
   END IF;
+
+
+  /* =========================
+     ISSUE / PUBLICATION ENUMS
+  ========================== */
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
+    CREATE TYPE issue_status AS ENUM (
+      'draft',
+      'published'
+    );
+  END IF;
+
 END $$;

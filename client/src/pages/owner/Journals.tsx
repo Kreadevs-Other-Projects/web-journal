@@ -40,6 +40,7 @@ interface JournalForm {
   description: string;
   issn: string;
   website_url: string;
+  publisher_id: string;
 }
 
 interface JournalIssue {
@@ -53,6 +54,13 @@ interface JournalIssue {
   status?: string | null;
   is_active?: boolean | null;
   created_at?: string;
+}
+
+interface Publisher {
+  id: string;
+  username: string;
+  role: string;
+  status: string;
 }
 
 const generateSlug = (value: string): string =>
@@ -74,6 +82,7 @@ export default function Journals(): JSX.Element {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
+  const [publishers, setPublishers] = useState<Publisher[]>([]);
 
   const [form, setForm] = useState<JournalForm>({
     name: "",
@@ -81,6 +90,7 @@ export default function Journals(): JSX.Element {
     description: "",
     issn: "",
     website_url: "",
+    publisher_id: "",
   });
 
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -122,7 +132,7 @@ export default function Journals(): JSX.Element {
   const fetchJournals = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`${url}/publisher/journal/${user.id}`, {
+      const res = await fetch(`${url}/journal/getOwnerJournal/${user.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -168,6 +178,7 @@ export default function Journals(): JSX.Element {
     if (!isLoading && user) {
       (async () => {
         await fetchJournals();
+        await fetchPublishers();
       })();
     }
   }, [user, isLoading]);
@@ -178,10 +189,24 @@ export default function Journals(): JSX.Element {
     }
   }, [journals.length, token]);
 
+  const fetchPublishers = async () => {
+    const res = await fetch(`${url}/owner/getPublishers`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      setPublishers(data.data);
+    }
+  };
+
   const createJournal = async () => {
     setLoading(true);
     try {
-      await fetch(`${url}/publisher/journals`, {
+      await fetch(`${url}/journal/addJournal`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -196,6 +221,7 @@ export default function Journals(): JSX.Element {
         description: "",
         issn: "",
         website_url: "",
+        publisher_id: "",
       });
       await fetchJournals();
     } catch (e) {
@@ -393,7 +419,7 @@ export default function Journals(): JSX.Element {
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Journals</h1>
+          <h1 className="text-3xl font-bold text-white">Journals</h1>
           <Button onClick={() => setOpen(true)} className="btn-physics">
             <Plus className="h-4 w-4 mr-2" />
             New Journal
@@ -472,7 +498,9 @@ export default function Journals(): JSX.Element {
                           description: j.description ?? "",
                           issn: j.issn,
                           website_url: j.website_url ?? "",
+                          publisher_id: (j as any).publisher_id ?? "",
                         });
+
                         setEditOpen(true);
                       }}
                     >
@@ -577,13 +605,37 @@ export default function Journals(): JSX.Element {
                 }
               />
             </div>
+            <div>
+              <Label>Publisher</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={form.publisher_id}
+                onChange={(e) =>
+                  setForm({ ...form, publisher_id: e.target.value })
+                }
+              >
+                <option value="">Select Publisher</option>
+                {publishers.length > 0 ? (
+                  publishers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.username}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>No publishers found</option>
+                )}
+              </select>
+            </div>
           </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={closeCreateEdit}>
               Cancel
             </Button>
-            <Button onClick={editOpen ? updateJournal : createJournal}>
+            <Button
+              onClick={editOpen ? updateJournal : createJournal}
+              disabled={!form.publisher_id || loading}
+            >
               {loading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

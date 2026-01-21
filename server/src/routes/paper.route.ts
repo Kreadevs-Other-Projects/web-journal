@@ -1,13 +1,12 @@
 import { Router } from "express";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
-import { asyncHandler } from "../utils/asyncHandler";
-import { validate } from "../middlewares/validate.middleware";
 import {
   createPaper,
   getAllPapers,
   updatePaperStatus,
   getPapersByAuthor,
 } from "../controllers/paper.controller";
+import { validate } from "../middlewares/validate.middleware";
 import { createPaperSchema, updatePaperSchema } from "../schemas/paper.schema";
 
 const router = Router();
@@ -32,7 +31,7 @@ router.get(
 router.patch(
   "/updatePaperStatus/:paperId",
   authMiddleware,
-  authorize("editor", "owner"),
+  authorize("editor", "owner", "admin"),
   validate(updatePaperSchema),
   updatePaperStatus,
 );

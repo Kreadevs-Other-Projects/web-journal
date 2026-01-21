@@ -1,54 +1,34 @@
 import { Response } from "express";
-import { AuthUser } from "../middlewares/auth.middleware";
 import {
   uploadPaperVersionService,
   getPaperVersionsService,
-  getAllPaperVersionsService,
 } from "../services/paperVersion.service";
 
-export const uploadPaperVersion = async (req: AuthUser, res: Response) => {
+export const uploadPaperVersion = async (req: any, res: Response) => {
   try {
-    const { version_label } = req.body;
-
-    if (!version_label || !req.file) {
+    if (!req.file || !req.body.version_label) {
       return res.status(400).json({
         success: false,
-        message: "version_label and file are required",
+        message: "file and version_label required",
       });
     }
 
-    const file_url = `/uploads/${req.file.filename}`;
-
     const version = await uploadPaperVersionService(
-      req.user!,
+      req.user,
       req.params.paperId,
       {
-        version_label,
-        file_url,
-        uploaded_by: req.user!.id,
+        version_label: req.body.version_label,
+        file_url: `/uploads/${req.file.filename}`,
       },
     );
 
     res.status(201).json({ success: true, version });
   } catch (e: any) {
-    console.error(e);
-    res.status(500).json({ success: false, message: e.message });
+    res.status(400).json({ success: false, message: e.message });
   }
 };
 
-export const getPaperVersions = async (req: AuthUser, res: Response) => {
+export const getPaperVersions = async (req: any, res: Response) => {
   const versions = await getPaperVersionsService(req.params.paperId);
   res.json({ success: true, versions });
-};
-
-export const getAllPaperVersions = async (req: AuthUser, res: Response) => {
-  try {
-    const versions = await getAllPaperVersionsService();
-    res.json({ success: true, versions });
-  } catch (error: any) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch paper versions" });
-  }
 };

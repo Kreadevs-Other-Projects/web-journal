@@ -1,13 +1,10 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validate.middleware";
+import { authMiddleware, authorize } from "../middlewares/auth.middleware";
+import { upload } from "../middlewares/upload.middleware";
 import {
   uploadPaperVersion,
   getPaperVersions,
-  getAllPaperVersions,
 } from "../controllers/paperVersion.controller";
-import { createPaperVersionSchema } from "../schemas/paperVersion.schema";
-import { authMiddleware, authorize } from "../middlewares/auth.middleware";
-import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -19,13 +16,6 @@ router.post(
   uploadPaperVersion,
 );
 
-router.get("/getPaperVersions", authMiddleware, getPaperVersions);
-
-router.get(
-  "/getAllPaperVersions",
-  authMiddleware,
-  authorize("owner", "admin", "editor"),
-  getAllPaperVersions,
-);
+router.get("/getPaperVersions/:paperId", authMiddleware, getPaperVersions);
 
 export default router;

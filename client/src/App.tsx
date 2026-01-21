@@ -10,6 +10,7 @@ import BrowsePage from "./pages/BrowsePage";
 import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/cheifEditor/ChiefEditorDashboard.tsx";
+import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
@@ -79,6 +80,14 @@ const App = () => (
                     <Route
                       path="/reviewer/completed"
                       element={<CompletedReview />}
+                    />
+                  </Route>
+                  <Route
+                    element={<ProtectedRoute allowedRoles={["sub_editor"]} />}
+                  >
+                    <Route
+                      path="/sub-editor"
+                      element={<SubEditorDashboard />}
                     />
                   </Route>
                   <Route

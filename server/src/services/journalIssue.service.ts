@@ -51,7 +51,11 @@ export const getJournalIssuesService = async (
     throw new Error("Journal not found");
   }
 
-  if (journal.rows[0].owner_id !== user.id && user.role !== "publisher") {
+  if (
+    journal.rows[0].owner_id !== user.id &&
+    user.role !== "publisher" &&
+    user.role !== "author"
+  ) {
     throw new Error("Forbidden");
   }
 

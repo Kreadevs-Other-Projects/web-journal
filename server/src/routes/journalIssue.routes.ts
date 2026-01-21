@@ -26,7 +26,7 @@ router.post(
 router.get(
   "/getJournalIssues/:journalId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("owner", "publisher", "author"),
   getJournalIssues,
 );
 

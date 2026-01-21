@@ -7,6 +7,15 @@ export const getSubEditorPapers = async (req: AuthUser, res: Response) => {
   res.json({ success: true, data: papers });
 };
 
+export const assignReviewer = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  const { reviewerId } = req.body;
+  const assignedBy = req.user!.id;
+
+  const assignment = await service.addReviewer(paperId, reviewerId, assignedBy);
+  res.json({ success: true, data: assignment });
+};
+
 export const updateSubEditorPaperStatus = async (
   req: Request,
   res: Response,

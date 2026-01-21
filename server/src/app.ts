@@ -19,6 +19,7 @@ import reviewRoutes from "./routes/review.routes";
 import reviewAssignmentRoutes from "./routes/reviewAssignment.routes";
 import cheifEditorRoutes from "./routes/cheifEditor.routes";
 import ownerRoutes from "./routes/owner.route";
+import subEditorRoutes from "./routes/subEditor.routes";
 
 const app = express();
 app.use(express.json());
@@ -49,6 +50,7 @@ app.use("/api/review", reviewRoutes);
 app.use("/api/reviewAssignment", reviewAssignmentRoutes);
 app.use("/api/cheifEditor", cheifEditorRoutes);
 app.use("/api/owner", ownerRoutes);
+app.use("/api/subEditor", subEditorRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

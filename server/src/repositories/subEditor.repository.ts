@@ -11,6 +11,22 @@ export const getSubEditorPapers = async (subEditorId: string) => {
   return result.rows;
 };
 
+export const assignReviewer = async (
+  paperId: string,
+  reviewerId: string,
+  assignedBy: string,
+) => {
+  const result = await pool.query(
+    `INSERT INTO review_assignments (paper_id, reviewer_id, assigned_by, assigned_at)
+     VALUES ($1, $2, $3, NOW())
+     ON CONFLICT (paper_id, reviewer_id)
+     DO NOTHING
+     RETURNING *`,
+    [paperId, reviewerId, assignedBy],
+  );
+  return result.rows[0];
+};
+
 export const updatePaperStatusSubEditor = async (
   paperId: string,
   status: string,

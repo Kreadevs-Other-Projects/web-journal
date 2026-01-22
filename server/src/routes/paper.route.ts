@@ -28,7 +28,7 @@ router.get(
   getPapersByAuthor,
 );
 
-router.patch(
+router.put(
   "/updatePaperStatus/:paperId",
   authMiddleware,
   authorize("editor", "owner", "admin"),

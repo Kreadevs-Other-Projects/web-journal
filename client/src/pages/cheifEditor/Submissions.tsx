@@ -55,7 +55,6 @@ export default function ChiefEditor() {
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log("padi", data);
           setSubEditors(data.data || []);
         })
         .catch((err) => {
@@ -71,7 +70,6 @@ export default function ChiefEditor() {
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log("Reviewers:", data);
           setReviewers(data.data || []);
         })
         .catch((err) => {
@@ -151,42 +149,45 @@ export default function ChiefEditor() {
   };
 
   const saveDecision = async () => {
-    if (!selectedPaper) return;
-    await fetch(`${url}/editorDecision/decide/${selectedPaper.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ decision, decision_note: decisionNote }),
-    });
-    alert("Decision saved");
-    setOpenDecision(false);
+    if (!selectedPaper) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${url}/cheifEditor/decide/${selectedPaper.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          decision,
+          decision_note: decisionNote,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Editor decision failed:", data);
+        alert(data.message || "Failed to save decision");
+        return;
+      }
+
+      console.log("Editor decision saved successfully:", data);
+
+      alert("Decision saved successfully");
+      setOpenDecision(false);
+    } catch (error) {
+      console.error("Network / unexpected error while saving decision:", error);
+      alert("Something went wrong while saving the decision");
+    }
   };
 
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-white">
-          Chief Editor Dashboard
-        </h1>
-
-        {/* <Label className="text-white pr-2">Select Journal</Label>
-        <select
-          className="w-64 border rounded"
-          value={selectedJournal}
-          onChange={(e) => {
-            setSelectedJournal(e.target.value);
-            fetchPapers(e.target.value);
-          }}
-        >
-          <option value="">-- Select Journal --</option>
-          {journals.map((j) => (
-            <option key={j.id} value={j.id}>
-              {j.name}
-            </option>
-          ))}
-        </select> */}
+        <h1 className="text-3xl font-bold text-white">Papers</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           {papers.map((p) => (

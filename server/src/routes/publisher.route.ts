@@ -44,7 +44,7 @@ router.get(
   getPapers,
 );
 
-router.patch(
+router.put(
   "/publishPaper/:paperId",
   authMiddleware,
   authorize("publisher"),

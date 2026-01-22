@@ -2,7 +2,6 @@ import {
   Home,
   FileText,
   Users,
-  Settings,
   BookOpen,
   UserCheck,
   BarChart3,
@@ -60,8 +59,8 @@ export const roleConfig: Record<
     navigation: [
       { label: "Dashboard", path: "/chief-editor", icon: Home },
       {
-        label: "Submissions",
-        path: "/chief-editor/submissions",
+        label: "Papers",
+        path: "/chief-editor/papers",
         icon: FileText,
       },
       { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
@@ -88,11 +87,13 @@ export const roleConfig: Record<
     description: "Manage paper editions",
     route: "/sub-editor",
     navigation: [
-      { label: "Dashboard", path: "/editor", icon: Home },
-      { label: "Users", path: "/editor/users", icon: Users },
-      { label: "All Papers", path: "/editor/papers", icon: FileText },
-      { label: "System Logs", path: "/editor/logs", icon: BarChart3 },
-      { label: "Settings", path: "/editor/settings", icon: Settings },
+      { label: "Dashboard", path: "/sub-editor", icon: Home },
+      {
+        label: "Assigned Papers",
+        path: "/sub-editor/assignedPaper",
+        icon: FileText,
+      },
+      { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
     ],
   },
   reviewer: {

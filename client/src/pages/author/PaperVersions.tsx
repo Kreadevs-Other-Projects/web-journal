@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 
+import { Worker, Viewer } from "@react-pdf-viewer/core";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+
 interface Paper {
   id: string;
   title: string;
@@ -33,6 +37,8 @@ export default function PaperVersions() {
   const [versions, setVersions] = useState<PaperVersion[]>([]);
   const [paperId, setPaperId] = useState("");
   const [open, setOpen] = useState(false);
+
+  const [viewPdf, setViewPdf] = useState<PaperVersion | null>(null);
 
   const [versionLabel, setVersionLabel] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -118,14 +124,23 @@ export default function PaperVersions() {
               <CardHeader>
                 <CardTitle>{v.version_label}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <a
-                  href={v.file_url}
-                  target="_blank"
-                  className="text-sm underline text-primary"
-                >
-                  View File
-                </a>
+              <CardContent className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setViewPdf(v)}
+                  >
+                    View PDF
+                  </Button>
+                  <a
+                    href={v.file_url}
+                    target="_blank"
+                    className="text-sm underline text-primary"
+                  >
+                    Download
+                  </a>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {new Date(v.created_at).toLocaleDateString()}
                 </p>
@@ -167,6 +182,24 @@ export default function PaperVersions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {viewPdf && (
+        <Dialog open={!!viewPdf} onOpenChange={() => setViewPdf(null)}>
+          <DialogContent className="w-[90vw] max-w-5xl h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Viewing: {viewPdf.version_label}</DialogTitle>
+            </DialogHeader>
+            <div className="h-[80vh] border">
+              <Worker workerUrl="/pdf.worker.min.js">
+                <Viewer fileUrl={`${url}${viewPdf.file_url}`} />
+              </Worker>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setViewPdf(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }

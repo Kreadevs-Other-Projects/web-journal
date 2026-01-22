@@ -29,7 +29,7 @@ router.post(
   assignReviewer,
 );
 
-router.patch(
+router.put(
   "/updateSubEditorPaperStatus/:paperId",
   authMiddleware,
   authorize("sub_editor"),
@@ -39,6 +39,7 @@ router.patch(
 
 router.get(
   "/getReviewersForPaper/:paperId",
+  authMiddleware,
   authorize("sub_editor"),
   getReviewersForPaper,
 );

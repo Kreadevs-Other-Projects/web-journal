@@ -5,7 +5,7 @@ export const assignSubEditorSchema = z.object({
     subEditorId: z.string().min(1, "Sub-editor ID is required"),
   }),
   params: z.object({
-    paperId: z.string().min(1, "Paper ID is required"),
+    paperId: z.string().uuid("Paper ID is required"),
   }),
 });
 
@@ -19,10 +19,19 @@ export const assignReviewerSchema = z.object({
 });
 
 export const editorDecisionSchema = z.object({
-  decision: z.enum(["pending_revision", "accepted", "rejected"]),
-  decision_note: z.string().min(5),
+  body: z.object({
+    decision: z.enum(["pending_revision", "accepted", "rejected"]),
+    decision_note: z.string().min(5, "Decision note is required"),
+  }),
 });
 
 export const paperStatusSchema = z.object({
-  status: z.enum(["under_review", "pending_revision", "accepted", "rejected"]),
+  body: z.object({
+    status: z.enum([
+      "under_review",
+      "pending_revision",
+      "accepted",
+      "rejected",
+    ]),
+  }),
 });

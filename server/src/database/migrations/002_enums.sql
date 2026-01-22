@@ -1,9 +1,5 @@
 DO $$ BEGIN
 
-  /* =========================
-     USER & ROLE ENUMS
-  ========================== */
-
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
     CREATE TYPE user_role AS ENUM (
       'owner',
@@ -25,11 +21,6 @@ DO $$ BEGIN
     );
   END IF;
 
-
-  /* =========================
-     JOURNAL ENUMS
-  ========================== */
-
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
     CREATE TYPE journal_status AS ENUM (
       'draft',
@@ -39,11 +30,6 @@ DO $$ BEGIN
       'archived'
     );
   END IF;
-
-
-  /* =========================
-     PAPER & WORKFLOW ENUMS
-  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
     CREATE TYPE paper_status AS ENUM (
@@ -57,11 +43,6 @@ DO $$ BEGIN
       'published'
     );
   END IF;
-
-
-  /* =========================
-     REVIEW ENUMS
-  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
     CREATE TYPE review_decision AS ENUM (
@@ -81,11 +62,6 @@ DO $$ BEGIN
       'expired'
     );
   END IF;
-
-
-  /* =========================
-     ISSUE / PUBLICATION ENUMS
-  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (

@@ -2,42 +2,107 @@ import { pool } from "../configs/db";
 
 export const getReviewerPapers = async (reviewerId: string) => {
   const result = await pool.query(
-    `SELECT p.*, ra.status as assignment_status
-     FROM papers p
-     JOIN review_assignments ra ON ra.paper_id = p.id
-     WHERE ra.reviewer_id = $1`,
+    `
+    SELECT 
+      p.id            AS paper_id,
+      p.title         AS title,
+      p.status        AS paper_status,
+
+      pv.id           AS paper_version_id,
+      pv.version_number,
+      pv.file_url,
+      pv.created_at   AS version_created_at,
+
+      ra.status       AS assignment_status
+    FROM review_assignments ra
+    JOIN papers p 
+      ON p.id = ra.paper_id
+    JOIN paper_versions pv
+      ON pv.id = p.current_version_id
+    WHERE 
+      ra.reviewer_id = $1
+      AND ra.status = 'assigned'
+    `,
     [reviewerId],
   );
+
   return result.rows;
 };
 
-export const submitReview = async (
-  paperId: string,
+export const submitReviewByVersion = async (
+  paperVersionId: string,
   reviewerId: string,
   decision: string,
   comments: string,
 ) => {
-  const raResult = await pool.query(
-    `SELECT id FROM review_assignments WHERE paper_id=$1 AND reviewer_id=$2`,
-    [paperId, reviewerId],
-  );
+  const client = await pool.connect();
 
-  if (raResult.rows.length === 0) throw new Error("No assignment found");
+  try {
+    await client.query("BEGIN");
 
-  const reviewAssignmentId = raResult.rows[0].id;
+    const pv = await client.query(
+      `SELECT paper_id FROM paper_versions WHERE id = $1`,
+      [paperVersionId],
+    );
 
-  const reviewResult = await pool.query(
-    `INSERT INTO reviews (review_assignment_id, decision, comments, signed_at)
-     VALUES ($1,$2,$3,NOW())
-     RETURNING *`,
-    [reviewAssignmentId, decision, comments],
-  );
+    if (!pv.rowCount) {
+      throw new Error("Paper version not found");
+    }
 
-  await pool.query(
-    `UPDATE review_assignments SET status='submitted', submitted_at=NOW() 
-     WHERE id=$1`,
-    [reviewAssignmentId],
-  );
+    const paperId = pv.rows[0].paper_id;
 
-  return reviewResult.rows[0];
+    const ra = await client.query(
+      `
+      SELECT id FROM review_assignments
+      WHERE paper_id = $1
+        AND reviewer_id = $2
+        AND status = 'assigned'
+      `,
+      [paperId, reviewerId],
+    );
+
+    if (!ra.rowCount) {
+      throw new Error("Reviewer not assigned to this paper");
+    }
+
+    const assignmentId = ra.rows[0].id;
+
+    const review = await client.query(
+      `
+      INSERT INTO reviews
+      (review_assignment_id, decision, comments, signed_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING *
+      `,
+      [assignmentId, decision, comments],
+    );
+
+    await client.query(
+      `
+      UPDATE review_assignments
+      SET status = 'submitted', submitted_at = NOW()
+      WHERE id = $1
+      `,
+      [assignmentId],
+    );
+
+    await client.query(
+      `
+      UPDATE papers
+      SET status = 'accepted',
+          updated_at = NOW()
+      WHERE id = $1
+      `,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return review.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };

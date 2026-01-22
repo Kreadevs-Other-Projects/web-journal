@@ -25,7 +25,7 @@ interface Reviewer {
   email: string;
 }
 
-export default function SubEditorDashboard() {
+export default function AssignedPaper() {
   const { user, token } = useAuth();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
@@ -34,11 +34,27 @@ export default function SubEditorDashboard() {
   const [openReviewers, setOpenReviewers] = useState(false);
 
   const fetchPapers = async () => {
-    const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setPapers(data.data || []);
+    try {
+      const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Failed to fetch sub-editor papers:", errorData.message);
+        return;
+      }
+
+      const data = await res.json();
+
+      const assignedPapers = (data.data || []).filter(
+        (paper: { status: string }) => paper.status === "assigned_to_editor",
+      );
+
+      setPapers(assignedPapers);
+    } catch (err) {
+      console.error("Error fetching sub-editor papers:", err);
+    }
   };
 
   const fetchReviewers = async (paperId: string) => {

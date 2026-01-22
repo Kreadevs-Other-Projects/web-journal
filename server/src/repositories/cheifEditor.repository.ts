@@ -17,10 +17,15 @@ export const findChiefEditors = async () => {
 export const getJournalPapers = async (chiefEditorId: string) => {
   const result = await pool.query(
     `
-    SELECT *
-    FROM papers
-    WHERE chief_editor_id = $1
-    ORDER BY created_at DESC
+    SELECT p.*
+    FROM papers p
+    WHERE p.chief_editor_id = $1
+      AND NOT EXISTS (
+        SELECT 1
+        FROM editor_decisions ed
+        WHERE ed.paper_id = p.id
+      )
+    ORDER BY p.created_at DESC
     `,
     [chiefEditorId],
   );
@@ -47,15 +52,41 @@ export const assignSubEditor = async (
   subEditorId: string,
   assignedBy: string,
 ) => {
-  const result = await pool.query(
-    `INSERT INTO editor_assignments (paper_id, sub_editor_id, assigned_by, assigned_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (paper_id, sub_editor_id)
-     DO NOTHING
-     RETURNING *`,
-    [paperId, subEditorId, assignedBy],
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const assignmentResult = await client.query(
+      `
+      INSERT INTO editor_assignments 
+        (paper_id, sub_editor_id, assigned_by, assigned_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (paper_id, sub_editor_id)
+      DO NOTHING
+      RETURNING *
+      `,
+      [paperId, subEditorId, assignedBy],
+    );
+
+    await client.query(
+      `
+      UPDATE papers
+      SET status = 'assigned_to_editor'
+      WHERE id = $1
+      `,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return assignmentResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const findReviewer = async () => {
@@ -77,19 +108,41 @@ export const assignReviewer = async (
   reviewerId: string,
   assignedBy: string,
 ) => {
-  const result = await pool.query(
-    `
-    INSERT INTO review_assignments
-      (paper_id, reviewer_id, assigned_by, assigned_at)
-    VALUES ($1, $2, $3, NOW())
-    ON CONFLICT (paper_id, reviewer_id)
-    DO NOTHING
-    RETURNING *
-    `,
-    [paperId, reviewerId, assignedBy],
-  );
+  const client = await pool.connect();
 
-  return result.rows[0];
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+      INSERT INTO review_assignments
+        (paper_id, reviewer_id, assigned_by, assigned_at, status)
+      VALUES ($1, $2, $3, NOW(), 'assigned')
+      ON CONFLICT (paper_id, reviewer_id)
+      DO UPDATE
+        SET status = 'assigned'
+      `,
+      [paperId, reviewerId, assignedBy],
+    );
+
+    await client.query(
+      `
+      UPDATE papers
+      SET status = 'under_review'
+      WHERE id = $1
+      `,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return { success: true };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const hasSubmittedReviews = async (paperId: string) => {

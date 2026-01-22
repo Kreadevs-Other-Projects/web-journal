@@ -11,6 +11,8 @@ import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/cheifEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
+import AssignedPaper from "./pages/subEditor/AssignedPaper.tsx";
+import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
@@ -89,6 +91,14 @@ const App = () => (
                       path="/sub-editor"
                       element={<SubEditorDashboard />}
                     />
+                    <Route
+                      path="/sub-editor/assignedPaper"
+                      element={<AssignedPaper />}
+                    />
+                    <Route
+                      path="/sub-editor/revision"
+                      element={<RevisionPaper />}
+                    />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["chief_editor"]} />}
@@ -98,7 +108,7 @@ const App = () => (
                       element={<ChiefEditorDashboard />}
                     />
                     <Route
-                      path="/chief-editor/submissions"
+                      path="/chief-editor/papers"
                       element={<Submissions />}
                     />
                   </Route>

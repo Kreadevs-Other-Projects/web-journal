@@ -2,12 +2,18 @@ import { pool } from "../configs/db";
 
 export const getSubEditorPapers = async (subEditorId: string) => {
   const result = await pool.query(
-    `SELECT p.*
-     FROM papers p
-     JOIN editor_assignments ea ON ea.paper_id = p.id
-     WHERE ea.sub_editor_id = $1`,
+    `
+    SELECT p.*
+    FROM papers p
+    JOIN editor_assignments ea 
+      ON ea.paper_id = p.id
+    WHERE 
+      ea.sub_editor_id = $1
+      AND p.status IN ('assigned_to_editor', 'under_review', 'pending_revision', 'resubmitted')
+    `,
     [subEditorId],
   );
+
   return result.rows;
 };
 
@@ -40,7 +46,7 @@ export const updatePaperStatusSubEditor = async (
 
 export const getAssignedReviewers = async (paperId: string) => {
   const result = await pool.query(
-    `SELECT u.id, u.full_name, u.email
+    `SELECT u.id, u.username, u.email
      FROM users u
      JOIN review_assignments ra ON ra.reviewer_id = u.id
      WHERE ra.paper_id = $1`,

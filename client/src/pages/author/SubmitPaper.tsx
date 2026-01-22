@@ -163,7 +163,7 @@ export default function Papers() {
     if (!selectedPaper) return;
 
     await fetch(`${url}/papers/updatePaperStatus/${selectedPaper.id}`, {
-      method: "PATCH",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

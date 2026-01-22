@@ -67,7 +67,7 @@ router.post(
   decidePaper,
 );
 
-router.patch(
+router.put(
   "/updatePaperStatus/:paperId",
   authMiddleware,
   authorize("chief_editor"),

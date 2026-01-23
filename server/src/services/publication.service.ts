@@ -10,8 +10,8 @@ export const publishPaperService = async (
   issue_id: string,
   year_label?: string,
 ) => {
-  if (!["owner", "editor"].includes(user.role)) {
-    throw new Error("Only owner or editor can publish papers");
+  if (!["owner", "publisher"].includes(user.role)) {
+    throw new Error("Only owner or publisher can publish papers");
   }
 
   const paperRes = await pool.query(`SELECT status FROM papers WHERE id = $1`, [

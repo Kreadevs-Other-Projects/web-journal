@@ -183,3 +183,44 @@ export const updatePaperStatus = async (paperId: string, status: string) => {
   );
   return result.rows[0];
 };
+
+export const getSubmittedReviewsByChiefEditor = async (
+  chiefEditorId: string,
+) => {
+  const result = await pool.query(
+    `
+    SELECT 
+      p.id AS paper_id,
+      p.title AS title,
+      p.status AS paper_status,
+      
+      pv.id AS paper_version_id,
+      pv.version_number,
+      pv.file_url,
+      pv.created_at AS version_created_at,
+
+      ra.status AS assignment_status,
+      ra.reviewer_id,
+      ra.submitted_at,
+
+      r.id AS review_id,
+      r.decision,
+      r.comments
+
+    FROM review_assignments ra
+    JOIN papers p
+      ON p.id = ra.paper_id
+    JOIN paper_versions pv
+      ON pv.id = p.current_version_id
+    JOIN reviews r
+      ON ra.id = r.review_assignment_id
+    WHERE 
+      p.chief_editor_id = $1
+      AND ra.status = 'submitted'
+    ORDER BY ra.submitted_at DESC
+    `,
+    [chiefEditorId],
+  );
+
+  return result.rows;
+};

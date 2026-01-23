@@ -63,3 +63,7 @@ export const makeEditorDecision = async (
 export const changePaperStatus = async (paperId: string, status: string) => {
   return repo.updatePaperStatus(paperId, status);
 };
+
+export const getSubmittedReviews = async (chiefEditorId: string) => {
+  return repo.getSubmittedReviewsByChiefEditor(chiefEditorId);
+};

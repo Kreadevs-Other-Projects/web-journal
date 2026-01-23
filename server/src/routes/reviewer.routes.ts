@@ -15,6 +15,7 @@ router.get(
   authorize("reviewer"),
   getReviewerPapers,
 );
+
 router.post(
   "/submitReview/:paperId",
   authMiddleware,

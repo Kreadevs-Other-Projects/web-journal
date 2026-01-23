@@ -60,6 +60,29 @@ export const getJournalPapers = async (journalId: string) => {
   return result.rows;
 };
 
+export const getPapersByIssueIdRepo = async (issueId: string) => {
+  const result = await pool.query(
+    `
+    SELECT 
+      p.id,
+      p.title,
+      p.abstract,
+      p.status,
+      p.created_at,
+      u.id AS author_id,
+      u.username AS author_name
+    FROM papers p
+    JOIN users u ON u.id = p.author_id
+    WHERE p.issue_id = $1
+    AND p.status = 'accepted'
+    ORDER BY p.created_at DESC
+    `,
+    [issueId],
+  );
+
+  return result.rows;
+};
+
 export const publishPaper = async (paperId: string, publisherId: string) => {
   const result = await pool.query(
     `INSERT INTO publications (paper_id, published_by, published_at)

@@ -46,8 +46,12 @@ export const roleConfig: Record<
     route: "/publisher",
     navigation: [
       { label: "Dashboard", path: "/publisher", icon: Home },
-      { label: "All Papers", path: "/publisher/papers", icon: FileText },
-      { label: "Users", path: "/publisher/users", icon: Users },
+      {
+        label: "Publish Paper",
+        path: "/publisher/publish-paper",
+        icon: FileText,
+      },
+      // { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },
   chief_editor: {
@@ -63,7 +67,7 @@ export const roleConfig: Record<
         path: "/chief-editor/papers",
         icon: FileText,
       },
-      { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
+      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
       { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
   },
@@ -104,7 +108,6 @@ export const roleConfig: Record<
     route: "/reviewer",
     navigation: [
       { label: "Dashboard", path: "/reviewer", icon: Home },
-      { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
       {
         label: "Completed Reviews",
         path: "/reviewer/completed",

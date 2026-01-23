@@ -42,6 +42,8 @@ import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 
 interface Paper {
+  updated_at: any;
+  review_submitted_at: any;
   paper_id: string;
   paper_version_id: string;
   title: string;
@@ -108,47 +110,58 @@ export default function ReviewerDashboard() {
 
   const fetchPapers = async () => {
     try {
-      const [pendingRes, completedRes] = await Promise.all([
-        fetch(`${url}/reviewer/getReviewerPapers`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch(`${url}/reviewer/getCompletedReviews`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-      ]);
+      const res = await fetch(`${url}/reviewer/getReviewerPapers`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const pendingData = await pendingRes.json();
-      const completedData = await completedRes.json();
+      const result = await res.json();
+      if (!res.ok) return;
 
-      if (pendingRes.ok) {
-        const formattedPapers = (pendingData.data || []).map(
-          (paper: Paper) => ({
-            ...paper,
-            abstract: paper.abstract || "Abstract not available",
-            category: paper.category || "Uncategorized",
-            submittedDate:
-              paper.submittedDate || new Date().toISOString().split("T")[0],
-            dueDate:
-              paper.dueDate ||
-              new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-            version: paper.version || "v1.0",
-            priority: (paper.priority as "high" | "medium" | "low") || "medium",
-          }),
-        );
-        setPapers(formattedPapers);
-      }
+      const allPapers: Paper[] = result.data || [];
 
-      if (completedRes.ok) {
-        setCompletedReviews(completedData.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching reviewer data:", err);
+      const pending = allPapers.filter(
+        (paper) => paper.assignment_status === "assigned",
+      );
+
+      const formattedPending: Paper[] = pending.map((paper) => ({
+        ...paper,
+        abstract: paper.abstract || "Abstract not available",
+        category: paper.category || "Uncategorized",
+        submittedDate:
+          paper.submittedDate || new Date().toISOString().split("T")[0],
+        dueDate:
+          paper.dueDate ||
+          new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+        version: paper.version,
+        priority: paper.priority || "medium",
+      }));
+
+      const completed: CompletedReview[] = allPapers
+        .filter((paper) =>
+          ["submitted", "accepted", "rejected"].includes(
+            paper.assignment_status,
+          ),
+        )
+        .map((paper) => ({
+          ...paper,
+          decision: paper.assignment_status as
+            | "submitted"
+            | "accepted"
+            | "rejected",
+          completedDate:
+            paper.review_submitted_at ||
+            paper.updated_at ||
+            new Date().toISOString().split("T")[0],
+        }));
+
+      setPapers(formattedPending);
+      setCompletedReviews(completed);
+    } catch (error) {
+      console.error("Error fetching reviewer papers:", error);
     }
   };
 
@@ -158,11 +171,9 @@ export default function ReviewerDashboard() {
       return;
     }
 
-    // For accept/reject decisions, show signature modal
     if (decision === "accept" || decision === "reject") {
       setSignatureModalOpen(true);
     } else {
-      // For revision decisions, submit directly
       await handleReviewSubmission();
     }
   };
@@ -181,7 +192,6 @@ export default function ReviewerDashboard() {
         ratings,
       };
 
-      // Add signature if provided
       if (signature && password) {
         reviewData.signature = signature;
         reviewData.password = password;
@@ -263,13 +273,9 @@ export default function ReviewerDashboard() {
     }
   };
 
-  const getCompletedCount = () => {
-    return papers.filter((p) => p.assignment_status === "completed").length;
-  };
+  const getCompletedCount = () => completedReviews.length;
 
-  const getPendingCount = () => {
-    return papers.filter((p) => p.assignment_status !== "completed").length;
-  };
+  const getPendingCount = () => papers.length;
 
   const getOverdueCount = () => {
     return papers.filter((p) => {
@@ -294,17 +300,16 @@ export default function ReviewerDashboard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            {/* Header */}
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 onClick={resetForm}
-                className="h-10 w-10 p-0"
+                className="h-10 w-10 p-0 bg-white"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="font-serif-outfit text-2xl font-bold">
+                <h1 className="font-serif-outfit text-2xl font-bold text-white">
                   {selectedPaper.title}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
@@ -319,7 +324,6 @@ export default function ReviewerDashboard() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* PDF Viewer */}
               <Card className="glass-card overflow-hidden">
                 <CardHeader className="border-b border-border/50">
                   <div className="flex items-center justify-between">
@@ -365,6 +369,18 @@ export default function ReviewerDashboard() {
                         <Maximize2 className="h-4 w-4" />
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `${url}${selectedPaper.file_url}`,
+                            "_blank",
+                          )
+                        }
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
@@ -392,28 +408,10 @@ export default function ReviewerDashboard() {
                       }}
                       title="Paper PDF"
                     />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 opacity-0 hover:opacity-100 transition-opacity">
-                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground mb-4">PDF Preview</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          window.open(
-                            `${url}${selectedPaper.file_url}`,
-                            "_blank",
-                          )
-                        }
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Open in New Tab
-                      </Button>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Review Form */}
               <Card className="glass-card">
                 <CardHeader className="border-b border-border/50">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -427,7 +425,6 @@ export default function ReviewerDashboard() {
                 <CardContent className="p-0">
                   <ScrollArea className="h-[600px]">
                     <div className="p-6 space-y-6">
-                      {/* Abstract */}
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Abstract</Label>
                         <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
@@ -435,7 +432,6 @@ export default function ReviewerDashboard() {
                         </p>
                       </div>
 
-                      {/* Rating Criteria */}
                       <div className="space-y-4">
                         <Label className="text-sm font-medium">
                           Rating Criteria
@@ -482,7 +478,6 @@ export default function ReviewerDashboard() {
                         ))}
                       </div>
 
-                      {/* Comments for Authors */}
                       <div className="space-y-2">
                         <Label htmlFor="comments">Comments for Authors *</Label>
                         <Textarea
@@ -495,7 +490,6 @@ export default function ReviewerDashboard() {
                         />
                       </div>
 
-                      {/* Confidential Comments */}
                       <div className="space-y-2">
                         <Label htmlFor="confidential">
                           Confidential Comments for Editors
@@ -514,7 +508,6 @@ export default function ReviewerDashboard() {
                         />
                       </div>
 
-                      {/* Decision */}
                       <div className="space-y-3">
                         <Label>Your Decision *</Label>
                         <RadioGroup
@@ -623,7 +616,6 @@ export default function ReviewerDashboard() {
                         </RadioGroup>
                       </div>
 
-                      {/* Submit Button */}
                       <Button
                         onClick={submitReview}
                         disabled={!decision || !comments.trim()}
@@ -658,7 +650,6 @@ export default function ReviewerDashboard() {
               </p>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
                 {
@@ -718,7 +709,6 @@ export default function ReviewerDashboard() {
               ))}
             </div>
 
-            {/* Tabs */}
             <Tabs defaultValue="pending" className="space-y-4">
               <TabsList className="bg-muted/50">
                 <TabsTrigger value="pending">
@@ -810,9 +800,9 @@ export default function ReviewerDashboard() {
                                   </div>
                                 )}
 
-                                <StatusBadge
-                                  status={getStatusBadge(paper.paper_status)}
-                                />
+                                {/* <StatusBadge
+                                  // status={getStatusBadge(paper.paper_status)}
+                                /> */}
 
                                 <Button
                                   onClick={() => setSelectedPaper(paper)}

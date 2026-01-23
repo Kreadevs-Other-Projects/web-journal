@@ -13,15 +13,20 @@ export const getReviewerPapers = async (reviewerId: string) => {
       pv.file_url,
       pv.created_at   AS version_created_at,
 
-      ra.status       AS assignment_status
+      ra.status       AS assignment_status,
+
+      r.decision,
+      r.comments
+
     FROM review_assignments ra
     JOIN papers p 
       ON p.id = ra.paper_id
     JOIN paper_versions pv
       ON pv.id = p.current_version_id
+    LEFT JOIN reviews r
+      ON ra.id = r.review_assignment_id
     WHERE 
       ra.reviewer_id = $1
-      AND ra.status = 'assigned'
     `,
     [reviewerId],
   );

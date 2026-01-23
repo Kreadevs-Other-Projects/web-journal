@@ -34,6 +34,15 @@ export const fetchJournalPapers = async (journalId: string) => {
   return repo.getJournalPapers(journalId);
 };
 
+export const getPapersByIssueIdService = async (issueId: string) => {
+  const papers = await repo.getPapersByIssueIdRepo(issueId);
+
+  return {
+    count: papers.length,
+    papers,
+  };
+};
+
 export const setPaperPublished = async (
   paperId: string,
   publisherId: string,

@@ -14,6 +14,7 @@ import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import AssignedPaper from "./pages/subEditor/AssignedPaper.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
+import PublishPapers from "./pages/publisher/PublishPapers.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -21,8 +22,8 @@ import NotFound from "./pages/NotFound";
 import MySubmissions from "./pages/author/MySubmissions.tsx";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
-import AssignedPapers from "./pages/reviewer/AssignedPapers.tsx";
 import Submissions from "./pages/cheifEditor/Submissions.tsx";
+import ReviewedPapers from "./pages/cheifEditor/ReviewedPapers.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
@@ -75,10 +76,7 @@ const App = () => (
                     element={<ProtectedRoute allowedRoles={["reviewer"]} />}
                   >
                     <Route path="/reviewer" element={<ReviewerDashboard />} />
-                    <Route
-                      path="/reviewer/papers"
-                      element={<AssignedPapers />}
-                    />
+
                     <Route
                       path="/reviewer/completed"
                       element={<CompletedReview />}
@@ -111,11 +109,19 @@ const App = () => (
                       path="/chief-editor/papers"
                       element={<Submissions />}
                     />
+                    <Route
+                      path="/chief-editor/accepted"
+                      element={<ReviewedPapers />}
+                    />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route path="/publisher" element={<PublisherDashboard />} />
+                    <Route
+                      path="/publisher/publish-paper"
+                      element={<PublishPapers />}
+                    />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>
                     <Route path="/owner" element={<OwnerDashboard />} />

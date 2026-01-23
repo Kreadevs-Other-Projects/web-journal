@@ -8,6 +8,7 @@ import {
   fetchSubEditors,
   fetchReviewer,
   assignReviewer,
+  getSubmittedReviews,
 } from "../controllers/cheifEditor.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
@@ -73,6 +74,13 @@ router.put(
   authorize("chief_editor"),
   validate(paperStatusSchema),
   updatePaperStatus,
+);
+
+router.get(
+  "/getSubmittedReviews",
+  authMiddleware,
+  authorize("chief_editor"),
+  getSubmittedReviews,
 );
 
 export default router;

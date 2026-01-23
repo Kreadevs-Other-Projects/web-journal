@@ -32,6 +32,18 @@ export const getPapers = async (req: Request, res: Response) => {
   res.json({ success: true, data: papers });
 };
 
+export const getPapersByIssueId = async (req: Request, res: Response) => {
+  const { issueId } = req.params;
+
+  const data = await service.getPapersByIssueIdService(issueId);
+
+  res.status(200).json({
+    success: true,
+    message: "Papers fetched successfully",
+    data,
+  });
+};
+
 export const publishPaper = async (req: AuthUser, res: Response) => {
   const { paperId } = req.params;
   const publisherId = req.user!.id;

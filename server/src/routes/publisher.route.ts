@@ -5,6 +5,7 @@ import {
   createIssue,
   publishIssue,
   getPapers,
+  getPapersByIssueId,
   publishPaper,
 } from "../controllers/publisher.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
@@ -43,6 +44,8 @@ router.get(
   authorize("publisher"),
   getPapers,
 );
+
+router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
 
 router.put(
   "/publishPaper/:paperId",

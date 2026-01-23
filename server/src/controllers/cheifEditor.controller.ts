@@ -105,3 +105,12 @@ export const updatePaperStatus = async (req: Request, res: Response) => {
   const updatedPaper = await service.changePaperStatus(paperId, status);
   res.json({ success: true, data: updatedPaper });
 };
+
+export const getSubmittedReviews = async (req: AuthUser, res: Response) => {
+  const chiefEditorId = req.user!.id;
+  console.log(chiefEditorId);
+
+  const reviews = await service.getSubmittedReviews(chiefEditorId);
+
+  return res.status(200).json({ success: true, data: reviews });
+};

@@ -3,13 +3,27 @@ import { pool } from "../configs/db";
 export const getSubEditorPapers = async (subEditorId: string) => {
   const result = await pool.query(
     `
-    SELECT p.*
+    SELECT DISTINCT ON (p.id)
+      p.*,
+      pv.id            AS version_id,
+      pv.file_url,
+      pv.version_label,
+      pv.version_number,
+      pv.created_at    AS version_created_at
     FROM papers p
-    JOIN editor_assignments ea 
+    JOIN editor_assignments ea
       ON ea.paper_id = p.id
-    WHERE 
+    JOIN paper_versions pv
+      ON pv.paper_id = p.id
+    WHERE
       ea.sub_editor_id = $1
-      AND p.status IN ('assigned_to_editor', 'under_review', 'pending_revision', 'resubmitted')
+      AND p.status IN (
+        'assigned_to_editor',
+        'under_review',
+        'pending_revision',
+        'resubmitted'
+      )
+    ORDER BY p.id, pv.created_at DESC
     `,
     [subEditorId],
   );

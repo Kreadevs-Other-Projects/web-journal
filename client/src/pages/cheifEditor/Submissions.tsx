@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Button } from "../../components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -10,8 +10,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { FileText, UserPlus } from "lucide-react";
 import { url } from "@/url";
 
 interface Paper {
@@ -22,19 +23,22 @@ interface Paper {
 
 export default function ChiefEditor() {
   const { user, token } = useAuth();
+
   const [papers, setPapers] = useState<Paper[]>([]);
-  const [subEditorId, setSubEditorId] = useState("");
-  const [reviewers, setReviewers] = useState<
-    { id: string; username: string }[]
-  >([]);
-  const [selectedReviewer, setSelectedReviewer] = useState("");
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  const [decision, setDecision] = useState("accepted");
-  const [decisionNote, setDecisionNote] = useState("");
-  const [openDecision, setOpenDecision] = useState(false);
+
   const [subEditors, setSubEditors] = useState<
     { id: string; username: string }[]
   >([]);
+  const [reviewers, setReviewers] = useState<
+    { id: string; username: string }[]
+  >([]);
+
+  const [subEditorId, setSubEditorId] = useState("");
+  const [reviewerId, setReviewerId] = useState("");
+  const [openDialog, setOpenDialog] = useState(false);
+
+  /* ---------------- FETCH DATA ---------------- */
 
   const fetchPapers = async () => {
     const res = await fetch(`${url}/cheifEditor/getPapers`, {
@@ -45,250 +49,182 @@ export default function ChiefEditor() {
   };
 
   useEffect(() => {
-    fetchPapers();
-  }, []);
-
-  useEffect(() => {
-    if (token) {
-      fetch(`${url}/cheifEditor/getSubEditors`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setSubEditors(data.data || []);
-        })
-        .catch((err) => {
-          console.error("Error fetching chief editors:", err);
-        });
-    }
+    if (token) fetchPapers();
   }, [token]);
 
   useEffect(() => {
-    if (token) {
-      fetch(`${url}/cheifEditor/getReviewers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setReviewers(data.data || []);
-        })
-        .catch((err) => {
-          console.error("Error fetching reviewers:", err);
-        });
-    }
+    if (!token) return;
+
+    fetch(`${url}/cheifEditor/getSubEditors`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setSubEditors(data.data || []));
+
+    fetch(`${url}/cheifEditor/getReviewers`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setReviewers(data.data || []));
   }, [token]);
+
+  /* ---------------- ACTIONS ---------------- */
 
   const assignSubEditor = async () => {
-    if (!selectedPaper || !subEditorId) {
-      alert("Please select a sub-editor");
-      return;
-    }
+    if (!selectedPaper || !subEditorId) return;
 
-    try {
-      const res = await fetch(
-        `${url}/cheifEditor/assignSubEditor/${selectedPaper.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ subEditorId }),
-        },
-      );
+    await fetch(`${url}/cheifEditor/assignSubEditor/${selectedPaper.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ subEditorId }),
+    });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Failed to assign sub-editor");
-        return;
-      }
-
-      alert("Sub-editor assigned successfully");
-      setSubEditorId("");
-      fetchPapers();
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong");
-    }
+    setSubEditorId("");
+    setOpenDialog(false);
+    fetchPapers();
   };
 
   const assignReviewer = async () => {
-    if (!selectedPaper || !selectedReviewer) {
-      alert("Please select a reviewer");
-      return;
-    }
+    if (!selectedPaper || !reviewerId) return;
 
-    try {
-      const res = await fetch(
-        `${url}/cheifEditor/assignReviewer/${selectedPaper.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ reviewerId: selectedReviewer }),
-        },
-      );
+    await fetch(`${url}/cheifEditor/assignReviewer/${selectedPaper.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reviewerId }),
+    });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Failed to assign reviewer");
-        return;
-      }
-
-      alert("Reviewer assigned successfully");
-      setSelectedReviewer("");
-      fetchPapers();
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong while assigning reviewer");
-    }
+    setReviewerId("");
+    setOpenDialog(false);
+    fetchPapers();
   };
 
-  const saveDecision = async () => {
-    if (!selectedPaper) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`${url}/cheifEditor/decide/${selectedPaper.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          decision,
-          decision_note: decisionNote,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error("Editor decision failed:", data);
-        alert(data.message || "Failed to save decision");
-        return;
-      }
-
-      console.log("Editor decision saved successfully:", data);
-
-      alert("Decision saved successfully");
-      setOpenDecision(false);
-    } catch (error) {
-      console.error("Network / unexpected error while saving decision:", error);
-      alert("Something went wrong while saving the decision");
-    }
-  };
+  /* ---------------- UI ---------------- */
 
   return (
-    <DashboardLayout role={user.role} userName={user.username}>
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-white">Papers</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-          {papers.map((p) => (
-            <Card key={p.id} className="glass-card">
-              <CardHeader>
-                <CardTitle>{p.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>
-                  Status: <b>{p.status}</b>
-                </p>
-                <Button size="sm" onClick={() => setSelectedPaper(p)}>
-                  Assign / Decide
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+    <DashboardLayout role={user?.role} userName={user?.username}>
+      <div className="space-y-6">
+        {/* HEADER */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Papers Management
+          </h1>
+          <p className="text-muted-foreground">
+            Assign sub-editors and reviewers to submitted papers
+          </p>
         </div>
 
-        {selectedPaper && (
-          <div className="mt-4 space-y-2 border p-4 rounded">
-            <h2 className="font-bold text-white">Paper Actions</h2>
+        {/* PAPERS GRID */}
+        {papers.length === 0 ? (
+          <div className="glass-card p-12 text-center">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No papers available</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {papers.map((paper) => (
+              <Card
+                key={paper.id}
+                className="glass-card hover:shadow-glow transition"
+              >
+                <CardHeader>
+                  <CardTitle className="line-clamp-2">{paper.title}</CardTitle>
+                </CardHeader>
 
-            <div className="space-y-2">
-              <Label className="text-white">Select Sub-Editor</Label>
-              <select
-                className="w-full border rounded p-2"
-                value={subEditorId}
-                onChange={(e) => setSubEditorId(e.target.value)}
-              >
-                <option value="">-- Select Sub-Editor --</option>
-                {subEditors.map((se) => (
-                  <option key={se.id} value={se.id}>
-                    {se.username}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="sm"
-                onClick={assignSubEditor}
-                disabled={!subEditorId}
-              >
-                Assign Sub-Editor
-              </Button>
-            </div>
+                <CardContent className="space-y-4">
+                  <Badge variant="outline">Status: {paper.status}</Badge>
 
-            <div className="space-y-2 mt-2">
-              <Label className="text-white">Select Reviewer</Label>
-              <select
-                className="w-full border rounded p-2"
-                value={selectedReviewer}
-                onChange={(e) => setSelectedReviewer(e.target.value)}
-              >
-                <option value="">-- Select Reviewer --</option>
-                {reviewers.map((rev) => (
-                  <option key={rev.id} value={rev.id}>
-                    {rev.username}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="sm"
-                onClick={assignReviewer}
-                disabled={!selectedReviewer}
-              >
-                Assign Reviewer
-              </Button>
-            </div>
-
-            <div>
-              <Button size="sm" onClick={() => setOpenDecision(true)}>
-                Make Decision
-              </Button>
-            </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedPaper(paper);
+                      setOpenDialog(true);
+                    }}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Assign Roles
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
-        <Dialog open={openDecision} onOpenChange={setOpenDecision}>
+        {/* ACTION DIALOG */}
+        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Editor Decision</DialogTitle>
+              <DialogTitle>Manage Paper Assignments</DialogTitle>
             </DialogHeader>
-            <div className="space-y-2">
-              <Label>Decision</Label>
-              <select
-                className="w-full border rounded"
-                value={decision}
-                onChange={(e) => setDecision(e.target.value)}
-              >
-                <option value="pending_revision">Pending Revision</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <Label>Decision Note</Label>
-              <Input
-                value={decisionNote}
-                onChange={(e) => setDecisionNote(e.target.value)}
-              />
-            </div>
+
+            {selectedPaper && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  <b>Paper:</b> {selectedPaper.title}
+                </p>
+
+                {/* SUB EDITOR */}
+                <div className="space-y-2">
+                  <Label>Select Sub-Editor</Label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={subEditorId}
+                    onChange={(e) => setSubEditorId(e.target.value)}
+                  >
+                    <option value="">-- Select --</option>
+                    {subEditors.map((se) => (
+                      <option key={se.id} value={se.id}>
+                        {se.username}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Button
+                    size="sm"
+                    onClick={assignSubEditor}
+                    disabled={!subEditorId}
+                  >
+                    Assign Sub-Editor
+                  </Button>
+                </div>
+
+                {/* REVIEWER */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label>Select Reviewer</Label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={reviewerId}
+                    onChange={(e) => setReviewerId(e.target.value)}
+                  >
+                    <option value="">-- Select --</option>
+                    {reviewers.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.username}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Button
+                    size="sm"
+                    onClick={assignReviewer}
+                    disabled={!reviewerId}
+                  >
+                    Assign Reviewer
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <DialogFooter>
-              <Button onClick={saveDecision}>Save</Button>
+              <Button variant="ghost" onClick={() => setOpenDialog(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

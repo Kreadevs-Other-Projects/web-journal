@@ -68,7 +68,7 @@ export const roleConfig: Record<
         icon: FileText,
       },
       { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
-      { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
+      // { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
   },
   author: {
@@ -92,11 +92,6 @@ export const roleConfig: Record<
     route: "/sub-editor",
     navigation: [
       { label: "Dashboard", path: "/sub-editor", icon: Home },
-      {
-        label: "Assigned Papers",
-        path: "/sub-editor/assignedPaper",
-        icon: FileText,
-      },
       { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
     ],
   },

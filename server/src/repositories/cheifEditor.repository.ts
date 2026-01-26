@@ -125,15 +125,6 @@ export const assignReviewer = async (
       [paperId, reviewerId, assignedBy],
     );
 
-    await client.query(
-      `
-      UPDATE papers
-      SET status = 'under_review'
-      WHERE id = $1
-      `,
-      [paperId],
-    );
-
     await client.query("COMMIT");
 
     return { success: true };

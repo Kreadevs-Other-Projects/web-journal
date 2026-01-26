@@ -5,34 +5,23 @@ import {
   getPapersByAuthor,
 } from "../repositories/paper.repository";
 
-export const createPaperService = async (
-  user: { id: string; role: string },
-  data: any,
-) => {
-  if (user.role !== "author") {
-    throw new Error("Only publishers can upload papers");
-  }
-
-  return await createPaper(user.id, data);
+export const createPaperService = async (data: any) => {
+  return createPaper(data);
 };
 
-export const getAllPapersService = async () => {
-  return await getAllPapers();
-};
+export const getAllPapersService = async () => getAllPapers();
 
-export const getPapersByAuthorService = async (author_id: string) => {
-  const papers = await getPapersByAuthor(author_id);
-  return papers;
-};
+export const getPapersByAuthorService = async (author_id: string) =>
+  getPapersByAuthor(author_id);
 
 export const updatePaperStatusService = async (
-  user: { role: string },
+  user: any,
   paper_id: string,
   status: string,
 ) => {
-  if (!["editor", "owner"].includes(user.role)) {
+  if (!["editor", "owner", "admin"].includes(user.role)) {
     throw new Error("Unauthorized");
   }
 
-  return await updatePaperStatus(paper_id, status);
+  return updatePaperStatus(paper_id, status);
 };

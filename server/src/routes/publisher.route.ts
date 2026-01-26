@@ -1,31 +1,57 @@
 import { Router } from "express";
 import {
-  addJournal,
-  getOwnerJournal,
+  getJournals,
+  getIssues,
+  createIssue,
+  publishIssue,
+  getPapers,
+  getPapersByIssueId,
+  publishPaper,
 } from "../controllers/publisher.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
+import { zPublisherIssueSchema } from "../schemas/publisher.schema";
 import { validate } from "../middlewares/validate.middleware";
-import {
-  createJournalSchema,
-  getOwnerJournalSchema,
-} from "../schemas/publisher.schema";
 
 const router = Router();
 
-router.post(
-  "/journals",
+router.get("/getJournals", authMiddleware, authorize("publisher"), getJournals);
+
+router.get(
+  "/getIssues/:journalId",
   authMiddleware,
-  authorize("owner"),
-  validate(createJournalSchema),
-  addJournal,
+  authorize("publisher"),
+  getIssues,
+);
+
+router.post(
+  "/createIssue/:journalId",
+  authMiddleware,
+  authorize("publisher"),
+  validate(zPublisherIssueSchema),
+  createIssue,
+);
+
+router.put(
+  "/publishIssue/:issueId",
+  authMiddleware,
+  authorize("publisher"),
+  publishIssue,
 );
 
 router.get(
-  "/journal/:id",
+  "/getPapers/:journalId",
   authMiddleware,
-  authorize("owner"),
-  validate(getOwnerJournalSchema),
-  getOwnerJournal,
+  authorize("publisher"),
+  getPapers,
+);
+
+router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
+
+router.put(
+  "/publishPaper/:paperId",
+  authMiddleware,
+  authorize("publisher"),
+  publishPaper,
 );
 
 export default router;

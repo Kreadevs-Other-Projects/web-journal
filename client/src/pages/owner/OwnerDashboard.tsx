@@ -33,7 +33,7 @@ export default function OwnerDashboard(): JSX.Element {
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
 
   const fetchJournals = async () => {
-    const res = await fetch(`${url}/publisher/journal/${user.id}`, {
+    const res = await fetch(`${url}/journal/getOwnerJournal/${user.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

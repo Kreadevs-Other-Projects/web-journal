@@ -2,7 +2,7 @@ import { Client } from "pg";
 import { env } from "../configs/envs";
 import { withDbName } from "../configs/dbUrl";
 
-const TARGET_DB = "giki";
+const TARGET_DB = "giki-2";
 const ADMIN_DB = "postgres";
 
 (async () => {
@@ -19,7 +19,7 @@ const ADMIN_DB = "postgres";
       WHERE datname = $1
         AND pid <> pg_backend_pid();
       `,
-      [TARGET_DB]
+      [TARGET_DB],
     );
 
     await client.query(`DROP DATABASE IF EXISTS "${TARGET_DB}"`);

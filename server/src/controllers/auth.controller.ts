@@ -79,93 +79,54 @@ export const login = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
-  console.log(`[SIGNUP] Request received`, { email, username, role });
 
-  try {
-    const otpVerified = await checkOTPVerified(email);
-    console.log(`[SIGNUP] OTP verification status`, { email, otpVerified });
-
-    if (!otpVerified) {
-      console.warn(`[SIGNUP] Email not verified via OTP`, { email });
-      return res.status(403).json({
-        success: false,
-        message: "Email not verified via OTP",
-      });
-    }
-
-    const existingUser = await findUserByEmail(email);
-    console.log(`[SIGNUP] Existing user check`, {
-      email,
-      exists: !!existingUser,
-    });
-
-    if (existingUser) {
-      console.warn(`[SIGNUP] User already exists`, { email });
-      return res.status(409).json({
-        success: false,
-        message: "User already exists",
-      });
-    }
-
-    const hashedPassword = await hashPassword(password);
-    console.log(`[SIGNUP] Password hashed successfully`, { email });
-
-    const newUser = await createUser({
-      email,
-      password: hashedPassword,
-      username,
-      role,
-    });
-    console.log(`[SIGNUP] User created`, { userId: newUser.id, email });
-
-    await createUserProfile(newUser.id);
-    console.log(`[SIGNUP] User profile created`, { userId: newUser.id });
-
-    await deleteOTP(email);
-    console.log(`[SIGNUP] OTP record deleted`, { email });
-
-    console.info(`[SIGNUP] Signup successful`, { userId: newUser.id, email });
-    return res.status(201).json({
-      success: true,
-      message: "Signup successful",
-    });
-  } catch (error) {
-    console.error(`[SIGNUP] Error occurred`, { email, error });
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+  const otpVerified = await checkOTPVerified(email);
+  if (!otpVerified) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Email not verified via OTP" });
   }
+
+  const existingUser = await findUserByEmail(email);
+
+  if (existingUser) {
+    return res
+      .status(409)
+      .json({ success: false, message: "User already exists" });
+  }
+
+  const hashedPassword = await hashPassword(password);
+
+  const newUser = await createUser({
+    email,
+    password: hashedPassword,
+    username,
+    role,
+  });
+
+  await createUserProfile(newUser.id);
+
+  await deleteOTP(email);
+
+  return res.status(201).json({ success: true, message: "Signup successful" });
 };
 
 export const verify = async (req: Request, res: Response) => {
   const { email, otp } = req.body;
-  console.log(`[VERIFY] Request received`, { email, otp });
 
-  try {
-    const otpRecord = await verifyOTP(email, otp);
-    console.log(`[VERIFY] OTP verification result`, { email, otp, otpRecord });
+  const otpRecord = await verifyOTP(email, otp);
 
-    if (!otpRecord) {
-      console.warn(`[VERIFY] Invalid or expired OTP`, { email, otp });
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired OTP",
-      });
-    }
-
-    console.info(`[VERIFY] OTP verified successfully`, { email });
-    return res.status(200).json({
-      success: true,
-      message: "OTP verified successfully",
-    });
-  } catch (error) {
-    console.error(`[VERIFY] Error occurred`, { email, otp, error });
-    return res.status(500).json({
+  if (!otpRecord) {
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
+      message: "Invalid or expired OTP",
     });
   }
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP verified successfully",
+  });
 };
 
 export const requestOTP = async (req: Request, res: Response) => {

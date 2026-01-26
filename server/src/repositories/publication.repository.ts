@@ -9,11 +9,11 @@ export const createPublication = async (
   const result = await pool.query(
     `
     INSERT INTO publications
-    (paper_id, issue_id, published_by, year_label)
-    VALUES ($1,$2,$3,COALESCE($4, year_label))
+      (paper_id, issue_id, published_by, year_label)
+    VALUES ($1, $2, $3, $4)
     RETURNING *
     `,
-    [paper_id, issue_id, published_by, year_label],
+    [paper_id, issue_id, published_by, year_label ?? null],
   );
 
   return result.rows[0];

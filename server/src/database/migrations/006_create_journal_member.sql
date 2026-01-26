@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS journal_members (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role user_role NOT NULL,
   added_by UUID REFERENCES users(id),
+  assigned_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (journal_id, user_id)
 );

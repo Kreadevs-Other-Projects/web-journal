@@ -1,128 +1,111 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { FileText, Calendar, Download, Eye, Star, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 
-const completedReviews = [
-  {
-    id: "COMP-001",
-    title: "Neural Network Optimization Techniques",
-    abstract: "A comprehensive study of optimization techniques for deep neural networks, including gradient descent variants, regularization methods, and architecture search algorithms.",
-    category: "Machine Learning",
-    submittedDate: "2023-12-15",
-    completedDate: "2024-01-10",
-    version: "v2.1",
-    decision: "accepted" as const,
-    decisionDate: "2024-01-08",
-    yourDecision: "accept",
-    yourComments: "Excellent research with solid methodology and significant contributions to the field.",
-    yourRating: 4.8,
-    editorFeedback: "Paper accepted with minor formatting suggestions.",
-    publishedIn: "Journal of AI Research",
-    publicationDate: "2024-02-15",
-    citationCount: 12,
-    authors: ["Dr. Alex Chen", "Prof. Maria Rodriguez"],
-    yourReviewTime: "4 days",
-    keywords: ["Neural Networks", "Optimization", "Deep Learning"],
-  },
-  {
-    id: "COMP-002",
-    title: "Blockchain in Healthcare Systems",
-    abstract: "Exploring blockchain technology applications in healthcare data management, patient privacy, and secure medical record sharing across institutions.",
-    category: "Healthcare Technology",
-    submittedDate: "2023-12-10",
-    completedDate: "2024-01-05",
-    version: "v1.5",
-    decision: "accepted" as const,
-    decisionDate: "2024-01-03",
-    yourDecision: "accept",
-    yourComments: "Strong concept but requires more empirical validation and clearer implementation details.",
-    yourRating: 3.2,
-    editorFeedback: "Major revision requested. Authors have submitted revised version.",
-    authors: ["Dr. James Wilson", "Dr. Sarah Kim"],
-    yourReviewTime: "3 days",
-    keywords: ["Blockchain", "Healthcare", "Security", "Data Privacy"],
-  },
-  {
-    id: "COMP-003",
-    title: "Quantum Algorithms for Financial Modeling",
-    abstract: "Novel quantum algorithms applied to financial risk assessment, portfolio optimization, and market prediction models.",
-    category: "Quantum Computing",
-    submittedDate: "2023-12-20",
-    completedDate: "2024-01-18",
-    version: "v1.0",
-    decision: "accepted" as const,
-    decisionDate: "2024-01-15",
-    yourDecision: "accept",
-    yourComments: "Groundbreaking work with practical applications in finance. Well-written and thoroughly researched.",
-    yourRating: 4.9,
-    editorFeedback: "Accepted pending minor revisions to the experimental section.",
-    publishedIn: "Quantum Computing Review",
-    publicationDate: "2024-03-01",
-    citationCount: 8,
-    authors: ["Prof. David Zhang", "Dr. Elena Petrova"],
-    yourReviewTime: "5 days",
-    keywords: ["Quantum Computing", "Finance", "Algorithms"],
-  },
-  {
-    id: "COMP-004",
-    title: "Sustainable Energy Storage Solutions",
-    abstract: "Comparative analysis of next-generation battery technologies and their applications in renewable energy systems.",
-    category: "Energy Systems",
-    submittedDate: "2023-11-30",
-    completedDate: "2023-12-28",
-    version: "v2.3",
-    decision: "accepted" as const,
-    decisionDate: "2023-12-25",
-    yourDecision: "accept",
-    yourComments: "Lacks novelty and contains methodological flaws in the experimental design.",
-    yourRating: 2.1,
-    editorFeedback: "Paper rejected based on reviewer consensus. Authors may resubmit after major revisions.",
-    authors: ["Dr. Robert Miller", "Dr. Lisa Chen"],
-    yourReviewTime: "2 days",
-    keywords: ["Energy Storage", "Batteries", "Renewable Energy"],
-  },
-  {
-    id: "COMP-005",
-    title: "AI-Driven Drug Discovery Pipeline",
-    abstract: "Machine learning pipeline for rapid identification and validation of novel drug candidates for rare diseases.",
-    category: "Bioinformatics",
-    submittedDate: "2024-01-05",
-    completedDate: "2024-01-25",
-    version: "v1.2",
-    decision: "accepted" as const,
-    decisionDate: "2024-01-22",
-    yourDecision: "accept",
-    yourComments: "Impressive results with clear clinical relevance. Suggested improvements to statistical analysis.",
-    yourRating: 4.5,
-    editorFeedback: "Accepted after minor revisions. Currently in production.",
-    publicationDate: "2024-04-10",
-    authors: ["Dr. Samantha Lee", "Prof. Michael Brown", "Dr. Kevin Zhao"],
-    yourReviewTime: "6 days",
-    keywords: ["AI", "Drug Discovery", "Machine Learning", "Pharmaceuticals"],
-  },
-];
+import { url } from "@/url";
+import { useAuth } from "@/context/AuthContext";
 
+interface Paper {
+  paper_id: string;
+  title: string;
+  abstract?: string;
+  category?: string;
+  version?: string;
+  priority?: "high" | "medium" | "low";
+  submittedDate?: string;
+  assignment_status:
+    | "assigned"
+    | "submitted"
+    | "accepted"
+    | "rejected"
+    | "expired";
+  review_submitted_at?: string;
+  updated_at?: string;
+  authors?: string[];
+  comments?: string;
+  yourRating?: number;
+  yourReviewTime?: string;
+  keywords?: string[];
+}
+
+interface CompletedReview extends Paper {
+  decision: "submitted" | "accepted" | "rejected";
+  completedDate: string;
+}
+
+// ----------------------
+// Component
+// ----------------------
 const ITEMS_PER_PAGE = 5;
 
-export default function CompletedReview() {
+export default function CompletedReviewPage() {
+  const { token } = useAuth();
+  const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
+    [],
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Calculate total pages
+  const fetchCompletedReviews = async () => {
+    try {
+      const res = await fetch(`${url}/reviewer/getReviewerPapers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) return;
+
+      const allPapers: Paper[] = data.data || [];
+
+      const completed: CompletedReview[] = allPapers
+        .filter((paper) =>
+          ["submitted", "accepted", "rejected"].includes(
+            paper.assignment_status,
+          ),
+        )
+        .map((paper) => ({
+          ...paper,
+          decision: paper.assignment_status as
+            | "submitted"
+            | "accepted"
+            | "rejected",
+          completedDate:
+            paper.review_submitted_at ||
+            paper.updated_at ||
+            new Date().toISOString(),
+          authors: paper.authors || [],
+          yourComments: paper.comments || "No comments",
+          yourRating: paper.yourRating || 0,
+          yourReviewTime: paper.yourReviewTime || "N/A",
+          keywords: paper.keywords || [],
+        }));
+
+      setCompletedReviews(completed);
+    } catch (error) {
+      console.error("Error fetching completed reviews:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompletedReviews();
+  }, []);
+
   const totalPages = Math.ceil(completedReviews.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentReviews = completedReviews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const currentPageReviews = completedReviews.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
 
   return (
     <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
       <PageTransition>
         <div className="space-y-6">
-          {/* Simple Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground">
@@ -137,9 +120,8 @@ export default function CompletedReview() {
             </div>
           </div>
 
-          {/* Completed Reviews List - Simple */}
           <div className="space-y-4">
-            {currentReviews.length === 0 ? (
+            {currentPageReviews.length === 0 ? (
               <div className="glass-card p-12 text-center">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -150,9 +132,9 @@ export default function CompletedReview() {
                 </p>
               </div>
             ) : (
-              currentReviews.map((review) => (
+              currentPageReviews.map((review) => (
                 <motion.div
-                  key={review.id}
+                  key={review.paper_id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
@@ -160,11 +142,10 @@ export default function CompletedReview() {
                   <Card className="glass-card hover:shadow-glow transition-all duration-300">
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                        {/* Paper Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <Badge variant="outline" className="text-xs">
-                              {review.id}
+                              {review.paper_id}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {review.category}
@@ -187,11 +168,16 @@ export default function CompletedReview() {
 
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-3">
                             <div>
-                              <span className="font-medium text-foreground">{review.authors.join(", ")}</span>
+                              <span className="font-medium text-foreground">
+                                {review.authors.join(", ")}
+                              </span>
                             </div>
                             <div>
                               <Calendar className="h-3 w-3 inline mr-1" />
-                              Completed: {new Date(review.completedDate).toLocaleDateString()}
+                              Completed:{" "}
+                              {new Date(
+                                review.completedDate,
+                              ).toLocaleDateString()}
                             </div>
                             <div>
                               <Star className="h-3 w-3 inline mr-1" />
@@ -199,32 +185,33 @@ export default function CompletedReview() {
                             </div>
                             <div>
                               <Clock className="h-3 w-3 inline mr-1" />
-                              Review Time: {review.yourReviewTime} days
+                              Review Time: {review.yourReviewTime}
                             </div>
                           </div>
 
-                          {/* Keywords */}
                           <div className="flex flex-wrap gap-2">
                             {review.keywords.map((keyword, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
+                              <Badge
+                                key={idx}
+                                variant="outline"
+                                className="text-xs"
+                              >
                                 {keyword}
                               </Badge>
                             ))}
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="lg:w-48 space-y-4">
                           <div className="space-y-2">
                             <div className="text-sm text-muted-foreground">
                               Your Comment:
                             </div>
                             <div className="text-sm bg-muted/50 p-3 rounded-lg line-clamp-3">
-                              {review.yourComments}
+                              {review.comments}
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
                           <div className="flex gap-2 pt-2">
                             <Button
                               variant="outline"
@@ -232,7 +219,9 @@ export default function CompletedReview() {
                               className="flex-1 gap-2"
                               asChild
                             >
-                              <Link to={`/reviewer/completed/${review.id}`}>
+                              <Link
+                                to={`/reviewer/completed/${review.paper_id}`}
+                              >
                                 <Eye className="h-4 w-4" />
                                 View Details
                               </Link>
@@ -254,7 +243,6 @@ export default function CompletedReview() {
             )}
           </div>
 
-          {/* Simple Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-6 border-t border-border/50">
               <Button
@@ -270,22 +258,22 @@ export default function CompletedReview() {
               <div className="flex items-center gap-1">
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
                     pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
+                  else pageNum = currentPage - 2 + i;
 
                   return (
                     <Button
                       key={pageNum}
                       variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
-                      className={`w-10 ${currentPage === pageNum ? "bg-primary text-primary-foreground" : "text-foreground border-border hover:bg-muted"}`}
+                      className={`w-10 ${
+                        currentPage === pageNum
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground border-border hover:bg-muted"
+                      }`}
                       onClick={() => setCurrentPage(pageNum)}
                     >
                       {pageNum}

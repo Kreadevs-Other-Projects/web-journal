@@ -1,53 +1,41 @@
 import { Response } from "express";
-import { AuthUser } from "../middlewares/auth.middleware";
 import {
   createPaperService,
   getAllPapersService,
   updatePaperStatusService,
   getPapersByAuthorService,
 } from "../services/paper.service";
+import { AuthUser } from "../middlewares/auth.middleware";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
-  try {
-    const paper = await createPaperService(req.user!, req.body);
-    res.status(201).json({ success: true, paper });
-  } catch (e: any) {
-    res.status(403).json({ success: false, message: e.message });
-  }
+  const paper = await createPaperService({
+    ...req.body,
+    author_id: req.user!.id,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: paper,
+  });
 };
 
-export const getAllPapers = async (_req: AuthUser, res: Response) => {
+export const getAllPapers = async (_req: any, res: Response) => {
   const papers = await getAllPapersService();
   res.json({ success: true, papers });
 };
 
-export const getPapersByAuthor = async (req: AuthUser, res: Response) => {
-  try {
-    const author_id = req.user!.id;
-
-    const papers = await getPapersByAuthorService(author_id);
-
-    res.json({
-      success: true,
-      papers,
-    });
-  } catch (error) {
-    console.error("Error fetching papers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch papers",
-    });
-  }
+export const getPapersByAuthor = async (req: any, res: Response) => {
+  const papers = await getPapersByAuthorService(req.user.id);
+  res.json({ success: true, papers });
 };
 
-export const updatePaperStatus = async (req: AuthUser, res: Response) => {
+export const updatePaperStatus = async (req: any, res: Response) => {
   try {
     const paper = await updatePaperStatusService(
-      req.user!,
+      req.user,
       req.params.paperId,
       req.body.status,
     );
-
     res.json({ success: true, paper });
   } catch (e: any) {
     res.status(403).json({ success: false, message: e.message });

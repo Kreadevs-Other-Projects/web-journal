@@ -2,7 +2,6 @@ import {
   Home,
   FileText,
   Users,
-  Settings,
   BookOpen,
   UserCheck,
   BarChart3,
@@ -14,7 +13,7 @@ export type UserRole =
   | "chief_editor"
   | "publisher"
   | "owner"
-  | "editor";
+  | "sub_editor";
 
 export const roleConfig: Record<
   UserRole,
@@ -39,19 +38,37 @@ export const roleConfig: Record<
       // { label: "System Settings", path: "/owner/settings", icon: Settings },
     ],
   },
-
-  editor: {
-    icon: Users,
-    label: "Sub Editor",
+  publisher: {
+    icon: Home,
+    label: "Publisher",
     color: "text-destructive",
-    description: "Manage paper editions",
-    route: "/sub-editor",
+    description: "Manage all papers and users",
+    route: "/publisher",
     navigation: [
-      { label: "Dashboard", path: "/editor", icon: Home },
-      { label: "Users", path: "/editor/users", icon: Users },
-      { label: "All Papers", path: "/editor/papers", icon: FileText },
-      { label: "System Logs", path: "/editor/logs", icon: BarChart3 },
-      { label: "Settings", path: "/editor/settings", icon: Settings },
+      { label: "Dashboard", path: "/publisher", icon: Home },
+      {
+        label: "Publish Paper",
+        path: "/publisher/publish-paper",
+        icon: FileText,
+      },
+      // { label: "Users", path: "/publisher/users", icon: Users },
+    ],
+  },
+  chief_editor: {
+    icon: Users,
+    label: "Chief Editor",
+    color: "text-accent",
+    description: "Manage submissions and editors",
+    route: "/chief-editor",
+    navigation: [
+      { label: "Dashboard", path: "/chief-editor", icon: Home },
+      {
+        label: "Papers",
+        path: "/chief-editor/papers",
+        icon: FileText,
+      },
+      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
+      // { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
   },
   author: {
@@ -67,6 +84,17 @@ export const roleConfig: Record<
       { label: "Paper Version", path: "/author/version", icon: BookOpen },
     ],
   },
+  sub_editor: {
+    icon: Users,
+    label: "Sub Editor",
+    color: "text-destructive",
+    description: "Manage paper editions",
+    route: "/sub-editor",
+    navigation: [
+      { label: "Dashboard", path: "/sub-editor", icon: Home },
+      { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
+    ],
+  },
   reviewer: {
     icon: UserCheck,
     label: "Reviewer",
@@ -75,41 +103,11 @@ export const roleConfig: Record<
     route: "/reviewer",
     navigation: [
       { label: "Dashboard", path: "/reviewer", icon: Home },
-      { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
       {
         label: "Completed Reviews",
         path: "/reviewer/completed",
         icon: UserCheck,
       },
-    ],
-  },
-  chief_editor: {
-    icon: Users,
-    label: "Chief Editor",
-    color: "text-accent",
-    description: "Manage submissions and editors",
-    route: "/chief-editor",
-    navigation: [
-      { label: "Dashboard", path: "/chief-editor", icon: Home },
-      {
-        label: "Submissions",
-        path: "/chief-editor/submissions",
-        icon: FileText,
-      },
-      { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
-      { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
-    ],
-  },
-  publisher: {
-    icon: Home,
-    label: "Publisher",
-    color: "text-destructive",
-    description: "Manage all papers and users",
-    route: "/publisher",
-    navigation: [
-      { label: "Dashboard", path: "/publisher", icon: Home },
-      { label: "All Papers", path: "/publisher/papers", icon: FileText },
-      { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },
 };

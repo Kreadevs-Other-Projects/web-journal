@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
   sub_editor_id UUID NOT NULL REFERENCES users(id),
   assigned_by UUID NOT NULL REFERENCES users(id),
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(paper_id)
+  UNIQUE (paper_id, sub_editor_id)
 );
 
 CREATE TABLE IF NOT EXISTS review_assignments (
@@ -25,3 +25,32 @@ CREATE TABLE IF NOT EXISTS reviews (
   signature_url TEXT,
   signed_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS editor_decisions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  paper_id UUID NOT NULL
+    REFERENCES papers(id)
+    ON DELETE CASCADE,
+
+  decided_by UUID NOT NULL
+    REFERENCES users(id),
+
+  decision paper_status NOT NULL,
+  decision_note TEXT,
+
+  decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CHECK (
+    decision IN (
+      'pending_revision',
+      'accepted',
+      'rejected'
+    )
+  )
+);
+
+ALTER TABLE review_assignments
+ADD CONSTRAINT unique_reviewer_per_paper
+UNIQUE (paper_id, reviewer_id);
+

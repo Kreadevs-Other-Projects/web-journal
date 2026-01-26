@@ -2,7 +2,7 @@ import { Client } from "pg";
 import { env } from "../configs/envs";
 import { withDbName } from "../configs/dbUrl";
 
-const TARGET_DB = "giki";
+const TARGET_DB = "giki-2";
 const ADMIN_DB = "postgres";
 
 (async () => {
@@ -15,7 +15,7 @@ const ADMIN_DB = "postgres";
 
     const exists = await client.query(
       `SELECT 1 FROM pg_database WHERE datname = $1`,
-      [TARGET_DB]
+      [TARGET_DB],
     );
 
     if (exists.rowCount === 0) {

@@ -9,7 +9,7 @@ const router = Router();
 router.post(
   "/publishPaper/:paperId",
   authMiddleware,
-  authorize("owner", "editor"),
+  authorize("owner", "publisher"),
   validate(publishPaperSchema),
   publishPaper,
 );

@@ -223,7 +223,7 @@ export default function LoginPage() {
                   <div
                     className={cn(
                       "h-12 w-12 rounded-xl flex items-center justify-center",
-                      "bg-gradient-to-br from-primary/20 to-primary/5"
+                      "bg-gradient-to-br from-primary/20 to-primary/5",
                     )}
                   >
                     {(() => {
@@ -232,7 +232,7 @@ export default function LoginPage() {
                         <Icon
                           className={cn(
                             "h-6 w-6",
-                            roleConfig[selectedRole].color
+                            roleConfig[selectedRole].color,
                           )}
                         />
                       );
@@ -242,7 +242,7 @@ export default function LoginPage() {
                     <h3
                       className={cn(
                         "font-semibold",
-                        roleConfig[selectedRole].color
+                        roleConfig[selectedRole].color,
                       )}
                     >
                       {roleConfig[selectedRole].label} Portal
@@ -268,7 +268,7 @@ export default function LoginPage() {
                       <p>✓ Track review deadlines</p>
                     </>
                   )}
-                  {selectedRole === "editor" && (
+                  {selectedRole === "chief_editor" && (
                     <>
                       <p>✓ Manage paper assignments</p>
                       <p>✓ Coordinate review process</p>
@@ -328,7 +328,7 @@ export default function LoginPage() {
                         "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-glow"
-                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted",
                       )}
                     >
                       <Icon className="h-5 w-5" />
@@ -399,8 +399,8 @@ export default function LoginPage() {
                       ? "Sending..."
                       : "Send OTP"
                     : isLoading
-                    ? "Verifying..."
-                    : "Verify OTP"}
+                      ? "Verifying..."
+                      : "Verify OTP"}
                 </Button>
 
                 {step === "otp" && (

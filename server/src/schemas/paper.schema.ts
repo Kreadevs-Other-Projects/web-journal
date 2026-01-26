@@ -2,11 +2,15 @@ import { z } from "zod";
 
 export const createPaperSchema = z.object({
   body: z.object({
-    title: z.string().min(5),
-    abstract: z.string().optional(),
+    title: z.string().min(3),
+    abstract: z.string().min(10),
     category: z.string().optional(),
-    keywords: z.array(z.string()).optional(),
+    keywords: z.array(z.string()).min(1),
+
     journal_id: z.string().uuid(),
+    chief_editor_id: z.string().uuid(),
+
+    issue_id: z.string().uuid().optional(),
   }),
 });
 
@@ -21,5 +25,3 @@ export const updatePaperSchema = z.object({
     ]),
   }),
 });
-
-export const getPapersByAuthorSchema = z.object({});

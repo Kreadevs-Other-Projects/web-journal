@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -39,68 +39,32 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { url } from "@/url";
 
-// Sample data
-const assignedPapers = [
-  {
-    id: "REV-001",
-    title:
-      "Machine Learning Applications in Climate Modeling: A Comprehensive Survey",
-    abstract:
-      "This paper provides a comprehensive review of machine learning techniques applied to climate modeling, including neural networks, ensemble methods, and deep learning approaches...",
-    authors: "Anonymous (Double-Blind)",
-    category: "Artificial Intelligence",
-    submittedDate: "2024-01-15",
-    dueDate: "2024-02-15",
-    status: "pending_review" as const,
-    version: "v2.0",
-    priority: "high",
-    pdfUrl: "https://arxiv.org/pdf/2301.00001.pdf",
-  },
-  {
-    id: "REV-002",
-    title: "Quantum Computing Approaches to Cryptographic Security",
-    abstract:
-      "An exploration of quantum computing implications for modern cryptographic systems and proposed quantum-resistant algorithms...",
-    authors: "Anonymous (Double-Blind)",
-    category: "Quantum Computing",
-    submittedDate: "2024-01-20",
-    dueDate: "2024-02-20",
-    status: "under_review" as const,
-    version: "v1.0",
-    priority: "medium",
-    pdfUrl: "https://arxiv.org/pdf/2301.00002.pdf",
-  },
-  {
-    id: "REV-003",
-    title: "Sustainable Urban Development Through Smart City Technologies",
-    abstract:
-      "Investigating the integration of IoT devices, AI systems, and renewable energy solutions in modern urban planning...",
-    authors: "Anonymous (Double-Blind)",
-    category: "Urban Planning",
-    submittedDate: "2024-01-25",
-    dueDate: "2024-03-01",
-    status: "pending_review" as const,
-    version: "v1.1",
-    priority: "low",
-    pdfUrl: "https://arxiv.org/pdf/2301.00003.pdf",
-  },
-];
+interface Paper {
+  updated_at: any;
+  review_submitted_at: any;
+  paper_id: string;
+  paper_version_id: string;
+  title: string;
+  paper_status: string;
+  assignment_status: string;
+  file_url: string;
+  abstract?: string;
+  category?: string;
+  submittedDate?: string;
+  dueDate?: string;
+  version?: string;
+  priority?: "high" | "medium" | "low";
+}
 
-const completedReviews = [
-  {
-    id: "COMP-001",
-    title: "Neural Network Optimization Techniques",
-    decision: "accepted",
-    completedDate: "2024-01-10",
-  },
-  {
-    id: "COMP-002",
-    title: "Blockchain in Healthcare Systems",
-    decision: "revision",
-    completedDate: "2024-01-05",
-  },
-];
+interface CompletedReview {
+  paper_id: string;
+  paper_version_id: string;
+  title: string;
+  decision: string;
+  completedDate: string;
+}
 
 const reviewCriteria = [
   {
@@ -131,10 +95,12 @@ const reviewCriteria = [
 ];
 
 export default function ReviewerDashboard() {
-  const { user } = useAuth();
-  const [selectedPaper, setSelectedPaper] = useState<
-    (typeof assignedPapers)[0] | null
-  >(null);
+  const { user, token } = useAuth();
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
+    [],
+  );
+  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
   const [confidentialComments, setConfidentialComments] = useState("");
@@ -142,28 +108,129 @@ export default function ReviewerDashboard() {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
 
-  const handleSubmitReview = () => {
+  const fetchPapers = async () => {
+    try {
+      const res = await fetch(`${url}/reviewer/getReviewerPapers`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await res.json();
+      if (!res.ok) return;
+
+      const allPapers: Paper[] = result.data || [];
+
+      const pending = allPapers.filter(
+        (paper) => paper.assignment_status === "assigned",
+      );
+
+      const formattedPending: Paper[] = pending.map((paper) => ({
+        ...paper,
+        abstract: paper.abstract || "Abstract not available",
+        category: paper.category || "Uncategorized",
+        submittedDate:
+          paper.submittedDate || new Date().toISOString().split("T")[0],
+        dueDate:
+          paper.dueDate ||
+          new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+        version: paper.version,
+        priority: paper.priority || "medium",
+      }));
+
+      const completed: CompletedReview[] = allPapers
+        .filter((paper) =>
+          ["submitted", "accepted", "rejected"].includes(
+            paper.assignment_status,
+          ),
+        )
+        .map((paper) => ({
+          ...paper,
+          decision: paper.assignment_status as
+            | "submitted"
+            | "accepted"
+            | "rejected",
+          completedDate:
+            paper.review_submitted_at ||
+            paper.updated_at ||
+            new Date().toISOString().split("T")[0],
+        }));
+
+      setPapers(formattedPending);
+      setCompletedReviews(completed);
+    } catch (error) {
+      console.error("Error fetching reviewer papers:", error);
+    }
+  };
+
+  const submitReview = async () => {
+    if (!selectedPaper || !decision || !comments.trim()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
     if (decision === "accept" || decision === "reject") {
       setSignatureModalOpen(true);
     } else {
-      // For revision decisions, submit directly
-      console.log("Review submitted:", {
+      await handleReviewSubmission();
+    }
+  };
+
+  const handleReviewSubmission = async (
+    signature?: string,
+    password?: string,
+  ) => {
+    if (!selectedPaper) return;
+
+    try {
+      const reviewData: any = {
         decision,
         comments,
         confidentialComments,
         ratings,
-      });
-      setSelectedPaper(null);
-      setDecision("");
-      setComments("");
-      setConfidentialComments("");
-      setRatings({});
+      };
+
+      if (signature && password) {
+        reviewData.signature = signature;
+        reviewData.password = password;
+      }
+
+      const res = await fetch(
+        `${url}/reviewer/submitReview/${selectedPaper.paper_version_id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(reviewData),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to submit review");
+        return;
+      }
+
+      alert("Review submitted successfully");
+      resetForm();
+      fetchPapers();
+    } catch (err) {
+      console.error("Submit review error:", err);
+      alert("Something went wrong while submitting review");
     }
   };
 
   const handleSignatureConfirm = (signature: string, password: string) => {
-    console.log("Final decision confirmed:", { signature, password, decision });
+    handleReviewSubmission(signature, password);
     setSignatureModalOpen(false);
+  };
+
+  const resetForm = () => {
     setSelectedPaper(null);
     setDecision("");
     setComments("");
@@ -193,8 +260,37 @@ export default function ReviewerDashboard() {
     return diff;
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "under_review":
+        return "under_review";
+      case "pending_review":
+        return "pending_review";
+      case "review_submitted":
+        return "review_submitted";
+      default:
+        return "pending_review";
+    }
+  };
+
+  const getCompletedCount = () => completedReviews.length;
+
+  const getPendingCount = () => papers.length;
+
+  const getOverdueCount = () => {
+    return papers.filter((p) => {
+      if (!p.dueDate) return false;
+      const daysLeft = getDaysUntilDue(p.dueDate);
+      return daysLeft < 0 && p.assignment_status !== "completed";
+    }).length;
+  };
+
+  useEffect(() => {
+    if (token) fetchPapers();
+  }, [token]);
+
   return (
-    <DashboardLayout role={user.role} userName={user.username}>
+    <DashboardLayout role={user?.role} userName={user?.username}>
       <AnimatePresence mode="wait">
         {selectedPaper ? (
           <motion.div
@@ -204,31 +300,30 @@ export default function ReviewerDashboard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            {/* Header */}
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => setSelectedPaper(null)}
-                className="h-10 w-10 p-0"
+                onClick={resetForm}
+                className="h-10 w-10 p-0 bg-white"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="font-serif-outfit text-2xl font-bold">
+                <h1 className="font-serif-outfit text-2xl font-bold text-white">
                   {selectedPaper.title}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline">{selectedPaper.category}</Badge>
                   <Badge variant="secondary">{selectedPaper.version}</Badge>
                   <span className="text-sm text-muted-foreground">
-                    Due: {new Date(selectedPaper.dueDate).toLocaleDateString()}
+                    {selectedPaper.dueDate &&
+                      `Due: ${new Date(selectedPaper.dueDate).toLocaleDateString()}`}
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* PDF Viewer */}
               <Card className="glass-card overflow-hidden">
                 <CardHeader className="border-b border-border/50">
                   <div className="flex items-center justify-between">
@@ -261,10 +356,42 @@ export default function ReviewerDashboard() {
                       >
                         <RotateCcw className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `${url}${selectedPaper.file_url}`,
+                            "_blank",
+                          )
+                        }
+                      >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `${url}${selectedPaper.file_url}`,
+                            "_blank",
+                          )
+                        }
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = `${url}${selectedPaper.file_url}`;
+                          link.download = `${selectedPaper.title}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
@@ -273,7 +400,7 @@ export default function ReviewerDashboard() {
                 <CardContent className="p-0">
                   <div className="aspect-[3/4] bg-muted/30 flex items-center justify-center relative overflow-hidden">
                     <iframe
-                      src={`${selectedPaper.pdfUrl}#view=FitH`}
+                      src={`${url}${selectedPaper.file_url}#view=FitH`}
                       className="w-full h-full border-0"
                       style={{
                         transform: `scale(${pdfZoom / 100})`,
@@ -281,20 +408,10 @@ export default function ReviewerDashboard() {
                       }}
                       title="Paper PDF"
                     />
-                    {/* Fallback display */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 opacity-0 hover:opacity-100 transition-opacity">
-                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground mb-4">PDF Preview</p>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Open in New Tab
-                      </Button>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Review Form */}
               <Card className="glass-card">
                 <CardHeader className="border-b border-border/50">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -308,7 +425,6 @@ export default function ReviewerDashboard() {
                 <CardContent className="p-0">
                   <ScrollArea className="h-[600px]">
                     <div className="p-6 space-y-6">
-                      {/* Abstract */}
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Abstract</Label>
                         <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
@@ -316,7 +432,6 @@ export default function ReviewerDashboard() {
                         </p>
                       </div>
 
-                      {/* Rating Criteria */}
                       <div className="space-y-4">
                         <Label className="text-sm font-medium">
                           Rating Criteria
@@ -336,6 +451,7 @@ export default function ReviewerDashboard() {
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <motion.button
                                     key={star}
+                                    type="button"
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() =>
@@ -362,19 +478,18 @@ export default function ReviewerDashboard() {
                         ))}
                       </div>
 
-                      {/* Comments for Authors */}
                       <div className="space-y-2">
-                        <Label htmlFor="comments">Comments for Authors</Label>
+                        <Label htmlFor="comments">Comments for Authors *</Label>
                         <Textarea
                           id="comments"
                           value={comments}
                           onChange={(e) => setComments(e.target.value)}
                           placeholder="Provide detailed feedback for the authors..."
                           className="min-h-[150px] input-glow"
+                          required
                         />
                       </div>
 
-                      {/* Confidential Comments */}
                       <div className="space-y-2">
                         <Label htmlFor="confidential">
                           Confidential Comments for Editors
@@ -393,9 +508,8 @@ export default function ReviewerDashboard() {
                         />
                       </div>
 
-                      {/* Decision */}
                       <div className="space-y-3">
-                        <Label>Your Decision</Label>
+                        <Label>Your Decision *</Label>
                         <RadioGroup
                           value={decision}
                           onValueChange={setDecision}
@@ -502,10 +616,9 @@ export default function ReviewerDashboard() {
                         </RadioGroup>
                       </div>
 
-                      {/* Submit Button */}
                       <Button
-                        onClick={handleSubmitReview}
-                        disabled={!decision || !comments}
+                        onClick={submitReview}
+                        disabled={!decision || !comments.trim()}
                         className="w-full btn-physics"
                         size="lg"
                       >
@@ -529,7 +642,7 @@ export default function ReviewerDashboard() {
             className="space-y-6"
           >
             <div>
-              <h1 className="font-serif-outfit-outfit text-3xl font-bold text-white">
+              <h1 className="font-serif-outfit text-3xl font-bold text-white">
                 Reviewer Dashboard
               </h1>
               <p className="text-muted-foreground mt-1">
@@ -541,19 +654,19 @@ export default function ReviewerDashboard() {
               {[
                 {
                   label: "Pending Reviews",
-                  value: assignedPapers.length,
+                  value: getPendingCount(),
                   icon: Clock,
                   color: "text-warning",
                 },
                 {
                   label: "Completed",
-                  value: completedReviews.length,
+                  value: getCompletedCount(),
                   icon: CheckCircle2,
                   color: "text-success",
                 },
                 {
                   label: "Overdue",
-                  value: 0,
+                  value: getOverdueCount(),
                   icon: AlertTriangle,
                   color: "text-destructive",
                 },
@@ -596,118 +709,132 @@ export default function ReviewerDashboard() {
               ))}
             </div>
 
-            {/* Tabs */}
             <Tabs defaultValue="pending" className="space-y-4">
               <TabsList className="bg-muted/50">
                 <TabsTrigger value="pending">
-                  Pending Reviews ({assignedPapers.length})
+                  Pending Reviews ({getPendingCount()})
                 </TabsTrigger>
                 <TabsTrigger value="completed">
-                  Completed ({completedReviews.length})
+                  Completed ({getCompletedCount()})
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="pending" className="space-y-4">
-                {assignedPapers.map((paper, index) => {
-                  const daysLeft = getDaysUntilDue(paper.dueDate);
-                  return (
-                    <motion.div
-                      key={paper.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card className="glass-card hover:shadow-glow transition-all duration-300 cursor-pointer group">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {paper.id}
-                                </Badge>
-                                <Badge
-                                  className={cn(
-                                    "text-xs",
-                                    getPriorityColor(paper.priority),
-                                  )}
-                                >
-                                  {paper.priority} priority
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {paper.version}
-                                </Badge>
-                              </div>
+                {papers
+                  .filter((p) => p.assignment_status !== "completed")
+                  .map((paper, index) => {
+                    const daysLeft = paper.dueDate
+                      ? getDaysUntilDue(paper.dueDate)
+                      : 14;
+                    return (
+                      <motion.div
+                        key={paper.paper_version_id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Card className="glass-card hover:shadow-glow transition-all duration-300 cursor-pointer group">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {paper.paper_id}
+                                  </Badge>
+                                  <Badge
+                                    className={cn(
+                                      "text-xs",
+                                      getPriorityColor(
+                                        paper.priority || "medium",
+                                      ),
+                                    )}
+                                  >
+                                    {paper.priority} priority
+                                  </Badge>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {paper.version}
+                                  </Badge>
+                                </div>
 
-                              <h3 className="font-serif-outfit text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                                {paper.title}
-                              </h3>
+                                <h3 className="font-serif-outfit text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+                                  {paper.title}
+                                </h3>
 
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                {paper.abstract}
-                              </p>
+                                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                  {paper.abstract}
+                                </p>
 
-                              <div className="flex items-center gap-4 text-sm">
-                                <span className="text-muted-foreground">
-                                  <span className="text-foreground font-medium">
-                                    {paper.category}
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="text-muted-foreground">
+                                    <span className="text-foreground font-medium">
+                                      {paper.category}
+                                    </span>
                                   </span>
-                                </span>
-                                <span className="text-muted-foreground">
-                                  Submitted:{" "}
-                                  {new Date(
-                                    paper.submittedDate,
-                                  ).toLocaleDateString()}
-                                </span>
+                                  {paper.submittedDate && (
+                                    <span className="text-muted-foreground">
+                                      Submitted:{" "}
+                                      {new Date(
+                                        paper.submittedDate,
+                                      ).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex flex-col items-end gap-3">
-                              <div
-                                className={cn(
-                                  "text-sm font-medium px-3 py-1 rounded-full",
-                                  daysLeft <= 3
-                                    ? "bg-destructive/10 text-destructive"
-                                    : daysLeft <= 7
-                                      ? "bg-warning/10 text-warning"
-                                      : "bg-muted text-muted-foreground",
+                              <div className="flex flex-col items-end gap-3">
+                                {paper.dueDate && (
+                                  <div
+                                    className={cn(
+                                      "text-sm font-medium px-3 py-1 rounded-full",
+                                      daysLeft <= 3
+                                        ? "bg-destructive/10 text-destructive"
+                                        : daysLeft <= 7
+                                          ? "bg-warning/10 text-warning"
+                                          : "bg-muted text-muted-foreground",
+                                    )}
+                                  >
+                                    {daysLeft} days left
+                                  </div>
                                 )}
-                              >
-                                {daysLeft} days left
+
+                                {/* <StatusBadge
+                                  // status={getStatusBadge(paper.paper_status)}
+                                /> */}
+
+                                <Button
+                                  onClick={() => setSelectedPaper(paper)}
+                                  className="btn-physics"
+                                >
+                                  Start Review
+                                  <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
                               </div>
-
-                              <StatusBadge status={paper.status} />
-
-                              <Button
-                                onClick={() => setSelectedPaper(paper)}
-                                className="btn-physics"
-                              >
-                                Start Review
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                              </Button>
                             </div>
-                          </div>
 
-                          {/* Progress indicator */}
-                          <div className="mt-4 pt-4 border-t border-border/50">
-                            <div className="flex items-center justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">
-                                Review Progress
-                              </span>
-                              <span className="font-medium">0%</span>
+                            {/* Progress indicator */}
+                            <div className="mt-4 pt-4 border-t border-border/50">
+                              <div className="flex items-center justify-between text-sm mb-2">
+                                <span className="text-muted-foreground">
+                                  Review Progress
+                                </span>
+                                <span className="font-medium">0%</span>
+                              </div>
+                              <Progress value={0} className="h-1" />
                             </div>
-                            <Progress value={0} className="h-1" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
               </TabsContent>
 
               <TabsContent value="completed" className="space-y-4">
                 {completedReviews.map((review, index) => (
                   <motion.div
-                    key={review.id}
+                    key={review.paper_version_id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -717,7 +844,7 @@ export default function ReviewerDashboard() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline">{review.id}</Badge>
+                              <Badge variant="outline">{review.paper_id}</Badge>
                             </div>
                             <h3 className="font-serif-outfit text-lg font-semibold">
                               {review.title}
@@ -731,9 +858,10 @@ export default function ReviewerDashboard() {
                           </div>
                           <Badge
                             className={cn(
-                              review.decision === "accepted"
+                              review.decision === "accepted" ||
+                                review.decision === "accept"
                                 ? "bg-success/10 text-success"
-                                : review.decision === "revision"
+                                : review.decision.includes("revision")
                                   ? "bg-warning/10 text-warning"
                                   : "bg-destructive/10 text-destructive",
                             )}

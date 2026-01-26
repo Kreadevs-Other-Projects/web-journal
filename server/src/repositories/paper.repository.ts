@@ -1,39 +1,60 @@
 import { pool } from "../configs/db";
 
-export const createPaper = async (author_id: string, data: any) => {
-  const { title, abstract, category, keywords, journal_id } = data;
+export const createPaper = async (data: {
+  title: string;
+  abstract: string;
+  category?: string;
+  keywords: string[];
+  journal_id: string;
+  author_id: string;
+  chief_editor_id: string;
+  issue_id?: string;
+}) => {
+  const {
+    title,
+    abstract,
+    category,
+    keywords,
+    journal_id,
+    author_id,
+    chief_editor_id,
+    issue_id,
+  } = data;
 
   const result = await pool.query(
-    `
-    INSERT INTO papers
-    (title, abstract, category, keywords, author_id, journal_id)
-    VALUES ($1,$2,$3,$4,$5,$6)
-    RETURNING *
-    `,
-    [title, abstract, category, keywords, author_id, journal_id],
+    `INSERT INTO papers 
+      (title, abstract, category, keywords, journal_id, author_id, chief_editor_id, issue_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     RETURNING *`,
+    [
+      title,
+      abstract,
+      category,
+      keywords,
+      journal_id,
+      author_id,
+      chief_editor_id,
+      issue_id || null,
+    ],
   );
 
   return result.rows[0];
 };
 
+export const getPaperById = async (id: string) => {
+  const result = await pool.query(`SELECT * FROM papers WHERE id = $1`, [id]);
+  return result.rows[0];
+};
+
 export const getAllPapers = async () => {
-  const result = await pool.query(
-    `SELECT * FROM papers ORDER BY created_at DESC`,
-  );
+  const result = await pool.query(`SELECT * FROM papers`);
   return result.rows;
 };
 
 export const getPapersByAuthor = async (author_id: string) => {
-  const result = await pool.query(
-    `
-      SELECT id, title
-      FROM papers
-      WHERE author_id = $1
-      ORDER BY created_at DESC
-      `,
-    [author_id],
-  );
-
+  const result = await pool.query(`SELECT * FROM papers WHERE author_id = $1`, [
+    author_id,
+  ]);
   return result.rows;
 };
 
@@ -41,12 +62,16 @@ export const updatePaperStatus = async (paper_id: string, status: string) => {
   const result = await pool.query(
     `
     UPDATE papers
-    SET status = $2, updated_at = NOW()
-    WHERE id = $1
+    SET status = $1,
+        accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
+        published_at = CASE WHEN $1 = 'published' THEN NOW() ELSE published_at END,
+        updated_at = NOW()
+    WHERE id = $2
     RETURNING *
     `,
-    [paper_id, status],
+    [status, paper_id],
   );
+
   return result.rows[0];
 };
 
@@ -57,9 +82,10 @@ export const setCurrentVersion = async (
   await pool.query(
     `
     UPDATE papers
-    SET current_version = $2
-    WHERE id = $1
+    SET current_version_id = $1,
+        updated_at = NOW()
+    WHERE id = $2
     `,
-    [paper_id, version_id],
+    [version_id, paper_id],
   );
 };

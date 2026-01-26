@@ -1,53 +1,52 @@
-import { Response } from "express";
+import { Request, Response } from "express";
+import * as service from "../services/publisher.service";
 import { AuthUser } from "../middlewares/auth.middleware";
-import {
-  addJournalService,
-  getOwnerJournalService,
-} from "../services/publisher.service";
 
-export const addJournal = async (req: AuthUser, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const journal = await addJournalService(req.user, req.body);
-
-    return res.status(201).json({
-      success: true,
-      message: "Journal created successfully",
-      journal,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
+export const getJournals = async (req: AuthUser, res: Response) => {
+  const publisherId = req.user!.id;
+  const journals = await service.fetchPublisherJournals(publisherId);
+  res.json({ success: true, data: journals });
 };
 
-export const getOwnerJournal = async (req: AuthUser, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+export const getIssues = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+  const issues = await service.fetchJournalIssues(journalId);
+  res.json({ success: true, data: issues });
+};
 
-    const journals = await getOwnerJournalService(req.user);
+export const createIssue = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+  const issue = await service.addJournalIssue(journalId, req.body);
+  res.json({ success: true, data: issue });
+};
 
-    return res.status(200).json({
-      success: true,
-      journals,
-    });
-  } catch (error: any) {
-    return res.status(403).json({
-      success: false,
-      message: error.message,
-    });
-  }
+export const publishIssue = async (req: Request, res: Response) => {
+  const { issueId } = req.params;
+  const updatedIssue = await service.setIssuePublished(issueId);
+  res.json({ success: true, data: updatedIssue });
+};
+
+export const getPapers = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+  const papers = await service.fetchJournalPapers(journalId);
+  res.json({ success: true, data: papers });
+};
+
+export const getPapersByIssueId = async (req: Request, res: Response) => {
+  const { issueId } = req.params;
+
+  const data = await service.getPapersByIssueIdService(issueId);
+
+  res.status(200).json({
+    success: true,
+    message: "Papers fetched successfully",
+    data,
+  });
+};
+
+export const publishPaper = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  const publisherId = req.user!.id;
+  const published = await service.setPaperPublished(paperId, publisherId);
+  res.json({ success: true, data: published });
 };

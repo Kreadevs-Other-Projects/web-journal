@@ -96,7 +96,7 @@ export const sendOTPEmail = async (email: string, otpCode: string) => {
           <div class="code">${otpCode}</div>
           <p>This code will expire in <strong>10 minutes</strong>.</p>
           <p>If you didn’t request this, you can safely ignore this email.</p>
-        `
+        `,
       ),
       text: `Your OTP code is ${otpCode}. It will expire in 10 minutes.`,
     });
@@ -121,7 +121,7 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
           <p>Hi <strong>${username}</strong>,</p>
           <p>Welcome to <strong>JournalHub</strong> — your platform for scientific publishing and peer review.</p>
           <p>You can now submit, review, and manage your research papers with confidence.</p>
-        `
+        `,
       ),
       text: `Hi ${username}, welcome to JournalHub!`,
     });
@@ -136,7 +136,7 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
 
 export const sendPasswordResetEmail = async (
   email: string,
-  otpCode: string
+  otpCode: string,
 ) => {
   try {
     await transporter.sendMail({
@@ -151,7 +151,7 @@ export const sendPasswordResetEmail = async (
           <div class="code">${otpCode}</div>
           <p>This code will expire in <strong>10 minutes</strong>.</p>
           <p>If this wasn’t you, please ignore this email.</p>
-        `
+        `,
       ),
       text: `Your password reset code is ${otpCode}. It will expire in 10 minutes.`,
     });
@@ -162,4 +162,51 @@ export const sendPasswordResetEmail = async (
     console.error("Failed to send password reset email:", error);
     throw new Error("Password reset email failed");
   }
+};
+
+export const sendInvoiceEmail = async ({
+  email,
+  username,
+  journalName,
+  issueLabel,
+  amount,
+  currency,
+  invoiceId,
+  status,
+}: {
+  email: string;
+  username: string;
+  journalName: string;
+  issueLabel: string;
+  amount: number;
+  currency: string;
+  invoiceId: string;
+  status: string;
+}) => {
+  await transporter.sendMail({
+    from: `"JournalHub" <${env.EMAIL_FROM}>`,
+    to: email,
+    subject: `Invoice for Journal Issue (${status.toUpperCase()})`,
+    html: baseEmailTemplate(
+      "Journal Issue Invoice",
+      `
+      <p>Hi <strong>${username}</strong>,</p>
+
+      <p>You have applied for a new journal issue. Below are the invoice details:</p>
+
+      <p><strong>Journal:</strong> ${journalName}</p>
+      <p><strong>Issue:</strong> ${issueLabel}</p>
+      <p><strong>Invoice ID:</strong> ${invoiceId}</p>
+      <p><strong>Amount:</strong> ${amount} ${currency}</p>
+      <p><strong>Status:</strong> <strong>${status.toUpperCase()}</strong></p>
+
+      <a href="${env.CORS_ORIGIN}/dashboard/payments" class="button">
+        Pay Now
+      </a>
+
+      <p>If unpaid, your issue will remain <strong>Pending</strong>.</p>
+      `,
+    ),
+    text: `Invoice ${invoiceId} | Amount ${amount} ${currency} | Status ${status}`,
+  });
 };

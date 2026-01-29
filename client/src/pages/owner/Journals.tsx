@@ -258,7 +258,6 @@ export default function Journals(): JSX.Element {
 
       if (!data.success) {
         if (data.errors && data.errors.length) {
-          // Loop through Zod validation errors
           data.errors.forEach((err: any) => {
             toast({
               title: `Error in ${err.field.replace("body.", "")}`,

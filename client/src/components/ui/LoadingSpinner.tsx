@@ -25,37 +25,30 @@ export const LoadingSpinner = ({
       exit={{ opacity: 0, scale: 0.8 }}
       className="flex flex-col items-center justify-center gap-4"
     >
-      {/* Animated Spinner with Gradient */}
       <div className="relative">
-        {/* Outer glow effect */}
         <div className="absolute inset-0 animate-ping rounded-full bg-gradient-primary opacity-20" />
 
-        {/* Spinner container */}
         <div
           className={cn(
             "relative rounded-full border-transparent",
             sizeClasses[size],
-            "bg-gradient-to-br from-background via-background to-background"
+            "bg-gradient-to-br from-background via-background to-background",
           )}
         >
-          {/* Gradient border spinner */}
           <div
             className={cn(
               "absolute inset-0 rounded-full border-transparent",
               sizeClasses[size],
-              "animate-spin border-t-primary border-r-accent border-b-primary border-l-accent"
+              "animate-spin border-t-primary border-r-accent border-b-primary border-l-accent",
             )}
           />
 
-          {/* Inner gradient circle */}
           <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5" />
 
-          {/* Center dot */}
           <div className="absolute inset-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary" />
         </div>
       </div>
 
-      {/* Loading text with animation */}
       {text && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -99,10 +92,8 @@ export const LoadingSpinner = ({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm"
       >
-        {/* Animated background pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
 
-        {/* Glass card container */}
         <div className="glass-card p-8 rounded-2xl border border-border/50 shadow-2xl">
           {spinner}
         </div>

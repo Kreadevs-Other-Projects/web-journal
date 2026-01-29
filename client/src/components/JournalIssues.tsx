@@ -151,7 +151,9 @@ export default function JournalIssuesPage({
           Back to Journals
         </Button>
 
-        <h2 className="text-3xl font-bold">{journalName} - Issues</h2>
+        <h2 className="text-3xl font-bold text-white">
+          {journalName} - Issues
+        </h2>
 
         <Button onClick={() => setModalOpen(true)} className="mb-4 btn-physics">
           <Plus className="h-4 w-4 mr-2" />

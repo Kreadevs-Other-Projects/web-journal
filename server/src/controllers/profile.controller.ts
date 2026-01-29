@@ -4,7 +4,9 @@ import {
   getFullProfile,
   updateProfileService,
   deleteProfile,
+  changePassword,
 } from "../services/profile.service";
+import { deleteAllUserRefreshTokens } from "../repositories/auth.repository";
 
 export const getProfile = async (req: AuthUser, res: Response) => {
   const userId = req.user?.id;
@@ -37,6 +39,28 @@ export const getProfile = async (req: AuthUser, res: Response) => {
   });
 };
 
+export const changePasswordController = async (
+  req: AuthUser,
+  res: Response,
+) => {
+  const userId = req.user?.id;
+  const { oldPassword, newPassword } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  try {
+    const updated = await changePassword(userId, oldPassword, newPassword);
+    res.json({ message: "Password updated successfully", user: updated });
+  } catch (error: any) {
+    if (error.message === "INVALID_OLD_PASSWORD") {
+      return res.status(400).json({ error: "Old password is incorrect" });
+    }
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const editProfile = async (req: AuthUser, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -60,7 +84,7 @@ export const editProfile = async (req: AuthUser, res: Response) => {
     if (email) userData.email = email;
 
     if (req.file) {
-      userData.profile_pic = `/uploads/${req.file.filename}`;
+      userData.profile_pic = `/api/uploads/${req.file.filename}`;
     }
 
     const profileData: {
@@ -115,17 +139,27 @@ export const removeProfile = async (req: AuthUser, res: Response) => {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
-  const deleted = await deleteProfile(userId);
+  try {
+    await deleteAllUserRefreshTokens(userId);
 
-  if (!deleted) {
+    const deleted = await deleteProfile(userId);
+
+    if (!deleted) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete profile",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile deleted and all sessions revoked",
+    });
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Failed to delete profile",
     });
   }
-
-  return res.status(200).json({
-    success: true,
-    message: "Profile deleted successfully",
-  });
 };

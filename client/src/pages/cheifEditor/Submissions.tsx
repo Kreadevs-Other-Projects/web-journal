@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FileText, UserPlus } from "lucide-react";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -23,6 +24,7 @@ interface Paper {
 
 export default function ChiefEditor() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
@@ -38,14 +40,24 @@ export default function ChiefEditor() {
   const [reviewerId, setReviewerId] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
 
-  /* ---------------- FETCH DATA ---------------- */
-
   const fetchPapers = async () => {
-    const res = await fetch(`${url}/cheifEditor/getPapers`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setPapers(data.data || []);
+    try {
+      const res = await fetch(`${url}/cheifEditor/getPapers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      setPapers(data.data || []);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Failed to load papers",
+        description: "Unable to fetch papers at the moment.",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
@@ -68,48 +80,71 @@ export default function ChiefEditor() {
       .then((data) => setReviewers(data.data || []));
   }, [token]);
 
-  /* ---------------- ACTIONS ---------------- */
-
   const assignSubEditor = async () => {
     if (!selectedPaper || !subEditorId) return;
 
-    await fetch(`${url}/cheifEditor/assignSubEditor/${selectedPaper.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ subEditorId }),
-    });
+    try {
+      await fetch(`${url}/cheifEditor/assignSubEditor/${selectedPaper.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ subEditorId }),
+      });
 
-    setSubEditorId("");
-    setOpenDialog(false);
-    fetchPapers();
+      toast({
+        title: "Sub-Editor Assigned",
+        description: "Sub-editor assigned successfully.",
+      });
+
+      setSubEditorId("");
+      setOpenDialog(false);
+      fetchPapers();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Assignment Failed",
+        description: "Could not assign sub-editor.",
+        variant: "destructive",
+      });
+    }
   };
 
   const assignReviewer = async () => {
     if (!selectedPaper || !reviewerId) return;
 
-    await fetch(`${url}/cheifEditor/assignReviewer/${selectedPaper.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ reviewerId }),
-    });
+    try {
+      await fetch(`${url}/cheifEditor/assignReviewer/${selectedPaper.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reviewerId }),
+      });
 
-    setReviewerId("");
-    setOpenDialog(false);
-    fetchPapers();
+      toast({
+        title: "Reviewer Assigned",
+        description: "Reviewer assigned successfully.",
+      });
+
+      setReviewerId("");
+      setOpenDialog(false);
+      fetchPapers();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Assignment Failed",
+        description: "Could not assign reviewer.",
+        variant: "destructive",
+      });
+    }
   };
-
-  /* ---------------- UI ---------------- */
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
-        {/* HEADER */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">
             Papers Management
@@ -119,7 +154,6 @@ export default function ChiefEditor() {
           </p>
         </div>
 
-        {/* PAPERS GRID */}
         {papers.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -156,7 +190,6 @@ export default function ChiefEditor() {
           </div>
         )}
 
-        {/* ACTION DIALOG */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent>
             <DialogHeader>
@@ -169,7 +202,6 @@ export default function ChiefEditor() {
                   <b>Paper:</b> {selectedPaper.title}
                 </p>
 
-                {/* SUB EDITOR */}
                 <div className="space-y-2">
                   <Label>Select Sub-Editor</Label>
                   <select
@@ -194,7 +226,6 @@ export default function ChiefEditor() {
                   </Button>
                 </div>
 
-                {/* REVIEWER */}
                 <div className="space-y-2 pt-2 border-t">
                   <Label>Select Reviewer</Label>
                   <select

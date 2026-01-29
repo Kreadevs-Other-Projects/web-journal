@@ -15,6 +15,7 @@ import { BookOpen, PlusCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { log } from "console";
+import { useToast } from "@/hooks/use-toast";
 
 interface Journal {
   id: string;
@@ -34,6 +35,7 @@ interface JournalIssue {
 
 export default function PublisherDashboard() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [issuesByJournal, setIssuesByJournal] = useState<
@@ -51,30 +53,57 @@ export default function PublisherDashboard() {
   });
 
   const fetchJournals = async () => {
-    const res = await fetch(`${url}/publisher/getJournals`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const json = await res.json();
-    setJournals(json.data ?? []);
+    try {
+      const res = await fetch(`${url}/publisher/getJournals`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch journals");
+
+      const json = await res.json();
+      setJournals(json.data ?? []);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load journals",
+      });
+    }
   };
 
   const fetchIssues = async (journalId: string) => {
-    const res = await fetch(
-      `${url}/journal-issue/getJournalIssues/${journalId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const json = await res.json();
+    try {
+      const res = await fetch(
+        `${url}/journal-issue/getJournalIssues/${journalId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
-    setIssuesByJournal((prev) => ({
-      ...prev,
-      [journalId]: json.issues ?? [],
-    }));
+      if (!res.ok) throw new Error("Failed to fetch journal issues");
+
+      const json = await res.json();
+
+      setIssuesByJournal((prev) => ({
+        ...prev,
+        [journalId]: json.issues ?? [],
+      }));
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load journal issues",
+      });
+    }
   };
 
   const createIssue = async () => {
     if (!selectedJournal || !issueForm.label || !issueForm.year) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Year and label are required",
+      });
       return;
     }
 
@@ -97,8 +126,14 @@ export default function PublisherDashboard() {
       );
 
       if (!response.ok) {
-        return;
+        const data = await response.json();
+        throw new Error(data.message || "Failed to create issue");
       }
+
+      toast({
+        title: "Issue Created",
+        description: "Journal issue created successfully",
+      });
 
       setIssueForm({
         year: new Date().getFullYear(),
@@ -108,18 +143,38 @@ export default function PublisherDashboard() {
       });
 
       setIssueModalOpen(false);
-
       await fetchIssues(selectedJournal);
-    } catch (error) {}
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Creation Failed",
+        description: err.message || "Could not create issue",
+      });
+    }
   };
 
   const publishIssue = async (issueId: string, journalId: string) => {
-    await fetch(`${url}/publisher/publishIssue/${issueId}`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      const res = await fetch(`${url}/publisher/publishIssue/${issueId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    fetchIssues(journalId);
+      if (!res.ok) throw new Error("Failed to publish issue");
+
+      toast({
+        title: "Issue Published",
+        description: "The issue is now live",
+      });
+
+      fetchIssues(journalId);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Publish Failed",
+        description: err.message || "Could not publish issue",
+      });
+    }
   };
 
   useEffect(() => {

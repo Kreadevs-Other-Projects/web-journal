@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import JournalIssuesPage from "@/components/JournalIssues";
+import { useToast } from "@/hooks/use-toast";
 
 interface Journal {
   id: string;
@@ -75,7 +76,7 @@ const isActiveIssue = (issue: JournalIssue) =>
 
 export default function Journals(): JSX.Element {
   const { user, token, isLoading } = useAuth();
-
+  const { toast } = useToast();
   const [journals, setJournals] = useState<Journal[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -136,10 +137,24 @@ export default function Journals(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const list: Journal[] = data.journals ?? [];
-      setJournals(list);
-    } catch (e) {
+
+      if (data.success) {
+        const list: Journal[] = data.journals ?? [];
+        setJournals(list);
+      } else {
+        toast({
+          title: "Failed to fetch journals",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error fetching journals",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -151,14 +166,26 @@ export default function Journals(): JSX.Element {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const data = await res.json();
+
       if (data.success) {
         const list: JournalIssue[] = data.issues ?? [];
         setIssuesByJournal((prev) => ({ ...prev, [journalId]: list }));
         return list;
+      } else {
+        toast({
+          title: "Failed to fetch issues",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+        return [];
       }
-      return [];
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error fetching issues",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
       return [];
     } finally {
       setIssuesLoading(false);
@@ -190,23 +217,35 @@ export default function Journals(): JSX.Element {
   }, [journals.length, token]);
 
   const fetchPublishers = async () => {
-    const res = await fetch(`${url}/owner/getPublishers`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const res = await fetch(`${url}/owner/getPublishers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.success) {
-      setPublishers(data.data);
+      if (data.success) {
+        setPublishers(data.data);
+      } else {
+        toast({
+          title: "Failed to fetch publishers",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Error fetching publishers",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
     }
   };
 
   const createJournal = async () => {
     setLoading(true);
     try {
-      await fetch(`${url}/journal/addJournal`, {
+      const res = await fetch(`${url}/journal/addJournal`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -214,6 +253,34 @@ export default function Journals(): JSX.Element {
         },
         body: JSON.stringify(form),
       });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          // Loop through Zod validation errors
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: "Journal created",
+        description: "Journal saved successfully",
+      });
+
       setOpen(false);
       setForm({
         name: "",
@@ -223,9 +290,14 @@ export default function Journals(): JSX.Element {
         website_url: "",
         publisher_id: "",
       });
+
       await fetchJournals();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message || "Something went wrong",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -235,19 +307,38 @@ export default function Journals(): JSX.Element {
     if (!selectedJournal) return;
     setLoading(true);
     try {
-      await fetch(`${url}/journal/updateJournal/${selectedJournal.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${url}/journal/updateJournal/${selectedJournal.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
         },
-        body: JSON.stringify(form),
-      });
-      setEditOpen(false);
-      setSelectedJournal(null);
-      await fetchJournals();
-    } catch (e) {
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Journal Updated",
+          description: `${form.name} has been successfully updated.`,
+        });
+
+        setEditOpen(false);
+        setSelectedJournal(null);
+        await fetchJournals();
+      } else {
+        throw new Error(data.message || "Failed to update journal");
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: e.message || "Failed to update journal",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -257,15 +348,34 @@ export default function Journals(): JSX.Element {
     if (!selectedJournal) return;
     setLoading(true);
     try {
-      await fetch(`${url}/journal/deleteJournal/${selectedJournal.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDeleteOpen(false);
-      setSelectedJournal(null);
-      await fetchJournals();
-    } catch (e) {
+      const res = await fetch(
+        `${url}/journal/deleteJournal/${selectedJournal.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Journal Deleted",
+          description: `${selectedJournal.name} has been removed.`,
+        });
+
+        setDeleteOpen(false);
+        setSelectedJournal(null);
+        await fetchJournals();
+      } else {
+        throw new Error(data.message || "Failed to delete journal");
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: e.message || "Failed to delete journal",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -358,20 +468,23 @@ export default function Journals(): JSX.Element {
       if (data.success) {
         await fetchIssuesForJournal(journalId);
 
+        toast({
+          title: editingIssue ? "Issue Updated" : "Issue Created",
+          description: `Issue for ${activeJournalForIssue.name} has been saved.`,
+        });
+
         setModalOpen(false);
 
         if (!editingIssue) {
-          const createdIssue: JournalIssue | null =
+          let createdIssue: JournalIssue | null =
             data.issue ?? data.journalIssue ?? data.createdIssue ?? null;
 
-          let issueToPayFor = createdIssue;
-
-          if (!issueToPayFor) {
+          if (!createdIssue) {
             const list = await fetchIssuesForJournal(journalId);
-            issueToPayFor = list?.[0] ?? null;
+            createdIssue = list?.[0] ?? null;
           }
 
-          setPendingPaymentIssue(issueToPayFor);
+          setPendingPaymentIssue(createdIssue);
           setPaymentOpen(true);
         }
 
@@ -384,9 +497,16 @@ export default function Journals(): JSX.Element {
           label: "",
           published_at: "",
         });
+      } else {
+        throw new Error(data.message || "Failed to save issue");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save issue",
+        variant: "destructive",
+      });
     } finally {
       setIssuesLoading(false);
     }

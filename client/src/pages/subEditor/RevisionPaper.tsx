@@ -12,6 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -27,6 +28,8 @@ interface Reviewer {
 
 export default function RevisionPaper() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
+
   const [papers, setPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [status, setStatus] = useState("");
@@ -42,38 +45,59 @@ export default function RevisionPaper() {
       if (!res.ok) {
         const errorData = await res.json();
         console.error("Failed to fetch sub-editor papers:", errorData.message);
+        toast({
+          title: "Error fetching papers",
+          description: errorData.message || "Something went wrong",
+          variant: "destructive",
+        });
         return;
       }
 
       const data = await res.json();
-
       const assignedPapers = (data.data || []).filter(
         (paper: { status: string }) => paper.status === "pending_revision",
       );
-
       setPapers(assignedPapers);
     } catch (err) {
       console.error("Error fetching sub-editor papers:", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch papers.",
+        variant: "destructive",
+      });
     }
   };
 
   const fetchReviewers = async (paperId: string) => {
-    const res = await fetch(
-      `${url}/subEditor/getReviewersForPaper/${paperId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const data = await res.json();
-    setReviewers(data.data || []);
-    setOpenReviewers(true);
+    try {
+      const res = await fetch(
+        `${url}/subEditor/getReviewersForPaper/${paperId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+      setReviewers(data.data || []);
+      setOpenReviewers(true);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch reviewers",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateStatus = async () => {
     if (!selectedPaper) return;
 
     if (!status) {
-      alert("Please select a status");
+      toast({
+        title: "Invalid action",
+        description: "Please select a status before updating.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -93,16 +117,24 @@ export default function RevisionPaper() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to update paper status");
-        return;
+        throw new Error(data.message || "Failed to update paper status");
       }
 
-      alert("Paper status updated successfully");
+      toast({
+        title: "Success",
+        description: `Paper status updated to "${status}".`,
+      });
+
       setSelectedPaper(null);
       fetchPapers();
     } catch (err) {
-      console.error("Update status error:", err);
-      alert("Something went wrong while updating status");
+      console.error(err);
+      toast({
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to update status",
+        variant: "destructive",
+      });
     }
   };
 

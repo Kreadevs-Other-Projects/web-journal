@@ -37,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
+import { useToast } from "@/hooks/use-toast";
 
 const defaultUserData = {
   id: "",
@@ -59,6 +60,7 @@ const defaultUserData = {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [userData, setUserData] = useState(defaultUserData);
@@ -69,6 +71,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -99,9 +103,7 @@ export default function ProfilePage() {
           role: apiUser.role,
           created_at: apiUser.created_at,
           title: apiUser.title || "",
-          profile_pic:
-            apiUser.profile_pic ||
-            `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username}`,
+          profile_pic: apiUser.profile_pic,
           lastActive: apiProfile.lastActive || apiUser.lastActive || "",
           papersSubmitted: apiProfile.papersSubmitted || 0,
           papersReviewed: apiProfile.papersReviewed || 0,
@@ -113,10 +115,20 @@ export default function ProfilePage() {
           qualifications: apiProfile.qualifications || "",
           certifications: apiProfile.certifications || "",
         });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "Failed to fetch profile",
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
       console.error(err);
-      alert("Failed to fetch profile");
+      toast({
+        title: "Error",
+        description: "Failed to fetch profile",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -149,13 +161,24 @@ export default function ProfilePage() {
       const result = await res.json();
       if (result.success) {
         await fetchProfile();
-        alert("Profile updated successfully");
+        toast({
+          title: "Success",
+          description: "Profile updated successfully",
+        });
       } else {
-        alert(result.message || "Failed to update profile");
+        toast({
+          title: "Error",
+          description: result.message || "Failed to update profile",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile");
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
       setIsEditing(false);
@@ -165,53 +188,112 @@ export default function ProfilePage() {
 
   const handleDeleteAccount = async () => {
     if (!userData.id) return;
+
     try {
       setLoading(true);
+
       const res = await fetch(`${url}/profile/deleteProfile`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
       const result = await res.json();
+
       if (result.success) {
-        alert("Account deleted");
-        navigate("/login");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+
+        toast({
+          title: "Success",
+          description: "Account deleted successfully",
+        });
+
+        window.location.href = "/login";
       } else {
-        alert(result.message || "Failed to delete account");
+        toast({
+          title: "Error",
+          description: result.message || "Failed to delete account",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to delete account");
+      toast({
+        title: "Error",
+        description: "Failed to delete account",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "All password fields are required",
+        variant: "destructive",
+      });
       return;
     }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New password and confirm password do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      toast({
+        title: "Weak Password",
+        description:
+          "Password must be at least 6 characters and include a number and special character",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(`${url}/auth/change-password`, {
+      const res = await fetch(`${url}/profile/change-password`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ oldPassword, newPassword }),
       });
+
       const result = await res.json();
       if (result.success) {
-        alert("Password updated successfully");
+        toast({
+          title: "Success",
+          description: "Password updated successfully",
+        });
+        setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
-        alert(result.message || "Failed to update password");
+        toast({
+          title: "Error",
+          description: result.message || "Failed to update password",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to update password");
+      toast({
+        title: "Error",
+        description: "Failed to update password",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -400,7 +482,7 @@ export default function ProfilePage() {
                           <p>
                             {userData.created_at
                               ? new Date(
-                                  userData.created_at
+                                  userData.created_at,
                                 ).toLocaleDateString()
                               : "N/A"}
                           </p>
@@ -493,6 +575,30 @@ export default function ProfilePage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <Label>Current Password</Label>
+                        <div className="relative">
+                          <Input
+                            type={showOldPassword ? "text" : "password"}
+                            value={oldPassword}
+                            onChange={(e) => setOldPassword(e.target.value)}
+                            placeholder="Enter current password"
+                            className="pl-10"
+                          />
+                          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowOldPassword(!showOldPassword)}
+                          >
+                            {showOldPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
                       <div className="space-y-3">
                         <Label>New Password</Label>
                         <div className="relative">

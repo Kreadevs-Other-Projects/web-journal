@@ -14,6 +14,7 @@ import {
 import { BookOpen, Users, Edit3 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Journal {
   id: string;
@@ -33,6 +34,8 @@ interface AssignForm {
 
 export default function ChiefEditorDashboard() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
+
   const [journals, setJournals] = useState<Journal[]>([]);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
@@ -47,10 +50,20 @@ export default function ChiefEditorDashboard() {
       const res = await fetch(`${url}/cheifEditor/getJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch journals");
+      }
+
       const data = await res.json();
       setJournals(data.data ?? []);
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: "Unable to load journals.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -59,10 +72,20 @@ export default function ChiefEditorDashboard() {
       const res = await fetch(`${url}/cheifEditor/getPapers/${journalId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch papers");
+      }
+
       const data = await res.json();
       setPapers(data.data ?? []);
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: "Unable to load papers for this journal.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -74,6 +97,7 @@ export default function ChiefEditorDashboard() {
 
   const submitAssignSubEditor = async () => {
     if (!assignPaperId) return;
+
     try {
       await fetch(`${url}/cheifEditor/assignSubEditor/${assignPaperId}`, {
         method: "POST",
@@ -83,15 +107,26 @@ export default function ChiefEditorDashboard() {
         },
         body: JSON.stringify(assignForm),
       });
+
       setAssignModalOpen(false);
-      alert("Sub Editor assigned successfully!");
+
+      toast({
+        title: "Sub Editor Assigned",
+        description: "The sub editor has been assigned successfully.",
+      });
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Assignment Failed",
+        description: "Unable to assign sub editor.",
+        variant: "destructive",
+      });
     }
   };
 
   const submitAssignReviewer = async () => {
     if (!assignPaperId) return;
+
     try {
       await fetch(`${url}/cheifEditor/assignReviewer/${assignPaperId}`, {
         method: "POST",
@@ -101,15 +136,33 @@ export default function ChiefEditorDashboard() {
         },
         body: JSON.stringify(assignForm),
       });
+
       setAssignModalOpen(false);
-      alert("Reviewer assigned successfully!");
+
+      toast({
+        title: "Reviewer Assigned",
+        description: "The reviewer has been assigned successfully.",
+      });
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Assignment Failed",
+        description: "Unable to assign reviewer.",
+        variant: "destructive",
+      });
     }
   };
 
   const updatePaperStatus = async (paperId: string) => {
-    if (!statusForm) return;
+    if (!statusForm) {
+      toast({
+        title: "Status Required",
+        description: "Please enter a status before updating.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await fetch(`${url}/cheifEditor/updatePaperStatus/${paperId}`, {
         method: "PUT",
@@ -119,10 +172,21 @@ export default function ChiefEditorDashboard() {
         },
         body: JSON.stringify({ status: statusForm }),
       });
-      alert("Paper status updated!");
+
+      toast({
+        title: "Status Updated",
+        description: "Paper status has been updated successfully.",
+      });
+
+      setStatusForm("");
       if (selectedJournal) fetchPapers(selectedJournal.id);
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Update Failed",
+        description: "Could not update paper status.",
+        variant: "destructive",
+      });
     }
   };
 

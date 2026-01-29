@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   updated_at: any;
@@ -96,6 +97,8 @@ const reviewCriteria = [
 
 export default function ReviewerDashboard() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
+
   const [papers, setPapers] = useState<Paper[]>([]);
   const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
     [],
@@ -167,7 +170,11 @@ export default function ReviewerDashboard() {
 
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
-      alert("Please fill in all required fields");
+      toast({
+        title: "Incomplete",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -212,16 +219,28 @@ export default function ReviewerDashboard() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to submit review");
+        toast({
+          title: "Failed",
+          description: data.message || "Could not submit review",
+          variant: "destructive",
+        });
         return;
       }
 
-      alert("Review submitted successfully");
+      toast({
+        title: "Success",
+        description: "Review submitted successfully",
+      });
+
       resetForm();
       fetchPapers();
     } catch (err) {
       console.error("Submit review error:", err);
-      alert("Something went wrong while submitting review");
+      toast({
+        title: "Error",
+        description: "Something went wrong while submitting review",
+        variant: "destructive",
+      });
     }
   };
 

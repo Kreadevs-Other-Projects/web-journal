@@ -17,6 +17,7 @@ import { url } from "@/url";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -32,6 +33,7 @@ interface PaperVersion {
 
 export default function PaperVersions() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [versions, setVersions] = useState<PaperVersion[]>([]);
@@ -44,24 +46,50 @@ export default function PaperVersions() {
   const [file, setFile] = useState<File | null>(null);
 
   const fetchPapers = async () => {
-    const res = await fetch(`${url}/papers/getPapersByAuthor`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setPapers(data.papers || []);
+    try {
+      const res = await fetch(`${url}/papers/getPapersByAuthor`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch papers");
+
+      const data = await res.json();
+      setPapers(data.papers || []);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load papers",
+      });
+    }
   };
 
   const fetchVersions = async () => {
-    if (!paperId) return;
+    if (!paperId) {
+      setVersions([]);
+      return;
+    }
 
-    const res = await fetch(
-      `${url}/paper-versions/getPaperVersions/${paperId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const data = await res.json();
-    setVersions(data.versions || []);
+    try {
+      const res = await fetch(
+        `${url}/paper-versions/getPaperVersions/${paperId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!res.ok) throw new Error("Failed to fetch versions");
+
+      const data = await res.json();
+      setVersions(data.versions || []);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load paper versions",
+      });
+      setVersions([]);
+    }
   };
 
   useEffect(() => {
@@ -73,22 +101,50 @@ export default function PaperVersions() {
   }, [paperId]);
 
   const uploadVersion = async () => {
-    if (!paperId || !versionLabel || !file) return;
+    if (!paperId || !versionLabel || !file) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Paper, version label, and file are required",
+      });
+      return;
+    }
 
-    const formData = new FormData();
-    formData.append("version_label", versionLabel);
-    formData.append("file", file);
+    try {
+      const formData = new FormData();
+      formData.append("version_label", versionLabel);
+      formData.append("file", file);
 
-    await fetch(`${url}/paper-versions/uploadPaperVersion/${paperId}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
+      const res = await fetch(
+        `${url}/paper-versions/uploadPaperVersion/${paperId}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        },
+      );
 
-    setOpen(false);
-    setVersionLabel("");
-    setFile(null);
-    fetchVersions();
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Upload failed");
+      }
+
+      toast({
+        title: "Upload Successful",
+        description: "Paper version uploaded successfully",
+      });
+
+      setOpen(false);
+      setVersionLabel("");
+      setFile(null);
+      fetchVersions();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: err.message || "Could not upload version",
+      });
+    }
   };
 
   return (

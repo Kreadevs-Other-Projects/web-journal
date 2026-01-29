@@ -1,9 +1,10 @@
 import { pool } from "../configs/db";
+import bcrypt from "bcrypt";
 
 export const findUserByEmail = async (email: string) => {
   const result = await pool.query(
     "SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL",
-    [email]
+    [email],
   );
   return result.rows[0];
 };
@@ -13,7 +14,7 @@ export const findUserById = async (id: string) => {
     `SELECT id, email, username, role, created_at, profile_pic
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
-    [id]
+    [id],
   );
 
   return res.rows[0];
@@ -22,9 +23,37 @@ export const findUserById = async (id: string) => {
 export const findUserProfile = async (userId: string) => {
   const result = await pool.query(
     `SELECT * FROM user_profiles WHERE user_id = $1`,
-    [userId]
+    [userId],
   );
   return result.rows[0];
+};
+
+export const updateUserPassword = async (
+  userId: string,
+  newPassword: string,
+) => {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const result = await pool.query(
+    `UPDATE users
+     SET password = $1
+     WHERE id = $2 AND deleted_at IS NULL
+     RETURNING id`,
+    [hashedPassword, userId],
+  );
+
+  return result.rows[0];
+};
+
+export const verifyUserPassword = async (userId: string, password: string) => {
+  const result = await pool.query(
+    `SELECT password FROM users WHERE id = $1 AND deleted_at IS NULL`,
+    [userId],
+  );
+
+  if (result.rows.length === 0) return false;
+
+  const isValid = await bcrypt.compare(password, result.rows[0].password);
+  return isValid;
 };
 
 export const createUser = async (userData: {
@@ -35,7 +64,7 @@ export const createUser = async (userData: {
 }) => {
   const result = await pool.query(
     "INSERT INTO users (email, password, username, role) VALUES ($1, $2, $3, $4) RETURNING id",
-    [userData.email, userData.password, userData.username, userData.role]
+    [userData.email, userData.password, userData.username, userData.role],
   );
   return result.rows[0];
 };
@@ -45,7 +74,7 @@ export const createUserProfile = async (userId: string) => {
     `INSERT INTO user_profiles (user_id)
      VALUES ($1)
      RETURNING user_id`,
-    [userId]
+    [userId],
   );
 
   return result.rows[0];
@@ -53,7 +82,7 @@ export const createUserProfile = async (userId: string) => {
 
 export const updateUser = async (
   userId: string,
-  data: { username?: string; email?: string; profile_pic?: string | null }
+  data: { username?: string; email?: string; profile_pic?: string | null },
 ) => {
   const fields: string[] = [];
   const values: any[] = [];
@@ -85,7 +114,7 @@ export const updateUser = async (
      SET ${fields.join(", ")}
      WHERE id = $${paramCount} AND deleted_at IS NULL
      RETURNING *`,
-    values
+    values,
   );
 
   return result.rows[0];
@@ -97,7 +126,7 @@ export const updateUserProfile = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
-  }
+  },
 ) => {
   const fields: string[] = [];
   const values: any[] = [];
@@ -111,7 +140,7 @@ export const updateUserProfile = async (
   if (data.expertise !== undefined) {
     fields.push(`expertise = $${paramCount++}`);
     values.push(
-      data.expertise && data.expertise.length > 0 ? data.expertise : null
+      data.expertise && data.expertise.length > 0 ? data.expertise : null,
     );
   }
 
@@ -131,7 +160,7 @@ export const updateUserProfile = async (
      SET ${fields.join(", ")}
      WHERE user_id = $${paramCount}
      RETURNING *`,
-    values
+    values,
   );
 
   return result.rows[0];
@@ -144,7 +173,7 @@ export const updateProfile = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
-  }
+  },
 ) => {
   if (userData.email) {
     const existing = await findUserByEmail(userData.email);
@@ -180,7 +209,7 @@ export const softDeleteUser = async (userId: string) => {
        deleted_at = $1
      WHERE id = $2 AND deleted_at IS NULL
      RETURNING id`,
-    [timestamp, userId]
+    [timestamp, userId],
   );
   return result.rows[0];
 };

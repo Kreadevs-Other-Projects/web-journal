@@ -130,9 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             username: apiUser.username,
             email: apiUser.email,
             role: apiUser.role,
-            profile_pic:
-              apiUser.profile_pic ||
-              `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.username}`,
+            profile_pic: apiUser.profile_pic,
             created_at: apiUser.created_at,
             title: apiUser.title || "",
             lastActive: apiProfile.lastActive || "",

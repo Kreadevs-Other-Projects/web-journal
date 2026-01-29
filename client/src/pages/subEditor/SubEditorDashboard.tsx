@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { FileText, Users, ArrowLeft, Eye, Calendar } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -41,6 +42,7 @@ interface Reviewer {
 
 export default function SubEditorDashboard() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
@@ -49,40 +51,87 @@ export default function SubEditorDashboard() {
   const [openReviewers, setOpenReviewers] = useState(false);
 
   const fetchPapers = async () => {
-    const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setPapers(data.data || []);
+    try {
+      const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPapers(data.data || []);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to load papers.",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchReviewers = async (paperId: string) => {
-    const res = await fetch(
-      `${url}/subEditor/getReviewersForPaper/${paperId}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    const data = await res.json();
-    setReviewers(data.data || []);
-    setOpenReviewers(true);
+    try {
+      const res = await fetch(
+        `${url}/subEditor/getReviewersForPaper/${paperId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+      setReviewers(data.data || []);
+      setOpenReviewers(true);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to load reviewers.",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateStatus = async () => {
-    if (!selectedPaper || !status) return;
+    if (!selectedPaper || !status) {
+      toast({
+        title: "Invalid action",
+        description: "Please select a status before updating.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    await fetch(
-      `${url}/subEditor/updateSubEditorPaperStatus/${selectedPaper.id}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+    try {
+      const res = await fetch(
+        `${url}/subEditor/updateSubEditorPaperStatus/${selectedPaper.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
         },
-        body: JSON.stringify({ status }),
-      },
-    );
+      );
 
-    setSelectedPaper(null);
-    fetchPapers();
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to update status");
+      }
+
+      setSelectedPaper(null);
+      fetchPapers();
+
+      toast({
+        title: "Status Updated",
+        description: `Paper status changed to "${status}".`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to update status.",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {

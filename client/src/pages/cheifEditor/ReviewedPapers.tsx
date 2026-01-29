@@ -20,6 +20,7 @@ import { url } from "@/url";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import { useToast } from "@/hooks/use-toast";
 
 interface SubmittedReview {
   paperId: string;
@@ -40,6 +41,7 @@ const ITEMS_PER_PAGE = 5;
 
 export default function ChiefEditorSubmittedReviews() {
   const { token, user } = useAuth();
+  const { toast } = useToast();
   const [reviews, setReviews] = useState<SubmittedReview[]>([]);
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,9 +78,16 @@ export default function ChiefEditorSubmittedReviews() {
             submittedAt: r.submitted_at,
           }));
           setReviews(mapped);
+        } else {
+          throw new Error("Failed to fetch reviews");
         }
       } catch (err) {
         console.error("Error fetching submitted reviews:", err);
+        toast({
+          title: "Error",
+          description: "Unable to load submitted reviews.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -109,10 +118,15 @@ export default function ChiefEditorSubmittedReviews() {
           body: JSON.stringify({ decision, decision_note: decisionNote }),
         },
       );
+
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to save decision");
+        toast({
+          title: "Failed to save decision",
+          description: data.message || "An error occurred while saving.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -127,10 +141,18 @@ export default function ChiefEditorSubmittedReviews() {
       setOpenDecision(false);
       setSelectedReview(null);
       setDecisionNote("");
-      alert("Decision saved successfully");
+
+      toast({
+        title: "Decision saved",
+        description: "The editor decision has been updated successfully.",
+      });
     } catch (err) {
       console.error(err);
-      alert("Error saving decision");
+      toast({
+        title: "Error",
+        description: "Unable to save decision. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

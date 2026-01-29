@@ -40,9 +40,6 @@ interface CompletedReview extends Paper {
   completedDate: string;
 }
 
-// ----------------------
-// Component
-// ----------------------
 const ITEMS_PER_PAGE = 5;
 
 export default function CompletedReviewPage() {

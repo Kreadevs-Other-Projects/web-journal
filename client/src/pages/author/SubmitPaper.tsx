@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -38,6 +39,7 @@ const STATUSES = [
 
 export default function Papers() {
   const { user, token, isLoading } = useAuth();
+  const { toast } = useToast();
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
@@ -64,50 +66,92 @@ export default function Papers() {
   const [status, setStatus] = useState("submitted");
 
   const fetchJournals = async () => {
-    const res = await fetch(`${url}/journal/getJournals`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setJournals(data.journals || []);
+    try {
+      const res = await fetch(`${url}/journal/getJournals`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch journals");
+
+      const data = await res.json();
+      setJournals(data.journals || []);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load journals",
+      });
+    }
   };
 
   useEffect(() => {
-    if (form.journal_id && token) {
-      fetch(`${url}/journal-issue/getJournalIssues/${form.journal_id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setIssues(data.issues || []));
-    }
+    if (!form.journal_id || !token) return;
+
+    const fetchIssues = async () => {
+      try {
+        const res = await fetch(
+          `${url}/journal-issue/getJournalIssues/${form.journal_id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        if (!res.ok) throw new Error("Failed to load journal issues");
+
+        const data = await res.json();
+        setIssues(data.issues || []);
+      } catch (err: any) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: err.message || "Could not fetch journal issues",
+        });
+        setIssues([]);
+      }
+    };
+
+    fetchIssues();
   }, [form.journal_id, token]);
 
   useEffect(() => {
-    if (token) {
-      fetch(`${url}/cheifEditor/getChiefEditors`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setChiefEditors(data.data || []);
-        })
-        .catch((err) => {
-          console.error("Error fetching chief editors:", err);
-        });
-    }
+    if (!token) return;
+
+    fetch(`${url}/cheifEditor/getChiefEditors`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setChiefEditors(data.data || []))
+      .catch(() =>
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load chief editors",
+        }),
+      );
   }, [token]);
 
   const fetchPapers = async () => {
-    const endpoint =
-      user?.role === "author"
-        ? "/papers/getPapersByAuthor"
-        : "/papers/getAllPapers";
+    try {
+      const endpoint =
+        user?.role === "author"
+          ? "/papers/getPapersByAuthor"
+          : "/papers/getAllPapers";
 
-    const res = await fetch(`${url}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      const res = await fetch(`${url}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const data = await res.json();
-    setPapers(data.papers || []);
+      if (!res.ok) throw new Error("Failed to fetch papers");
+
+      const data = await res.json();
+      setPapers(data.papers || []);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Could not load papers",
+      });
+    }
   };
 
   useEffect(() => {
@@ -119,60 +163,92 @@ export default function Papers() {
 
   const submitPaper = async () => {
     if (!form.journal_id || !form.chief_editor_id) {
-      alert("Please select a journal and chief editor");
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please select a journal and chief editor",
+      });
       return;
     }
 
-    const payload: any = {
-      title: form.title,
-      abstract: form.abstract,
-      category: form.category,
-      journal_id: form.journal_id,
-      chief_editor_id: form.chief_editor_id,
-      keywords: form.keywords
-        .split(",")
-        .map((k) => k.trim())
-        .filter(Boolean),
-    };
+    try {
+      const payload: any = {
+        title: form.title,
+        abstract: form.abstract,
+        category: form.category,
+        journal_id: form.journal_id,
+        chief_editor_id: form.chief_editor_id,
+        keywords: form.keywords
+          .split(",")
+          .map((k) => k.trim())
+          .filter(Boolean),
+      };
 
-    if (form.issue_id) {
-      payload.issue_id = form.issue_id;
+      if (form.issue_id) payload.issue_id = form.issue_id;
+
+      const res = await fetch(`${url}/papers/createPaper`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message);
+
+      toast({
+        title: "Success",
+        description: "Paper submitted successfully",
+      });
+
+      setOpen(false);
+      fetchPapers();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: err.message || "Could not submit paper",
+      });
     }
-
-    const res = await fetch(`${url}/papers/createPaper`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      console.error("Create paper error:", err);
-      alert(err.message || "Failed to create paper");
-      return;
-    }
-
-    setOpen(false);
-    fetchPapers();
   };
 
   const updateStatus = async () => {
     if (!selectedPaper) return;
 
-    await fetch(`${url}/papers/updatePaperStatus/${selectedPaper.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const res = await fetch(
+        `${url}/papers/updatePaperStatus/${selectedPaper.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
+        },
+      );
 
-    setStatusOpen(false);
-    fetchPapers();
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message);
+
+      toast({
+        title: "Status Updated",
+        description: `Paper marked as "${status}"`,
+      });
+
+      setStatusOpen(false);
+      fetchPapers();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: err.message || "Could not update status",
+      });
+    }
   };
 
   if (isLoading) return <div>Loading...</div>;

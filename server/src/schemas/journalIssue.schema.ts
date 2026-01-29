@@ -2,8 +2,11 @@ import { z } from "zod";
 
 export const createJournalIssueSchema = z.object({
   body: z.object({
-    year: z.number(),
-    label: z.string(),
+    year: z
+      .number()
+      .min(1900, "Year must be at least 1900")
+      .max(new Date().getFullYear() + 1, "Year cannot be in the far future"),
+    label: z.string().min(1, "Label is required"),
     volume: z.number().optional(),
     issue: z.number().optional(),
     published_at: z.string().optional(),
@@ -12,7 +15,17 @@ export const createJournalIssueSchema = z.object({
 
 export const updateJournalIssueSchema = z.object({
   body: z.object({
-    year: z.number().optional(),
+    year: z
+      .number()
+      .optional()
+      .refine(
+        (val) => val === undefined || val >= 1900,
+        "Year must be at least 1900",
+      )
+      .refine(
+        (val) => val === undefined || val <= new Date().getFullYear() + 1,
+        "Year cannot be in the far future",
+      ),
     label: z.string().optional(),
     volume: z.number().optional(),
     issue: z.number().optional(),

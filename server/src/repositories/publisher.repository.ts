@@ -84,6 +84,15 @@ export const getPapersByIssueIdRepo = async (issueId: string) => {
 };
 
 export const publishPaper = async (paperId: string, publisherId: string) => {
+  const payment = await pool.query(
+    `SELECT status FROM paper_payments WHERE paper_id=$1`,
+    [paperId],
+  );
+
+  if (!payment.rows.length || payment.rows[0].status !== "paid") {
+    throw new Error("Author page charges not paid");
+  }
+
   const result = await pool.query(
     `INSERT INTO publications (paper_id, published_by, published_at)
      VALUES ($1, $2, NOW())

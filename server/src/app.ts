@@ -21,6 +21,7 @@ import reviewAssignmentRoutes from "./routes/reviewAssignment.routes";
 import cheifEditorRoutes from "./routes/cheifEditor.routes";
 import ownerRoutes from "./routes/owner.route";
 import subEditorRoutes from "./routes/subEditor.routes";
+import paperPaymentRoutes from "./routes/paperPayment.routes";
 
 const app = express();
 app.use(express.json());
@@ -42,7 +43,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
-//   app.use("/api/payment", paymentRoute);
+app.use("/api/paperPayment", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);
 app.use("/api/publisher", publisherRoutes);

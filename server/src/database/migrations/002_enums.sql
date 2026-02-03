@@ -23,8 +23,8 @@ DO $$ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
     CREATE TYPE journal_status AS ENUM (
-      'draft',
       'pending_payment',
+      'draft',
       'active',
       'suspended',
       'archived'

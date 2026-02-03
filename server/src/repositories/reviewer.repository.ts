@@ -21,7 +21,7 @@ export const getReviewerPapers = async (reviewerId: string) => {
     FROM review_assignments ra
     JOIN papers p 
       ON p.id = ra.paper_id
-    JOIN paper_versions pv
+    LEFT JOIN paper_versions pv
       ON pv.id = p.current_version_id
     LEFT JOIN reviews r
       ON ra.id = r.review_assignment_id

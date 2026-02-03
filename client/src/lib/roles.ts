@@ -46,11 +46,11 @@ export const roleConfig: Record<
     route: "/publisher",
     navigation: [
       { label: "Dashboard", path: "/publisher", icon: Home },
-      {
-        label: "Publish Paper",
-        path: "/publisher/publish-paper",
-        icon: FileText,
-      },
+      // {
+      //   label: "Publish Paper",
+      //   path: "/publisher/publish-paper",
+      //   icon: FileText,
+      // },
       // { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },

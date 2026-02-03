@@ -1,12 +1,30 @@
 import { pool } from "../configs/db";
 
-export const getPublisherJournals = async (publisherId: string) => {
+export const approveJournalRepo = async (journalId: string) => {
+  const res = await pool.query(
+    `UPDATE journals
+     SET status = 'draft', updated_at = NOW()
+     WHERE id = $1
+     RETURNING chief_editor_id`,
+    [journalId],
+  );
+  return res.rows[0]?.chief_editor_id;
+};
+
+export const activateUserRepo = async (userId: string) => {
+  await pool.query(
+    `UPDATE users
+     SET status = 'active'
+     WHERE id = $1`,
+    [userId],
+  );
+};
+
+export const getPublisherJournals = async (_publisherId: string) => {
   const result = await pool.query(
     `SELECT *
      FROM journals
-     WHERE publisher_id = $1
      ORDER BY created_at DESC`,
-    [publisherId],
   );
   return result.rows;
 };

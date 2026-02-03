@@ -20,7 +20,7 @@ export const addJournalIssueService = async (
   }
 
   const journalResult = await pool.query(
-    `SELECT id, name, owner_id, publisher_id FROM journals WHERE id = $1`,
+    `SELECT id, name, owner_id, chief_editor_id FROM journals WHERE id = $1`,
     [journal_id],
   );
 
@@ -32,7 +32,7 @@ export const addJournalIssueService = async (
 
   if (
     (user.role === "owner" && user.id !== journal.owner_id) ||
-    (user.role === "publisher" && user.id !== journal.publisher_id)
+    (user.role === "publisher" && user.id !== journal.chief_editor_id)
   ) {
     throw new Error("Forbidden: You cannot create issues for this journal");
   }

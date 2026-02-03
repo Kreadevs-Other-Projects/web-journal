@@ -47,7 +47,7 @@ export default function ChiefEditorDashboard() {
 
   const fetchJournals = async () => {
     try {
-      const res = await fetch(`${url}/cheifEditor/getJournals`, {
+      const res = await fetch(`${url}/cheifEditor/getChiefEditorJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -56,9 +56,9 @@ export default function ChiefEditorDashboard() {
       }
 
       const data = await res.json();
-      setJournals(data.data ?? []);
+      const journals = data.data ?? [];
+      setJournals(journals);
     } catch (e) {
-      console.error(e);
       toast({
         title: "Error",
         description: "Unable to load journals.",

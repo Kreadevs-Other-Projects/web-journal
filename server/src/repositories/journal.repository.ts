@@ -2,17 +2,17 @@ import { pool } from "../configs/db";
 import { Journal } from "../services/journal.service";
 
 export const createJournal = async (owner_id: string, data: Journal) => {
-  const { name, slug, description, issn, website_url, publisher_id } = data;
+  const { name, slug, description, issn, website_url, chief_editor_id } = data;
 
   const result = await pool.query(
     `
     INSERT INTO journals
-      (owner_id, publisher_id, name, slug, description, issn, website_url)
+      (owner_id, chief_editor_id, name, slug, description, issn, website_url)
     VALUES
       ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, name, slug, publisher_id
+    RETURNING id, name, slug, chief_editor_id
     `,
-    [owner_id, publisher_id, name, slug, description, issn, website_url],
+    [owner_id, chief_editor_id, name, slug, description, issn, website_url],
   );
 
   return result.rows[0];

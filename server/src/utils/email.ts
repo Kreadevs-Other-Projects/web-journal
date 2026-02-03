@@ -109,7 +109,11 @@ export const sendOTPEmail = async (email: string, otpCode: string) => {
   }
 };
 
-export const sendWelcomeEmail = async (email: string, username: string) => {
+export const sendWelcomeEmail = async (
+  email: string,
+  username: string,
+  password: string,
+) => {
   try {
     await transporter.sendMail({
       from: `"JournalHub" <${env.EMAIL_FROM}>`,
@@ -121,9 +125,14 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
           <p>Hi <strong>${username}</strong>,</p>
           <p>Welcome to <strong>JournalHub</strong> — your platform for scientific publishing and peer review.</p>
           <p>You can now submit, review, and manage your research papers with confidence.</p>
+
+          <p><strong>Your temporary password:</strong></p>
+          <div class="code">${password}</div>
+
+          <p>Please change your password after logging in for security.</p>
         `,
       ),
-      text: `Hi ${username}, welcome to JournalHub!`,
+      text: `Hi ${username}, welcome to JournalHub! Your temporary password is: ${password}. Please change it after logging in.`,
     });
 
     console.log("Welcome email sent to:", email);

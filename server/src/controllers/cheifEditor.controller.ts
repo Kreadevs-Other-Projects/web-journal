@@ -2,6 +2,18 @@ import { Request, Response } from "express";
 import * as service from "../services/cheifEditor.service";
 import { AuthUser } from "../middlewares/auth.middleware";
 
+export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
+  try {
+    const chiefEditorId = req.user!.id;
+
+    const journals = await service.getChiefEditorJournalsService(chiefEditorId);
+    res.status(200).json({ success: true, data: journals });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const fetchChiefEditors = async (req: Request, res: Response) => {
   const users = await service.getChiefEditors();
 

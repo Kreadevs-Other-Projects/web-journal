@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS journals (
   description TEXT,
   issn TEXT,
   website_url TEXT,
-  status journal_status NOT NULL DEFAULT 'draft',
-  publisher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status journal_status NOT NULL DEFAULT 'pending_payment',
+  chief_editor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ
 );

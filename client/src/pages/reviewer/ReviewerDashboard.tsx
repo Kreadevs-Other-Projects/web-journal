@@ -120,6 +120,7 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
+      console.log(result);
       if (!res.ok) return;
 
       const allPapers: Paper[] = result.data || [];

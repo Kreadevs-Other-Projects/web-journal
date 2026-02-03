@@ -25,7 +25,7 @@ export const createJournalSchema = z.object({
       .url({ message: "Website URL must be a valid URL" })
       .optional()
       .or(z.literal("")),
-    publisher_id: z.string().uuid({ message: "Publisher is required" }),
+    chief_editor_id: z.string().uuid({ message: "Chief Editor is required" }),
   }),
 });
 

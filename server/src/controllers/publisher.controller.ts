@@ -2,6 +2,36 @@ import { Request, Response } from "express";
 import * as service from "../services/publisher.service";
 import { AuthUser } from "../middlewares/auth.middleware";
 
+export const approveJournal = async (req: Request, res: Response) => {
+  try {
+    console.log("📥 Incoming request to approveJournal");
+    console.log("Request params:", req.params);
+
+    const { journalId } = req.params;
+    console.log("Extracted journalId:", journalId);
+
+    const result = await service.approveJournalService(journalId);
+    console.log("✅ Service result:", result);
+
+    res.status(200).json({
+      success: true,
+      message: "Journal approved, chief editor activated, and invoice sent",
+      data: result,
+    });
+
+    console.log("📤 Response sent successfully");
+  } catch (err: any) {
+    console.error("❌ Error in approveJournal:", err);
+
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to approve journal",
+    });
+
+    console.log("📤 Error response sent");
+  }
+};
+
 export const getJournals = async (req: AuthUser, res: Response) => {
   const publisherId = req.user!.id;
   const journals = await service.fetchPublisherJournals(publisherId);

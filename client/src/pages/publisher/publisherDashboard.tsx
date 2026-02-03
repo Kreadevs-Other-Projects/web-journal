@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BookOpen } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -9,28 +13,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { BookOpen, PlusCircle, CheckCircle } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { url } from "@/url";
-import { log } from "console";
-import { useToast } from "@/hooks/use-toast";
 
 interface Journal {
   id: string;
   name: string;
   slug: string;
   issn: string;
-}
-
-interface JournalIssue {
-  id: string;
-  year: number;
-  volume?: number | null;
-  issue?: number | null;
-  label: string;
-  published_at?: string | null;
+  description: string;
+  status: string;
+  website_url: string;
+  owner_id: string;
+  chief_editor_id: string;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 export default function PublisherDashboard() {
@@ -38,28 +33,15 @@ export default function PublisherDashboard() {
   const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [issuesByJournal, setIssuesByJournal] = useState<
-    Record<string, JournalIssue[]>
-  >({});
-
-  const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [selectedJournal, setSelectedJournal] = useState<string | null>(null);
-
-  const [issueForm, setIssueForm] = useState({
-    year: new Date().getFullYear(),
-    volume: "",
-    issue: "",
-    label: "",
-  });
+  const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
   const fetchJournals = async () => {
     try {
       const res = await fetch(`${url}/publisher/getJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) throw new Error("Failed to fetch journals");
-
       const json = await res.json();
       setJournals(json.data ?? []);
     } catch (err: any) {
@@ -71,108 +53,43 @@ export default function PublisherDashboard() {
     }
   };
 
-  const fetchIssues = async (journalId: string) => {
+  const approveJournal = async (journalId: string) => {
     try {
-      const res = await fetch(
-        `${url}/journal-issue/getJournalIssues/${journalId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-
-      if (!res.ok) throw new Error("Failed to fetch journal issues");
-
-      const json = await res.json();
-
-      setIssuesByJournal((prev) => ({
-        ...prev,
-        [journalId]: json.issues ?? [],
-      }));
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Could not load journal issues",
-      });
-    }
-  };
-
-  const createIssue = async () => {
-    if (!selectedJournal || !issueForm.label || !issueForm.year) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Year and label are required",
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${url}/journal-issue/addJournalIssue/${selectedJournal}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            year: issueForm.year,
-            volume: issueForm.volume ? Number(issueForm.volume) : null,
-            issue: issueForm.issue ? Number(issueForm.issue) : null,
-            label: issueForm.label,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Failed to create issue");
-      }
-
-      toast({
-        title: "Issue Created",
-        description: "Journal issue created successfully",
-      });
-
-      setIssueForm({
-        year: new Date().getFullYear(),
-        volume: "",
-        issue: "",
-        label: "",
-      });
-
-      setIssueModalOpen(false);
-      await fetchIssues(selectedJournal);
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Creation Failed",
-        description: err.message || "Could not create issue",
-      });
-    }
-  };
-
-  const publishIssue = async (issueId: string, journalId: string) => {
-    try {
-      const res = await fetch(`${url}/publisher/publishIssue/${issueId}`, {
+      const res = await fetch(`${url}/publisher/approveJournal/${journalId}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error("Failed to publish issue");
-
+      if (!res.ok) throw new Error("Failed to approve journal");
       toast({
-        title: "Issue Published",
-        description: "The issue is now live",
+        title: "Approved",
+        description: "Journal approved and invoice sent",
       });
-
-      fetchIssues(journalId);
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Publish Failed",
-        description: err.message || "Could not publish issue",
+        title: "Error",
+        description: err.message || "Approval failed",
+      });
+    }
+  };
+
+  const sendInvoice = async (journalId: string) => {
+    try {
+      const res = await fetch(`${url}/publisher/sendInvoice/${journalId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to send invoice");
+      toast({
+        title: "Invoice Sent",
+        description: "Invoice sent to the journal owner",
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Invoice Failed",
+        description: err.message || "Could not send invoice",
       });
     }
   };
@@ -181,141 +98,100 @@ export default function PublisherDashboard() {
     if (user) fetchJournals();
   }, [user]);
 
-  useEffect(() => {
-    journals.forEach((j) => fetchIssues(j.id));
-  }, [journals]);
-
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold text-white">Publisher Dashboard</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {journals.map((j) => (
-            <Card key={j.id} className="glass-card">
+          {journals.map((journal) => (
+            <Card
+              key={journal.id}
+              className="glass-card cursor-pointer"
+              onClick={() => {
+                setSelectedJournal(journal);
+                setDetailsModalOpen(true);
+              }}
+            >
               <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  <span className="flex gap-2 items-center">
-                    <BookOpen className="h-5 w-5" />
-                    {j.name}
-                  </span>
-
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedJournal(j.id);
-                      setIssueModalOpen(true);
-                    }}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-1" />
-                    New Issue
-                  </Button>
+                <CardTitle className="flex gap-2 items-center">
+                  <BookOpen className="h-5 w-5" />
+                  {journal.name}
                 </CardTitle>
               </CardHeader>
-
-              <CardContent className="space-y-2">
-                {issuesByJournal[j.id]?.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No issues created
-                  </p>
-                )}
-
-                {issuesByJournal[j.id]?.map((issue) => (
-                  <div
-                    key={issue.id}
-                    className="flex justify-between items-center bg-background/40 rounded-lg p-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{issue.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {issue.year}
-                        {issue.volume && ` • Vol ${issue.volume}`}
-                        {issue.issue && ` • Issue ${issue.issue}`}
-                      </p>
-                    </div>
-
-                    {issue.published_at ? (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
-                        <CheckCircle className="h-4 w-4" />
-                        Published
-                      </span>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => publishIssue(issue.id, j.id)}
-                      >
-                        Publish
-                      </Button>
-                    )}
-                  </div>
-                ))}
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Status: {journal.status}
+                </p>
               </CardContent>
             </Card>
           ))}
         </div>
-      </div>
 
-      <Dialog open={issueModalOpen} onOpenChange={setIssueModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Journal Issue</DialogTitle>
-          </DialogHeader>
+        <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Journal Details</DialogTitle>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label>Year</Label>
-              <Input
-                type="number"
-                value={issueForm.year}
-                onChange={(e) =>
-                  setIssueForm((p) => ({
-                    ...p,
-                    year: Number(e.target.value),
-                  }))
-                }
-              />
-            </div>
+            {selectedJournal && (
+              <div className="space-y-2">
+                <p>
+                  <strong>Name:</strong> {selectedJournal.name}
+                </p>
+                <p>
+                  <strong>ISSN:</strong> {selectedJournal.issn}
+                </p>
+                <p>
+                  <strong>Description:</strong> {selectedJournal.description}
+                </p>
+                <p>
+                  <strong>Status:</strong> {selectedJournal.status}
+                </p>
+                <p>
+                  <strong>Website:</strong>{" "}
+                  {selectedJournal.website_url || "N/A"}
+                </p>
+                <p>
+                  <strong>Owner ID:</strong> {selectedJournal.owner_id}
+                </p>
+                <p>
+                  <strong>Chief Editor ID:</strong>{" "}
+                  {selectedJournal.chief_editor_id}
+                </p>
+                <p>
+                  <strong>Created At:</strong>{" "}
+                  {new Date(selectedJournal.created_at).toLocaleString()}
+                </p>
+                {selectedJournal.updated_at && (
+                  <p>
+                    <strong>Updated At:</strong>{" "}
+                    {new Date(selectedJournal.updated_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
 
-            <div>
-              <Label>Volume (optional)</Label>
-              <Input
-                value={issueForm.volume}
-                onChange={(e) =>
-                  setIssueForm((p) => ({ ...p, volume: e.target.value }))
-                }
-              />
-            </div>
-
-            <div>
-              <Label>Issue (optional)</Label>
-              <Input
-                value={issueForm.issue}
-                onChange={(e) =>
-                  setIssueForm((p) => ({ ...p, issue: e.target.value }))
-                }
-              />
-            </div>
-
-            <div>
-              <Label>Label</Label>
-              <Input
-                placeholder="Vol 1, Issue 1 (2026)"
-                value={issueForm.label}
-                onChange={(e) =>
-                  setIssueForm((p) => ({ ...p, label: e.target.value }))
-                }
-              />
-            </div>
-
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIssueModalOpen(false)}>
-                Cancel
+            <DialogFooter className="flex gap-2">
+              <Button onClick={() => approveJournal(selectedJournal!.id)}>
+                Approve
               </Button>
-              <Button onClick={createIssue}>Create Issue</Button>
+              {/* <Button
+                onClick={() => sendInvoice(selectedJournal!.id)}
+                variant="secondary"
+              >
+                Send Invoice
+              </Button> */}
+              <Button
+                variant="ghost"
+                onClick={() => setDetailsModalOpen(false)}
+              >
+                Close
+              </Button>
             </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 }

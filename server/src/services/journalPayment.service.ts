@@ -1,5 +1,5 @@
 import { createJournalPayment } from "../repositories/journalPayment.repository";
-import { sendInvoiceEmail } from "../services/email.service";
+import { sendInvoiceEmail } from "../utils/email";
 
 const ISSUE_PRICE = 5000;
 

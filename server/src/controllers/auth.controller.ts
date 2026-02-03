@@ -23,7 +23,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from "../repositories/auth.repository";
-import { sendOTPEmail } from "../services/email.service";
+import { sendOTPEmail } from "../utils/email";
 import { env } from "../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
@@ -48,6 +48,13 @@ export const login = async (req: Request, res: Response) => {
     return res.status(404).json({
       success: false,
       message: "Account not found!",
+    });
+  }
+
+  if (user.status !== "active") {
+    return res.status(403).json({
+      success: false,
+      message: "Account is not active. Please contact support.",
     });
   }
 

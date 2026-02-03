@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  approveJournal,
   getJournals,
   getIssues,
   createIssue,
@@ -13,6 +14,13 @@ import { zPublisherIssueSchema } from "../schemas/publisher.schema";
 import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
+
+router.put(
+  "/approveJournal/:journalId",
+  authMiddleware,
+  authorize("publisher"),
+  approveJournal,
+);
 
 router.get("/getJournals", authMiddleware, authorize("publisher"), getJournals);
 

@@ -1,5 +1,16 @@
 import { pool } from "../configs/db";
 
+export const getChiefEditorJournals = async (chiefEditorId: string) => {
+  const result = await pool.query(
+    `SELECT *
+     FROM journals
+     WHERE chief_editor_id = $1
+     ORDER BY created_at DESC`,
+    [chiefEditorId],
+  );
+  return result.rows;
+};
+
 export const findChiefEditors = async () => {
   const result = await pool.query(
     `

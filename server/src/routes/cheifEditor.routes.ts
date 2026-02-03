@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getChiefEditorJournals,
   getPapers,
   assignSubEditor,
   updatePaperStatus,
@@ -20,6 +21,13 @@ import {
 import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
+
+router.get(
+  "/getChiefEditorJournals",
+  authMiddleware,
+  authorize("chief_editor"),
+  getChiefEditorJournals,
+);
 
 router.get(
   "/getChiefEditors",

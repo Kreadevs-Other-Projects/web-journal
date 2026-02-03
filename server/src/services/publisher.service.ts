@@ -8,6 +8,16 @@ export type Journal = {
   label: string;
 };
 
+export const approveJournalService = async (journalId: string) => {
+  const chiefEditorId = await repo.approveJournalRepo(journalId);
+  if (!chiefEditorId)
+    throw new Error("Journal not found or no chief editor assigned");
+
+  await repo.activateUserRepo(chiefEditorId);
+
+  return { journalId, chiefEditorId };
+};
+
 export const fetchPublisherJournals = async (publisherId: string) => {
   return repo.getPublisherJournals(publisherId);
 };

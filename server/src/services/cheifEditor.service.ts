@@ -1,5 +1,14 @@
 import * as repo from "../repositories/cheifEditor.repository";
 
+export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
+  if (!chiefEditorId) {
+    throw new Error("Chief Editor ID is required");
+  }
+
+  const journals = await repo.getChiefEditorJournals(chiefEditorId);
+  return journals;
+};
+
 export const getChiefEditors = async () => {
   return repo.findChiefEditors();
 };

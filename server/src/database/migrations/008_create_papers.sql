@@ -13,10 +13,6 @@ CREATE TABLE IF NOT EXISTS papers (
     REFERENCES users(id)
     ON DELETE CASCADE,
 
-  chief_editor_id UUID NOT NULL
-    REFERENCES users(id)  
-    ON DELETE CASCADE,
-
   title TEXT NOT NULL,
   category TEXT,
   abstract TEXT NOT NULL,

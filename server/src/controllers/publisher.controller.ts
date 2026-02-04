@@ -33,9 +33,31 @@ export const approveJournal = async (req: Request, res: Response) => {
 };
 
 export const getJournals = async (req: AuthUser, res: Response) => {
-  const publisherId = req.user!.id;
-  const journals = await service.fetchPublisherJournals(publisherId);
+  const journals = await service.fetchPublisherJournals();
   res.json({ success: true, data: journals });
+};
+
+export const sendInvoice = async (req: Request, res: Response) => {
+  try {
+    const { journalId, issueId, amount } = req.body;
+
+    if (!journalId || !amount) {
+      return res
+        .status(400)
+        .json({ success: false, message: "journalId and amount required" });
+    }
+
+    const payment = await service.journalPaymentService.sendInvoice({
+      journalId,
+      issueId,
+      amount,
+    });
+
+    res.json({ success: true, data: payment });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const getIssues = async (req: Request, res: Response) => {
@@ -72,11 +94,4 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
     message: "Papers fetched successfully",
     data,
   });
-};
-
-export const publishPaper = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const publisherId = req.user!.id;
-  const published = await service.setPaperPublished(paperId, publisherId);
-  res.json({ success: true, data: published });
 };

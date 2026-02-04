@@ -13,7 +13,7 @@ export const getSubEditorPapers = async (subEditorId: string) => {
     FROM papers p
     JOIN editor_assignments ea
       ON ea.paper_id = p.id
-    JOIN paper_versions pv
+    LEFT JOIN paper_versions pv
       ON pv.paper_id = p.id
     WHERE
       ea.sub_editor_id = $1
@@ -31,20 +31,51 @@ export const getSubEditorPapers = async (subEditorId: string) => {
   return result.rows;
 };
 
+export const findReviewer = async () => {
+  const result = await pool.query(
+    `
+    SELECT id, username, email
+    FROM users
+    WHERE role = 'reviewer'
+      AND status = 'active'
+    ORDER BY username ASC
+    `,
+  );
+
+  return result.rows;
+};
+
 export const assignReviewer = async (
   paperId: string,
   reviewerId: string,
   assignedBy: string,
 ) => {
-  const result = await pool.query(
-    `INSERT INTO review_assignments (paper_id, reviewer_id, assigned_by, assigned_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (paper_id, reviewer_id)
-     DO NOTHING
-     RETURNING *`,
-    [paperId, reviewerId, assignedBy],
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+      INSERT INTO review_assignments
+        (paper_id, reviewer_id, assigned_by, assigned_at, status)
+      VALUES ($1, $2, $3, NOW(), 'assigned')
+      ON CONFLICT (paper_id, reviewer_id)
+      DO UPDATE
+        SET status = 'assigned'
+      `,
+      [paperId, reviewerId, assignedBy],
+    );
+
+    await client.query("COMMIT");
+
+    return { success: true };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const updatePaperStatusSubEditor = async (

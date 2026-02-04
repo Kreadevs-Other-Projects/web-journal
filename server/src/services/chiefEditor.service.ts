@@ -1,4 +1,5 @@
-import * as repo from "../repositories/cheifEditor.repository";
+import * as repo from "../repositories/chiefEditor.repository";
+import { sendSubEditorInviteEmail } from "../utils/email";
 
 export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
   if (!chiefEditorId) {
@@ -27,19 +28,6 @@ export const addSubEditor = async (
   assignedBy: string,
 ) => {
   return repo.assignSubEditor(paperId, subEditorId, assignedBy);
-};
-
-export const getReviewer = async () => {
-  return repo.findReviewer();
-};
-
-export const assignReviewer = async (
-  paperId: string,
-  reviewerId: string,
-  assignedBy: string,
-) => {
-  const assignment = await repo.assignReviewer(paperId, reviewerId, assignedBy);
-  return assignment;
 };
 
 export const makeEditorDecision = async (
@@ -75,4 +63,12 @@ export const changePaperStatus = async (paperId: string, status: string) => {
 
 export const getSubmittedReviews = async (chiefEditorId: string) => {
   return repo.getSubmittedReviewsByChiefEditor(chiefEditorId);
+};
+
+export const sendInviteEmailSubEditor = async (email: string) => {
+  const signupLink = `${process.env.CORS_ORIGIN}/signup`;
+
+  await sendSubEditorInviteEmail(email, signupLink);
+
+  return { email, signupLink };
 };

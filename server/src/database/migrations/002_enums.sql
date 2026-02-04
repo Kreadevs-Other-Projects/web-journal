@@ -53,6 +53,16 @@ DO $$ BEGIN
     );
   END IF;
 
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'editor_assignment_status') THEN
+    CREATE TYPE editor_assignment_status AS ENUM (
+      'pending',
+      'accepted',
+      'rejected',
+      'completed',
+      'reassigned'
+    );
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_assignment_status') THEN
     CREATE TYPE review_assignment_status AS ENUM (
       'assigned',
@@ -60,6 +70,7 @@ DO $$ BEGIN
       'accepted',
       'rejected',
       'expired'
+      'reassigned'
     );
   END IF;
 

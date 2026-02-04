@@ -1,28 +1,43 @@
 import { pool } from "../configs/db";
 
-export const createPublication = async (
-  paper_id: string,
-  issue_id: string,
-  published_by: string,
-  year_label?: string,
-) => {
-  const result = await pool.query(
-    `
-    INSERT INTO publications
-      (paper_id, issue_id, published_by, year_label)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
-    `,
-    [paper_id, issue_id, published_by, year_label ?? null],
-  );
+export const publishPaper = async (paperId: string, editorId: string) => {
+  const client = await pool.connect();
 
-  return result.rows[0];
-};
+  try {
+    await client.query("BEGIN");
 
-export const isPaperPublished = async (paper_id: string) => {
-  const result = await pool.query(
-    `SELECT id FROM publications WHERE paper_id = $1`,
-    [paper_id],
-  );
-  return result.rows.length > 0;
+    const payment = await client.query(
+      `SELECT status FROM paper_payments WHERE paper_id = $1`,
+      [paperId],
+    );
+
+    if (!payment.rows.length || payment.rows[0].status !== "paid") {
+      throw new Error("Author page charges not paid");
+    }
+
+    const publication = await client.query(
+      `INSERT INTO publications (paper_id, published_by, published_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (paper_id)
+       DO UPDATE SET published_by = $2, published_at = NOW()
+       RETURNING *`,
+      [paperId, editorId],
+    );
+
+    await client.query(
+      `UPDATE papers 
+       SET status = 'published', updated_at = NOW()
+       WHERE id = $1`,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return publication.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };

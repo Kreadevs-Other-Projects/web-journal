@@ -7,17 +7,16 @@ import {
   decidePaper,
   fetchChiefEditors,
   fetchSubEditors,
-  fetchReviewer,
-  assignReviewer,
   getSubmittedReviews,
-} from "../controllers/cheifEditor.controller";
+  SubEditorInvite,
+} from "../controllers/chiefEditor.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
   assignSubEditorSchema,
   assignReviewerSchema,
   editorDecisionSchema,
   paperStatusSchema,
-} from "../schemas/cheifEditor.schema";
+} from "../schemas/chiefEditor.schema";
 import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
@@ -53,21 +52,6 @@ router.post(
   assignSubEditor,
 );
 
-router.get(
-  "/getReviewers",
-  authMiddleware,
-  authorize("author", "chief_editor", "owner", "publisher"),
-  fetchReviewer,
-);
-
-router.post(
-  "/assignReviewer/:paperId",
-  authMiddleware,
-  authorize("chief_editor", "sub_editor"),
-  validate(assignReviewerSchema),
-  assignReviewer,
-);
-
 router.post(
   "/decide/:paperId",
   authMiddleware,
@@ -89,6 +73,13 @@ router.get(
   authMiddleware,
   authorize("chief_editor"),
   getSubmittedReviews,
+);
+
+router.post(
+  "/inviteSubEditor",
+  authMiddleware,
+  authorize("chief_editor"),
+  SubEditorInvite,
 );
 
 export default router;

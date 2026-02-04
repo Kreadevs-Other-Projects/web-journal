@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as service from "../services/cheifEditor.service";
+import * as service from "../services/chiefEditor.service";
 import { AuthUser } from "../middlewares/auth.middleware";
 
 export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
@@ -50,48 +50,6 @@ export const assignSubEditor = async (req: AuthUser, res: Response) => {
   res.json({ success: true, data: assignment });
 };
 
-export const fetchReviewer = async (req: Request, res: Response) => {
-  const users = await service.getReviewer();
-
-  res.json({
-    success: true,
-    data: users,
-  });
-};
-
-export const assignReviewer = async (req: AuthUser, res: Response) => {
-  try {
-    const { paperId } = req.params;
-    const { reviewerId } = req.body;
-    const assignedBy = req.user!.id;
-
-    if (!reviewerId) {
-      return res.status(400).json({
-        success: false,
-        message: "Reviewer ID is required",
-      });
-    }
-
-    const assignment = await service.assignReviewer(
-      paperId,
-      reviewerId,
-      assignedBy,
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Reviewer assigned successfully",
-      data: assignment,
-    });
-  } catch (err) {
-    console.error("Assign Reviewer Error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to assign reviewer",
-    });
-  }
-};
-
 export const decidePaper = async (req: AuthUser, res: Response) => {
   const { paperId } = req.params;
   const { decision, decision_note } = req.body;
@@ -125,4 +83,16 @@ export const getSubmittedReviews = async (req: AuthUser, res: Response) => {
   const reviews = await service.getSubmittedReviews(chiefEditorId);
 
   return res.status(200).json({ success: true, data: reviews });
+};
+
+export const SubEditorInvite = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const result = await service.sendInviteEmailSubEditor(email);
+
+    res.json({ message: "Invitation email sent successfully", data: result });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
 };

@@ -7,13 +7,46 @@ export const getSubEditorPapers = async (req: AuthUser, res: Response) => {
   res.json({ success: true, data: papers });
 };
 
-export const assignReviewer = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const { reviewerId } = req.body;
-  const assignedBy = req.user!.id;
+export const fetchReviewer = async (req: Request, res: Response) => {
+  const users = await service.getReviewer();
 
-  const assignment = await service.addReviewer(paperId, reviewerId, assignedBy);
-  res.json({ success: true, data: assignment });
+  res.json({
+    success: true,
+    data: users,
+  });
+};
+
+export const assignReviewer = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { reviewerId } = req.body;
+    const assignedBy = req.user!.id;
+
+    if (!reviewerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Reviewer ID is required",
+      });
+    }
+
+    const assignment = await service.assignReviewer(
+      paperId,
+      reviewerId,
+      assignedBy,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Reviewer assigned successfully",
+      data: assignment,
+    });
+  } catch (err) {
+    console.error("Assign Reviewer Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to assign reviewer",
+    });
+  }
 };
 
 export const updateSubEditorPaperStatus = async (

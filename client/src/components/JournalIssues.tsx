@@ -41,7 +41,10 @@ export default function JournalIssuesPage({
 
   const [issues, setIssues] = useState<JournalIssue[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [issueToDelete, setIssueToDelete] = useState<string | null>(null);
   const [editingIssue, setEditingIssue] = useState<JournalIssue | null>(null);
 
   const [form, setForm] = useState({
@@ -79,6 +82,7 @@ export default function JournalIssuesPage({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const endpoint = editingIssue
         ? `${url}/journal-issue/updateJournalIssue/${editingIssue.id}`
@@ -115,6 +119,8 @@ export default function JournalIssuesPage({
       }
     } catch (e: any) {
       console.error(e);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -131,16 +137,27 @@ export default function JournalIssuesPage({
   };
 
   const onDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this issue?")) return;
+    setIssueToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!issueToDelete) return;
     try {
-      const res = await fetch(`${url}/journal-issue/deleteJournalIssue/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${url}/journal-issue/deleteJournalIssue/${issueToDelete}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       const data = await res.json();
       if (data.success) fetchIssues();
     } catch (e) {
       console.error(e);
+    } finally {
+      setDeleteModalOpen(false);
+      setIssueToDelete(null);
     }
   };
 
@@ -161,9 +178,9 @@ export default function JournalIssuesPage({
         </Button>
 
         {loading ? (
-          <p>Loading...</p>
+          <p className="text-white">Loading...</p>
         ) : issues.length === 0 ? (
-          <p>No issues found.</p>
+          <p className="text-white">No issues found.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {issues.map((issue) => (
@@ -205,7 +222,6 @@ export default function JournalIssuesPage({
           </div>
         )}
 
-        {/* Modal */}
         <Dialog open={modalOpen} onOpenChange={() => setModalOpen(false)}>
           <DialogContent>
             <DialogHeader>
@@ -241,10 +257,39 @@ export default function JournalIssuesPage({
             </div>
 
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>Save</Button>
+              <Button onClick={handleSubmit} disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={deleteModalOpen}
+          onOpenChange={() => setDeleteModalOpen(false)}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete Issue</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-gray-400">
+              Are you sure you want to delete this issue? This action cannot be
+              undone.
+            </p>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDeleteModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Delete
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

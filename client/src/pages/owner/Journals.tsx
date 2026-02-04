@@ -715,7 +715,6 @@ export default function Journals(): JSX.Element {
         </div>
       </div>
 
-      {/* Combined Modal for New Journal and Chief Editor */}
       <Dialog open={newJournalModalOpen} onOpenChange={setNewJournalModalOpen}>
         <DialogContent>
           <DialogHeader>

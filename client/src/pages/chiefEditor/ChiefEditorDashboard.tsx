@@ -32,6 +32,12 @@ interface AssignForm {
   userId: string;
 }
 
+interface Reviewer {
+  id: string;
+  username: string;
+  email: string;
+}
+
 export default function ChiefEditorDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
@@ -44,10 +50,12 @@ export default function ChiefEditorDashboard() {
   const [assignPaperId, setAssignPaperId] = useState<string | null>(null);
   const [assignForm, setAssignForm] = useState<AssignForm>({ userId: "" });
   const [statusForm, setStatusForm] = useState<string>("");
+  const [reviewers, setReviewers] = useState<Reviewer[]>([]);
+  const [openReviewers, setOpenReviewers] = useState(false);
 
   const fetchJournals = async () => {
     try {
-      const res = await fetch(`${url}/cheifEditor/getChiefEditorJournals`, {
+      const res = await fetch(`${url}/chiefEditor/getChiefEditorJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -56,6 +64,8 @@ export default function ChiefEditorDashboard() {
       }
 
       const data = await res.json();
+      console.log(data);
+
       const journals = data.data ?? [];
       setJournals(journals);
     } catch (e) {
@@ -69,7 +79,7 @@ export default function ChiefEditorDashboard() {
 
   const fetchPapers = async (journalId: string) => {
     try {
-      const res = await fetch(`${url}/cheifEditor/getPapers/${journalId}`, {
+      const res = await fetch(`${url}/chiefEditor/getPapers/${journalId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -99,7 +109,7 @@ export default function ChiefEditorDashboard() {
     if (!assignPaperId) return;
 
     try {
-      await fetch(`${url}/cheifEditor/assignSubEditor/${assignPaperId}`, {
+      await fetch(`${url}/chiefEditor/assignSubEditor/${assignPaperId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,7 +138,7 @@ export default function ChiefEditorDashboard() {
     if (!assignPaperId) return;
 
     try {
-      await fetch(`${url}/cheifEditor/assignReviewer/${assignPaperId}`, {
+      await fetch(`${url}/chiefEditor/assignReviewer/${assignPaperId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -164,7 +174,7 @@ export default function ChiefEditorDashboard() {
     }
 
     try {
-      await fetch(`${url}/cheifEditor/updatePaperStatus/${paperId}`, {
+      await fetch(`${url}/chiefEditor/updatePaperStatus/${paperId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -193,6 +203,27 @@ export default function ChiefEditorDashboard() {
   useEffect(() => {
     if (user) fetchJournals();
   }, [user]);
+
+  const fetchReviewers = async (paperId: string) => {
+    try {
+      const res = await fetch(
+        `${url}/subEditor/getReviewersForPaper/${paperId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+      setReviewers(data.data || []);
+      setOpenReviewers(true);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to load reviewers.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
@@ -244,6 +275,14 @@ export default function ChiefEditorDashboard() {
                       >
                         <Users className="h-4 w-4 mr-1" /> Assign
                       </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => fetchReviewers(p.id)}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        View Assigned Reviewers
+                      </Button>
 
                       <Input
                         placeholder="Update status"
@@ -291,6 +330,35 @@ export default function ChiefEditorDashboard() {
               <Button onClick={submitAssignReviewer}>Assign Reviewer</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openReviewers} onOpenChange={setOpenReviewers}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assigned Reviewers</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {reviewers.length === 0 ? (
+              <p className="text-muted-foreground">
+                No reviewers assigned yet.
+              </p>
+            ) : (
+              reviewers.map((reviewer) => (
+                <Card key={reviewer.id} className="p-3">
+                  <p>
+                    <strong>Name:</strong> {reviewer.username}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {reviewer.email}
+                  </p>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setOpenReviewers(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

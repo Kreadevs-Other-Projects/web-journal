@@ -49,6 +49,9 @@ export default function SubEditorDashboard() {
   const [status, setStatus] = useState("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
+  const [allReviewers, setAllReviewers] = useState<Reviewer[]>([]);
+  const [selectedReviewerId, setSelectedReviewerId] = useState("");
+  const [openAssignReviewer, setOpenAssignReviewer] = useState(false);
 
   const fetchPapers = async () => {
     try {
@@ -56,12 +59,70 @@ export default function SubEditorDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log(data.data);
+
       setPapers(data.data || []);
     } catch (err) {
       console.error(err);
       toast({
         title: "Error",
         description: "Failed to load papers.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchAllReviewers = async () => {
+    try {
+      const res = await fetch(`${url}/subEditor/fetchReviewer`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      setAllReviewers(data.data || []);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to load reviewers list.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const assignReviewer = async () => {
+    if (!selectedPaper || !selectedReviewerId) {
+      toast({
+        title: "Missing data",
+        description: "Please select a reviewer.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reviewerId: selectedReviewerId }),
+      });
+
+      toast({
+        title: "Reviewer Assigned",
+        description: "Reviewer assigned successfully.",
+      });
+
+      setSelectedReviewerId("");
+      setOpenAssignReviewer(false);
+      fetchReviewers(selectedPaper.id);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to assign reviewer.",
         variant: "destructive",
       });
     }
@@ -242,6 +303,14 @@ export default function SubEditorDashboard() {
                       <Users className="h-4 w-4 mr-2" />
                       View Assigned Reviewers
                     </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setOpenAssignReviewer(true)}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Assign Reviewer
+                    </Button>
 
                     <Button
                       variant="outline"
@@ -285,7 +354,10 @@ export default function SubEditorDashboard() {
                 >
                   <Card
                     className="glass-card hover:shadow-glow cursor-pointer"
-                    onClick={() => setSelectedPaper(paper)}
+                    onClick={() => {
+                      setSelectedPaper(paper);
+                      fetchAllReviewers();
+                    }}
                   >
                     <CardContent className="p-6">
                       <Badge variant="outline" className="mb-2">
@@ -327,6 +399,38 @@ export default function SubEditorDashboard() {
               </div>
             ))}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openAssignReviewer} onOpenChange={setOpenAssignReviewer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Reviewer</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <Label>Select Reviewer</Label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={selectedReviewerId}
+              onChange={(e) => setSelectedReviewerId(e.target.value)}
+            >
+              <option value="">-- Select Reviewer --</option>
+              {allReviewers.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.username}
+                </option>
+              ))}
+            </select>
+
+            <Button
+              className="w-full"
+              onClick={assignReviewer}
+              disabled={!selectedReviewerId}
+            >
+              Assign Reviewer
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

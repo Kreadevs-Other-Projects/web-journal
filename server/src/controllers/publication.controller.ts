@@ -1,25 +1,29 @@
 import { Response } from "express";
 import { AuthUser } from "../middlewares/auth.middleware";
-import { publishPaperService } from "../services/publication.service";
+import { setPaperPublished } from "../services/publication.service";
 
 export const publishPaper = async (req: AuthUser, res: Response) => {
   try {
-    const publication = await publishPaperService(
-      req.user!,
-      req.params.paperId,
-      req.body.issue_id,
-      req.body.year_label,
-    );
+    const { paperId } = req.params;
+    const user = req.user!;
 
-    return res.status(201).json({
+    if (user.role !== "chief_editor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only Chief Editor can publish paper",
+      });
+    }
+
+    const published = await setPaperPublished(paperId, user.id);
+
+    return res.json({
       success: true,
-      message: "Paper published successfully",
-      publication,
+      data: published,
     });
-  } catch (e: any) {
-    return res.status(403).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
-      message: e.message,
+      message: error.message || "Failed to publish paper",
     });
   }
 };

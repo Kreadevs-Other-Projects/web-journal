@@ -2,8 +2,12 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   paper_id UUID NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
   sub_editor_id UUID NOT NULL REFERENCES users(id),
+  status editor_assignment_status NOT NULL DEFAULT 'pending',
   assigned_by UUID NOT NULL REFERENCES users(id),
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  declined_reason TEXT,
   UNIQUE (paper_id, sub_editor_id)
 );
 
@@ -49,6 +53,9 @@ CREATE TABLE IF NOT EXISTS editor_decisions (
     )
   )
 );
+
+ALTER TABLE editor_decisions 
+ADD CONSTRAINT unique_paper_decision UNIQUE (paper_id);
 
 ALTER TABLE review_assignments
 ADD CONSTRAINT unique_reviewer_per_paper

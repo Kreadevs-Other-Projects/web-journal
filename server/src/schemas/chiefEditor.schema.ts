@@ -35,3 +35,7 @@ export const paperStatusSchema = z.object({
     ]),
   }),
 });
+
+export const inviteSubEditorSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+});

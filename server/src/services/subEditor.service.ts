@@ -4,12 +4,17 @@ export const fetchSubEditorPapers = async (subEditorId: string) => {
   return repo.getSubEditorPapers(subEditorId);
 };
 
-export const addReviewer = async (
+export const getReviewer = async () => {
+  return repo.findReviewer();
+};
+
+export const assignReviewer = async (
   paperId: string,
   reviewerId: string,
   assignedBy: string,
 ) => {
-  return repo.assignReviewer(paperId, reviewerId, assignedBy);
+  const assignment = await repo.assignReviewer(paperId, reviewerId, assignedBy);
+  return assignment;
 };
 
 export const setSubEditorPaperStatus = async (

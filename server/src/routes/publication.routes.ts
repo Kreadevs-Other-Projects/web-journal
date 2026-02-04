@@ -6,10 +6,10 @@ import { publishPaperSchema } from "../schemas/publication.schema";
 
 const router = Router();
 
-router.post(
+router.put(
   "/publishPaper/:paperId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("chief_editor"),
   validate(publishPaperSchema),
   publishPaper,
 );

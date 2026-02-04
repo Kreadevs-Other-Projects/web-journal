@@ -7,7 +7,6 @@ export const createPaper = async (data: {
   keywords: string[];
   journal_id: string;
   author_id: string;
-  chief_editor_id: string;
   issue_id?: string;
 }) => {
   const {
@@ -17,14 +16,13 @@ export const createPaper = async (data: {
     keywords,
     journal_id,
     author_id,
-    chief_editor_id,
     issue_id,
   } = data;
 
   const result = await pool.query(
     `INSERT INTO papers 
-      (title, abstract, category, keywords, journal_id, author_id, chief_editor_id, issue_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      (title, abstract, category, keywords, journal_id, author_id, issue_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
      RETURNING *`,
     [
       title,
@@ -33,7 +31,6 @@ export const createPaper = async (data: {
       keywords,
       journal_id,
       author_id,
-      chief_editor_id,
       issue_id || null,
     ],
   );

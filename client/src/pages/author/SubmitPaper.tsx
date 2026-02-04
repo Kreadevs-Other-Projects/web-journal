@@ -42,9 +42,6 @@ export default function Papers() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [issues, setIssues] = useState<{ id: string; label: string }[]>([]);
-  const [chiefEditors, setChiefEditors] = useState<
-    { id: string; username: string }[]
-  >([]);
 
   const [open, setOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -72,12 +69,11 @@ export default function Papers() {
     keywords: "",
     journal_id: "",
     issue_id: "",
-    chief_editor_id: "",
   });
 
   const fetchJournals = async () => {
     try {
-      const res = await fetch(`${url}/journal/getJournals`, {
+      const res = await fetch(`${url}/author/getAuthorJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -123,23 +119,6 @@ export default function Papers() {
     fetchIssues();
   }, [form.journal_id, token, toast]);
 
-  useEffect(() => {
-    if (!token) return;
-
-    fetch(`${url}/cheifEditor/getChiefEditors`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setChiefEditors(data.data || []))
-      .catch(() =>
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load chief editors",
-        }),
-      );
-  }, [token, toast]);
-
   const fetchPapers = async () => {
     try {
       const endpoint =
@@ -178,7 +157,6 @@ export default function Papers() {
         abstract: form.abstract,
         category: form.category,
         journal_id: form.journal_id,
-        chief_editor_id: form.chief_editor_id,
         keywords: form.keywords
           .split(",")
           .map((k) => k.trim())
@@ -197,7 +175,19 @@ export default function Papers() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      console.log(data);
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        }
+      }
 
       const paperId = data.data.id;
       setCreatedPaperId(paperId);
@@ -420,24 +410,6 @@ export default function Papers() {
                 {issues.map((i) => (
                   <option key={i.id} value={i.id}>
                     Issue {i.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Label>Chief Editor</Label>
-              <select
-                className="w-full border rounded-md p-2"
-                value={form.chief_editor_id}
-                onChange={(e) =>
-                  setForm({ ...form, chief_editor_id: e.target.value })
-                }
-              >
-                <option value="">Select Chief Editor</option>
-                {chiefEditors?.map((ce) => (
-                  <option key={ce.id} value={ce.id}>
-                    {ce.username}
                   </option>
                 ))}
               </select>

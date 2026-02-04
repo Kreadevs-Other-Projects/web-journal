@@ -143,6 +143,36 @@ export const sendWelcomeEmail = async (
   }
 };
 
+export const sendSubEditorInviteEmail = async (
+  email: string,
+  signupLink: string,
+) => {
+  try {
+    await transporter.sendMail({
+      from: `"JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "You're invited to join JournalHub as a Sub-Editor",
+      html: baseEmailTemplate(
+        "Invitation to JournalHub",
+        `
+          <p>Hello,</p>
+          <p>You have been invited to join <strong>JournalHub</strong> as a <strong>Sub-Editor</strong>.</p>
+          <p>Click the button below to complete your signup and start managing papers:</p>
+          <a href="${signupLink}" class="button">Complete Signup</a>
+          <p>If you didn’t expect this email, you can safely ignore it.</p>
+        `,
+      ),
+      text: `Hello, You have been invited to join JournalHub as a Sub-Editor. Complete your signup here: ${signupLink}`,
+    });
+
+    console.log("Sub-editor invite email sent to:", email);
+    return true;
+  } catch (error) {
+    console.error("Failed to send sub-editor invite email:", error);
+    throw new Error("Sub-editor invite email failed");
+  }
+};
+
 export const sendPasswordResetEmail = async (
   email: string,
   otpCode: string,

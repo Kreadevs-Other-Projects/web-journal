@@ -30,7 +30,8 @@ export const getJournalPapers = async (chiefEditorId: string) => {
     `
     SELECT p.*
     FROM papers p
-    WHERE p.chief_editor_id = $1
+    JOIN journals j ON j.id = p.journal_id
+    WHERE j.chief_editor_id = $1
       AND NOT EXISTS (
         SELECT 1
         FROM editor_decisions ed
@@ -100,53 +101,6 @@ export const assignSubEditor = async (
   }
 };
 
-export const findReviewer = async () => {
-  const result = await pool.query(
-    `
-    SELECT id, username, email
-    FROM users
-    WHERE role = 'reviewer'
-      AND status = 'active'
-    ORDER BY username ASC
-    `,
-  );
-
-  return result.rows;
-};
-
-export const assignReviewer = async (
-  paperId: string,
-  reviewerId: string,
-  assignedBy: string,
-) => {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    await client.query(
-      `
-      INSERT INTO review_assignments
-        (paper_id, reviewer_id, assigned_by, assigned_at, status)
-      VALUES ($1, $2, $3, NOW(), 'assigned')
-      ON CONFLICT (paper_id, reviewer_id)
-      DO UPDATE
-        SET status = 'assigned'
-      `,
-      [paperId, reviewerId, assignedBy],
-    );
-
-    await client.query("COMMIT");
-
-    return { success: true };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-};
-
 export const hasSubmittedReviews = async (paperId: string) => {
   const result = await pool.query(
     `SELECT COUNT(*) 
@@ -168,6 +122,12 @@ export const createEditorDecision = async (
     `INSERT INTO editor_decisions
       (paper_id, decided_by, decision, decision_note)
      VALUES ($1, $2, $3, $4)
+     ON CONFLICT (paper_id) 
+     DO UPDATE SET 
+       decision = EXCLUDED.decision,
+       decision_note = EXCLUDED.decision_note,
+       decided_by = EXCLUDED.decided_by,
+       decided_at = NOW()
      RETURNING *`,
     [paperId, editorId, decision, note],
   );

@@ -54,10 +54,14 @@ export default function ChiefEditorSubmittedReviews() {
   const [decision, setDecision] = useState("accepted");
   const [decisionNote, setDecisionNote] = useState("");
 
+  const [openPublish, setOpenPublish] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [yearLabel, setYearLabel] = useState("");
+
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const res = await fetch(`${url}/cheifEditor/getSubmittedReviews`, {
+        const res = await fetch(`${url}/chiefEditor/getSubmittedReviews`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -108,7 +112,7 @@ export default function ChiefEditorSubmittedReviews() {
 
     try {
       const res = await fetch(
-        `${url}/cheifEditor/decide/${selectedReview.paperId}`,
+        `${url}/chiefEditor/decide/${selectedReview.paperId}`,
         {
           method: "POST",
           headers: {
@@ -122,11 +126,23 @@ export default function ChiefEditorSubmittedReviews() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast({
-          title: "Failed to save decision",
-          description: data.message || "An error occurred while saving.",
-          variant: "destructive",
-        });
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessages = data.errors
+            .map((err: { field: string; message: string }) => err.message)
+            .join(", ");
+
+          toast({
+            title: "Validation Error",
+            description: errorMessages,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Failed to save decision",
+            description: data.message || "An error occurred while saving.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -153,6 +169,53 @@ export default function ChiefEditorSubmittedReviews() {
         description: "Unable to save decision. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const publishPaper = async () => {
+    if (!selectedReview) return;
+
+    try {
+      setPublishing(true);
+
+      const res = await fetch(
+        `${url}/publication/publishPaper/${selectedReview.paperId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ year_label: yearLabel }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.paperId === selectedReview.paperId
+            ? { ...r, paperStatus: "published" }
+            : r,
+        ),
+      );
+
+      toast({
+        title: "Paper published",
+        description: "The paper has been published successfully",
+      });
+
+      setOpenPublish(false);
+      setYearLabel("");
+    } catch (err: any) {
+      toast({
+        title: "Publish failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -256,12 +319,26 @@ export default function ChiefEditorSubmittedReviews() {
                             size="sm"
                             onClick={() => {
                               setSelectedReview(review);
-                              setDecision(review.decision);
+                              setDecision("pending_revision");
+                              setDecisionNote("");
                               setOpenDecision(true);
                             }}
                           >
                             Make Decision
                           </Button>
+
+                          {review.paperStatus === "accepted" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReview(review);
+                                setOpenPublish(true);
+                              }}
+                            >
+                              Publish Paper
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -334,7 +411,7 @@ export default function ChiefEditorSubmittedReviews() {
               <div className="space-y-2">
                 <label>Decision</label>
                 <select
-                  className="w-full border rounded"
+                  className="w-full border rounded p-2"
                   value={decision}
                   onChange={(e) => setDecision(e.target.value)}
                 >
@@ -347,10 +424,41 @@ export default function ChiefEditorSubmittedReviews() {
                 <Input
                   value={decisionNote}
                   onChange={(e) => setDecisionNote(e.target.value)}
+                  placeholder="Enter decision note (minimum 5 characters)"
                 />
               </div>
               <DialogFooter>
                 <Button onClick={saveDecision}>Save Decision</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openPublish} onOpenChange={setOpenPublish}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Publish Paper</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <label>Year Label (optional)</label>
+                <Input
+                  value={yearLabel}
+                  onChange={(e) => setYearLabel(e.target.value)}
+                  placeholder="e.g. 2024"
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setOpenPublish(false)}
+                  disabled={publishing}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={publishPaper} disabled={publishing}>
+                  {publishing ? "Publishing..." : "Publish"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

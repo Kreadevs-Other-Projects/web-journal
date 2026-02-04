@@ -1,49 +1,35 @@
 import { pool } from "../configs/db";
-import {
-  createPublication,
-  isPaperPublished,
-} from "../repositories/publication.repository";
+import { publishPaper } from "../repositories/publication.repository";
 
-export const publishPaperService = async (
-  user: { id: string; role: string },
-  paper_id: string,
-  issue_id: string,
-  year_label?: string,
-) => {
-  if (!["owner", "publisher"].includes(user.role)) {
-    throw new Error("Only owner or publisher can publish papers");
-  }
-
+export const setPaperPublished = async (paperId: string, editorId: string) => {
   const paperRes = await pool.query(`SELECT status FROM papers WHERE id = $1`, [
-    paper_id,
+    paperId,
   ]);
 
-  if (!paperRes.rows[0]) {
+  if (!paperRes.rows.length) {
     throw new Error("Paper not found");
   }
 
-  if (paperRes.rows[0].status !== "accepted") {
-    throw new Error("Only accepted papers can be published");
-  }
-
-  const published = await isPaperPublished(paper_id);
-  if (published) {
+  if (paperRes.rows[0].status === "published") {
     throw new Error("Paper already published");
   }
 
-  const publication = await createPublication(
-    paper_id,
-    issue_id,
-    user.id,
-    year_label,
+  if (paperRes.rows[0].status !== "accepted") {
+    throw new Error("Paper must be accepted before publishing");
+  }
+
+  const decisionRes = await pool.query(
+    `SELECT decision FROM editor_decisions WHERE paper_id = $1`,
+    [paperId],
   );
 
-  await pool.query(
-    `UPDATE papers
-     SET status = 'published', updated_at = NOW()
-     WHERE id = $1`,
-    [paper_id],
-  );
+  if (!decisionRes.rows.length) {
+    throw new Error("Editor decision not found");
+  }
 
-  return publication;
+  if (decisionRes.rows[0].decision !== "accepted") {
+    throw new Error("Editor decision must be accepted before publishing");
+  }
+
+  return publishPaper(paperId, editorId);
 };

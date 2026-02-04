@@ -10,12 +10,22 @@ export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
   return journals;
 };
 
+export const getPapersByJournalIdService = async (journalId: string) => {
+  if (!journalId) {
+    throw new Error("Journal ID is required");
+  }
+
+  const papers = await repo.getPapersByJournalId(journalId);
+
+  return papers;
+};
+
 export const getChiefEditors = async () => {
   return repo.findChiefEditors();
 };
 
-export const fetchJournalPapers = async (journalId: string) => {
-  return repo.getJournalPapers(journalId);
+export const fetchAllPapers = async (journalId: string) => {
+  return repo.getAllPapers(journalId);
 };
 
 export const getSubEditors = async () => {

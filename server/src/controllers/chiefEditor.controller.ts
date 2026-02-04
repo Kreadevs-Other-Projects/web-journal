@@ -7,11 +7,30 @@ export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
     const chiefEditorId = req.user!.id;
 
     const journals = await service.getChiefEditorJournalsService(chiefEditorId);
-    res.status(200).json({ success: true, data: journals });
+
+    return res.status(200).json({
+      success: true,
+      journal: journals,
+    });
   } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[getChiefEditorJournals]", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch journals",
+    });
   }
+};
+
+export const getPapersByJournalId = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+
+  const papers = await service.getPapersByJournalIdService(journalId);
+
+  return res.status(200).json({
+    success: true,
+    papers: papers,
+  });
 };
 
 export const fetchChiefEditors = async (req: Request, res: Response) => {
@@ -23,8 +42,8 @@ export const fetchChiefEditors = async (req: Request, res: Response) => {
   });
 };
 
-export const getPapers = async (req: AuthUser, res: Response) => {
-  const papers = await service.fetchJournalPapers(req.user!.id);
+export const getAllPapers = async (req: AuthUser, res: Response) => {
+  const papers = await service.fetchAllPapers(req.user!.id);
   res.json({ success: true, data: papers });
 };
 

@@ -64,3 +64,15 @@ export const getReviewersForPaper = async (req: Request, res: Response) => {
   const reviewers = await service.fetchAssignedReviewers(paperId);
   res.json({ success: true, data: reviewers });
 };
+
+export const reviewerInvite = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const result = await service.sendInviteEmailReviewer(email);
+
+    res.json({ message: "Invitation email sent successfully", data: result });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};

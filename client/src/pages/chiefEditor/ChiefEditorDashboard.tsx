@@ -64,9 +64,9 @@ export default function ChiefEditorDashboard() {
       }
 
       const data = await res.json();
-      console.log(data);
+      console.log(data.journal);
 
-      const journals = data.data ?? [];
+      const journals = data.journal ?? [];
       setJournals(journals);
     } catch (e) {
       toast({
@@ -88,7 +88,9 @@ export default function ChiefEditorDashboard() {
       }
 
       const data = await res.json();
-      setPapers(data.data ?? []);
+      console.log(data.papers);
+
+      setPapers(data.papers ?? []);
     } catch (e) {
       console.error(e);
       toast({
@@ -103,101 +105,6 @@ export default function ChiefEditorDashboard() {
     setAssignPaperId(paperId);
     setAssignForm({ userId: "" });
     setAssignModalOpen(true);
-  };
-
-  const submitAssignSubEditor = async () => {
-    if (!assignPaperId) return;
-
-    try {
-      await fetch(`${url}/chiefEditor/assignSubEditor/${assignPaperId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(assignForm),
-      });
-
-      setAssignModalOpen(false);
-
-      toast({
-        title: "Sub Editor Assigned",
-        description: "The sub editor has been assigned successfully.",
-      });
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Assignment Failed",
-        description: "Unable to assign sub editor.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const submitAssignReviewer = async () => {
-    if (!assignPaperId) return;
-
-    try {
-      await fetch(`${url}/chiefEditor/assignReviewer/${assignPaperId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(assignForm),
-      });
-
-      setAssignModalOpen(false);
-
-      toast({
-        title: "Reviewer Assigned",
-        description: "The reviewer has been assigned successfully.",
-      });
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Assignment Failed",
-        description: "Unable to assign reviewer.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updatePaperStatus = async (paperId: string) => {
-    if (!statusForm) {
-      toast({
-        title: "Status Required",
-        description: "Please enter a status before updating.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await fetch(`${url}/chiefEditor/updatePaperStatus/${paperId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: statusForm }),
-      });
-
-      toast({
-        title: "Status Updated",
-        description: "Paper status has been updated successfully.",
-      });
-
-      setStatusForm("");
-      if (selectedJournal) fetchPapers(selectedJournal.id);
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Update Failed",
-        description: "Could not update paper status.",
-        variant: "destructive",
-      });
-    }
   };
 
   useEffect(() => {
@@ -290,13 +197,13 @@ export default function ChiefEditorDashboard() {
                         onChange={(e) => setStatusForm(e.target.value)}
                         className="w-[150px]"
                       />
-                      <Button
+                      {/* <Button
                         size="sm"
                         variant="outline"
                         onClick={() => updatePaperStatus(p.id)}
                       >
                         Update Status
-                      </Button>
+                      </Button> */}
                     </div>
                   </CardContent>
                 </Card>
@@ -326,8 +233,8 @@ export default function ChiefEditorDashboard() {
               <Button variant="ghost" onClick={() => setAssignModalOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={submitAssignSubEditor}>Assign Sub Editor</Button>
-              <Button onClick={submitAssignReviewer}>Assign Reviewer</Button>
+              {/* <Button onClick={submitAssignSubEditor}>Assign Sub Editor</Button>
+              <Button onClick={submitAssignReviewer}>Assign Reviewer</Button> */}
             </div>
           </div>
         </DialogContent>

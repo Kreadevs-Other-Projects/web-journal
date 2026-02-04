@@ -1,4 +1,5 @@
 import * as repo from "../repositories/subEditor.repository";
+import { sendReviewerInviteEmail } from "../utils/email";
 
 export const fetchSubEditorPapers = async (subEditorId: string) => {
   return repo.getSubEditorPapers(subEditorId);
@@ -26,4 +27,12 @@ export const setSubEditorPaperStatus = async (
 
 export const fetchAssignedReviewers = async (paperId: string) => {
   return repo.getAssignedReviewers(paperId);
+};
+
+export const sendInviteEmailReviewer = async (email: string) => {
+  const signupLink = `${process.env.CORS_ORIGIN}/signup`;
+
+  await sendReviewerInviteEmail(email, signupLink);
+
+  return { email, signupLink };
 };

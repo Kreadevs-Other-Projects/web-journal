@@ -1,7 +1,8 @@
 import { Router } from "express";
 import {
   getChiefEditorJournals,
-  getPapers,
+  getPapersByJournalId,
+  getAllPapers,
   assignSubEditor,
   updatePaperStatus,
   decidePaper,
@@ -29,13 +30,25 @@ router.get(
 );
 
 router.get(
+  "/getPapers/:journalId",
+  authMiddleware,
+  authorize("chief_editor"),
+  getPapersByJournalId,
+);
+
+router.get(
   "/getChiefEditors",
   authMiddleware,
   authorize("author", "admin", "owner", "publisher"),
   fetchChiefEditors,
 );
 
-router.get("/getPapers", authMiddleware, authorize("chief_editor"), getPapers);
+router.get(
+  "/getAllPapers",
+  authMiddleware,
+  authorize("chief_editor"),
+  getAllPapers,
+);
 
 router.get(
   "/getsubEditors",

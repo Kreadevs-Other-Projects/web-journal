@@ -78,7 +78,7 @@ export default function ChiefEditor() {
 
   const fetchPapers = async () => {
     try {
-      const res = await fetch(`${url}/chiefEditor/getPapers`, {
+      const res = await fetch(`${url}/chiefEditor/getAllPapers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -89,7 +89,6 @@ export default function ChiefEditor() {
       setPapers(papersData);
       setFilteredPapers(papersData);
 
-      // Calculate stats
       const pending = papersData.filter((p) => p.status === "submitted").length;
       const assigned = papersData.filter((p) => p.status === "assigned").length;
       const reviewed = papersData.filter((p) => p.status === "reviewed").length;
@@ -133,7 +132,6 @@ export default function ChiefEditor() {
   useEffect(() => {
     let filtered = papers;
 
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (paper) =>
@@ -144,7 +142,6 @@ export default function ChiefEditor() {
       );
     }
 
-    // Apply status filter
     if (activeTab !== "all") {
       filtered = filtered.filter((paper) => paper.status === activeTab);
     }

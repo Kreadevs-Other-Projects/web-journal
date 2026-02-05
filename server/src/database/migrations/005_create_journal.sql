@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS journals (
   status journal_status NOT NULL DEFAULT 'pending_payment',
   chief_editor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ
+  updated_at TIMESTAMPTZ,
   UNIQUE (acronym)
 );

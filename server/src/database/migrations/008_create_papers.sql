@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS papers (
 
   issue_id UUID
     REFERENCES journal_issues(id)
-    ON DELETE SET NOT NULL,
+    ON DELETE CASCADE,
 
   author_id UUID NOT NULL
     REFERENCES users(id)
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS paper_versions (
 );
 
 ALTER TABLE papers
-  ADD CONSTRAINT fk_current_version
-  FOREIGN KEY (current_version_id)
-  REFERENCES paper_versions(id)
-  ON DELETE SET NULL;
+ADD CONSTRAINT fk_current_version
+FOREIGN KEY (current_version_id)
+REFERENCES paper_versions(id)
+ON DELETE SET NULL;

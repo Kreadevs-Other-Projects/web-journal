@@ -5,6 +5,6 @@ CREATE TABLE IF NOT EXISTS publications (
   article_index INT,
   published_by UUID REFERENCES users(id),
   published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  year_label TEXT DEFAULT 'Conference 2026'
+  year_label TEXT DEFAULT 'Conference 2026',
   UNIQUE (issue_id, article_index)
 );

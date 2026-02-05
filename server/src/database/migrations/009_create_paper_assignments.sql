@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS review_assignments (
   status review_assignment_status NOT NULL DEFAULT 'assigned',
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   submitted_at TIMESTAMPTZ,
-  UNIQUE (paper_id,)
+  UNIQUE (paper_id, reviewer_id)
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -47,11 +47,4 @@ CREATE TABLE IF NOT EXISTS editor_decisions (
   decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (paper_id)
 );
-
-ALTER TABLE editor_decisions 
-ADD CONSTRAINT unique_paper_decision UNIQUE (paper_id);
-
-ALTER TABLE review_assignments
-ADD CONSTRAINT unique_reviewer_per_paper
-UNIQUE (paper_id, reviewer_id);
 

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS journal_issues (
   volume INT,
   issue INT,
   label TEXT NOT NULL,
+  status issue_status NOT NULL DEFAULT 'draft',
   published_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ,
   UNIQUE (journal_id, label)

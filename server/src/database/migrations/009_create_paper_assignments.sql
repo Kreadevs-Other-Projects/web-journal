@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
   accepted_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   declined_reason TEXT,
-  UNIQUE (paper_id, sub_editor_id)
+  UNIQUE (paper_id)
 );
 
 CREATE TABLE IF NOT EXISTS review_assignments (
@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS review_assignments (
   assigned_by UUID NOT NULL REFERENCES users(id),
   status review_assignment_status NOT NULL DEFAULT 'assigned',
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  submitted_at TIMESTAMPTZ
+  submitted_at TIMESTAMPTZ,
+  UNIQUE (paper_id,)
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -40,18 +41,11 @@ CREATE TABLE IF NOT EXISTS editor_decisions (
   decided_by UUID NOT NULL
     REFERENCES users(id),
 
-  decision paper_status NOT NULL,
+  decision chief_editor_decision NOT NULL,
   decision_note TEXT,
 
   decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  CHECK (
-    decision IN (
-      'pending_revision',
-      'accepted',
-      'rejected'
-    )
-  )
+  UNIQUE (paper_id)
 );
 
 ALTER TABLE editor_decisions 

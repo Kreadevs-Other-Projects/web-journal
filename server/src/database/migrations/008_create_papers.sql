@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS papers (
 
   issue_id UUID
     REFERENCES journal_issues(id)
-    ON DELETE SET NULL,
+    ON DELETE SET NOT NULL,
 
   author_id UUID NOT NULL
     REFERENCES users(id)

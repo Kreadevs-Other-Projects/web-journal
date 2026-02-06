@@ -9,7 +9,6 @@ DO $$ BEGIN
       'sub_editor',
       'reviewer',
       'author',
-      'admin'
     );
   END IF;
 

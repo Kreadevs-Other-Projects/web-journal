@@ -52,22 +52,26 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 
-import { Worker, Viewer } from "@react-pdf-viewer/core";
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import { useToast } from "@/hooks/use-toast";
+
+interface PaperVersion {
+  id: string;
+  file_url: string;
+  version_label?: string;
+  version_number: number;
+  created_at?: string;
+}
 
 interface Paper {
   id: string;
   title: string;
   status: string;
-  file_url: string;
-  version?: string;
-  category?: string;
   abstract?: string;
   authors?: string[];
-  submittedDate?: string;
+  category?: string;
+  submitted_at?: string;
   deadline?: string;
+  versions: PaperVersion[];
 }
 
 interface Reviewer {
@@ -98,6 +102,11 @@ export default function SubEditorDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [reviewerEmail, setReviewerEmail] = useState("");
+  const [selectedVersion, setSelectedVersion] = useState<PaperVersion | null>(
+    null,
+  );
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
@@ -117,23 +126,23 @@ export default function SubEditorDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const papersData = data.data || [];
+      console.log(data.papers);
 
-      setPapers(papersData);
-      setFilteredPapers(papersData);
+      setPapers(data.papers);
+      setFilteredPapers(data.papers);
 
-      const underReview = papersData.filter(
+      const underReview = data.papers.filter(
         (p) => p.status === "under_review",
       ).length;
-      const pendingRevision = papersData.filter(
+      const pendingRevision = data.papers.filter(
         (p) => p.status === "pending_revision",
       ).length;
-      const completed = papersData.filter(
+      const completed = data.papers.filter(
         (p) => p.status === "resubmitted" || p.status === "completed",
       ).length;
 
       setStats({
-        total: papersData.length,
+        total: data.papers.length,
         underReview,
         pendingRevision,
         completed,
@@ -176,6 +185,8 @@ export default function SubEditorDashboard() {
     }
 
     try {
+      setAssignLoading(true);
+
       await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
         method: "POST",
         headers: {
@@ -200,6 +211,8 @@ export default function SubEditorDashboard() {
         description: "Failed to assign reviewer.",
         variant: "destructive",
       });
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -274,6 +287,8 @@ export default function SubEditorDashboard() {
     if (!reviewerEmail) return;
 
     try {
+      setInviteLoading(true);
+
       const res = await fetch(`${url}/subEditor/inviteReviewer`, {
         method: "POST",
         headers: {
@@ -301,6 +316,8 @@ export default function SubEditorDashboard() {
           err instanceof Error ? err.message : "Could not invite reviewer",
         variant: "destructive",
       });
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -440,22 +457,45 @@ export default function SubEditorDashboard() {
                             </Badge>
                             <span>•</span>
                             <span>
-                              Version {selectedPaper.version || "1.0"}
+                              Version {selectedVersion?.version_number}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {formatDate(selectedPaper.submittedDate)}
+                              {formatDate(selectedPaper.submitted_at)}
                             </span>
                           </CardDescription>
                         </div>
                       </div>
+                      <Select
+                        value={selectedVersion?.id}
+                        onValueChange={(versionId) => {
+                          const v = selectedPaper?.versions.find(
+                            (v) => v.id === versionId,
+                          );
+                          if (v) setSelectedVersion(v);
+                        }}
+                      >
+                        <SelectTrigger className="w-[180px] bg-white/5 border-white/10">
+                          <SelectValue placeholder="Select version" />
+                        </SelectTrigger>
+
+                        <SelectContent className="bg-gray-900 border-white/10 text-white">
+                          {selectedPaper?.versions.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              Version {v.version_number}
+                              {v.version_label ? ` – ${v.version_label}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() =>
                           window.open(
-                            `${url}${selectedPaper.file_url}`,
+                            `${url}${selectedVersion?.file_url}`,
                             "_blank",
                           )
                         }
@@ -481,7 +521,7 @@ export default function SubEditorDashboard() {
                       <TabsContent value="preview" className="mt-4">
                         <div className="rounded-lg overflow-hidden border border-white/10">
                           <iframe
-                            src={`${url}${selectedPaper.file_url}`}
+                            src={`${url}${selectedVersion?.file_url}`}
                             className="w-full h-[600px]"
                             title="Paper Preview"
                           />
@@ -615,7 +655,10 @@ export default function SubEditorDashboard() {
                       variant="outline"
                       className="w-full justify-start hover:bg-white/10"
                       onClick={() =>
-                        window.open(`${url}${selectedPaper.file_url}`, "_blank")
+                        window.open(
+                          `${url}${selectedVersion?.file_url}`,
+                          "_blank",
+                        )
                       }
                     >
                       <Eye className="h-4 w-4 mr-2" />
@@ -819,6 +862,7 @@ export default function SubEditorDashboard() {
                       className="glass-card hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer group border-0 hover:bg-gradient-to-br hover:from-gray-900/50 hover:to-gray-800/30 transition-all duration-300"
                       onClick={() => {
                         setSelectedPaper(paper);
+                        setSelectedVersion(paper.versions[0]);
                         fetchAllReviewers();
                       }}
                     >
@@ -849,15 +893,15 @@ export default function SubEditorDashboard() {
                               <Calendar className="h-3 w-3" />
                               Submitted
                             </span>
-                            <span>{formatDate(paper.submittedDate)}</span>
+                            <span>{formatDate(paper.submitted_at)}</span>
                           </div>
 
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">
-                              Version
+                              Latest Version
                             </span>
                             <Badge variant="outline" className="text-xs">
-                              {paper.version || "1.0"}
+                              {paper.versions?.[0]?.version_number}
                             </Badge>
                           </div>
 
@@ -999,7 +1043,17 @@ export default function SubEditorDashboard() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="relative">
+
+              <Button
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                onClick={assignReviewer}
+                disabled={!selectedReviewerId}
+              >
+                <UserCheck className="h-4 w-4 mr-2" />
+                {assignLoading ? "Assigning Reviewer..." : "Assign Reviewer"}
+              </Button>
+
+              <div className="relative space-y-5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t"></div>
                 </div>
@@ -1010,7 +1064,7 @@ export default function SubEditorDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div>
                 <Label className="text-sm font-medium">
                   Invite New Sub-Editor
                 </Label>
@@ -1029,15 +1083,7 @@ export default function SubEditorDashboard() {
               onClick={inviteReviewerByEmail}
               disabled={!reviewerEmail}
             >
-              Send Invitation
-            </Button>
-            <Button
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-              onClick={assignReviewer}
-              disabled={!selectedReviewerId}
-            >
-              <UserCheck className="h-4 w-4 mr-2" />
-              Assign Reviewer
+              {inviteLoading ? "Sending Invitation..." : "Send Invitation"}
             </Button>
           </div>
         </DialogContent>

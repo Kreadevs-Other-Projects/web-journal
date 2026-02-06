@@ -1,17 +1,17 @@
 import { z } from "zod";
 
-const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 export const createJournalSchema = z.object({
   body: z.object({
-    name: z
+    title: z
       .string()
       .min(3, { message: "Journal name must be at least 3 characters" })
       .max(255, { message: "Journal name cannot exceed 255 characters" }),
-    slug: z
+    acronym: z
       .string()
-      .min(3, { message: "Slug must be at least 3 characters" })
-      .max(100, { message: "Slug cannot exceed 100 characters" }),
+      .length(4, { message: "Acronym must be exactly 4 characters" })
+      .regex(/^[A-Z]{4}$/, {
+        message: "Acronym must contain exactly 4 capital letters",
+      }),
     description: z
       .string()
       .max(500, { message: "Description cannot exceed 500 characters" })

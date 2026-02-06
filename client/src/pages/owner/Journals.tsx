@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-import JournalIssuesPage from "@/components/JournalIssues";
 import { useToast } from "@/hooks/use-toast";
+import { generateAcronym } from "../../../../server/src/utils/acronym";
 
 interface Journal {
   id: string;
-  name: string;
-  slug: string;
+  title: string;
+  acronym: string;
   description?: string;
   issn: string;
   website_url?: string;
@@ -37,8 +37,8 @@ interface Journal {
 }
 
 interface JournalForm {
-  name: string;
-  slug: string;
+  title: string;
+  acronym: string;
   description: string;
   issn: string;
   website_url: string;
@@ -65,13 +65,6 @@ interface Publisher {
   status: string;
 }
 
-const generateSlug = (value: string): string =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-
 const isActiveIssue = (issue: JournalIssue) =>
   issue?.is_active === true || issue?.status === "active";
 
@@ -79,16 +72,20 @@ export default function Journals(): JSX.Element {
   const { user, token, isLoading } = useAuth();
   const { toast } = useToast();
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+  const [selectedJournalIssues, setSelectedJournalIssues] = useState<
+    JournalIssue[]
+  >([]);
+
   const [chiefEditors, setChiefEditors] = useState<Publisher[]>([]);
 
   const [form, setForm] = useState<JournalForm>({
-    name: "",
-    slug: "",
+    title: "",
+    acronym: "",
     description: "",
     issn: "",
     website_url: "",
@@ -170,6 +167,35 @@ export default function Journals(): JSX.Element {
     }
   };
 
+  const openJournalIssues = async (id: string, name: string) => {
+    setCurrentJournalId(id);
+    setCurrentJournalName(name);
+    setIssuesModalOpen(true);
+
+    try {
+      const res = await fetch(`${url}/journal-issue/getJournalIssues/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSelectedJournalIssues(data.issues || []);
+      } else {
+        toast({
+          title: "Failed to fetch issues",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
   const fetchIssuesForJournal = async (journalId: string) => {
     setIssuesLoading(true);
     try {
@@ -234,7 +260,6 @@ export default function Journals(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      console.log(data.data);
 
       if (data.success) {
         setChiefEditors(data.data);
@@ -295,8 +320,8 @@ export default function Journals(): JSX.Element {
 
       setNewJournalModalOpen(false);
       setForm({
-        name: "",
-        slug: "",
+        title: "",
+        acronym: "",
         description: "",
         issn: "",
         website_url: "",
@@ -335,7 +360,7 @@ export default function Journals(): JSX.Element {
       if (data.success) {
         toast({
           title: "Journal Updated",
-          description: `${form.name} has been successfully updated.`,
+          description: `${form.title} has been successfully updated.`,
         });
 
         setEditOpen(false);
@@ -372,7 +397,7 @@ export default function Journals(): JSX.Element {
       if (data.success) {
         toast({
           title: "Journal Deleted",
-          description: `${selectedJournal.name} has been removed.`,
+          description: `${selectedJournal.title} has been removed.`,
         });
 
         setDeleteOpen(false);
@@ -393,11 +418,6 @@ export default function Journals(): JSX.Element {
     }
   };
 
-  const openJournalIssues = (id: string, name: string) => {
-    setCurrentJournalId(id);
-    setCurrentJournalName(name);
-  };
-
   const handleIssueChange = (e: ChangeEvent<HTMLInputElement>) =>
     setIssueForm({ ...issueForm, [e.target.name]: e.target.value });
 
@@ -413,7 +433,7 @@ export default function Journals(): JSX.Element {
   };
 
   const openApplyIssueModal = async (journal: Journal) => {
-    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+    setActiveJournalForIssue({ id: journal.id, name: journal.title });
     resetIssueForm();
     setModalOpen(true);
 
@@ -421,7 +441,7 @@ export default function Journals(): JSX.Element {
   };
 
   const openEditActiveIssueModal = async (journal: Journal) => {
-    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+    setActiveJournalForIssue({ id: journal.id, name: journal.title });
 
     const list =
       issuesByJournal[journal.id] ?? (await fetchIssuesForJournal(journal.id));
@@ -568,21 +588,6 @@ export default function Journals(): JSX.Element {
   if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Unauthorized</div>;
 
-  if (currentJournalId)
-    return (
-      <JournalIssuesPage
-        journalId={currentJournalId}
-        journalName={currentJournalName}
-        token={token}
-        onBack={() => setCurrentJournalId(null)}
-      />
-    );
-
-  const closeCreateEdit = () => {
-    setOpen(false);
-    setEditOpen(false);
-  };
-
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
@@ -623,15 +628,15 @@ export default function Journals(): JSX.Element {
                 <CardHeader>
                   <CardTitle
                     className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => openJournalIssues(j.id, j.name)}
+                    onClick={() => openJournalIssues(j.id, j.title)}
                   >
                     <BookOpen className="h-5 w-5" />
-                    {j.name}
+                    {j.title}
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="space-y-2">
-                  <p className="text-xs">Slug: {j.slug}</p>
+                  <p className="text-xs">Acronym: {j.acronym}</p>
                   <p className="text-xs">ISSN: {j.issn}</p>
 
                   {j.website_url ? (
@@ -681,8 +686,8 @@ export default function Journals(): JSX.Element {
                       onClick={() => {
                         setSelectedJournal(j);
                         setForm({
-                          name: j.name,
-                          slug: j.slug,
+                          title: j.title,
+                          acronym: j.acronym,
                           description: j.description ?? "",
                           issn: j.issn,
                           website_url: j.website_url ?? "",
@@ -727,26 +732,32 @@ export default function Journals(): JSX.Element {
             <>
               <div className="space-y-4">
                 <div>
-                  <Label>Journal Name</Label>
+                  <Label>Journal Title</Label>
                   <Input
                     placeholder="e.g., International Journal of Computing"
-                    value={form.name}
+                    value={form.title}
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        name: e.target.value,
-                        slug: generateSlug(e.target.value),
+                        title: e.target.value,
+                        acronym: generateAcronym(e.target.value),
                       })
                     }
                   />
                 </div>
 
                 <div>
-                  <Label>Slug (auto)</Label>
+                  <Label>
+                    Acronym{" "}
+                    <span className="text-muted-foreground text-xs">
+                      (Auto-generated)
+                    </span>
+                  </Label>
                   <Input
-                    placeholder="auto-generated from name"
-                    value={form.slug}
+                    placeholder="Auto-generated from title"
+                    value={form.acronym}
                     disabled
+                    className="bg-muted cursor-not-allowed"
                   />
                 </div>
 
@@ -790,6 +801,7 @@ export default function Journals(): JSX.Element {
                     }
                   />
                 </div>
+
                 <div>
                   <Label>Chief Editor</Label>
                   <select
@@ -799,7 +811,9 @@ export default function Journals(): JSX.Element {
                       setForm({ ...form, chief_editor_id: e.target.value })
                     }
                   >
-                    <option value="">Select Chief Editor</option>
+                    <option value="" disabled>
+                      Select Chief Editor
+                    </option>
                     {chiefEditors.length > 0 ? (
                       chiefEditors.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -884,7 +898,6 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Journal Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
@@ -893,26 +906,32 @@ export default function Journals(): JSX.Element {
 
           <div className="space-y-4">
             <div>
-              <Label>Journal Name</Label>
+              <Label>Journal Title</Label>
               <Input
                 placeholder="e.g., International Journal of Computing"
-                value={form.name}
+                value={form.title}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    name: e.target.value,
-                    slug: generateSlug(e.target.value),
+                    title: e.target.value,
+                    acronym: generateAcronym(e.target.value),
                   })
                 }
               />
             </div>
 
             <div>
-              <Label>Slug (auto)</Label>
+              <Label>
+                Acronym{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Auto-generated)
+                </span>
+              </Label>
               <Input
-                placeholder="auto-generated from name"
-                value={form.slug}
+                placeholder="Auto-generated from title"
+                value={form.acronym}
                 disabled
+                className="bg-muted cursor-not-allowed"
               />
             </div>
 
@@ -956,6 +975,7 @@ export default function Journals(): JSX.Element {
                 }
               />
             </div>
+
             <div>
               <Label>Chief Editor</Label>
               <select
@@ -1001,7 +1021,7 @@ export default function Journals(): JSX.Element {
 
           <p>
             Are you sure you want to delete{" "}
-            <strong>{selectedJournal?.name}</strong>? This cannot be undone.
+            <strong>{selectedJournal?.title}</strong>? This cannot be undone.
           </p>
 
           <DialogFooter>
@@ -1015,7 +1035,7 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={modalOpen} onOpenChange={() => setModalOpen(false)}>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -1282,6 +1302,58 @@ export default function Journals(): JSX.Element {
               </DialogFooter>
             </form>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={issuesModalOpen} onOpenChange={setIssuesModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Issues – {currentJournalName}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {selectedJournalIssues.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No issues found for this journal.
+              </p>
+            ) : (
+              selectedJournalIssues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className="rounded-xl border border-border/60 p-3 bg-background/40"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold">
+                        {issue.label || "Untitled Issue"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Year: {issue.year}
+                        {issue.volume && ` • Vol ${issue.volume}`}
+                        {issue.issue && ` • Issue ${issue.issue}`}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        isActiveIssue(issue)
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-yellow-500/10 text-yellow-500"
+                      }`}
+                    >
+                      {isActiveIssue(issue) ? "Active" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIssuesModalOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

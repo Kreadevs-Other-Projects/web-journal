@@ -57,16 +57,24 @@ export const fetchSubEditors = async (req: Request, res: Response) => {
 };
 
 export const assignSubEditor = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const { subEditorId } = req.body;
-  const assignedBy = req.user!.id;
+  try {
+    const { paperId } = req.params;
+    const { subEditorId } = req.body;
+    const assignedBy = req.user!.id;
 
-  const assignment = await service.addSubEditor(
-    paperId,
-    subEditorId,
-    assignedBy,
-  );
-  res.json({ success: true, data: assignment });
+    const assignment = await service.addSubEditor(
+      paperId,
+      subEditorId,
+      assignedBy,
+    );
+    res.json({ success: true, data: assignment });
+  } catch (error) {
+    console.error(error);
+
+    if (error instanceof Error) {
+      throw new Error(error.message || "Failed to create journal!");
+    }
+  }
 };
 
 export const decidePaper = async (req: AuthUser, res: Response) => {

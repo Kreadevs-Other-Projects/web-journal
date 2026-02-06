@@ -38,12 +38,16 @@ export default function RevisionPaper() {
 
   const fetchPapers = async () => {
     try {
-      const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${url}/reviewAssignment/getSubEditorAssignments`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (!res.ok) {
         const errorData = await res.json();
+
         console.error("Failed to fetch sub-editor papers:", errorData.message);
         toast({
           title: "Error fetching papers",
@@ -54,7 +58,9 @@ export default function RevisionPaper() {
       }
 
       const data = await res.json();
-      const assignedPapers = (data.data || []).filter(
+      console.log(data.assignments);
+
+      const assignedPapers = (data.assignments || []).filter(
         (paper: { status: string }) => paper.status === "pending_revision",
       );
       setPapers(assignedPapers);

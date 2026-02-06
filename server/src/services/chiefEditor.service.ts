@@ -37,7 +37,15 @@ export const addSubEditor = async (
   subEditorId: string,
   assignedBy: string,
 ) => {
-  return repo.assignSubEditor(paperId, subEditorId, assignedBy);
+  try {
+    return repo.assignSubEditor(paperId, subEditorId, assignedBy);
+  } catch (error) {
+    console.error(error);
+
+    if (error instanceof Error) {
+      throw new Error(error.message || "Failed to create journal!");
+    }
+  }
 };
 
 export const makeEditorDecision = async (

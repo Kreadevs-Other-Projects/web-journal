@@ -10,8 +10,11 @@ export type Journal = {
   label: string;
 };
 
-export const approveJournalService = async (journalId: string) => {
-  const chiefEditorId = await repo.approveJournalRepo(journalId);
+export const approveJournalService = async (
+  journalId: string,
+  issueId: string,
+) => {
+  const chiefEditorId = await repo.approveJournalRepo(journalId, issueId);
   if (!chiefEditorId)
     throw new Error("Journal not found or no chief editor assigned");
 
@@ -36,7 +39,7 @@ export const journalPaymentService = {
   }) => {
     const { rows } = await pool.query(
       `
-      SELECT j.id AS journal_id, j.name AS journal_name,
+      SELECT j.id AS journal_id, j.title AS journal_name,
              u.id AS owner_id, u.username AS owner_name, u.email AS owner_email,
              ji.label AS issue_label
       FROM journals j

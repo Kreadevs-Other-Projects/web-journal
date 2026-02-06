@@ -118,7 +118,7 @@ export const assignSubEditor = async (
       INSERT INTO editor_assignments 
         (paper_id, sub_editor_id, assigned_by, assigned_at)
       VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (paper_id, sub_editor_id)
+      ON CONFLICT (paper_id)
       DO NOTHING
       RETURNING *
       `,

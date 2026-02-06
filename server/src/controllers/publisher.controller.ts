@@ -4,37 +4,34 @@ import { AuthUser } from "../middlewares/auth.middleware";
 
 export const approveJournal = async (req: Request, res: Response) => {
   try {
-    console.log("📥 Incoming request to approveJournal");
-    console.log("Request params:", req.params);
-
     const { journalId } = req.params;
-    console.log("Extracted journalId:", journalId);
+    const { issueId } = req.body;
 
-    const result = await service.approveJournalService(journalId);
-    console.log("✅ Service result:", result);
+    if (!issueId) {
+      return res.status(400).json({
+        success: false,
+        message: "Issue ID is required",
+      });
+    }
+
+    const result = await service.approveJournalService(journalId, issueId);
 
     res.status(200).json({
       success: true,
-      message: "Journal approved, chief editor activated, and invoice sent",
+      message: "Journal issue approved successfully",
       data: result,
     });
-
-    console.log("📤 Response sent successfully");
   } catch (err: any) {
-    console.error("❌ Error in approveJournal:", err);
-
     res.status(400).json({
       success: false,
       message: err.message || "Failed to approve journal",
     });
-
-    console.log("📤 Error response sent");
   }
 };
 
 export const getJournals = async (req: AuthUser, res: Response) => {
   const journals = await service.fetchPublisherJournals();
-  res.json({ success: true, data: journals });
+  res.json({ success: true, journals });
 };
 
 export const sendInvoice = async (req: Request, res: Response) => {

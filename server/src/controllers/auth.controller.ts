@@ -73,26 +73,131 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
+  // ========================
+  // DEV: Skip OTP, return token directly
+  // ========================
+  const accessToken = await generateAccessToken(
+    user.id,
+    user.role,
+    user.email,
+    user.username,
+  );
+  const refreshToken = await generateRefreshToken(user.id, user.role);
+
+  const expires_at = new Date();
+  expires_at.setDate(expires_at.getDate() + 7);
+
+  const savedTokenId = await saveRefreshToken(
+    user.id,
+    refreshToken,
+    expires_at,
+  );
+  if (!savedTokenId) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to save refresh token",
+    });
+  }
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Login successful (DEV MODE)",
+    token: accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username,
+    },
+  });
+
+  // ====== Comment out OTP logic ======
+  /*
   const otp = await createOTP(email, purpose);
-
   await sendOTPEmail(email, otp.otp_code);
-
   return res.status(200).json({
     success: true,
     message: "OTP sent successfully",
     expiresAt: otp.expiry_at,
   });
+  */
 };
+
+// export const login = async (req: Request, res: Response) => {
+//   const { email, password, role, purpose } = req.body;
+
+//   if (!email || !password || !role || !purpose) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Email, password, role and purpose are required",
+//     });
+//   }
+
+//   if (!["login", "signup", "reset"].includes(purpose)) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Invalid purpose",
+//     });
+//   }
+
+//   const user = await findUserByEmail(email);
+//   if (!user) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Account not found!",
+//     });
+//   }
+
+//   if (user.status !== "active") {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Account is not active. Please contact support.",
+//     });
+//   }
+
+//   const isValid = await validatePassword(password, user.password);
+//   if (!isValid) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Invalid password!",
+//     });
+//   }
+
+//   if (user.role !== role) {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Invalid role selected for this account",
+//     });
+//   }
+
+//   const otp = await createOTP(email, purpose);
+
+//   await sendOTPEmail(email, otp.otp_code);
+
+//   return res.status(200).json({
+//     success: true,
+//     message: "OTP sent successfully",
+//     expiresAt: otp.expiry_at,
+//   });
+// };
 
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
 
-  const otpVerified = await checkOTPVerified(email);
-  if (!otpVerified) {
-    return res
-      .status(403)
-      .json({ success: false, message: "Email not verified via OTP" });
-  }
+  // const otpVerified = await checkOTPVerified(email);
+  // if (!otpVerified) {
+  //   return res
+  //     .status(403)
+  //     .json({ success: false, message: "Email not verified via OTP" });
+  // }
 
   const existingUser = await findUserByEmail(email);
 

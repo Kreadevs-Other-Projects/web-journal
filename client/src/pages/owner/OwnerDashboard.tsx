@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 interface Journal {
   id: string;
-  name: string;
+  title: string;
   issn: string;
 }
 
@@ -166,7 +166,7 @@ export default function OwnerDashboard(): JSX.Element {
           {journals.map((j) => (
             <Card key={j.id} className="glass-card">
               <CardHeader>
-                <CardTitle>{j.name}</CardTitle>
+                <CardTitle>{j.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs">ISSN: {j.issn}</p>
@@ -190,7 +190,7 @@ export default function OwnerDashboard(): JSX.Element {
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editors – {selectedJournal?.name}</DialogTitle>
+            <DialogTitle>Editors – {selectedJournal?.title}</DialogTitle>
           </DialogHeader>
 
           {loadingEditors ? (

@@ -1,14 +1,29 @@
 import { Request, Response } from "express";
-import { getJournalsService } from "../services/author.service";
+import {
+  getAuthorJournalsService,
+  getAuthorJournalIssuesService,
+} from "../services/author.service";
+import { AuthUser } from "../middlewares/auth.middleware";
 
 export const getAuthorJournals = async (req: Request, res: Response) => {
+  const journals = await getAuthorJournalsService();
+  res.json({ success: true, journals });
+};
+
+export const getAuthorJournalIssues = async (req: AuthUser, res: Response) => {
   try {
-    const journals = await getJournalsService();
-    res.json({ success: true, journals: journals });
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const journal_id = req.params.journalId;
+    const issues = await getAuthorJournalIssuesService(journal_id);
+
+    return res.status(200).json({ success: true, issues });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch journal issues";
+
+    return res.status(400).json({ success: false, error: message });
   }
 };

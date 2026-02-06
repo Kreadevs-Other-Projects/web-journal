@@ -24,7 +24,7 @@ interface Paper {
 
 interface Journal {
   id: string;
-  name: string;
+  title: string;
 }
 
 const STATUSES = [
@@ -96,15 +96,17 @@ export default function Papers() {
     const fetchIssues = async () => {
       try {
         const res = await fetch(
-          `${url}/journal-issue/getJournalIssues/${form.journal_id}`,
+          `${url}/author/getAuthorJournalIssues/${form.journal_id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
         );
 
-        if (!res.ok) throw new Error("Failed to load journal issues");
-
         const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to load journal issues");
+        }
         setIssues(data.issues || []);
       } catch (err: any) {
         toast({
@@ -175,7 +177,6 @@ export default function Papers() {
       });
 
       const data = await res.json();
-      console.log(data);
 
       if (!data.success) {
         if (data.errors && data.errors.length) {
@@ -360,26 +361,41 @@ export default function Papers() {
           </DialogHeader>
 
           <div className="space-y-3">
-            <Input
-              placeholder="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-            <Input
-              placeholder="Abstract"
-              value={form.abstract}
-              onChange={(e) => setForm({ ...form, abstract: e.target.value })}
-            />
-            <Input
-              placeholder="Category"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            />
-            <Input
-              placeholder="Keywords (comma separated)"
-              value={form.keywords}
-              onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-            />
+            <div>
+              <Label>Title</Label>
+              <Input
+                placeholder="Title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Abstract</Label>
+              <Input
+                placeholder="Abstract"
+                value={form.abstract}
+                onChange={(e) => setForm({ ...form, abstract: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Category</Label>
+              <Input
+                placeholder="Category"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Keywords</Label>
+              <Input
+                placeholder="Keywords (comma separated)"
+                value={form.keywords}
+                onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+              />
+            </div>
 
             <div>
               <Label>Journal</Label>
@@ -390,23 +406,27 @@ export default function Papers() {
                   setForm({ ...form, journal_id: e.target.value })
                 }
               >
-                <option value="">Select Journal</option>
+                <option value="" disabled>
+                  Select Journal
+                </option>
                 {journals.map((j) => (
                   <option key={j.id} value={j.id}>
-                    {j.name}
+                    {j.title}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <Label>Journal Issue (optional)</Label>
+              <Label>Journal Issue</Label>
               <select
                 className="w-full border rounded-md p-2"
                 value={form.issue_id}
                 onChange={(e) => setForm({ ...form, issue_id: e.target.value })}
               >
-                <option value="">Select Issue</option>
+                <option value="" disabled>
+                  Select Issue
+                </option>
                 {issues.map((i) => (
                   <option key={i.id} value={i.id}>
                     Issue {i.label}

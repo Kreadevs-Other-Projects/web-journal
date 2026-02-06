@@ -4,33 +4,36 @@ export const getReviewerPapers = async (reviewerId: string) => {
   const result = await pool.query(
     `
     SELECT 
-      p.id            AS paper_id,
-      p.title         AS title,
-      p.status        AS paper_status,
+      p.id AS paper_id,
+      p.title,
+      p.status AS paper_status,
+      p.abstract,
+      p.category,
+      p.current_version_id,
+      p.created_at,
+      p.updated_at,
+      p.submitted_at AS submitted_date,
+      p.keywords,
 
-      pv.id           AS paper_version_id,
+      pv.id AS paper_version_id,
       pv.version_number,
       pv.file_url,
-      pv.created_at   AS version_created_at,
+      pv.created_at AS version_created_at,
 
-      ra.status       AS assignment_status,
-
-      r.decision,
-      r.comments
-
+      ra.status AS assignment_status,
+      ra.assigned_at,
+      
+      r.decision AS review_decision,
+      r.signed_at AS review_submitted_at
     FROM review_assignments ra
-    JOIN papers p 
-      ON p.id = ra.paper_id
-    LEFT JOIN paper_versions pv
-      ON pv.id = p.current_version_id
-    LEFT JOIN reviews r
-      ON ra.id = r.review_assignment_id
-    WHERE 
-      ra.reviewer_id = $1
+    JOIN papers p ON p.id = ra.paper_id
+    LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
+    LEFT JOIN reviews r ON ra.id = r.review_assignment_id
+    WHERE ra.reviewer_id = $1
+    ORDER BY pv.created_at DESC
     `,
     [reviewerId],
   );
-
   return result.rows;
 };
 
@@ -89,16 +92,6 @@ export const submitReviewByVersion = async (
       WHERE id = $1
       `,
       [assignmentId],
-    );
-
-    await client.query(
-      `
-      UPDATE papers
-      SET status = 'accepted',
-          updated_at = NOW()
-      WHERE id = $1
-      `,
-      [paperId],
     );
 
     await client.query("COMMIT");

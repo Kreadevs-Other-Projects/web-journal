@@ -46,17 +46,18 @@ interface User {
 interface JournalIssue {
   id: string;
   issue: number;
-  label: string;
   volume: number;
   year: number;
+  label: string;
+  issueStatus: string;
   published_at: string;
   updated_at: string | null;
 }
 
 interface Journal {
   id: string;
-  name: string;
-  slug: string;
+  title: string;
+  acronym: string;
   issn: string;
   description: string;
   status: string;
@@ -78,6 +79,9 @@ export default function PublisherDashboard() {
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [invoiceAmount, setInvoiceAmount] = useState<number | "">("");
+  const [approving, setApproving] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<JournalIssue | null>(null);
   const [loading, setLoading] = useState(true);
 
   const statusMap: Record<string, string[]> = {
@@ -96,7 +100,9 @@ export default function PublisherDashboard() {
       });
       if (!res.ok) throw new Error("Failed to fetch journals");
       const json = await res.json();
-      setJournals(json.data ?? []);
+      console.log(json);
+
+      setJournals(json.journals ?? []);
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -108,18 +114,26 @@ export default function PublisherDashboard() {
     }
   };
 
-  const approveJournal = async (journalId: string) => {
+  const approveJournal = async (journalId: string, issueId: string) => {
     try {
+      setApproving(true);
+
       const res = await fetch(`${url}/publisher/approveJournal/${journalId}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ issueId }),
       });
 
       if (!res.ok) throw new Error("Failed to approve journal");
+
       toast({
         title: "Success",
-        description: "Journal approved successfully",
+        description: "Journal issue approved successfully",
       });
+
       fetchJournals();
       setDetailsModalOpen(false);
     } catch (err: any) {
@@ -128,6 +142,8 @@ export default function PublisherDashboard() {
         title: "Error",
         description: err.message || "Approval failed",
       });
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -142,6 +158,8 @@ export default function PublisherDashboard() {
     }
 
     try {
+      setSendingInvoice(true);
+
       const endpoint = `${url}/publisher/sendInvoice`;
 
       const payload = {
@@ -178,6 +196,8 @@ export default function PublisherDashboard() {
         title: "Invoice Failed",
         description: err.message || "Could not send invoice",
       });
+    } finally {
+      setSendingInvoice(false);
     }
   };
 
@@ -219,6 +239,12 @@ export default function PublisherDashboard() {
   useEffect(() => {
     if (user) fetchJournals();
   }, [user]);
+
+  useEffect(() => {
+    if (!detailsModalOpen) {
+      setSelectedIssue(null);
+    }
+  }, [detailsModalOpen]);
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
@@ -348,7 +374,7 @@ export default function PublisherDashboard() {
                       <div className="flex items-start justify-between">
                         <CardTitle className="flex items-center gap-2 text-white group-hover:text-blue-400 transition-colors">
                           <BookOpen className="h-5 w-5" />
-                          <span className="line-clamp-1">{journal.name}</span>
+                          <span className="line-clamp-1">{journal.title}</span>
                         </CardTitle>
                         {getStatusBadge(journal.status)}
                       </div>
@@ -394,7 +420,7 @@ export default function PublisherDashboard() {
             <DialogHeader>
               <DialogTitle className="text-2xl flex items-center gap-2">
                 <BookOpen className="h-6 w-6" />
-                {selectedJournal?.name}
+                {selectedJournal?.title}
               </DialogTitle>
               <DialogDescription>
                 Complete journal information and management
@@ -516,42 +542,63 @@ export default function PublisherDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {selectedJournal.issues.length > 0 ? (
-                      <div className="space-y-3">
-                        {selectedJournal.issues.map((issue) => (
-                          <div
-                            key={issue.id}
-                            className="flex items-center justify-between p-3 glass-card rounded-lg hover:bg-white/5 transition-colors"
-                          >
-                            <div>
-                              <p className="font-medium">{issue.label}</p>
-                              <p className="text-sm text-gray-400">
-                                Volume {issue.volume} • Issue {issue.issue} •{" "}
-                                {issue.year}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-400">Created</p>
-                              <p className="text-white">
-                                {new Date(
-                                  issue.published_at,
-                                ).toLocaleDateString()}
-                              </p>
-                            </div>
+                    {selectedJournal.issues.map((issue) => {
+                      const isSelected = selectedIssue?.id === issue.id;
+
+                      return (
+                        <div
+                          key={issue.id}
+                          onClick={() => setSelectedIssue(issue)}
+                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all
+                             ${
+                               isSelected
+                                 ? "bg-blue-500/20 border border-blue-500"
+                                 : "glass-card hover:bg-white/5"
+                             }`}
+                        >
+                          <div>
+                            <p className="font-medium flex items-center gap-2">
+                              {issue.label}
+                              {isSelected && (
+                                <Badge className="bg-blue-500 text-white">
+                                  Selected
+                                </Badge>
+                              )}
+                            </p>
+                            <p className="text-sm text-gray-400">
+                              Volume {issue.volume} • Issue {issue.issue} •{" "}
+                              {issue.year}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-                        <p className="text-gray-400">No issues published yet</p>
-                      </div>
-                    )}
+                          <div className="text-right">
+                            <p className="text-sm text-gray-400">
+                              {issue.issueStatus}
+                            </p>
+                            <p className="text-black">
+                              {new Date(
+                                issue.published_at,
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </CardContent>
                 </Card>
 
                 <Card className="glass-card border-blue-500/30">
                   <CardHeader>
+                    {selectedIssue && (
+                      <Card className="glass-card border-blue-500/30">
+                        <CardContent className="py-4">
+                          <p className="text-sm text-black">Selected Issue</p>
+                          <p className="text-black font-medium">
+                            {selectedIssue.label} — Volume{" "}
+                            {selectedIssue.volume}, Issue {selectedIssue.issue}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
                     <CardTitle className="text-lg flex items-center gap-2">
                       <DollarSign className="h-4 w-4" />
                       Invoice Management
@@ -586,23 +633,41 @@ export default function PublisherDashboard() {
 
                       <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
-                          onClick={() => approveJournal(selectedJournal.id)}
+                          onClick={() =>
+                            approveJournal(selectedJournal.id, selectedIssue.id)
+                          }
+                          disabled={approving || !selectedIssue}
                           className="bg-green-600 hover:bg-green-700 flex-1"
                           size="lg"
                         >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve Journal
+                          {approving ? (
+                            "Approving..."
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Approve Selected Issue
+                            </>
+                          )}
                         </Button>
 
                         <Button
                           onClick={() => sendInvoice(selectedJournal.id)}
-                          variant="default"
-                          disabled={!invoiceAmount || invoiceAmount <= 0}
+                          disabled={
+                            sendingInvoice ||
+                            !invoiceAmount ||
+                            invoiceAmount <= 0
+                          }
                           className="flex-1"
                           size="lg"
                         >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Send Invoice
+                          {sendingInvoice ? (
+                            "Sending Invoice..."
+                          ) : (
+                            <>
+                              <DollarSign className="h-4 w-4 mr-2" />
+                              Send Invoice
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

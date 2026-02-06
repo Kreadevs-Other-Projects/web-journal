@@ -1,17 +1,14 @@
 import { Router } from "express";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { assignReviewer } from "../controllers/reviewAssignment.controller";
-import { assignReviewerSchema } from "../schemas/reviewAssignment.schema";
+import { getSubEditorAssignments } from "../controllers/reviewAssignment.controller";
 
 const router = Router();
 
-router.post(
-  "/assignReviewer/:paperId/reviewer",
+router.get(
+  "/getSubEditorAssignments",
   authMiddleware,
-  authorize("editor"),
-  validate(assignReviewerSchema),
-  assignReviewer,
+  authorize("sub_editor"),
+  getSubEditorAssignments,
 );
 
 export default router;

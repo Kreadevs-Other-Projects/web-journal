@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Journal {
   id: string;
-  name: string;
+  title: string;
   slug: string;
 }
 
@@ -150,7 +150,7 @@ export default function ChiefEditorDashboard() {
                     fetchPapers(j.id);
                   }}
                 >
-                  <BookOpen className="h-5 w-5" /> {j.name}
+                  <BookOpen className="h-5 w-5" /> {j.title}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -160,7 +160,7 @@ export default function ChiefEditorDashboard() {
         {selectedJournal && (
           <div className="mt-6">
             <h2 className="text-2xl font-semibold text-white mb-4">
-              Papers in {selectedJournal.name}
+              Papers in {selectedJournal.title}
             </h2>
             <div className="space-y-3">
               {papers.map((p) => (

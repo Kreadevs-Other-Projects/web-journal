@@ -106,30 +106,60 @@ export default function SignupPage() {
     setErrors({});
 
     try {
-      const response = await fetch(`${url}/auth/create`, {
+      // =========================
+      // TEMPORARY: Skip OTP step
+      // =========================
+      /*
+    const response = await fetch(`${url}/auth/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: formData.email,
+        purpose: "signup",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to send OTP");
+    }
+
+    toast({
+      title: "OTP Sent",
+      description: "Please check your email for OTP",
+    });
+
+    setStep("OTP");
+    */
+
+      // Direct signup call
+      const signupRes = await fetch(`${url}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          username: formData.username,
           email: formData.email,
-          purpose: "signup",
+          password: formData.password,
+          role: selectedRole,
         }),
       });
 
-      const result = await response.json();
+      const signupResult = await signupRes.json();
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to send OTP");
+      if (!signupRes.ok) {
+        throw new Error(signupResult.message || "Signup failed");
       }
 
       toast({
-        title: "OTP Sent",
-        description: "Please check your email for OTP",
+        title: "Account Created",
+        description: "Signup successful! Redirecting to login...",
       });
 
-      setStep("OTP");
+      navigate("/login");
     } catch (error: any) {
       setErrors({
-        general: error.message || "Failed to send OTP",
+        general: error.message || "Signup failed",
       });
     } finally {
       setIsLoading(false);
@@ -260,7 +290,7 @@ export default function SignupPage() {
           </CardHeader>
 
           <CardContent>
-            {step === "OTP" && (
+            {/* {step === "OTP" && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -301,7 +331,7 @@ export default function SignupPage() {
                   {otpLoading ? "Verifying..." : "Verify OTP"}
                 </Button>
               </motion.div>
-            )}
+            )} */}
 
             <form
               onSubmit={handleSubmit}

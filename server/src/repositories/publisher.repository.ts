@@ -1,14 +1,58 @@
 import { pool } from "../configs/db";
 
-export const approveJournalRepo = async (journalId: string) => {
-  const res = await pool.query(
-    `UPDATE journals
-     SET status = 'active', updated_at = NOW()
-     WHERE id = $1
-     RETURNING chief_editor_id`,
-    [journalId],
-  );
-  return res.rows[0]?.chief_editor_id;
+export const approveJournalRepo = async (
+  journalId: string,
+  issueId: string,
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const journalRes = await client.query(
+      `
+      UPDATE journals
+      SET status = 'active', updated_at = NOW()
+      WHERE id = $1
+      RETURNING chief_editor_id, owner_id
+      `,
+      [journalId],
+    );
+
+    if (!journalRes.rows.length) {
+      throw new Error("Journal not found");
+    }
+
+    const { chief_editor_id, owner_id } = journalRes.rows[0];
+
+    await client.query(
+      `
+      UPDATE journal_issues
+      SET status = 'open', updated_at = NOW()
+      WHERE id = $1 AND journal_id = $2
+      `,
+      [issueId, journalId],
+    );
+
+    await client.query(
+      `
+      UPDATE journal_payments
+      SET status = 'success', updated_at = NOW()
+      WHERE issue_id = $1
+         OR journal_id = $2
+      `,
+      [issueId, journalId],
+    );
+
+    await client.query("COMMIT");
+
+    return chief_editor_id;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 export const activateUserRepo = async (userId: string) => {
@@ -50,6 +94,7 @@ export const getPublisherJournals = async () => {
             'volume', ji.volume,
             'issue', ji.issue,
             'label', ji.label,
+            'issueStatus', ji.status,
             'published_at', ji.published_at,
             'updated_at', ji.updated_at
           )

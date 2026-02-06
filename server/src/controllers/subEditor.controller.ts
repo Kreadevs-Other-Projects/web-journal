@@ -4,7 +4,7 @@ import { AuthUser } from "../middlewares/auth.middleware";
 
 export const getSubEditorPapers = async (req: AuthUser, res: Response) => {
   const papers = await service.fetchSubEditorPapers(req.user!.id);
-  res.json({ success: true, data: papers });
+  res.json({ success: true, papers });
 };
 
 export const fetchReviewer = async (req: Request, res: Response) => {

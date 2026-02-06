@@ -15,3 +15,13 @@ export const submitReview = async (review_assignment_id: string, data: any) => {
 
   return result.rows[0];
 };
+
+export const updateReviewAssignmentStatus = async (assignment_id: string) => {
+  await pool.query(
+    `
+    UPDATE review_assignments
+    SET status = 'submitted', submitted_at = NOW()
+    WHERE id = $1
+    `,
+  );
+};

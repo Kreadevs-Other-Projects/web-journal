@@ -1,29 +1,33 @@
 import { pool } from "../configs/db";
 
-export const assignReviewer = async (
-  paper_id: string,
-  reviewer_id: string,
-  assigned_by: string,
-) => {
+export const getReviewAssignmentsBySubEditor = async (subEditorId: string) => {
   const result = await pool.query(
     `
-    INSERT INTO review_assignments
-    (paper_id, reviewer_id, assigned_by)
-    VALUES ($1,$2,$3)
-    RETURNING *
+    SELECT
+      ra.id AS review_assignment_id,
+      ra.status AS assignment_status,
+      r.id AS review_id,
+      r.decision,
+      r.comments,
+      p.id AS paper_id,
+      p.title AS paper_title,
+      p.status AS paper_status,
+      pv.id AS paper_version_id,
+      pv.version_number,
+      pv.file_url,
+      pv.created_at AS version_created_at
+    FROM review_assignments ra
+    LEFT JOIN reviews r
+      ON ra.id = r.review_assignment_id
+    LEFT JOIN papers p
+      ON ra.paper_id = p.id
+    LEFT JOIN paper_versions pv
+      ON pv.paper_id = p.id
+    WHERE ra.assigned_by = $1
+    ORDER BY ra.id, pv.version_number DESC
     `,
-    [paper_id, reviewer_id, assigned_by],
+    [subEditorId],
   );
 
-  return result.rows[0];
-};
-
-export const updateReviewAssignmentStatus = async (assignment_id: string) => {
-  await pool.query(
-    `
-    UPDATE review_assignments
-    SET status = 'submitted', submitted_at = NOW()
-    WHERE id = $1
-    `,
-  );
+  return result.rows;
 };

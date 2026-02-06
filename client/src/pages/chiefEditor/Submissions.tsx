@@ -64,7 +64,7 @@ export default function ChiefEditor() {
   const [reviewers, setReviewers] = useState<
     { id: string; username: string; email: string }[]
   >([]);
-
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [subEditorId, setSubEditorId] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [subEditorEmail, setSubEditorEmail] = useState("");
@@ -75,6 +75,7 @@ export default function ChiefEditor() {
     assigned: 0,
     reviewed: 0,
   });
+  const [loading, setLoading] = useState(false);
 
   const fetchPapers = async () => {
     try {
@@ -153,6 +154,8 @@ export default function ChiefEditor() {
     if (!selectedPaper || !subEditorId) return;
 
     try {
+      setLoading(true);
+
       await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
         method: "POST",
         headers: {
@@ -177,6 +180,8 @@ export default function ChiefEditor() {
         description: "Could not assign sub-editor.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,6 +189,8 @@ export default function ChiefEditor() {
     if (!subEditorEmail) return;
 
     try {
+      setInviteLoading(true);
+
       const res = await fetch(`${url}/chiefEditor/inviteSubEditor`, {
         method: "POST",
         headers: {
@@ -213,6 +220,8 @@ export default function ChiefEditor() {
         description: `Could not invite ${subEditorEmail}`,
         variant: "destructive",
       });
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -509,7 +518,7 @@ export default function ChiefEditor() {
                     disabled={!subEditorId}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Assign Sub-Editor
+                    {loading ? "Assigning..." : "Assign Sub-Editor"}
                   </Button>
                 </div>
 
@@ -540,7 +549,9 @@ export default function ChiefEditor() {
                     onClick={inviteSubEditorByEmail}
                     disabled={!subEditorEmail}
                   >
-                    Send Invitation
+                    {inviteLoading
+                      ? "Sending Invitation..."
+                      : "Send Invitation"}
                   </Button>
                 </div>
               </div>

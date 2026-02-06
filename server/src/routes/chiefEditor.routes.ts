@@ -14,7 +14,6 @@ import {
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
   assignSubEditorSchema,
-  assignReviewerSchema,
   editorDecisionSchema,
   paperStatusSchema,
 } from "../schemas/chiefEditor.schema";

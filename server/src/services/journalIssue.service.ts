@@ -20,7 +20,7 @@ export const addJournalIssueService = async (
   }
 
   const journalResult = await pool.query(
-    `SELECT id, name, owner_id, chief_editor_id FROM journals WHERE id = $1`,
+    `SELECT id, title, owner_id, chief_editor_id FROM journals WHERE id = $1`,
     [journal_id],
   );
 

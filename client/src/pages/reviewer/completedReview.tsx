@@ -55,9 +55,10 @@ export default function CompletedReviewPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+
       if (!res.ok) return;
 
-      const allPapers: Paper[] = data.data || [];
+      const allPapers: Paper[] = data.papers || [];
 
       const completed: CompletedReview[] = allPapers
         .filter((paper) =>

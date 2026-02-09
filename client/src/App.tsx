@@ -27,6 +27,7 @@ import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import PublisherManagerDashborad from "./pages/publisherManager/PublisherManagerDashborad.tsx";
 import ProtectedRoute from "./components/ProtectedRoutes.tsx";
 import Unauthorized from "./pages/Unauthorized.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
@@ -116,6 +117,16 @@ const App = () => (
                     <Route
                       path="/publisher/publish-paper"
                       element={<PublishPapers />}
+                    />
+                  </Route>
+                  <Route
+                    element={
+                      <ProtectedRoute allowedRoles={["publisher_manager"]} />
+                    }
+                  >
+                    <Route
+                      path="/publisher-manager"
+                      element={<PublisherManagerDashborad />}
                     />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>

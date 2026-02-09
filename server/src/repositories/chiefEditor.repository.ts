@@ -222,10 +222,13 @@ export const getSubmittedReviewsByChiefEditor = async (
       ON pv.id = p.current_version_id
     JOIN reviews r
       ON r.review_assignment_id = ra.id
+    JOIN editor_assignments ea
+      ON p.id = ea.paper_id
 
     WHERE 
       j.chief_editor_id = $1
       AND ra.status = 'submitted'
+      AND ea.status = 'accepted'
 
     ORDER BY ra.submitted_at DESC
     `,

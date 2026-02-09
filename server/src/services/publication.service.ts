@@ -1,7 +1,18 @@
 import { pool } from "../configs/db";
-import { publishPaper } from "../repositories/publication.repository";
+import {
+  getPaperForPublish,
+  publishPaper,
+} from "../repositories/publication.repository";
 
-export const setPaperPublished = async (paperId: string, editorId: string) => {
+export const getSubmittedReviews = async () => {
+  return getPaperForPublish();
+};
+
+export const setPaperPublished = async (
+  paperId: string,
+  editorId: string,
+  issueId: string,
+) => {
   const paperRes = await pool.query(`SELECT status FROM papers WHERE id = $1`, [
     paperId,
   ]);
@@ -27,9 +38,9 @@ export const setPaperPublished = async (paperId: string, editorId: string) => {
     throw new Error("Editor decision not found");
   }
 
-  if (decisionRes.rows[0].decision !== "accepted") {
-    throw new Error("Editor decision must be accepted before publishing");
+  if (decisionRes.rows[0].decision !== "accept") {
+    throw new Error("Editor decision must be accept before publishing");
   }
 
-  return publishPaper(paperId, editorId);
+  return publishPaper(paperId, editorId, issueId);
 };

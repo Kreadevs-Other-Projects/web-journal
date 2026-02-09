@@ -65,16 +65,16 @@ export const roleConfig: Record<
     route: "/publisher-manager",
     navigation: [
       { label: "Dashboard", path: "/publisher-manager", icon: Home },
-      {
-        label: "Manage Papers",
-        path: "/publisher-manager/papers",
-        icon: FileText,
-      },
-      {
-        label: "Analytics",
-        path: "/publisher-manager/analytics",
-        icon: BarChart3,
-      },
+      // {
+      //   label: "Manage Papers",
+      //   path: "/publisher-manager/papers",
+      //   icon: FileText,
+      // },
+      // {
+      //   label: "Analytics",
+      //   path: "/publisher-manager/analytics",
+      //   icon: BarChart3,
+      // },
     ],
   },
 
@@ -121,6 +121,7 @@ export const roleConfig: Record<
       { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
     ],
   },
+
   reviewer: {
     icon: UserCheck,
     label: "Reviewer",

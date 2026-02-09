@@ -1,17 +1,26 @@
 import { Response } from "express";
 import { AuthUser } from "../middlewares/auth.middleware";
-import { assignEditorService } from "../services/editorAssignment.service";
+import {
+  getSubmittedReviews,
+  acceptOrRejectAssignment,
+} from "../services/editorAssignment.service";
 
-export const assignEditor = async (req: AuthUser, res: Response) => {
+export const getReviews = async (req: AuthUser, res: Response) => {
+  const subEditorId = req.user!.id;
+
+  const reviews = await getSubmittedReviews(subEditorId);
+
+  return res.status(200).json({ success: true, data: reviews });
+};
+
+export const handleAssignmentStatus = async (req: AuthUser, res: Response) => {
+  const { editorAssignmentId } = req.params;
+  const { status } = req.body;
+
   try {
-    const result = await assignEditorService(
-      req.user!,
-      req.params.paperId,
-      req.body.sub_editor_id,
-    );
-
-    res.status(201).json({ success: true, assignment: result });
-  } catch (e: any) {
-    res.status(403).json({ success: false, message: e.message });
+    const updated = await acceptOrRejectAssignment(editorAssignmentId, status);
+    return res.status(200).json({ success: true, data: updated });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, message: err.message });
   }
 };

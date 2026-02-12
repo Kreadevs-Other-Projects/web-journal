@@ -39,6 +39,7 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
 export const submitReviewByVersion = async (
   paperVersionId: string,
+
   reviewerId: string,
   decision: string,
   comments: string,

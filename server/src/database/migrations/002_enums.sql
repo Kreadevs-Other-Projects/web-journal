@@ -29,7 +29,28 @@ DO $$ BEGIN
       'suspended',
       'archived'
     );
+
   END IF;
+
+
+  /* =========================
+     JOURNAL ENUMS
+  ========================== */
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
+    CREATE TYPE journal_status AS ENUM (
+      'draft',
+      'pending_payment',
+      'active',
+      'suspended',
+      'archived'
+    );
+  END IF;
+
+
+  /* =========================
+     PAPER & WORKFLOW ENUMS
+  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
     CREATE TYPE paper_status AS ENUM (
@@ -45,6 +66,11 @@ DO $$ BEGIN
       'published'
     );
   END IF;
+
+
+  /* =========================
+     REVIEW ENUMS
+  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
     CREATE TYPE review_decision AS ENUM (
@@ -83,6 +109,7 @@ DO $$ BEGIN
       'revision'
     );
   END IF;
+
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (

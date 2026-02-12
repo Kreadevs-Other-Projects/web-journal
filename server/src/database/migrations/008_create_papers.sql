@@ -60,3 +60,4 @@ ADD CONSTRAINT fk_current_version
 FOREIGN KEY (current_version_id)
 REFERENCES paper_versions(id)
 ON DELETE SET NULL;
+

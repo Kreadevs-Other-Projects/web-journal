@@ -12,8 +12,8 @@ import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
-import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
+import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -70,6 +70,7 @@ const App = () => (
                       element={<MySubmissions />}
                     />
                     <Route path="/author/submit" element={<SubmitPaper />} />
+                    <Route path="/author/version" element={<PaperVersions />} />
                     <Route path="/author/version" element={<PaperVersions />} />
                   </Route>
                   <Route

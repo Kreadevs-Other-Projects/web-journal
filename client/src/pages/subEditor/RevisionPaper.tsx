@@ -232,7 +232,6 @@ export default function RevisionPaper() {
     });
   };
 
-  // Filter reviews based on active tab
   const filteredReviews = reviews.filter((review) => {
     if (activeTab === "all") return true;
     if (activeTab === "pending")
@@ -246,7 +245,6 @@ export default function RevisionPaper() {
     return true;
   });
 
-  // Count reviews by assignment status
   const getCountByStatus = (status: string) => {
     return reviews.filter((review) => review.editorAssignmentStatus === status)
       .length;
@@ -566,11 +564,12 @@ export default function RevisionPaper() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                className="flex-1 gap-2"
+                                className={`flex-1 gap-2 ${r.paperStatus === "published" ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={() => {
                                   setSelectedPaper(r);
                                   setAssignmentStatus(r.editorAssignmentStatus);
                                 }}
+                                disabled={r.paperStatus === "published"}
                               >
                                 <Edit className="h-4 w-4" />
                                 Update Assignment Status

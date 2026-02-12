@@ -19,11 +19,19 @@ export const createPaperVersion = async (
   const result = await pool.query(
     `
     INSERT INTO paper_versions
-    (paper_id, version_number, version_label, file_url, uploaded_by)
-    VALUES ($1,$2,$3,$4,$5)
+    (paper_id, version_number, version_label, file_url, file_size, file_type, uploaded_by)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
     RETURNING *
     `,
-    [paper_id, nextVersion, data.version_label, data.file_url, uploaded_by],
+    [
+      paper_id,
+      nextVersion,
+      data.version_label,
+      data.file_url,
+      data.file_size,
+      data.file_type,
+      uploaded_by,
+    ],
   );
 
   return result.rows[0];

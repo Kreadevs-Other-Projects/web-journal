@@ -19,6 +19,8 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
       {
         version_label: req.body.version_label,
         file_url: `/uploads/${req.file.filename}`,
+        file_size: req.file.size,
+        file_type: req.file.mimetype,
       },
     );
 

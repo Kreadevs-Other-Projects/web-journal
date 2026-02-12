@@ -40,8 +40,8 @@ CREATE TABLE IF NOT EXISTS paper_versions (
   version_number INT NOT NULL,
   version_label TEXT,
   file_url TEXT NOT NULL,
-  file_size BIGINT,
-  file_type TEXT,
+  file_size BIGINT NOT NULL,
+  file_type TEXT NOT NULL,
 
   uploaded_by UUID NOT NULL
     REFERENCES users(id)

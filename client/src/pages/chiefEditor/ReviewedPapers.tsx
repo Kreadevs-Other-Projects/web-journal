@@ -70,10 +70,6 @@ export default function ChiefEditorSubmittedReviews() {
   const [decision, setDecision] = useState("accepted");
   const [decisionNote, setDecisionNote] = useState("");
 
-  const [openPublish, setOpenPublish] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [yearLabel, setYearLabel] = useState("");
-
   useEffect(() => {
     const fetchReviews = async () => {
       try {
@@ -241,53 +237,6 @@ export default function ChiefEditorSubmittedReviews() {
         description: "Unable to save decision. Please try again.",
         variant: "destructive",
       });
-    }
-  };
-
-  const publishPaper = async () => {
-    if (!selectedReview) return;
-
-    try {
-      setPublishing(true);
-
-      const res = await fetch(
-        `${url}/publication/publishPaper/${selectedReview.paperId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ year_label: yearLabel }),
-        },
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.paperId === selectedReview.paperId
-            ? { ...r, paperStatus: "published" }
-            : r,
-        ),
-      );
-
-      toast({
-        title: "Paper published",
-        description: "The paper has been published successfully",
-      });
-
-      setOpenPublish(false);
-      setYearLabel("");
-    } catch (err: any) {
-      toast({
-        title: "Publish failed",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setPublishing(false);
     }
   };
 
@@ -538,42 +487,38 @@ export default function ChiefEditorSubmittedReviews() {
                                     View Paper
                                   </Button>
                                 )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => {
-                                    setSelectedReview(review);
-                                    setDecision("pending_revision");
-                                    setDecisionNote("");
-                                    setOpenDecision(true);
-                                  }}
-                                >
-                                  Make Decision
-                                </Button>
+                              </div>
+                              <div className="flex gap-2">
+                                {review.paperStatus !== "published" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => {
+                                      setSelectedReview(review);
+                                      setDecision("pending_revision");
+                                      setDecisionNote("");
+                                      setOpenDecision(true);
+                                    }}
+                                  >
+                                    Make Decision
+                                  </Button>
+                                )}
                               </div>
 
-                              {review.paperStatus === "accepted" && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="w-full bg-green-600 hover:bg-green-700"
-                                  onClick={() => {
-                                    setSelectedReview(review);
-                                    setOpenPublish(true);
-                                  }}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Publish Paper
-                                </Button>
-                              )}
-
                               {review.paperStatus === "published" && (
-                                <div className="text-center">
-                                  <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Published
-                                  </Badge>
+                                <div className="flex flex-col gap-1 text-center">
+                                  {["Decision Made", "Published"].map(
+                                    (label) => (
+                                      <Badge
+                                        key={label}
+                                        className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"
+                                      >
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        {label}
+                                      </Badge>
+                                    ),
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -734,59 +679,6 @@ export default function ChiefEditorSubmittedReviews() {
                   disabled={decisionNote.length < 5}
                 >
                   Save Decision
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={openPublish} onOpenChange={setOpenPublish}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  Publish Paper
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  This paper has been accepted and is ready for publication.
-                </p>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Year Label (optional)
-                  </label>
-                  <Input
-                    value={yearLabel}
-                    onChange={(e) => setYearLabel(e.target.value)}
-                    placeholder="e.g. 2024"
-                    className="focus:ring-2 focus:ring-green-500"
-                  />
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Used for organizing published papers by year
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenPublish(false)}
-                  disabled={publishing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={publishPaper}
-                  disabled={publishing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {publishing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Publishing...
-                    </>
-                  ) : (
-                    "Publish Paper"
-                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>

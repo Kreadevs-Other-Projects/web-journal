@@ -1,6 +1,37 @@
 import { Request, Response } from "express";
-import * as service from "../services/cheifEditor.service";
+import * as service from "../services/chiefEditor.service";
 import { AuthUser } from "../middlewares/auth.middleware";
+
+export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
+  try {
+    const chiefEditorId = req.user!.id;
+
+    const journals = await service.getChiefEditorJournalsService(chiefEditorId);
+
+    return res.status(200).json({
+      success: true,
+      journal: journals,
+    });
+  } catch (error: any) {
+    console.error("[getChiefEditorJournals]", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch journals",
+    });
+  }
+};
+
+export const getPapersByJournalId = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+
+  const papers = await service.getPapersByJournalIdService(journalId);
+
+  return res.status(200).json({
+    success: true,
+    papers: papers,
+  });
+};
 
 export const fetchChiefEditors = async (req: Request, res: Response) => {
   const users = await service.getChiefEditors();
@@ -11,8 +42,8 @@ export const fetchChiefEditors = async (req: Request, res: Response) => {
   });
 };
 
-export const getPapers = async (req: AuthUser, res: Response) => {
-  const papers = await service.fetchJournalPapers(req.user!.id);
+export const getAllPapers = async (req: AuthUser, res: Response) => {
+  const papers = await service.fetchAllPapers(req.user!.id);
   res.json({ success: true, data: papers });
 };
 
@@ -26,57 +57,23 @@ export const fetchSubEditors = async (req: Request, res: Response) => {
 };
 
 export const assignSubEditor = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const { subEditorId } = req.body;
-  const assignedBy = req.user!.id;
-
-  const assignment = await service.addSubEditor(
-    paperId,
-    subEditorId,
-    assignedBy,
-  );
-  res.json({ success: true, data: assignment });
-};
-
-export const fetchReviewer = async (req: Request, res: Response) => {
-  const users = await service.getReviewer();
-
-  res.json({
-    success: true,
-    data: users,
-  });
-};
-
-export const assignReviewer = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { reviewerId } = req.body;
+    const { subEditorId } = req.body;
     const assignedBy = req.user!.id;
 
-    if (!reviewerId) {
-      return res.status(400).json({
-        success: false,
-        message: "Reviewer ID is required",
-      });
-    }
-
-    const assignment = await service.assignReviewer(
+    const assignment = await service.addSubEditor(
       paperId,
-      reviewerId,
+      subEditorId,
       assignedBy,
     );
+    res.json({ success: true, data: assignment });
+  } catch (error) {
+    console.error(error);
 
-    return res.status(200).json({
-      success: true,
-      message: "Reviewer assigned successfully",
-      data: assignment,
-    });
-  } catch (err) {
-    console.error("Assign Reviewer Error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to assign reviewer",
-    });
+    if (error instanceof Error) {
+      throw new Error(error.message || "Failed to create journal!");
+    }
   }
 };
 
@@ -113,4 +110,16 @@ export const getSubmittedReviews = async (req: AuthUser, res: Response) => {
   const reviews = await service.getSubmittedReviews(chiefEditorId);
 
   return res.status(200).json({ success: true, data: reviews });
+};
+
+export const SubEditorInvite = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const result = await service.sendInviteEmailSubEditor(email);
+
+    res.json({ message: "Invitation email sent successfully", data: result });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
 };

@@ -9,7 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import BrowsePage from "./pages/BrowsePage";
 import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
-import ChiefEditorDashboard from "./pages/cheifEditor/ChiefEditorDashboard.tsx";
+import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
@@ -21,12 +21,13 @@ import NotFound from "./pages/NotFound";
 import MySubmissions from "./pages/author/MySubmissions.tsx";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
-import Submissions from "./pages/cheifEditor/Submissions.tsx";
-import ReviewedPapers from "./pages/cheifEditor/ReviewedPapers.tsx";
+import Submissions from "./pages/chiefEditor/Submissions.tsx";
+import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import PublisherManagerDashborad from "./pages/publisherManager/PublisherManagerDashborad.tsx";
 import ProtectedRoute from "./components/ProtectedRoutes.tsx";
 import Unauthorized from "./pages/Unauthorized.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
@@ -120,9 +121,14 @@ const App = () => (
                     />
                   </Route>
                   <Route
-                    element={<ProtectedRoute allowedRoles={["publisher"]} />}
+                    element={
+                      <ProtectedRoute allowedRoles={["publisher_manager"]} />
+                    }
                   >
-                    <Route path="/publisher" element={<PublisherDashboard />} />
+                    <Route
+                      path="/publisher-manager"
+                      element={<PublisherManagerDashborad />}
+                    />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>
                     <Route path="/owner" element={<OwnerDashboard />} />

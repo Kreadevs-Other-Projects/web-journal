@@ -1,28 +1,124 @@
 import { pool } from "../configs/db";
 
-export const createPublication = async (
-  paper_id: string,
-  issue_id: string,
-  published_by: string,
-  year_label?: string,
-) => {
-  const result = await pool.query(
-    `
-    INSERT INTO publications
-      (paper_id, issue_id, published_by, year_label)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
-    `,
-    [paper_id, issue_id, published_by, year_label ?? null],
-  );
+export const getPaperForPublish = async () => {
+  const result = await pool.query(`
+    SELECT 
+      ea.id AS "editorAssignmentId",
+      ea.status AS "editorAssignmentStatus",
+      ea.assigned_at AS "editorAssignedAt",
 
-  return result.rows[0];
+      p.id AS "paperId",
+      p.title AS "title",
+      p.journal_id AS journalId,
+      p.issue_id As issueId,
+      p.status AS "paperStatus",
+
+      pv.id AS "paperVersionId",
+      pv.version_number AS "versionNumber",
+      pv.file_url AS "fileUrl",
+      pv.created_at AS "versionCreatedAt",
+
+      ra.id AS "reviewAssignmentId",
+      ra.reviewer_id AS "reviewerId",
+      ra.status AS "reviewAssignmentStatus",
+      ra.submitted_at AS "submittedAt",
+
+      r.id AS "reviewId",
+      r.decision AS "decision",
+      r.comments AS "comments",
+      r.signature_url AS "signatureUrl",
+      r.signed_at AS "signedAt"
+
+    FROM editor_assignments ea
+
+    JOIN papers p ON p.id = ea.paper_id
+
+    LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
+
+    LEFT JOIN review_assignments ra
+      ON ra.paper_id = ea.paper_id
+      AND ra.status = 'submitted'
+
+    LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+
+    WHERE p.status IN ('accepted', 'published')
+
+    ORDER BY ra.submitted_at DESC NULLS LAST
+  `);
+
+  return result.rows;
 };
 
-export const isPaperPublished = async (paper_id: string) => {
-  const result = await pool.query(
-    `SELECT id FROM publications WHERE paper_id = $1`,
-    [paper_id],
-  );
-  return result.rows.length > 0;
+export const publishPaper = async (
+  paperId: string,
+  editorId: string,
+  issueId: string,
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const payment = await client.query(
+      `SELECT status FROM paper_payments WHERE paper_id = $1`,
+      [paperId],
+    );
+
+    if (!payment.rows.length || payment.rows[0].status !== "paid") {
+      throw new Error("Author page charges not paid");
+    }
+
+    const journal = await client.query(
+      `SELECT j.acronym
+       FROM papers p
+       JOIN journals j ON j.id = p.journal_id
+       WHERE p.id = $1`,
+      [paperId],
+    );
+
+    const acronym = journal.rows[0]?.acronym || "JNL";
+
+    const year = new Date().getFullYear();
+
+    const serialRes = await client.query(
+      `SELECT COUNT(*)::int + 1 AS serial
+       FROM publications
+       WHERE issue_id = $1`,
+      [issueId],
+    );
+
+    const serial = serialRes.rows[0].serial.toString().padStart(2, "0");
+
+    const articleIndex = `${acronym}-${year}-${issueId}-${serial}`;
+
+    const publication = await client.query(
+      `INSERT INTO publications 
+       (paper_id, published_by, published_at, issue_id, article_index)
+       VALUES ($1, $2, NOW(), $3, $4)
+       ON CONFLICT (paper_id)
+       DO UPDATE SET 
+         published_by = $2,
+         published_at = NOW(),
+         issue_id = $3,
+         article_index = $4
+       RETURNING *`,
+      [paperId, editorId, issueId, articleIndex],
+    );
+
+    await client.query(
+      `UPDATE papers 
+       SET status = 'published', updated_at = NOW()
+       WHERE id = $1`,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return publication.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };

@@ -2,10 +2,59 @@ import { Request, Response } from "express";
 import * as service from "../services/publisher.service";
 import { AuthUser } from "../middlewares/auth.middleware";
 
+export const approveJournal = async (req: Request, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { issueId } = req.body;
+
+    if (!issueId) {
+      return res.status(400).json({
+        success: false,
+        message: "Issue ID is required",
+      });
+    }
+
+    const result = await service.approveJournalService(journalId, issueId);
+
+    res.status(200).json({
+      success: true,
+      message: "Journal issue approved successfully",
+      data: result,
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to approve journal",
+    });
+  }
+};
+
 export const getJournals = async (req: AuthUser, res: Response) => {
-  const publisherId = req.user!.id;
-  const journals = await service.fetchPublisherJournals(publisherId);
-  res.json({ success: true, data: journals });
+  const journals = await service.fetchPublisherJournals();
+  res.json({ success: true, journals });
+};
+
+export const sendInvoice = async (req: Request, res: Response) => {
+  try {
+    const { journalId, issueId, amount } = req.body;
+
+    if (!journalId || !amount) {
+      return res
+        .status(400)
+        .json({ success: false, message: "journalId and amount required" });
+    }
+
+    const payment = await service.journalPaymentService.sendInvoice({
+      journalId,
+      issueId,
+      amount,
+    });
+
+    res.json({ success: true, data: payment });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const getIssues = async (req: Request, res: Response) => {
@@ -42,11 +91,4 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
     message: "Papers fetched successfully",
     data,
   });
-};
-
-export const publishPaper = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const publisherId = req.user!.id;
-  const published = await service.setPaperPublished(paperId, publisherId);
-  res.json({ success: true, data: published });
 };

@@ -1,13 +1,116 @@
 import { pool } from "../configs/db";
 
-export const getPublisherJournals = async (publisherId: string) => {
-  const result = await pool.query(
-    `SELECT *
-     FROM journals
-     WHERE publisher_id = $1
-     ORDER BY created_at DESC`,
-    [publisherId],
+export const approveJournalRepo = async (
+  journalId: string,
+  issueId: string,
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const journalRes = await client.query(
+      `
+      UPDATE journals
+      SET status = 'active', updated_at = NOW()
+      WHERE id = $1
+      RETURNING chief_editor_id, owner_id
+      `,
+      [journalId],
+    );
+
+    if (!journalRes.rows.length) {
+      throw new Error("Journal not found");
+    }
+
+    const { chief_editor_id, owner_id } = journalRes.rows[0];
+
+    await client.query(
+      `
+      UPDATE journal_issues
+      SET status = 'open', updated_at = NOW()
+      WHERE id = $1 AND journal_id = $2
+      `,
+      [issueId, journalId],
+    );
+
+    await client.query(
+      `
+      UPDATE journal_payments
+      SET status = 'success', updated_at = NOW()
+      WHERE issue_id = $1
+         OR journal_id = $2
+      `,
+      [issueId, journalId],
+    );
+
+    await client.query("COMMIT");
+
+    return chief_editor_id;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export const activateUserRepo = async (userId: string) => {
+  await pool.query(
+    `UPDATE users
+     SET status = 'active'
+     WHERE id = $1`,
+    [userId],
   );
+};
+
+export const getPublisherJournals = async () => {
+  const result = await pool.query(`
+    SELECT
+      j.*,
+
+      -- chief editor user
+      json_build_object(
+        'id', ce.id,
+        'name', ce.username,
+        'email', ce.email,
+        'created_at', ce.created_at
+      ) AS chief_editor,
+
+      -- owner user
+      json_build_object(
+        'id', o.id,
+        'name', o.username,
+        'email', o.email,
+        'created_at', o.created_at
+      ) AS owner,
+
+      -- journal issues array
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'id', ji.id,
+            'year', ji.year,
+            'volume', ji.volume,
+            'issue', ji.issue,
+            'label', ji.label,
+            'issueStatus', ji.status,
+            'published_at', ji.published_at,
+            'updated_at', ji.updated_at
+          )
+        ) FILTER (WHERE ji.id IS NOT NULL),
+        '[]'
+      ) AS issues
+
+    FROM journals j
+    JOIN users ce ON ce.id = j.chief_editor_id
+    JOIN users o ON o.id = j.owner_id
+    LEFT JOIN journal_issues ji ON ji.journal_id = j.id
+
+    GROUP BY j.id, ce.id, o.id
+    ORDER BY j.created_at DESC
+  `);
+
   return result.rows;
 };
 
@@ -20,6 +123,39 @@ export const getJournalIssues = async (journalId: string) => {
     [journalId],
   );
   return result.rows;
+};
+
+export const createJournalPayment = async ({
+  journalId,
+  ownerId,
+  issueId,
+  amount,
+  currency,
+  status,
+}: {
+  journalId: string;
+  ownerId: string;
+  issueId?: string | null;
+  amount: number;
+  currency?: string;
+  status?: "pending" | "success" | "failed";
+}) => {
+  const res = await pool.query(
+    `
+    INSERT INTO journal_payments (journal_id, owner_id, issue_id, amount, currency, status)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *
+    `,
+    [
+      journalId,
+      ownerId,
+      issueId || null,
+      amount,
+      currency || "PKR",
+      status || "pending",
+    ],
+  );
+  return res.rows[0];
 };
 
 export const createJournalIssue = async (
@@ -81,22 +217,4 @@ export const getPapersByIssueIdRepo = async (issueId: string) => {
   );
 
   return result.rows;
-};
-
-export const publishPaper = async (paperId: string, publisherId: string) => {
-  const result = await pool.query(
-    `INSERT INTO publications (paper_id, published_by, published_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (paper_id)
-     DO UPDATE SET published_by = $2, published_at = NOW()
-     RETURNING *`,
-    [paperId, publisherId],
-  );
-
-  await pool.query(
-    `UPDATE papers SET status='published', updated_at=NOW() WHERE id = $1`,
-    [paperId],
-  );
-
-  return result.rows[0];
 };

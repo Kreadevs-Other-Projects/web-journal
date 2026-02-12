@@ -1,15 +1,25 @@
 import { Router } from "express";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { publishPaper } from "../controllers/publication.controller";
+import {
+  getSubmittedReviewsService,
+  publishPaper,
+} from "../controllers/publication.controller";
 import { publishPaperSchema } from "../schemas/publication.schema";
 
 const router = Router();
 
-router.post(
+router.get(
+  "/getSubmittedReviews",
+  authMiddleware,
+  authorize("publisher_manager"),
+  getSubmittedReviewsService,
+);
+
+router.put(
   "/publishPaper/:paperId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("publisher_manager"),
   validate(publishPaperSchema),
   publishPaper,
 );

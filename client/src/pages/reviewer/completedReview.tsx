@@ -40,9 +40,6 @@ interface CompletedReview extends Paper {
   completedDate: string;
 }
 
-// ----------------------
-// Component
-// ----------------------
 const ITEMS_PER_PAGE = 5;
 
 export default function CompletedReviewPage() {
@@ -58,9 +55,10 @@ export default function CompletedReviewPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+
       if (!res.ok) return;
 
-      const allPapers: Paper[] = data.data || [];
+      const allPapers: Paper[] = data.papers || [];
 
       const completed: CompletedReview[] = allPapers
         .filter((paper) =>

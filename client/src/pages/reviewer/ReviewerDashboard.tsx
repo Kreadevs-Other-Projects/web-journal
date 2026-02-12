@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   updated_at: any;
@@ -50,11 +51,12 @@ interface Paper {
   paper_status: string;
   assignment_status: string;
   file_url: string;
+  version?: string;
+  version_number?: number;
   abstract?: string;
   category?: string;
   submittedDate?: string;
   dueDate?: string;
-  version?: string;
   priority?: "high" | "medium" | "low";
 }
 
@@ -66,36 +68,10 @@ interface CompletedReview {
   completedDate: string;
 }
 
-const reviewCriteria = [
-  {
-    id: "originality",
-    label: "Originality",
-    description: "Novel contribution to the field",
-  },
-  {
-    id: "methodology",
-    label: "Methodology",
-    description: "Sound research methods",
-  },
-  {
-    id: "clarity",
-    label: "Clarity",
-    description: "Well-written and organized",
-  },
-  {
-    id: "significance",
-    label: "Significance",
-    description: "Impact on the field",
-  },
-  {
-    id: "references",
-    label: "References",
-    description: "Appropriate citations",
-  },
-];
-
 export default function ReviewerDashboard() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
+
   const [papers, setPapers] = useState<Paper[]>([]);
   const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
     [],
@@ -109,6 +85,8 @@ export default function ReviewerDashboard() {
   const [pdfZoom, setPdfZoom] = useState(100);
 
   const fetchPapers = async () => {
+    if (!token) return;
+
     try {
       const res = await fetch(`${url}/reviewer/getReviewerPapers`, {
         headers: {
@@ -117,9 +95,14 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
-      if (!res.ok) return;
+      console.log(result.papers);
 
-      const allPapers: Paper[] = result.data || [];
+      if (!res.ok) {
+        console.error("Failed to fetch papers:", result.message || result);
+        return;
+      }
+
+      const allPapers: Paper[] = result.papers || [];
 
       const pending = allPapers.filter(
         (paper) => paper.assignment_status === "assigned",
@@ -136,7 +119,7 @@ export default function ReviewerDashboard() {
           new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
-        version: paper.version,
+        version: paper.version_number ? `v${paper.version_number}` : "v1",
         priority: paper.priority || "medium",
       }));
 
@@ -147,7 +130,9 @@ export default function ReviewerDashboard() {
           ),
         )
         .map((paper) => ({
-          ...paper,
+          paper_id: paper.paper_id,
+          paper_version_id: paper.paper_version_id,
+          title: paper.title,
           decision: paper.assignment_status as
             | "submitted"
             | "accepted"
@@ -162,12 +147,21 @@ export default function ReviewerDashboard() {
       setCompletedReviews(completed);
     } catch (error) {
       console.error("Error fetching reviewer papers:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch papers. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
-      alert("Please fill in all required fields");
+      toast({
+        title: "Incomplete",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -212,16 +206,28 @@ export default function ReviewerDashboard() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to submit review");
+        toast({
+          title: "Failed",
+          description: data.message || "Could not submit review",
+          variant: "destructive",
+        });
         return;
       }
 
-      alert("Review submitted successfully");
+      toast({
+        title: "Success",
+        description: "Review submitted successfully",
+      });
+
       resetForm();
       fetchPapers();
     } catch (err) {
       console.error("Submit review error:", err);
-      alert("Something went wrong while submitting review");
+      toast({
+        title: "Error",
+        description: "Something went wrong while submitting review",
+        variant: "destructive",
+      });
     }
   };
 
@@ -432,52 +438,6 @@ export default function ReviewerDashboard() {
                         </p>
                       </div>
 
-                      <div className="space-y-4">
-                        <Label className="text-sm font-medium">
-                          Rating Criteria
-                        </Label>
-                        {reviewCriteria.map((criterion) => (
-                          <div key={criterion.id} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {criterion.label}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {criterion.description}
-                                </p>
-                              </div>
-                              <div className="flex gap-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <motion.button
-                                    key={star}
-                                    type="button"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() =>
-                                      setRatings({
-                                        ...ratings,
-                                        [criterion.id]: star,
-                                      })
-                                    }
-                                    className="p-1"
-                                  >
-                                    <Star
-                                      className={cn(
-                                        "h-5 w-5 transition-colors",
-                                        star <= (ratings[criterion.id] || 0)
-                                          ? "fill-accent text-accent"
-                                          : "text-muted-foreground/30",
-                                      )}
-                                    />
-                                  </motion.button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
                       <div className="space-y-2">
                         <Label htmlFor="comments">Comments for Authors *</Label>
                         <Textarea
@@ -487,24 +447,6 @@ export default function ReviewerDashboard() {
                           placeholder="Provide detailed feedback for the authors..."
                           className="min-h-[150px] input-glow"
                           required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="confidential">
-                          Confidential Comments for Editors
-                          <span className="text-muted-foreground ml-1">
-                            (optional)
-                          </span>
-                        </Label>
-                        <Textarea
-                          id="confidential"
-                          value={confidentialComments}
-                          onChange={(e) =>
-                            setConfidentialComments(e.target.value)
-                          }
-                          placeholder="Comments visible only to editors..."
-                          className="min-h-[100px] input-glow"
                         />
                       </div>
 

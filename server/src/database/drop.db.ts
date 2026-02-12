@@ -2,7 +2,7 @@ import { Client } from "pg";
 import { env } from "../configs/envs";
 import { withDbName } from "../configs/dbUrl";
 
-const TARGET_DB = "giki-2";
+const TARGET_DB = "giki";
 const ADMIN_DB = "postgres";
 
 (async () => {

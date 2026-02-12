@@ -7,14 +7,10 @@ CREATE TABLE IF NOT EXISTS papers (
 
   issue_id UUID
     REFERENCES journal_issues(id)
-    ON DELETE SET NULL,
+    ON DELETE CASCADE,
 
   author_id UUID NOT NULL
     REFERENCES users(id)
-    ON DELETE CASCADE,
-
-  chief_editor_id UUID NOT NULL
-    REFERENCES users(id)  
     ON DELETE CASCADE,
 
   title TEXT NOT NULL,
@@ -44,8 +40,8 @@ CREATE TABLE IF NOT EXISTS paper_versions (
   version_number INT NOT NULL,
   version_label TEXT,
   file_url TEXT NOT NULL,
-  file_size BIGINT,
-  file_type TEXT,
+  file_size BIGINT NOT NULL,
+  file_type TEXT NOT NULL,
 
   uploaded_by UUID NOT NULL
     REFERENCES users(id)
@@ -60,8 +56,8 @@ CREATE TABLE IF NOT EXISTS paper_versions (
 );
 
 ALTER TABLE papers
-  ADD CONSTRAINT fk_current_version
-  FOREIGN KEY (current_version_id)
-  REFERENCES paper_versions(id)
-  ON DELETE SET NULL;
+ADD CONSTRAINT fk_current_version
+FOREIGN KEY (current_version_id)
+REFERENCES paper_versions(id)
+ON DELETE SET NULL;
 

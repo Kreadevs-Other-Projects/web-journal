@@ -4,11 +4,11 @@ DO $$ BEGIN
     CREATE TYPE user_role AS ENUM (
       'owner',
       'publisher',
+      'publisher_manager',
       'chief_editor',
       'sub_editor',
       'reviewer',
       'author',
-      'admin'
     );
   END IF;
 
@@ -23,8 +23,8 @@ DO $$ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
     CREATE TYPE journal_status AS ENUM (
-      'draft',
       'pending_payment',
+      'draft',
       'active',
       'suspended',
       'archived'
@@ -60,6 +60,8 @@ DO $$ BEGIN
       'pending_revision',
       'resubmitted',
       'accepted',
+      'awaiting_payment',
+      'ready_for_publication',
       'rejected',
       'published'
     );
@@ -79,13 +81,32 @@ DO $$ BEGIN
     );
   END IF;
 
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'editor_assignment_status') THEN
+    CREATE TYPE editor_assignment_status AS ENUM (
+      'pending',
+      'accepted',
+      'rejected',
+      'completed',
+      'reassigned'
+    );
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_assignment_status') THEN
     CREATE TYPE review_assignment_status AS ENUM (
       'assigned',
       'submitted',
       'accepted',
       'rejected',
-      'expired'
+      'expired',
+      'reassigned'
+    );
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chief_editor_decision') THEN
+    CREATE TYPE chief_editor_decision AS ENUM (
+      'accept',
+      'reject',
+      'revision'
     );
   END IF;
 
@@ -93,6 +114,8 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (
       'draft',
+      'open',
+      'closed',
       'published'
     );
   END IF;

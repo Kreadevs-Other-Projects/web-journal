@@ -1,5 +1,5 @@
 CREATE Table IF NOT EXISTS otp (
-    id UUId PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     otp_code VARCHAR(6) NOT NULL,
     purpose TEXT NOT NULL,
@@ -12,4 +12,4 @@ CREATE Table IF NOT EXISTS otp (
 
     CONSTRAINT uq_email_otp
         UNIQUE (email)    
-)
+);

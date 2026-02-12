@@ -11,10 +11,11 @@ import {
 import { Users, BookOpen, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Journal {
   id: string;
-  name: string;
+  title: string;
   issn: string;
 }
 
@@ -26,26 +27,84 @@ interface Editor {
 
 export default function OwnerDashboard(): JSX.Element {
   const { user, token, isLoading } = useAuth();
+  const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [editors, setEditors] = useState<Editor[]>([]);
   const [editorDialog, setEditorDialog] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
+  const [loadingEditors, setLoadingEditors] = useState(false);
 
   const fetchJournals = async () => {
-    const res = await fetch(`${url}/journal/getOwnerJournal/${user.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setJournals(data.journals ?? []);
+    try {
+      const res = await fetch(`${url}/journal/getOwnerJournal/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setJournals(data.journals ?? []);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch journals",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchEditors = async (journalId: string) => {
-    const res = await fetch(`${url}/owner/journal/${journalId}/editors`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setEditors(data.editors ?? []);
+    setLoadingEditors(true);
+    try {
+      const res = await fetch(`${url}/owner/journal/${journalId}/editors`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setEditors(data.editors ?? []);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch editors",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingEditors(false);
+    }
+  };
+
+  const removeEditor = async (editorId: string) => {
+    if (!selectedJournal) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this editor?",
+    );
+    if (!confirmed) return;
+
+    setEditors((prev) => prev.filter((e) => e.id !== editorId));
+
+    try {
+      const res = await fetch(
+        `${url}/owner/journal/${selectedJournal.id}/editor/${editorId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      if (!res.ok) throw new Error("Failed to remove editor");
+
+      toast({
+        title: "Editor Removed",
+        description: "The editor has been removed successfully",
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to remove editor",
+        variant: "destructive",
+      });
+      fetchEditors(selectedJournal.id);
+    }
   };
 
   useEffect(() => {
@@ -58,7 +117,6 @@ export default function OwnerDashboard(): JSX.Element {
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
-        {/* HEADER */}
         <div>
           <h1 className="text-3xl font-bold text-white">Owner Dashboard</h1>
           <p className="text-sm text-muted-foreground">
@@ -66,7 +124,6 @@ export default function OwnerDashboard(): JSX.Element {
           </p>
         </div>
 
-        {/* STATS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="glass-card">
             <CardHeader>
@@ -105,17 +162,15 @@ export default function OwnerDashboard(): JSX.Element {
           </Card>
         </div>
 
-        {/* JOURNAL MANAGEMENT */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {journals.map((j) => (
             <Card key={j.id} className="glass-card">
               <CardHeader>
-                <CardTitle>{j.name}</CardTitle>
+                <CardTitle>{j.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs">ISSN: {j.issn}</p>
-
-                <Button
+                {/* <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
@@ -125,7 +180,7 @@ export default function OwnerDashboard(): JSX.Element {
                   }}
                 >
                   Manage Editors
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           ))}
@@ -135,45 +190,38 @@ export default function OwnerDashboard(): JSX.Element {
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editors – {selectedJournal?.name}</DialogTitle>
+            <DialogTitle>Editors – {selectedJournal?.title}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {editors.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No editors assigned
-              </p>
-            )}
-
-            {editors.map((e) => (
-              <div
-                key={e.id}
-                className="flex items-center justify-between border rounded p-2"
-              >
-                <div>
-                  <p className="font-medium">{e.username}</p>
-                  <p className="text-xs text-muted-foreground">{e.email}</p>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={async () => {
-                    await fetch(
-                      `${url}/owner/journal/${selectedJournal?.id}/editor/${e.id}`,
-                      {
-                        method: "DELETE",
-                        headers: { Authorization: `Bearer ${token}` },
-                      },
-                    );
-                    fetchEditors(selectedJournal!.id);
-                  }}
+          {loadingEditors ? (
+            <p>Loading editors...</p>
+          ) : (
+            <div className="space-y-3">
+              {editors.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No editors assigned
+                </p>
+              )}
+              {editors.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between border rounded p-2"
                 >
-                  Remove
-                </Button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <p className="font-medium">{e.username}</p>
+                    <p className="text-xs text-muted-foreground">{e.email}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => removeEditor(e.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </DashboardLayout>

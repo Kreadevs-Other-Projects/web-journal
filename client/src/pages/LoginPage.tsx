@@ -46,6 +46,7 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
+      // TEMP: Call the normal login endpoint but skip OTP handling in frontend
       const response = await fetch(`${url}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,9 +64,23 @@ export default function LoginPage() {
         throw new Error(result.message || "Login failed");
       }
 
-      toast({ title: "OTP Sent", description: "Check your email for the OTP" });
-      setOtpSent(true);
-      setStep("otp");
+      // TEMP: Directly consider login successful, skip OTP
+      login(result.token); // your auth context
+      localStorage.setItem("user", JSON.stringify(result.user));
+      localStorage.setItem("refreshToken", result.refreshToken);
+
+      const userRole = result.user.role as UserRole;
+      navigate(roleConfig[userRole].route, { replace: true });
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome ${roleConfig[userRole].label}!`,
+        variant: "default",
+      });
+
+      // Skip OTP step
+      // setOtpSent(true);
+      // setStep("otp");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -375,7 +390,7 @@ export default function LoginPage() {
                   </>
                 )}
 
-                {step === "otp" && (
+                {/* {step === "otp" && (
                   <>
                     <p className="text-sm input-glow text-muted-foreground">
                       Enter the OTP sent to <strong>{email}</strong>
@@ -391,7 +406,7 @@ export default function LoginPage() {
                       className="pl-5 pr-10 input-glow text-muted-foreground"
                     />
                   </>
-                )}
+                )} */}
 
                 <Button type="submit" disabled={isLoading}>
                   {step === "credentials"

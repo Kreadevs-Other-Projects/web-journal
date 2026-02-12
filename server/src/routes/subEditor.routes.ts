@@ -3,7 +3,9 @@ import {
   getSubEditorPapers,
   updateSubEditorPaperStatus,
   getReviewersForPaper,
+  fetchReviewer,
   assignReviewer,
+  reviewerInvite,
 } from "../controllers/subEditor.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
@@ -21,10 +23,17 @@ router.get(
   getSubEditorPapers,
 );
 
+router.get(
+  "/fetchReviewer",
+  authMiddleware,
+  authorize("sub_editor"),
+  fetchReviewer,
+);
+
 router.post(
   "/assignReviewer/:paperId",
   authMiddleware,
-  authorize("sub_editor"),
+  authorize("chief_editor", "sub_editor"),
   validate(assignReviewerSchema),
   assignReviewer,
 );
@@ -40,8 +49,15 @@ router.put(
 router.get(
   "/getReviewersForPaper/:paperId",
   authMiddleware,
-  authorize("sub_editor"),
+  authorize("sub_editor", "chief_editor"),
   getReviewersForPaper,
+);
+
+router.post(
+  "/inviteReviewer",
+  authMiddleware,
+  authorize("sub_editor"),
+  reviewerInvite,
 );
 
 export default router;

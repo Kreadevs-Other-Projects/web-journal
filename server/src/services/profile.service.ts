@@ -2,6 +2,8 @@ import {
   findUserById,
   findUserByEmail,
   findUserProfile,
+  verifyUserPassword,
+  updateUserPassword,
   updateUser,
   updateUserProfile,
   softDeleteUser,
@@ -19,6 +21,21 @@ export const getFullProfile = async (userId: string) => {
   };
 };
 
+export const changePassword = async (
+  userId: string,
+  oldPassword: string,
+  newPassword: string,
+) => {
+  const isValid = await verifyUserPassword(userId, oldPassword);
+  if (!isValid) {
+    throw new Error("INVALID_OLD_PASSWORD");
+  }
+
+  const updated = await updateUserPassword(userId, newPassword);
+
+  return updated;
+};
+
 export const updateProfileService = async (
   userId: string,
   userData: { username?: string; email?: string },
@@ -26,7 +43,7 @@ export const updateProfileService = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
-  }
+  },
 ) => {
   if (userData.email) {
     const existing = await findUserByEmail(userData.email);

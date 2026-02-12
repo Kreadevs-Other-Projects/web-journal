@@ -1,25 +1,39 @@
 import { Router } from "express";
 import {
-  getPapers,
+  getChiefEditorJournals,
+  getPapersByJournalId,
+  getAllPapers,
   assignSubEditor,
   updatePaperStatus,
   decidePaper,
   fetchChiefEditors,
   fetchSubEditors,
-  fetchReviewer,
-  assignReviewer,
   getSubmittedReviews,
-} from "../controllers/cheifEditor.controller";
+  SubEditorInvite,
+} from "../controllers/chiefEditor.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
   assignSubEditorSchema,
-  assignReviewerSchema,
   editorDecisionSchema,
   paperStatusSchema,
-} from "../schemas/cheifEditor.schema";
+} from "../schemas/chiefEditor.schema";
 import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
+
+router.get(
+  "/getChiefEditorJournals",
+  authMiddleware,
+  authorize("chief_editor"),
+  getChiefEditorJournals,
+);
+
+router.get(
+  "/getPapers/:journalId",
+  authMiddleware,
+  authorize("chief_editor"),
+  getPapersByJournalId,
+);
 
 router.get(
   "/getChiefEditors",
@@ -28,7 +42,12 @@ router.get(
   fetchChiefEditors,
 );
 
-router.get("/getPapers", authMiddleware, authorize("chief_editor"), getPapers);
+router.get(
+  "/getAllPapers",
+  authMiddleware,
+  authorize("chief_editor"),
+  getAllPapers,
+);
 
 router.get(
   "/getsubEditors",
@@ -43,21 +62,6 @@ router.post(
   authorize("chief_editor"),
   validate(assignSubEditorSchema),
   assignSubEditor,
-);
-
-router.get(
-  "/getReviewers",
-  authMiddleware,
-  authorize("author", "chief_editor", "owner", "publisher"),
-  fetchReviewer,
-);
-
-router.post(
-  "/assignReviewer/:paperId",
-  authMiddleware,
-  authorize("chief_editor", "sub_editor"),
-  validate(assignReviewerSchema),
-  assignReviewer,
 );
 
 router.post(
@@ -81,6 +85,13 @@ router.get(
   authMiddleware,
   authorize("chief_editor"),
   getSubmittedReviews,
+);
+
+router.post(
+  "/inviteSubEditor",
+  authMiddleware,
+  authorize("chief_editor"),
+  SubEditorInvite,
 );
 
 export default router;

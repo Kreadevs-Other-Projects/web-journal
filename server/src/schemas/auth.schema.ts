@@ -12,6 +12,7 @@ export const signupSchema = z.object({
       "reviewer",
       "owner",
       "publisher",
+      "publisher_manager",
     ]),
   }),
 });

@@ -12,6 +12,7 @@ export type UserRole =
   | "reviewer"
   | "chief_editor"
   | "publisher"
+  | "publisher_manager"
   | "owner"
   | "sub_editor";
 
@@ -38,6 +39,7 @@ export const roleConfig: Record<
       // { label: "System Settings", path: "/owner/settings", icon: Settings },
     ],
   },
+
   publisher: {
     icon: Home,
     label: "Publisher",
@@ -51,6 +53,28 @@ export const roleConfig: Record<
       { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },
+
+  publisher_manager: {
+    icon: BarChart3,
+    label: "Publisher Manager",
+    color: "text-warning",
+    description: "Manage publisher operations and reports",
+    route: "/publisher-manager",
+    navigation: [
+      { label: "Dashboard", path: "/publisher-manager", icon: Home },
+      // {
+      //   label: "Manage Papers",
+      //   path: "/publisher-manager/papers",
+      //   icon: FileText,
+      // },
+      // {
+      //   label: "Analytics",
+      //   path: "/publisher-manager/analytics",
+      //   icon: BarChart3,
+      // },
+    ],
+  },
+
   chief_editor: {
     icon: Users,
     label: "Chief Editor",
@@ -59,15 +83,16 @@ export const roleConfig: Record<
     route: "/chief-editor",
     navigation: [
       { label: "Dashboard", path: "/chief-editor", icon: Home },
-      {
-        label: "Submissions",
-        path: "/chief-editor/submissions",
-        icon: FileText,
-      },
-      { label: "Sub-Editors", path: "/chief-editor/sub-editors", icon: Users },
-      { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
+      // {
+      //   label: "Papers",
+      //   path: "/chief-editor/papers",
+      //   icon: FileText,
+      // },
+      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
+      // { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
     ],
   },
+
   author: {
     icon: BookOpen,
     label: "Author",
@@ -81,6 +106,7 @@ export const roleConfig: Record<
       { label: "Paper Version", path: "/author/version", icon: BookOpen },
     ],
   },
+
   sub_editor: {
     icon: Users,
     label: "Sub Editor",
@@ -95,6 +121,7 @@ export const roleConfig: Record<
       // { label: "Settings", path: "/editor/settings", icon: Settings },
     ],
   },
+
   reviewer: {
     icon: UserCheck,
     label: "Reviewer",

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
   id: string;
@@ -47,6 +48,7 @@ interface Journal {
 
 export default function PublishPapersPage() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("");
@@ -67,18 +69,24 @@ export default function PublishPapersPage() {
     year_label: "",
   });
 
-  const [message, setMessage] = useState({ type: "", text: "" });
-
   const fetchJournals = async () => {
     try {
       setLoadingJournals(true);
+
       const response = await fetch(`${url}/publisher/getJournals`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!response.ok) throw new Error("Failed to fetch journals");
+
       const data = await response.json();
       setJournals(data.data || data.journals || []);
     } catch (error: any) {
-      setMessage({ type: "error", text: "Failed to fetch journals" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch journals",
+      });
     } finally {
       setLoadingJournals(false);
     }
@@ -97,10 +105,17 @@ export default function PublishPapersPage() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
+
+      if (!response.ok) throw new Error("Failed to fetch issues");
+
       const data = await response.json();
       setIssues(data.issues || []);
     } catch (error: any) {
-      setMessage({ type: "error", text: "Failed to fetch issues" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch issues",
+      });
     } finally {
       setLoadingIssues(false);
     }
@@ -115,11 +130,16 @@ export default function PublishPapersPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await response.json();
+      if (!response.ok) throw new Error("Failed to fetch papers");
 
+      const data = await response.json();
       setPapers(data?.data?.papers ?? []);
     } catch (error: any) {
-      setMessage({ type: "error", text: "Failed to fetch papers" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch papers",
+      });
     } finally {
       setLoadingPapers(false);
     }
@@ -147,13 +167,16 @@ export default function PublishPapersPage() {
 
   const handlePublish = async () => {
     if (!selectedPaper || !publishForm.issue_id) {
-      setMessage({ type: "error", text: "Please select an issue" });
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please select an issue",
+      });
       return;
     }
 
     try {
       setPublishing(selectedPaper.id);
-      setMessage({ type: "", text: "" });
 
       const response = await fetch(
         `${url}/publication/publishPaper/${selectedPaper.id}`,
@@ -173,17 +196,22 @@ export default function PublishPapersPage() {
         throw new Error(data.message || "Failed to publish paper");
       }
 
-      setMessage({ type: "success", text: "Paper published successfully!" });
+      toast({
+        title: "Paper Published",
+        description: "The paper has been published successfully",
+      });
+
       setPublishModalOpen(false);
       setSelectedPaper(null);
       setPublishForm({ issue_id: "", year_label: "" });
 
-      // Refresh papers list
-      if (selectedIssueId) {
-        fetchPapers(selectedIssueId);
-      }
+      if (selectedIssueId) fetchPapers(selectedIssueId);
     } catch (error: any) {
-      setMessage({ type: "error", text: error.message });
+      toast({
+        variant: "destructive",
+        title: "Publish Failed",
+        description: error.message || "Could not publish paper",
+      });
     } finally {
       setPublishing(null);
     }
@@ -195,7 +223,6 @@ export default function PublishPapersPage() {
       issue_id: selectedIssueId,
       year_label: "",
     });
-    setMessage({ type: "", text: "" });
     setPublishModalOpen(true);
   };
 
@@ -215,24 +242,6 @@ export default function PublishPapersPage() {
           </p>
         </div>
 
-        {message.text && !publishModalOpen && (
-          <div
-            className={`p-4 rounded-lg flex items-center gap-2 ${
-              message.type === "success"
-                ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                : "bg-red-500/10 text-red-500 border border-red-500/20"
-            }`}
-          >
-            {message.type === "success" ? (
-              <CheckCircle className="h-5 w-5" />
-            ) : (
-              <AlertCircle className="h-5 w-5" />
-            )}
-            <span>{message.text}</span>
-          </div>
-        )}
-
-        {/* Filters */}
         <Card className="glass-card">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -294,7 +303,6 @@ export default function PublishPapersPage() {
           </CardContent>
         </Card>
 
-        {/* Papers List */}
         {loadingPapers ? (
           <Card className="glass-card">
             <CardContent className="p-12 text-center">
@@ -385,23 +393,6 @@ export default function PublishPapersPage() {
                 <p className="text-sm text-muted-foreground mb-1">Paper:</p>
                 <p className="font-medium">{selectedPaper.title}</p>
               </div>
-
-              {message.text && publishModalOpen && (
-                <div
-                  className={`p-3 rounded-md text-sm flex items-center gap-2 ${
-                    message.type === "success"
-                      ? "bg-green-500/10 text-green-500"
-                      : "bg-red-500/10 text-red-500"
-                  }`}
-                >
-                  {message.type === "success" ? (
-                    <CheckCircle className="h-4 w-4" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4" />
-                  )}
-                  <span>{message.text}</span>
-                </div>
-              )}
 
               <div>
                 <Label>

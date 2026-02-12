@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,15 +19,17 @@ import {
   Trash2,
   FilePlus2,
   Edit3,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-import JournalIssuesPage from "@/components/JournalIssues";
+import { useToast } from "@/hooks/use-toast";
+import { generateAcronym } from "../../../../server/src/utils/acronym";
 
 interface Journal {
   id: string;
-  name: string;
-  slug: string;
+  title: string;
+  acronym: string;
   description?: string;
   issn: string;
   website_url?: string;
@@ -35,12 +37,12 @@ interface Journal {
 }
 
 interface JournalForm {
-  name: string;
-  slug: string;
+  title: string;
+  acronym: string;
   description: string;
   issn: string;
   website_url: string;
-  publisher_id: string;
+  chief_editor_id: string;
 }
 
 interface JournalIssue {
@@ -63,34 +65,31 @@ interface Publisher {
   status: string;
 }
 
-const generateSlug = (value: string): string =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-
 const isActiveIssue = (issue: JournalIssue) =>
   issue?.is_active === true || issue?.status === "active";
 
 export default function Journals(): JSX.Element {
   const { user, token, isLoading } = useAuth();
-
+  const { toast } = useToast();
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
-  const [publishers, setPublishers] = useState<Publisher[]>([]);
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+  const [selectedJournalIssues, setSelectedJournalIssues] = useState<
+    JournalIssue[]
+  >([]);
+
+  const [chiefEditors, setChiefEditors] = useState<Publisher[]>([]);
 
   const [form, setForm] = useState<JournalForm>({
-    name: "",
-    slug: "",
+    title: "",
+    acronym: "",
     description: "",
     issn: "",
     website_url: "",
-    publisher_id: "",
+    chief_editor_id: "",
   });
 
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -112,6 +111,17 @@ export default function Journals(): JSX.Element {
     label: "",
     published_at: "",
   });
+
+  const [newJournalModalOpen, setNewJournalModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"journal" | "chief-editor">(
+    "journal",
+  );
+
+  const [newChiefEditorForm, setNewChiefEditorForm] = useState({
+    username: "",
+    email: "",
+  });
+  const [creatingChiefEditor, setCreatingChiefEditor] = useState(false);
 
   const [currentJournalId, setCurrentJournalId] = useState<string | null>(null);
   const [currentJournalName, setCurrentJournalName] = useState("");
@@ -136,10 +146,53 @@ export default function Journals(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const list: Journal[] = data.journals ?? [];
-      setJournals(list);
-    } catch (e) {
+
+      if (data.success) {
+        const list: Journal[] = data.journals ?? [];
+        setJournals(list);
+      } else {
+        toast({
+          title: "Failed to fetch journals",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error fetching journals",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openJournalIssues = async (id: string, name: string) => {
+    setCurrentJournalId(id);
+    setCurrentJournalName(name);
+    setIssuesModalOpen(true);
+
+    try {
+      const res = await fetch(`${url}/journal-issue/getJournalIssues/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSelectedJournalIssues(data.issues || []);
+      } else {
+        toast({
+          title: "Failed to fetch issues",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
 
@@ -151,14 +204,26 @@ export default function Journals(): JSX.Element {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const data = await res.json();
+
       if (data.success) {
         const list: JournalIssue[] = data.issues ?? [];
         setIssuesByJournal((prev) => ({ ...prev, [journalId]: list }));
         return list;
+      } else {
+        toast({
+          title: "Failed to fetch issues",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+        return [];
       }
-      return [];
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error fetching issues",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
       return [];
     } finally {
       setIssuesLoading(false);
@@ -178,7 +243,7 @@ export default function Journals(): JSX.Element {
     if (!isLoading && user) {
       (async () => {
         await fetchJournals();
-        await fetchPublishers();
+        await fetchChiefEditors();
       })();
     }
   }, [user, isLoading]);
@@ -189,24 +254,36 @@ export default function Journals(): JSX.Element {
     }
   }, [journals.length, token]);
 
-  const fetchPublishers = async () => {
-    const res = await fetch(`${url}/owner/getPublishers`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const fetchChiefEditors = async () => {
+    try {
+      const res = await fetch(`${url}/owner/getChief-Editor`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.success) {
-      setPublishers(data.data);
+      if (data.success) {
+        setChiefEditors(data.data);
+      } else {
+        toast({
+          title: "Failed to fetch chief editor",
+          description: data.message || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Error fetching chief editor",
+        description: e.message || "Something went wrong.",
+        variant: "destructive",
+      });
     }
   };
 
   const createJournal = async () => {
     setLoading(true);
     try {
-      await fetch(`${url}/journal/addJournal`, {
+      const res = await fetch(`${url}/journal/addJournal`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -214,18 +291,50 @@ export default function Journals(): JSX.Element {
         },
         body: JSON.stringify(form),
       });
-      setOpen(false);
+
+      const data = await res.json();
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: "Journal created",
+        description: "Journal saved successfully",
+      });
+
+      setNewJournalModalOpen(false);
       setForm({
-        name: "",
-        slug: "",
+        title: "",
+        acronym: "",
         description: "",
         issn: "",
         website_url: "",
-        publisher_id: "",
+        chief_editor_id: "",
       });
+
       await fetchJournals();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message || "Something went wrong",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -235,19 +344,38 @@ export default function Journals(): JSX.Element {
     if (!selectedJournal) return;
     setLoading(true);
     try {
-      await fetch(`${url}/journal/updateJournal/${selectedJournal.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${url}/journal/updateJournal/${selectedJournal.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
         },
-        body: JSON.stringify(form),
-      });
-      setEditOpen(false);
-      setSelectedJournal(null);
-      await fetchJournals();
-    } catch (e) {
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Journal Updated",
+          description: `${form.title} has been successfully updated.`,
+        });
+
+        setEditOpen(false);
+        setSelectedJournal(null);
+        await fetchJournals();
+      } else {
+        throw new Error(data.message || "Failed to update journal");
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: e.message || "Failed to update journal",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -257,23 +385,37 @@ export default function Journals(): JSX.Element {
     if (!selectedJournal) return;
     setLoading(true);
     try {
-      await fetch(`${url}/journal/deleteJournal/${selectedJournal.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDeleteOpen(false);
-      setSelectedJournal(null);
-      await fetchJournals();
-    } catch (e) {
+      const res = await fetch(
+        `${url}/journal/deleteJournal/${selectedJournal.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Journal Deleted",
+          description: `${selectedJournal.title} has been removed.`,
+        });
+
+        setDeleteOpen(false);
+        setSelectedJournal(null);
+        await fetchJournals();
+      } else {
+        throw new Error(data.message || "Failed to delete journal");
+      }
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: e.message || "Failed to delete journal",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const openJournalIssues = (id: string, name: string) => {
-    setCurrentJournalId(id);
-    setCurrentJournalName(name);
   };
 
   const handleIssueChange = (e: ChangeEvent<HTMLInputElement>) =>
@@ -291,7 +433,7 @@ export default function Journals(): JSX.Element {
   };
 
   const openApplyIssueModal = async (journal: Journal) => {
-    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+    setActiveJournalForIssue({ id: journal.id, name: journal.title });
     resetIssueForm();
     setModalOpen(true);
 
@@ -299,7 +441,7 @@ export default function Journals(): JSX.Element {
   };
 
   const openEditActiveIssueModal = async (journal: Journal) => {
-    setActiveJournalForIssue({ id: journal.id, name: journal.name });
+    setActiveJournalForIssue({ id: journal.id, name: journal.title });
 
     const list =
       issuesByJournal[journal.id] ?? (await fetchIssuesForJournal(journal.id));
@@ -358,20 +500,23 @@ export default function Journals(): JSX.Element {
       if (data.success) {
         await fetchIssuesForJournal(journalId);
 
+        toast({
+          title: editingIssue ? "Issue Updated" : "Issue Created",
+          description: `Issue for ${activeJournalForIssue.name} has been saved.`,
+        });
+
         setModalOpen(false);
 
         if (!editingIssue) {
-          const createdIssue: JournalIssue | null =
+          let createdIssue: JournalIssue | null =
             data.issue ?? data.journalIssue ?? data.createdIssue ?? null;
 
-          let issueToPayFor = createdIssue;
-
-          if (!issueToPayFor) {
+          if (!createdIssue) {
             const list = await fetchIssuesForJournal(journalId);
-            issueToPayFor = list?.[0] ?? null;
+            createdIssue = list?.[0] ?? null;
           }
 
-          setPendingPaymentIssue(issueToPayFor);
+          setPendingPaymentIssue(createdIssue);
           setPaymentOpen(true);
         }
 
@@ -384,9 +529,16 @@ export default function Journals(): JSX.Element {
           label: "",
           published_at: "",
         });
+      } else {
+        throw new Error(data.message || "Failed to save issue");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save issue",
+        variant: "destructive",
+      });
     } finally {
       setIssuesLoading(false);
     }
@@ -397,33 +549,74 @@ export default function Journals(): JSX.Element {
     return list.some(isActiveIssue);
   };
 
+  const handleCreateChiefEditor = async () => {
+    setCreatingChiefEditor(true);
+    try {
+      const res = await fetch(`${url}/owner/createChiefEditor`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newChiefEditorForm),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to create Chief Editor");
+      }
+
+      toast({
+        title: "Chief Editor Created",
+        description: `Password: ${data.password} (shown only once)`,
+      });
+
+      setNewChiefEditorForm({ username: "", email: "" });
+      await fetchChiefEditors();
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingChiefEditor(false);
+    }
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Unauthorized</div>;
-
-  if (currentJournalId)
-    return (
-      <JournalIssuesPage
-        journalId={currentJournalId}
-        journalName={currentJournalName}
-        token={token}
-        onBack={() => setCurrentJournalId(null)}
-      />
-    );
-
-  const closeCreateEdit = () => {
-    setOpen(false);
-    setEditOpen(false);
-  };
 
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <h1 className="text-3xl font-bold text-white">Journals</h1>
-          <Button onClick={() => setOpen(true)} className="btn-physics">
-            <Plus className="h-4 w-4 mr-2" />
-            New Journal
-          </Button>
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => {
+                setModalMode("chief-editor");
+                setNewJournalModalOpen(true);
+              }}
+              className="btn-physics flex items-center gap-2 px-4 py-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add Chief Editor
+            </Button>
+
+            <Button
+              onClick={() => {
+                setModalMode("journal");
+                setNewJournalModalOpen(true);
+              }}
+              className="btn-physics flex items-center gap-2 px-4 py-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Journal
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -435,15 +628,15 @@ export default function Journals(): JSX.Element {
                 <CardHeader>
                   <CardTitle
                     className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => openJournalIssues(j.id, j.name)}
+                    onClick={() => openJournalIssues(j.id, j.title)}
                   >
                     <BookOpen className="h-5 w-5" />
-                    {j.name}
+                    {j.title}
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="space-y-2">
-                  <p className="text-xs">Slug: {j.slug}</p>
+                  <p className="text-xs">Acronym: {j.acronym}</p>
                   <p className="text-xs">ISSN: {j.issn}</p>
 
                   {j.website_url ? (
@@ -493,12 +686,12 @@ export default function Journals(): JSX.Element {
                       onClick={() => {
                         setSelectedJournal(j);
                         setForm({
-                          name: j.name,
-                          slug: j.slug,
+                          title: j.title,
+                          acronym: j.acronym,
                           description: j.description ?? "",
                           issn: j.issn,
                           website_url: j.website_url ?? "",
-                          publisher_id: (j as any).publisher_id ?? "",
+                          chief_editor_id: (j as any).chief_editor_id ?? "",
                         });
 
                         setEditOpen(true);
@@ -527,41 +720,218 @@ export default function Journals(): JSX.Element {
         </div>
       </div>
 
-      <Dialog
-        open={open || editOpen}
-        onOpenChange={() => {
-          closeCreateEdit();
-        }}
-      >
+      <Dialog open={newJournalModalOpen} onOpenChange={setNewJournalModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editOpen ? "Edit Journal" : "Create Journal"}
+              {modalMode === "journal" ? "Create Journal" : "Add Chief Editor"}
             </DialogTitle>
+          </DialogHeader>
+
+          {modalMode === "journal" ? (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <Label>Journal Title</Label>
+                  <Input
+                    placeholder="e.g., International Journal of Computing"
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        title: e.target.value,
+                        acronym: generateAcronym(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>
+                    Acronym{" "}
+                    <span className="text-muted-foreground text-xs">
+                      (Auto-generated)
+                    </span>
+                  </Label>
+                  <Input
+                    placeholder="Auto-generated from title"
+                    value={form.acronym}
+                    disabled
+                    className="bg-muted cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <Label>
+                    Description{" "}
+                    <span className="text-muted-foreground text-xs">
+                      (Optional)
+                    </span>
+                  </Label>
+                  <Input
+                    placeholder="Short description about the journal (optional)"
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>ISSN</Label>
+                  <Input
+                    placeholder="e.g., 1234-5678"
+                    value={form.issn}
+                    onChange={(e) => setForm({ ...form, issn: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label>
+                    Website URL{" "}
+                    <span className="text-muted-foreground text-xs">
+                      (Optional)
+                    </span>
+                  </Label>
+                  <Input
+                    placeholder="e.g., https://journalwebsite.com (optional)"
+                    value={form.website_url}
+                    onChange={(e) =>
+                      setForm({ ...form, website_url: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>Chief Editor</Label>
+                  <select
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    value={form.chief_editor_id}
+                    onChange={(e) =>
+                      setForm({ ...form, chief_editor_id: e.target.value })
+                    }
+                  >
+                    <option value="" disabled>
+                      Select Chief Editor
+                    </option>
+                    {chiefEditors.length > 0 ? (
+                      chiefEditors.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.username}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No Chief Editor found</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setNewJournalModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createJournal}
+                  disabled={!form.chief_editor_id || loading}
+                >
+                  {loading ? "Saving..." : "Save Journal"}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 mt-2">
+                <div>
+                  <Label>Username</Label>
+                  <Input
+                    placeholder="e.g., John Doe"
+                    value={newChiefEditorForm.username}
+                    onChange={(e) =>
+                      setNewChiefEditorForm({
+                        ...newChiefEditorForm,
+                        username: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>Email</Label>
+                  <Input
+                    placeholder="e.g., john@example.com"
+                    type="email"
+                    value={newChiefEditorForm.email}
+                    onChange={(e) =>
+                      setNewChiefEditorForm({
+                        ...newChiefEditorForm,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4 flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setNewJournalModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateChiefEditor}
+                  disabled={
+                    creatingChiefEditor ||
+                    !newChiefEditorForm.username ||
+                    !newChiefEditorForm.email
+                  }
+                >
+                  {creatingChiefEditor ? "Creating..." : "Create Chief Editor"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Journal</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Journal Name</Label>
+              <Label>Journal Title</Label>
               <Input
                 placeholder="e.g., International Journal of Computing"
-                value={form.name}
+                value={form.title}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    name: e.target.value,
-                    slug: generateSlug(e.target.value),
+                    title: e.target.value,
+                    acronym: generateAcronym(e.target.value),
                   })
                 }
               />
             </div>
 
             <div>
-              <Label>Slug (auto)</Label>
+              <Label>
+                Acronym{" "}
+                <span className="text-muted-foreground text-xs">
+                  (Auto-generated)
+                </span>
+              </Label>
               <Input
-                placeholder="auto-generated from name"
-                value={form.slug}
+                placeholder="Auto-generated from title"
+                value={form.acronym}
                 disabled
+                className="bg-muted cursor-not-allowed"
               />
             </div>
 
@@ -605,38 +975,39 @@ export default function Journals(): JSX.Element {
                 }
               />
             </div>
+
             <div>
-              <Label>Publisher</Label>
+              <Label>Chief Editor</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={form.publisher_id}
+                value={form.chief_editor_id}
                 onChange={(e) =>
-                  setForm({ ...form, publisher_id: e.target.value })
+                  setForm({ ...form, chief_editor_id: e.target.value })
                 }
               >
-                <option value="">Select Publisher</option>
-                {publishers.length > 0 ? (
-                  publishers.map((p) => (
+                <option value="">Select Chief Editor</option>
+                {chiefEditors.length > 0 ? (
+                  chiefEditors.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.username}
                     </option>
                   ))
                 ) : (
-                  <option disabled>No publishers found</option>
+                  <option disabled>No Chief Editor found</option>
                 )}
               </select>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={closeCreateEdit}>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>
             <Button
-              onClick={editOpen ? updateJournal : createJournal}
-              disabled={!form.publisher_id || loading}
+              onClick={updateJournal}
+              disabled={!form.chief_editor_id || loading}
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Saving..." : "Update Journal"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -650,7 +1021,7 @@ export default function Journals(): JSX.Element {
 
           <p>
             Are you sure you want to delete{" "}
-            <strong>{selectedJournal?.name}</strong>? This cannot be undone.
+            <strong>{selectedJournal?.title}</strong>? This cannot be undone.
           </p>
 
           <DialogFooter>
@@ -664,7 +1035,7 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={modalOpen} onOpenChange={() => setModalOpen(false)}>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -758,6 +1129,7 @@ export default function Journals(): JSX.Element {
           </form>
         </DialogContent>
       </Dialog>
+
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -930,6 +1302,58 @@ export default function Journals(): JSX.Element {
               </DialogFooter>
             </form>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={issuesModalOpen} onOpenChange={setIssuesModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Issues – {currentJournalName}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {selectedJournalIssues.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No issues found for this journal.
+              </p>
+            ) : (
+              selectedJournalIssues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className="rounded-xl border border-border/60 p-3 bg-background/40"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold">
+                        {issue.label || "Untitled Issue"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Year: {issue.year}
+                        {issue.volume && ` • Vol ${issue.volume}`}
+                        {issue.issue && ` • Issue ${issue.issue}`}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        isActiveIssue(issue)
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-yellow-500/10 text-yellow-500"
+                      }`}
+                    >
+                      {isActiveIssue(issue) ? "Active" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIssuesModalOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

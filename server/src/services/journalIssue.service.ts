@@ -5,12 +5,13 @@ import {
   updateJournalIssue,
   deleteJournalIssue,
 } from "../repositories/journalIssue.repository";
+import { createIssueInvoiceService } from "./journalPayment.service";
 import { pool } from "../configs/db";
 
 export type { JournalIssueData };
 
 export const addJournalIssueService = async (
-  user: { id: string; role: string },
+  user: { id: string; role: string; email: string; username: string },
   journal_id: string,
   data: JournalIssueData,
 ) => {
@@ -18,24 +19,33 @@ export const addJournalIssueService = async (
     throw new Error("Only owners or publishers can create journal issues");
   }
 
-  const journal = await pool.query(
-    `SELECT id, owner_id, publisher_id FROM journals WHERE id = $1`,
+  const journalResult = await pool.query(
+    `SELECT id, title, owner_id, chief_editor_id FROM journals WHERE id = $1`,
     [journal_id],
   );
 
-  if (!journal.rows.length) {
+  if (!journalResult.rows.length) {
     throw new Error("Journal not found");
   }
 
-  const { owner_id, publisher_id } = journal.rows[0];
+  const journal = journalResult.rows[0];
 
-  if (user.role === "owner" && user.id === owner_id) {
-  } else if (user.role === "publisher" && user.id === publisher_id) {
-  } else {
+  if (
+    (user.role === "owner" && user.id !== journal.owner_id) ||
+    (user.role === "publisher" && user.id !== journal.chief_editor_id)
+  ) {
     throw new Error("Forbidden: You cannot create issues for this journal");
   }
 
-  return await createJournalIssue(journal_id, data);
+  const issue = await createJournalIssue(journal_id, data);
+
+  const payment = await createIssueInvoiceService({
+    user,
+    journal,
+    issue,
+  });
+
+  return { issue, payment };
 };
 
 export const getJournalIssuesService = async (

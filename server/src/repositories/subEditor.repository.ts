@@ -3,17 +3,25 @@ import { pool } from "../configs/db";
 export const getSubEditorPapers = async (subEditorId: string) => {
   const result = await pool.query(
     `
-    SELECT DISTINCT ON (p.id)
+    SELECT
       p.*,
-      pv.id            AS version_id,
-      pv.file_url,
-      pv.version_label,
-      pv.version_number,
-      pv.created_at    AS version_created_at
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', pv.id,
+            'file_url', pv.file_url,
+            'version_label', pv.version_label,
+            'version_number', pv.version_number,
+            'created_at', pv.created_at
+          )
+          ORDER BY pv.version_number DESC
+        ) FILTER (WHERE pv.id IS NOT NULL),
+        '[]'
+      ) AS versions
     FROM papers p
     JOIN editor_assignments ea
       ON ea.paper_id = p.id
-    JOIN paper_versions pv
+    LEFT JOIN paper_versions pv
       ON pv.paper_id = p.id
     WHERE
       ea.sub_editor_id = $1
@@ -23,9 +31,24 @@ export const getSubEditorPapers = async (subEditorId: string) => {
         'pending_revision',
         'resubmitted'
       )
-    ORDER BY p.id, pv.created_at DESC
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
     `,
     [subEditorId],
+  );
+
+  return result.rows;
+};
+
+export const findReviewer = async () => {
+  const result = await pool.query(
+    `
+    SELECT id, username, email
+    FROM users
+    WHERE role = 'reviewer'
+      AND status = 'active'
+    ORDER BY username ASC
+    `,
   );
 
   return result.rows;
@@ -36,15 +59,41 @@ export const assignReviewer = async (
   reviewerId: string,
   assignedBy: string,
 ) => {
-  const result = await pool.query(
-    `INSERT INTO review_assignments (paper_id, reviewer_id, assigned_by, assigned_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (paper_id, reviewer_id)
-     DO NOTHING
-     RETURNING *`,
-    [paperId, reviewerId, assignedBy],
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+      INSERT INTO review_assignments
+        (paper_id, reviewer_id, assigned_by, assigned_at, status)
+      VALUES ($1, $2, $3, NOW(), 'assigned')
+      ON CONFLICT (paper_id, reviewer_id)
+      DO UPDATE
+        SET status = 'assigned'
+      `,
+      [paperId, reviewerId, assignedBy],
+    );
+
+    await client.query(
+      `
+      UPDATE papers
+      SET status = 'under_review'
+      WHERE id = $1
+      `,
+      [paperId],
+    );
+
+    await client.query("COMMIT");
+
+    return { success: true };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const updatePaperStatusSubEditor = async (

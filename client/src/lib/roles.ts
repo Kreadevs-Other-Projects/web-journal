@@ -48,9 +48,12 @@ export const roleConfig: Record<
     route: "/publisher",
     navigation: [
       { label: "Dashboard", path: "/publisher", icon: Home },
-
-      { label: "All Papers", path: "/publisher/papers", icon: FileText },
-      { label: "Users", path: "/publisher/users", icon: Users },
+      {
+        label: "Publish Paper",
+        path: "/publisher/publish-paper",
+        icon: FileText,
+      },
+      // { label: "Users", path: "/publisher/users", icon: Users },
     ],
   },
 
@@ -114,11 +117,8 @@ export const roleConfig: Record<
     description: "Manage paper editions",
     route: "/sub-editor",
     navigation: [
-      { label: "Dashboard", path: "/editor", icon: Home },
-      { label: "Users", path: "/editor/users", icon: Users },
-      { label: "All Papers", path: "/editor/papers", icon: FileText },
-      { label: "System Logs", path: "/editor/logs", icon: BarChart3 },
-      // { label: "Settings", path: "/editor/settings", icon: Settings },
+      { label: "Dashboard", path: "/sub-editor", icon: Home },
+      { label: "Revision Papers", path: "/sub-editor/revision", icon: Users },
     ],
   },
 
@@ -130,7 +130,6 @@ export const roleConfig: Record<
     route: "/reviewer",
     navigation: [
       { label: "Dashboard", path: "/reviewer", icon: Home },
-      { label: "Assigned Papers", path: "/reviewer/papers", icon: FileText },
       {
         label: "Completed Reviews",
         path: "/reviewer/completed",

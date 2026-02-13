@@ -1,4 +1,5 @@
 import { pool } from "../configs/db";
+import bcrypt from "bcrypt";
 
 export const getReviewerPapers = async (reviewerId: string) => {
   const result = await pool.query(
@@ -24,6 +25,7 @@ export const getReviewerPapers = async (reviewerId: string) => {
       ra.assigned_at,
       
       r.decision AS review_decision,
+      r.comments,
       r.signed_at AS review_submitted_at
     FROM review_assignments ra
     JOIN papers p ON p.id = ra.paper_id
@@ -39,10 +41,11 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
 export const submitReviewByVersion = async (
   paperVersionId: string,
-
   reviewerId: string,
   decision: string,
   comments: string,
+  password?: string,
+  signatureFilename?: string,
 ) => {
   const client = await pool.connect();
 
@@ -76,14 +79,41 @@ export const submitReviewByVersion = async (
 
     const assignmentId = ra.rows[0].id;
 
+    let signatureUrl: string | null = null;
+
+    if (decision === "accepted" || decision === "rejected") {
+      if (!password || !signatureFilename) {
+        throw new Error("Password and signature are required");
+      }
+
+      const userRes = await client.query(
+        `SELECT password FROM users WHERE id = $1`,
+        [reviewerId],
+      );
+
+      if (!userRes.rowCount) {
+        throw new Error("User not found");
+      }
+
+      const hashedPassword = userRes.rows[0].password;
+
+      const isMatch = await bcrypt.compare(password, hashedPassword);
+
+      if (!isMatch) {
+        throw new Error("Invalid password");
+      }
+
+      signatureUrl = `/uploads/${signatureFilename}`;
+    }
+
     const review = await client.query(
       `
       INSERT INTO reviews
-      (review_assignment_id, decision, comments, signed_at)
-      VALUES ($1, $2, $3, NOW())
+      (review_assignment_id, decision, comments, signature_url, signed_at)
+      VALUES ($1, $2, $3, $4, NOW())
       RETURNING *
       `,
-      [assignmentId, decision, comments],
+      [assignmentId, decision, comments, signatureUrl],
     );
 
     await client.query(

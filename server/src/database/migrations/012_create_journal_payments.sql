@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS journal_payments (
   currency TEXT DEFAULT 'PKR',
   status TEXT CHECK (status IN ('pending', 'success', 'failed')),
   transaction_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-  updated_at TIMESTAMPTZ,
-
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );

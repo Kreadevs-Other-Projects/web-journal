@@ -126,10 +126,9 @@ export default function SubEditorDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      console.log(data.papers);
 
-      setPapers(data.papers);
-      setFilteredPapers(data.papers);
+      setPapers(data.papers || []);
+      setFilteredPapers(data.papers || []);
 
       const underReview = data.papers.filter(
         (p) => p.status === "under_review",
@@ -1065,8 +1064,8 @@ export default function SubEditorDashboard() {
               </div>
 
               <div>
-                <Label className="text-sm font-medium">
-                  Invite New Sub-Editor
+                <Label className="text-sm text-white font-medium">
+                  Invite New Reviewer
                 </Label>
                 <Input
                   type="email"

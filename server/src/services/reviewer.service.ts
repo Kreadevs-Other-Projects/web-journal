@@ -9,6 +9,15 @@ export const submitPaperReview = async (
   reviewerId: string,
   decision: string,
   comments: string,
+  password?: string,
+  signatureFilename?: string,
 ) => {
-  return repo.submitReviewByVersion(paperId, reviewerId, decision, comments);
+  return repo.submitReviewByVersion(
+    paperId,
+    reviewerId,
+    decision,
+    comments,
+    password,
+    signatureFilename,
+  );
 };

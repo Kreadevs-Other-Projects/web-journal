@@ -86,6 +86,10 @@ export default function RevisionPaper() {
   const [assignmentStatus, setAssignmentStatus] = useState<string>("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [selectedSignature, setSelectedSignature] = useState<string | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const fetchPapers = async () => {
@@ -549,9 +553,12 @@ export default function RevisionPaper() {
                                     variant="outline"
                                     size="sm"
                                     className="gap-2 border-white/20 hover:border-emerald-500/50 hover:bg-emerald-500/10"
-                                    onClick={() =>
-                                      window.open(r.signatureUrl, "_blank")
-                                    }
+                                    onClick={() => {
+                                      setSelectedSignature(
+                                        `${url}${r.signatureUrl}`,
+                                      );
+                                      setSignatureModalOpen(true);
+                                    }}
                                   >
                                     <CheckCircle className="h-4 w-4" />
                                     View Signature
@@ -713,6 +720,38 @@ export default function RevisionPaper() {
             </div>
           </div>
         )}
+
+        <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
+          <DialogContent className="max-w-md bg-gray-900 border-white/10">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-white">
+                Reviewer Digital Signature
+              </DialogTitle>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 bg-white rounded-lg hover:bg-red-500/20 hover:text-red-400"
+                onClick={() => {
+                  setSignatureModalOpen(false);
+                  setSelectedSignature(null);
+                }}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {selectedSignature && (
+              <div className="flex justify-center mt-4 bg-white/10 p-4 rounded-lg border border-white/10">
+                <img
+                  src={selectedSignature}
+                  alt="Reviewer Signature"
+                  className="max-h-80 w-full object-contain rounded-lg border border-white/10"
+                />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {selectedPaper && (
           <Dialog

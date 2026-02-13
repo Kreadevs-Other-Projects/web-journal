@@ -38,7 +38,7 @@ export const setPaperPublished = async (
     throw new Error("Editor decision not found");
   }
 
-  if (decisionRes.rows[0].decision !== "accept") {
+  if (decisionRes.rows[0].decision !== "accepted") {
     throw new Error("Editor decision must be accept before publishing");
   }
 

@@ -818,7 +818,7 @@ export default function Papers() {
                       <SelectValue placeholder="Select a journal" />
                     </SelectTrigger>
                     <SelectContent>
-                      {journals.map((journal) => (
+                      {journals?.map((journal) => (
                         <SelectItem key={journal.id} value={journal.id}>
                           {journal.title}
                         </SelectItem>
@@ -842,8 +842,8 @@ export default function Papers() {
                       <SelectValue placeholder="Select an issue" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific issue</SelectItem>
-                      {issues.map((issue) => (
+                      <SelectItem value="none">No specific issue</SelectItem>
+                      {issues?.map((issue) => (
                         <SelectItem key={issue.id} value={issue.id}>
                           Issue {issue.label}
                         </SelectItem>

@@ -103,9 +103,9 @@ export const roleConfig: Record<
     description: "Submit and manage your papers",
     route: "/author",
     navigation: [
-      { label: "Dashboard", path: "/author", icon: Home },
-      { label: "My Submissions", path: "/author/submissions", icon: FileText },
-      { label: "Submit Paper", path: "/author/submit", icon: BookOpen },
+      // { label: "Dashboard", path: "/author", icon: Home },
+      // { label: "My Submissions", path: "/author/submissions", icon: FileText },
+      { label: "Submit Paper", path: "/author", icon: BookOpen },
       { label: "Paper Version", path: "/author/version", icon: BookOpen },
     ],
   },

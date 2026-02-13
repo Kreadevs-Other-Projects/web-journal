@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   decision review_decision NOT NULL,
   comments TEXT,
   signature_url TEXT,
-  signed_at TIMESTAMPTZ
+  signed_at TIMESTAMPTZ,
+  reviewed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS editor_decisions (

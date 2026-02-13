@@ -128,7 +128,7 @@ export const assignSubEditor = async (
     await client.query(
       `
       UPDATE papers
-      SET status = 'assigned_to_editor'
+      SET status = 'assigned_to_sub_editor'
       WHERE id = $1
       `,
       [paperId],

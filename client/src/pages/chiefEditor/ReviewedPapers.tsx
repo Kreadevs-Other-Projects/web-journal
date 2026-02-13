@@ -644,8 +644,8 @@ export default function ChiefEditorSubmittedReviews() {
                     onChange={(e) => setDecision(e.target.value)}
                   >
                     <option value="pending_revision">Pending Revision</option>
-                    <option value="accept">Accept</option>
-                    <option value="reject">Reject</option>
+                    <option value="accepted">Accept</option>
+                    <option value="rejected">Reject</option>
                   </select>
                 </div>
 

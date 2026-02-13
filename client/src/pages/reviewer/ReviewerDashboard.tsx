@@ -155,6 +155,20 @@ export default function ReviewerDashboard() {
     }
   };
 
+  const base64ToFile = (base64: string, filename: string) => {
+    const arr = base64.split(",");
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+
+    return new File([u8arr], filename, { type: mime });
+  };
+
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
       toast({
@@ -165,7 +179,7 @@ export default function ReviewerDashboard() {
       return;
     }
 
-    if (decision === "accept" || decision === "reject") {
+    if (decision === "accepted" || decision === "rejected") {
       setSignatureModalOpen(true);
     } else {
       await handleReviewSubmission();
@@ -179,16 +193,26 @@ export default function ReviewerDashboard() {
     if (!selectedPaper) return;
 
     try {
-      const reviewData: any = {
-        decision,
-        comments,
-        confidentialComments,
-        ratings,
-      };
+      const formData = new FormData();
 
-      if (signature && password) {
-        reviewData.signature = signature;
-        reviewData.password = password;
+      formData.append("decision", decision);
+      formData.append("comments", comments);
+      formData.append("confidentialComments", confidentialComments);
+
+      if (decision === "accepted" || decision === "rejected") {
+        if (!signature || !password) {
+          toast({
+            title: "Error",
+            description: "Signature and password required",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const signatureFile = base64ToFile(signature, "signature.png");
+
+        formData.append("signature", signatureFile);
+        formData.append("password", password);
       }
 
       const res = await fetch(
@@ -196,14 +220,32 @@ export default function ReviewerDashboard() {
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(reviewData),
+          body: formData,
         },
       );
 
       const data = await res.json();
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
       if (!res.ok) {
         toast({
@@ -460,13 +502,13 @@ export default function ReviewerDashboard() {
                             whileHover={{ scale: 1.01 }}
                             className={cn(
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "accept"
+                              decision === "accepted"
                                 ? "border-success bg-success/10"
                                 : "border-border hover:border-success/50",
                             )}
-                            onClick={() => setDecision("accept")}
+                            onClick={() => setDecision("accepted")}
                           >
-                            <RadioGroupItem value="accept" id="accept" />
+                            <RadioGroupItem value="accepted" id="accept" />
                             <CheckCircle2 className="h-5 w-5 text-success" />
                             <div className="flex-1">
                               <Label
@@ -535,13 +577,13 @@ export default function ReviewerDashboard() {
                             whileHover={{ scale: 1.01 }}
                             className={cn(
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "reject"
+                              decision === "rejected"
                                 ? "border-destructive bg-destructive/10"
                                 : "border-border hover:border-destructive/50",
                             )}
-                            onClick={() => setDecision("reject")}
+                            onClick={() => setDecision("rejected")}
                           >
-                            <RadioGroupItem value="reject" id="reject" />
+                            <RadioGroupItem value="rejected" id="reject" />
                             <XCircle className="h-5 w-5 text-destructive" />
                             <div className="flex-1">
                               <Label
@@ -566,7 +608,7 @@ export default function ReviewerDashboard() {
                       >
                         <Send className="h-4 w-4 mr-2" />
                         Submit Review
-                        {(decision === "accept" || decision === "reject") &&
+                        {(decision === "accepted" || decision === "rejected") &&
                           " (Requires Signature)"}
                       </Button>
                     </div>
@@ -826,7 +868,7 @@ export default function ReviewerDashboard() {
         onClose={() => setSignatureModalOpen(false)}
         onConfirm={handleSignatureConfirm}
         paperTitle={selectedPaper?.title || ""}
-        decision={decision === "accept" ? "accept" : "reject"}
+        decision={decision === "accepted" ? "accept" : "reject"}
       />
     </DashboardLayout>
   );

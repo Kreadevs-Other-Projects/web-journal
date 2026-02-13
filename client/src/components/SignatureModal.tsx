@@ -28,7 +28,7 @@ export function SignatureModal({
   decision,
 }: SignatureModalProps) {
   const [step, setStep] = useState<"signature" | "password" | "success">(
-    "signature"
+    "signature",
   );
   const [signature, setSignature] = useState("");
   const [password, setPassword] = useState("");
@@ -172,7 +172,7 @@ export function SignatureModal({
                       "w-full rounded-lg border-2 border-dashed cursor-crosshair bg-background/50",
                       error
                         ? "border-destructive"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50",
                     )}
                   />
                   <Button
@@ -227,7 +227,7 @@ export function SignatureModal({
                   placeholder="Enter your password"
                   className={cn(
                     "input-glow",
-                    error && "border-destructive focus:ring-destructive/20"
+                    error && "border-destructive focus:ring-destructive/20",
                   )}
                 />
               </div>
@@ -253,7 +253,7 @@ export function SignatureModal({
                     "btn-physics",
                     decision === "accept"
                       ? "bg-success hover:bg-success/90"
-                      : "bg-destructive hover:bg-destructive/90"
+                      : "bg-destructive hover:bg-destructive/90",
                   )}
                 >
                   {decision === "accept" ? "Confirm Accept" : "Confirm Reject"}
@@ -275,7 +275,7 @@ export function SignatureModal({
                 transition={{ type: "spring", delay: 0.3, bounce: 0.5 }}
                 className={cn(
                   "h-20 w-20 rounded-full flex items-center justify-center mb-4",
-                  decision === "accept" ? "bg-success/20" : "bg-destructive/20"
+                  decision === "accept" ? "bg-success/20" : "bg-destructive/20",
                 )}
               >
                 <motion.div
@@ -284,7 +284,7 @@ export function SignatureModal({
                   transition={{ type: "spring", delay: 0.5, bounce: 0.6 }}
                   className={cn(
                     "h-14 w-14 rounded-full flex items-center justify-center",
-                    decision === "accept" ? "bg-success" : "bg-destructive"
+                    decision === "accept" ? "bg-success" : "bg-destructive",
                   )}
                 >
                   <Check className="h-8 w-8 text-primary-foreground" />

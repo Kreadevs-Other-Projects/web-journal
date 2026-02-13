@@ -27,15 +27,23 @@ import {
   Eye,
   X,
   Search,
-  Filter,
   Clock,
   User,
   BookOpen,
   ExternalLink,
   Loader2,
   AlertCircle,
+  Download,
+  Shield,
+  Hash,
+  Link,
+  Info,
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { Worker, Viewer } from "@react-pdf-viewer/core";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 
 interface Review {
   paperId: string;
@@ -65,6 +73,7 @@ export default function PublisherManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("accepted");
+  const [viewPdf, setViewPdf] = useState<Review | null>(null);
 
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [openPublish, setOpenPublish] = useState(false);
@@ -394,10 +403,10 @@ export default function PublisherManager() {
                 <CardFooter className="flex gap-2 pt-4 border-t border-white/10">
                   {review.fileUrl && (
                     <Button
-                      size="sm"
                       variant="outline"
-                      className="flex-1"
-                      onClick={() => window.open(review.fileUrl, "_blank")}
+                      size="sm"
+                      className="gap-2 border-white/20 hover:border-blue-500/50 hover:bg-blue-500/10"
+                      onClick={() => setViewPdf(review)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View File
@@ -427,6 +436,124 @@ export default function PublisherManager() {
                 </CardFooter>
               </Card>
             ))}
+          </div>
+        )}
+
+        {viewPdf && (
+          <div className="fixed inset-0 z-50">
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setViewPdf(null)}
+            />
+
+            <div className="relative h-screen w-screen flex items-center justify-center p-4">
+              <div className="bg-gray-900 w-full max-w-6xl h-[90vh] rounded-xl border border-white/20 shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
+                      <FileText className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-100 line-clamp-1">
+                        {viewPdf.title || "Document Viewer"}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Version {viewPdf.versionNumber}
+                        </span>
+                        {viewPdf.paperId && (
+                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                            <Hash className="h-3 w-3" />
+                            {viewPdf.paperId.slice(0, 8)}...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 border-white/20 hover:border-blue-500/50 hover:bg-blue-500/10"
+                      onClick={() =>
+                        window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                      }
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 border-white/20 hover:border-white/40 hover:bg-white/5"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${url}${viewPdf.fileUrl}`,
+                        );
+                        toast({
+                          title: "Link copied",
+                          description: "PDF link copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Link className="h-4 w-4" />
+                      Copy Link
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 bg-white rounded-lg hover:bg-red-500/20 hover:text-red-400"
+                      onClick={() => setViewPdf(null)}
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex-1 relative overflow-hidden">
+                  <Worker workerUrl="/pdf.worker.min.js">
+                    <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                  </Worker>
+                </div>
+
+                <div className="p-3 bg-gray-800 border-t border-white/10">
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        <span>PDF Viewer</span>
+                      </div>
+                      <div className="h-4 w-px bg-white/10" />
+                      <div className="hidden md:flex items-center gap-2">
+                        <Info className="h-4 w-4" />
+                        <span>Use Ctrl + scroll to zoom</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <a
+                        href={`${url}${viewPdf.fileUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-400 transition-colors flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>Open in new tab</span>
+                      </a>
+                      <div className="h-4 w-px bg-white/10" />
+                      <div className="flex items-center gap-1">
+                        <Shield className="h-4 w-4" />
+                        <span>Secure PDF Viewer</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

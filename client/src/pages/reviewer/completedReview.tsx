@@ -17,7 +17,7 @@ interface Paper {
   title: string;
   abstract?: string;
   category?: string;
-  version?: string;
+  version_number?: string;
   priority?: "high" | "medium" | "low";
   submittedDate?: string;
   assignment_status:
@@ -55,6 +55,7 @@ export default function CompletedReviewPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log(data);
 
       if (!res.ok) return;
 
@@ -149,7 +150,7 @@ export default function CompletedReviewPage() {
                               {review.category}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
-                              {review.version}
+                              {review.version_number}
                             </Badge>
                             <Badge className="text-xs bg-green-500/10 text-green-700 dark:text-green-300">
                               Reviewed
@@ -177,13 +178,20 @@ export default function CompletedReviewPage() {
                                 review.completedDate,
                               ).toLocaleDateString()}
                             </div>
-                            <div>
-                              <Star className="h-3 w-3 inline mr-1" />
-                              Rating: {review.yourRating}/5.0
-                            </div>
+
                             <div>
                               <Clock className="h-3 w-3 inline mr-1" />
-                              Review Time: {review.yourReviewTime}
+                              Review Time:{" "}
+                              {review.review_submitted_at &&
+                                new Date(
+                                  review.review_submitted_at,
+                                ).toLocaleString("en-GB", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                             </div>
                           </div>
 

@@ -8,7 +8,7 @@ DO $$ BEGIN
       'chief_editor',
       'sub_editor',
       'reviewer',
-      'author',
+      'author'
     );
   END IF;
 
@@ -29,55 +29,29 @@ DO $$ BEGIN
       'suspended',
       'archived'
     );
-
   END IF;
-
-
-  /* =========================
-     JOURNAL ENUMS
-  ========================== */
-
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_status') THEN
-    CREATE TYPE journal_status AS ENUM (
-      'draft',
-      'pending_payment',
-      'active',
-      'suspended',
-      'archived'
-    );
-  END IF;
-
-
-  /* =========================
-     PAPER & WORKFLOW ENUMS
-  ========================== */
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
     CREATE TYPE paper_status AS ENUM (
+      'awaiting_payment',
       'submitted',
-      'assigned_to_editor',
+      'assigned_to_sub_editor',
       'under_review',
       'pending_revision',
       'resubmitted',
       'accepted',
-      'awaiting_payment',
       'ready_for_publication',
       'rejected',
       'published'
     );
   END IF;
 
-
-  /* =========================
-     REVIEW ENUMS
-  ========================== */
-
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_decision') THEN
     CREATE TYPE review_decision AS ENUM (
-      'accept',
+      'accepted',
       'minor_revision',
       'major_revision',
-      'reject'
+      'rejected'
     );
   END IF;
 
@@ -104,12 +78,11 @@ DO $$ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chief_editor_decision') THEN
     CREATE TYPE chief_editor_decision AS ENUM (
-      'accept',
-      'reject',
+      'accepted',
+      'rejected',
       'revision'
     );
   END IF;
-
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (

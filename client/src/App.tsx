@@ -64,12 +64,12 @@ const App = () => (
                   />
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
-                    <Route path="/author" element={<AuthorDashboard />} />
+                    {/* <Route path="/author" element={<AuthorDashboard />} />
                     <Route
                       path="/author/submissions"
                       element={<MySubmissions />}
-                    />
-                    <Route path="/author/submit" element={<SubmitPaper />} />
+                    /> */}
+                    <Route path="/author" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />
                   </Route>
                   <Route

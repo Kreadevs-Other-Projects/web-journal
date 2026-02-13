@@ -26,7 +26,7 @@ export const getSubEditorPapers = async (subEditorId: string) => {
     WHERE
       ea.sub_editor_id = $1
       AND p.status IN (
-        'assigned_to_editor',
+        'assigned_to_sub_editor',
         'under_review',
         'pending_revision',
         'resubmitted'

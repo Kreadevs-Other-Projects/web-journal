@@ -28,7 +28,7 @@ export const approveJournalRepo = async (
     await client.query(
       `
       UPDATE journal_issues
-      SET status = 'open', updated_at = NOW()
+      SET status = 'draft', updated_at = NOW()
       WHERE id = $1 AND journal_id = $2
       `,
       [issueId, journalId],

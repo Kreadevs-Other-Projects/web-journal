@@ -15,17 +15,12 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
     const journal_id = req.params.journalId;
     const data: JournalIssueData = req.body;
 
-    const { issue, payment } = await addJournalIssueService(
-      req.user,
-      journal_id,
-      data,
-    );
+    const { issue } = await addJournalIssueService(req.user, journal_id, data);
 
     return res.status(201).json({
       success: true,
       message: "Journal issue created. Invoice sent to your email.",
       issue,
-      payment,
     });
   } catch (error: any) {
     return res.status(400).json({

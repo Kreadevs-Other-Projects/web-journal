@@ -27,54 +27,58 @@ export const fetchPublisherJournals = async () => {
   return repo.getPublisherJournals();
 };
 
-export const journalPaymentService = {
-  sendInvoice: async ({
-    journalId,
-    issueId,
-    amount,
-  }: {
-    journalId: string;
-    issueId?: string;
-    amount: number;
-  }) => {
-    const { rows } = await pool.query(
-      `
-      SELECT j.id AS journal_id, j.title AS journal_name,
-             u.id AS owner_id, u.username AS owner_name, u.email AS owner_email,
+export const journalPaymentInvoice = async (
+  user: { id: string; role: string },
+  journalId: string,
+  issueId: string,
+  amount: number,
+) => {
+  if (user.role !== "publisher") {
+    throw new Error("Only owners can generate journal invoices");
+  }
+
+  const { rows } = await pool.query(
+    `
+      SELECT j.id AS journal_id, 
+             j.title AS journal_name,
+             j.owner_id,
+             u.username AS owner_name, 
+             u.email AS owner_email,
              ji.label AS issue_label
       FROM journals j
       JOIN users u ON u.id = j.owner_id
       LEFT JOIN journal_issues ji ON ji.id = $1
       WHERE j.id = $2
       `,
-      [issueId || null, journalId],
-    );
+    [issueId, journalId],
+  );
 
-    if (!rows[0]) throw new Error("Journal not found");
+  if (!rows[0]) {
+    throw new Error("Journal not found");
+  }
 
-    const info = rows[0];
+  const info = rows[0];
 
-    const payment = await repo.createJournalPayment({
-      journalId,
-      ownerId: info.owner_id,
-      issueId,
-      amount,
-      status: "pending",
-    });
+  const payment = await repo.createJournalPayment({
+    journalId,
+    ownerId: info.owner_id,
+    issueId,
+    amount,
+    status: "pending",
+  });
 
-    await sendInvoiceEmail({
-      email: info.owner_email,
-      username: info.owner_name,
-      journalName: info.journal_name,
-      issueLabel: info.issue_label || "N/A",
-      amount: Number(payment.amount),
-      currency: payment.currency,
-      invoiceId: payment.id,
-      status: payment.status,
-    });
+  await sendInvoiceEmail({
+    email: info.owner_email,
+    username: info.owner_name,
+    journalName: info.journal_name,
+    issueLabel: info.issue_label || "N/A",
+    amount: payment.amount,
+    currency: payment.currency,
+    invoiceId: payment.id,
+    status: payment.status,
+  });
 
-    return payment;
-  },
+  return payment;
 };
 
 export const fetchJournalIssues = async (journalId: string) => {
@@ -106,4 +110,63 @@ export const getPapersByIssueIdService = async (issueId: string) => {
     count: papers.length,
     papers,
   };
+};
+
+export const sendPaperPaymentInvoice = async ({
+  paperId,
+  authorId,
+  pages,
+  pricePerPage,
+  currency = "USD",
+  username,
+  journalName,
+  issueLabel,
+  authorEmail,
+}: {
+  paperId: string;
+  authorId: string;
+  pages: number;
+  pricePerPage: number;
+  currency?: string;
+  username: string;
+  journalName: string;
+  issueLabel: string;
+  authorEmail: string;
+}) => {
+  const client = await pool.connect();
+  const totalAmount = pages * pricePerPage;
+  const status = "pending";
+
+  try {
+    await client.query("BEGIN");
+
+    const { rows } = await client.query(
+      `INSERT INTO paper_payments 
+        (paper_id, author_id, pages, price_per_page, total_amount, currency, status) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [paperId, authorId, pages, pricePerPage, totalAmount, currency, status],
+    );
+
+    const paymentId = rows[0].id;
+
+    await sendInvoiceEmail({
+      email: authorEmail,
+      username,
+      journalName,
+      issueLabel,
+      amount: totalAmount,
+      currency,
+      status,
+      invoiceId: paymentId,
+    });
+
+    await client.query("COMMIT");
+    return { totalAmount, currency, status, paymentId };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Failed to send paper payment invoice:", error);
+    throw new Error("Payment email or DB insert failed");
+  } finally {
+    client.release();
+  }
 };

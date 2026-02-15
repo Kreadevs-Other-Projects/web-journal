@@ -44,8 +44,31 @@ export const getPaperById = async (id: string) => {
 };
 
 export const getAllPapers = async () => {
-  const result = await pool.query(`SELECT * FROM papers`);
-  return result.rows;
+  const result = await pool.query(`
+      SELECT 
+        p.id,
+        p.title,
+        p.abstract,
+        p.category,
+        p.keywords,
+        p.status,
+        p.journal_id,
+        p.issue_id,
+        p.current_version_id,
+        p.submitted_at,
+        p.accepted_at,
+        p.published_at,
+        p.created_at,
+        p.updated_at,
+        u.id AS author_id,
+        u.username AS authors,
+        u.email AS author_email
+      FROM papers p
+      LEFT JOIN users u ON p.author_id = u.id
+      ORDER BY p.created_at DESC
+    `);
+
+  return result.rows[0];
 };
 
 export const getPapersByAuthor = async (author_id: string) => {

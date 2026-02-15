@@ -12,9 +12,9 @@ import { validate } from "../middlewares/validate.middleware";
 const router = Router();
 
 router.post(
-  "/createPaperPayment/:paperId",
+  "/createPaperPayment",
   authMiddleware,
-  authorize("author"),
+  authorize("publisher"),
   createPaperPayment,
 );
 

@@ -9,9 +9,17 @@ export const createPaperPayment = async (req: AuthUser, res: Response) => {
   try {
     if (!req.user) throw new Error("Unauthorized");
 
-    const paperId = req.params.paperId;
+    const { paperId, pricePerPage } = req.body;
 
-    const payment = await createPaperPaymentService(req.user, paperId);
+    if (!pricePerPage || pricePerPage <= 0) {
+      throw new Error("Invalid payment amount");
+    }
+
+    const payment = await createPaperPaymentService(
+      req.user,
+      paperId,
+      pricePerPage,
+    );
 
     res.status(201).json({
       success: true,

@@ -8,6 +8,7 @@ import {
   getPapers,
   getPapersByIssueId,
   sendInvoice,
+  sendPaymentEmail,
 } from "../controllers/publisher.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import { zPublisherIssueSchema } from "../schemas/publisher.schema";
@@ -61,5 +62,7 @@ router.get(
 );
 
 router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
+
+router.post("/sendEmail", authMiddleware, sendPaymentEmail);
 
 export default router;

@@ -1,17 +1,16 @@
 import {
-  createPaperPaymentRepo,
+  createPaperPayment,
   getPaymentByPaperIdRepo,
   markPaymentPaidRepo,
 } from "../repositories/paperPayment.repository";
 import { pool } from "../configs/db";
 
-const PRICE_PER_PAGE = 5;
-
 export const createPaperPaymentService = async (
   user: { id: string; role: string },
   paper_id: string,
+  amount: number,
 ) => {
-  if (user.role !== "author") {
+  if (user.role !== "publisher") {
     throw new Error("Only authors can create paper payment");
   }
 
@@ -22,18 +21,24 @@ export const createPaperPaymentService = async (
 
   if (!paper.rows.length) throw new Error("Paper not found");
 
-  const p = paper.rows[0];
-
-  if (p.author_id !== user.id) {
-    throw new Error("Forbidden");
-  }
+  // if (paper.rows[0].author_id !== user.id) {
+  //   throw new Error("Forbidden");
+  // }
 
   const existing = await getPaymentByPaperIdRepo(paper_id);
   if (existing) return existing;
 
-  const pageCount = 1;
-
-  return createPaperPaymentRepo(paper_id, user.id, pageCount, PRICE_PER_PAGE);
+  return pool
+    .query(
+      `
+      INSERT INTO paper_payments
+      (paper_id, author_id, pages, price_per_page, total_amount)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING *
+    `,
+      [paper_id, user.id, 1, amount, amount],
+    )
+    .then((res) => res.rows[0]);
 };
 
 export const payPaperPaymentService = async (

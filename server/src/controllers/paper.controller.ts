@@ -19,7 +19,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
   });
 };
 
-export const getAllPapers = async (_req: any, res: Response) => {
+export const getAllPapers = async (req: AuthUser, res: Response) => {
   const papers = await getAllPapersService();
   res.json({ success: true, papers });
 };

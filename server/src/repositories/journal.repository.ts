@@ -22,7 +22,7 @@ export const createJournal = async (owner_id: string, data: Journal) => {
 export const getOwnerJournals = async (owner_id: string) => {
   const result = await pool.query(
     `
-    SELECT id, title, acronym, issn, website_url, description, created_at
+    SELECT id, title, acronym, issn, status,website_url, description, created_at
     FROM journals
     WHERE owner_id = $1
     ORDER BY created_at DESC

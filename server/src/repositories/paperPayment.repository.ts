@@ -1,6 +1,6 @@
 import { pool } from "../configs/db";
 
-export const createPaperPaymentRepo = async (
+export const createPaperPayment = async (
   paper_id: string,
   author_id: string,
   pages: number,

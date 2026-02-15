@@ -34,8 +34,9 @@ export const getJournals = async (req: AuthUser, res: Response) => {
   res.json({ success: true, journals });
 };
 
-export const sendInvoice = async (req: Request, res: Response) => {
+export const sendInvoice = async (req: AuthUser, res: Response) => {
   try {
+    const user = req.user!;
     const { journalId, issueId, amount } = req.body;
 
     if (!journalId || !amount) {
@@ -44,11 +45,12 @@ export const sendInvoice = async (req: Request, res: Response) => {
         .json({ success: false, message: "journalId and amount required" });
     }
 
-    const payment = await service.journalPaymentService.sendInvoice({
+    const payment = await service.journalPaymentInvoice(
+      user,
       journalId,
       issueId,
       amount,
-    });
+    );
 
     res.json({ success: true, data: payment });
   } catch (err: any) {
@@ -90,5 +92,50 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
     success: true,
     message: "Papers fetched successfully",
     data,
+  });
+};
+
+export const sendPaymentEmail = async (req: Request, res: Response) => {
+  const {
+    paperId,
+    authorId,
+    pages,
+    pricePerPage,
+    username,
+    journalName,
+    issueLabel,
+    authorEmail,
+    currency,
+  } = req.body;
+
+  if (
+    !paperId ||
+    !authorId ||
+    !pages ||
+    !pricePerPage ||
+    !username ||
+    !journalName ||
+    !issueLabel ||
+    !authorEmail
+  ) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const invoice = await service.sendPaperPaymentInvoice({
+    paperId,
+    authorId,
+    pages,
+    pricePerPage,
+    currency,
+    username,
+    journalName,
+    issueLabel,
+    authorEmail,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Payment email sent and record created",
+    invoice,
   });
 };

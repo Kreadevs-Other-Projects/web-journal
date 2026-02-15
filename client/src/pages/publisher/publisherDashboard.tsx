@@ -147,7 +147,7 @@ export default function PublisherDashboard() {
     }
   };
 
-  const sendInvoice = async (journalId: string) => {
+  const sendInvoice = async (journalId: string, issueId: string) => {
     if (!invoiceAmount || invoiceAmount <= 0) {
       toast({
         variant: "destructive",
@@ -164,6 +164,7 @@ export default function PublisherDashboard() {
 
       const payload = {
         journalId,
+        issueId,
         amount: invoiceAmount,
       };
 
@@ -651,7 +652,9 @@ export default function PublisherDashboard() {
                         </Button>
 
                         <Button
-                          onClick={() => sendInvoice(selectedJournal.id)}
+                          onClick={() =>
+                            sendInvoice(selectedJournal.id, selectedIssue.id)
+                          }
                           disabled={
                             sendingInvoice ||
                             !invoiceAmount ||

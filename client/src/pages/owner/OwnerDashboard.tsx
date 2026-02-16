@@ -56,6 +56,7 @@ interface Journal {
   website_url: string;
   created_at: string;
   updated_at: string;
+  expiry_at: string;
 }
 
 interface Editor {
@@ -64,19 +65,26 @@ interface Editor {
   email: string;
 }
 
+interface Issue {
+  id: string;
+  journal_id: string;
+  amount: number;
+  created_at: string;
+}
+
 export default function OwnerDashboard(): JSX.Element {
   const { user, token, isLoading } = useAuth();
   const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [editors, setEditors] = useState<Editor[]>([]);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [invoiceAmount, setInvoiceAmount] = useState<number | "">("");
   const [chiefEditors, setChiefEditors] = useState<Editor[]>([]);
   const [editorDialog, setEditorDialog] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [loadingEditors, setLoadingEditors] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState("overview");
 
   const fetchJournals = async () => {
     try {
@@ -96,12 +104,13 @@ export default function OwnerDashboard(): JSX.Element {
   };
 
   const fetchChiefEditors = async () => {
+    if (!selectedJournal) return;
+    setLoadingEditors(true);
     try {
       const res = await fetch(`${url}/owner/getChief-Editor`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-
       if (data.success) {
         setChiefEditors(data.data);
       } else {
@@ -118,12 +127,13 @@ export default function OwnerDashboard(): JSX.Element {
         description: e.message || "Something went wrong.",
         variant: "destructive",
       });
+    } finally {
+      setLoadingEditors(false);
     }
   };
 
   const removeEditor = async (editorId: string) => {
     if (!selectedJournal) return;
-
     const confirmed = window.confirm(
       "Are you sure you want to remove this editor?",
     );
@@ -153,6 +163,60 @@ export default function OwnerDashboard(): JSX.Element {
         variant: "destructive",
       });
       fetchChiefEditors();
+    }
+  };
+
+  const sendInvoice = async (journalId: string, issueId: string) => {
+    if (!invoiceAmount || invoiceAmount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid invoice amount",
+      });
+      return;
+    }
+
+    try {
+      setSendingInvoice(true);
+
+      const endpoint = `${url}/publisher/sendInvoice`;
+
+      const payload = {
+        journalId,
+        issueId,
+        amount: invoiceAmount,
+      };
+
+      const options = {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      };
+
+      const res = await fetch(endpoint, options);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send invoice");
+      }
+
+      toast({
+        title: "Invoice Sent",
+        description: `Invoice of ${invoiceAmount} PKR sent to the journal owner`,
+      });
+
+      setInvoiceAmount("");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Invoice Failed",
+        description: err.message || "Could not send invoice",
+      });
+    } finally {
+      setSendingInvoice(false);
     }
   };
 
@@ -235,7 +299,6 @@ export default function OwnerDashboard(): JSX.Element {
   return (
     <DashboardLayout role={user.role} userName={user.username}>
       <div className="space-y-8">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-white">Owner Dashboard</h1>
@@ -255,7 +318,6 @@ export default function OwnerDashboard(): JSX.Element {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="glass-card hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -286,10 +348,8 @@ export default function OwnerDashboard(): JSX.Element {
                 {stats.activeJournals}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {(
-                  (stats.activeJournals / stats.totalJournals) * 100 || 0
-                ).toFixed(1)}
-                % of total
+                {(stats.activeJournals / stats.totalJournals) * 100 || 0}% of
+                total
               </p>
             </CardContent>
           </Card>
@@ -327,7 +387,6 @@ export default function OwnerDashboard(): JSX.Element {
           </Card>
         </div>
 
-        {/* Tabs Navigation */}
         <Tabs defaultValue="journals" className="space-y-4">
           <TabsList className="glass-card">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -337,7 +396,6 @@ export default function OwnerDashboard(): JSX.Element {
           </TabsList>
 
           <TabsContent value="journals" className="space-y-4">
-            {/* Search and Filter Bar */}
             <Card className="glass-card">
               <CardContent className="p-4">
                 <div className="flex flex-col md:flex-row gap-4">
@@ -371,7 +429,6 @@ export default function OwnerDashboard(): JSX.Element {
               </CardContent>
             </Card>
 
-            {/* Journals Table */}
             <Card className="glass-card">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -387,6 +444,9 @@ export default function OwnerDashboard(): JSX.Element {
                           Chief Editor
                         </TableHead>
                         <TableHead className="text-white">Created</TableHead>
+                        <TableHead className="text-white">
+                          Expiry Date
+                        </TableHead>
                         <TableHead className="text-white text-right">
                           Actions
                         </TableHead>
@@ -458,6 +518,14 @@ export default function OwnerDashboard(): JSX.Element {
                                 ).toLocaleDateString()}
                               </div>
                             </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(
+                                  journal.expiry_at,
+                                ).toLocaleDateString()}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <Button
@@ -472,6 +540,7 @@ export default function OwnerDashboard(): JSX.Element {
                                 >
                                   <UserPlus className="h-4 w-4" />
                                 </Button>
+
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -479,6 +548,7 @@ export default function OwnerDashboard(): JSX.Element {
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
+
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -486,6 +556,7 @@ export default function OwnerDashboard(): JSX.Element {
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
+
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -493,6 +564,19 @@ export default function OwnerDashboard(): JSX.Element {
                                 >
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
+
+                                {new Date(journal.expiry_at).getTime() -
+                                  Date.now() <=
+                                  30 * 24 * 60 * 60 * 1000 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2"
+                                    // onClick={() => sendInvoice(journal.id)}
+                                  >
+                                    Send Invoice
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -547,7 +631,6 @@ export default function OwnerDashboard(): JSX.Element {
         </Tabs>
       </div>
 
-      {/* Editor Management Dialog */}
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

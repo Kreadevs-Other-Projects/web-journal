@@ -567,16 +567,17 @@ export default function OwnerDashboard(): JSX.Element {
 
                                 {new Date(journal.expiry_at).getTime() -
                                   Date.now() <=
-                                  30 * 24 * 60 * 60 * 1000 && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 px-2"
-                                    // onClick={() => sendInvoice(journal.id)}
-                                  >
-                                    Send Invoice
-                                  </Button>
-                                )}
+                                  30 * 24 * 60 * 60 * 1000 &&
+                                  journal.status !== "pending_payment" && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-2"
+                                      // onClick={() => sendInvoice(journal.id)}
+                                    >
+                                      Send Invoice
+                                    </Button>
+                                  )}
                               </div>
                             </TableCell>
                           </TableRow>

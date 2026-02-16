@@ -123,3 +123,66 @@ export const SubEditorInvite = async (req: Request, res: Response) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+export const getPapersByIssue = async (req: Request, res: Response) => {
+  try {
+    const { issueId } = req.params;
+
+    const papers = await service.getPapersByIssueService(issueId);
+
+    res.json({
+      success: true,
+      papers,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const assignPaperToIssue = async (req: Request, res: Response) => {
+  try {
+    const { paperId, issueId } = req.body;
+
+    const updatedPaper = await service.assignPaperToIssueService(
+      paperId,
+      issueId,
+    );
+
+    res.json({
+      success: true,
+      message: "Paper assigned to issue successfully",
+      paper: updatedPaper,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateIssueStatus = async (req: Request, res: Response) => {
+  try {
+    const { issueId } = req.params;
+    const { status } = req.body;
+
+    const updatedIssue = await service.updateIssueStatusService(
+      issueId,
+      status,
+    );
+
+    res.json({
+      success: true,
+      message: `Issue ${status} successfully`,
+      issue: updatedIssue,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

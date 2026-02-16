@@ -34,6 +34,8 @@ interface Paper {
   id: string;
   title: string;
   JournalId: string;
+  journal_name: string;
+  label: string;
   author_id: string;
   authors?: string;
   author_email?: string;
@@ -56,9 +58,9 @@ export default function PublisherPapersDashboard() {
   const [paymentAmount, setPaymentAmount] = useState("");
 
   const statusMap: Record<string, string[]> = {
-    all: ["pending", "approved", "submitted"],
+    all: ["pending", "paid", "submitted"],
     pending: ["pending", "submitted"],
-    approved: ["approved"],
+    paid: ["paid"],
   };
 
   const fetchPapers = async () => {
@@ -94,43 +96,38 @@ export default function PublisherPapersDashboard() {
 
   const sendPaymentRequest = async () => {
     if (!selectedPaper || !paymentAmount.trim()) {
-      console.log("Validation failed: Missing paper or payment amount");
       return;
     }
 
     try {
       setSendingEmail(true);
-      console.log("Preparing payment request:", {
-        paperId: selectedPaper.id,
-        authorId: selectedPaper.author_id,
-        pricePerPage: parseFloat(paymentAmount),
-        authorEmail: selectedPaper.author_email,
-      });
 
-      const res = await fetch(`${url}/paperPayment/createPaperPayment`, {
+      const payload = {
+        paperId: selectedPaper.id,
+        title: selectedPaper.title,
+        authorId: selectedPaper.author_id,
+        pages: 1,
+        pricePerPage: parseFloat(paymentAmount),
+        username: selectedPaper.authors,
+        journal_name: selectedPaper.journal_name,
+        label: selectedPaper.label,
+        author_email: selectedPaper.author_email,
+      };
+
+      const res = await fetch(`${url}/publisher/sendEmail`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          paperId: selectedPaper.id,
-          authorId: selectedPaper.author_id,
-          pages: 1,
-          pricePerPage: parseFloat(paymentAmount),
-          // username: selectedPaper.authors,
-          journalName: selectedPaper.JournalId,
-          issueLabel: "Issue 1",
-          authorEmail: selectedPaper.author_email,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      console.log("Response status:", res.status);
-
       const data = await res.json();
-      console.log("Response data:", data);
 
-      if (!res.ok) throw new Error(data.message || "Failed to send payment");
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send payment");
+      }
 
       toast({
         title: "Payment Sent",
@@ -140,7 +137,6 @@ export default function PublisherPapersDashboard() {
       setEmailModalOpen(false);
       setPaymentAmount("");
     } catch (err: any) {
-      console.error("Payment request error:", err);
       toast({
         variant: "destructive",
         title: "Error",
@@ -148,7 +144,45 @@ export default function PublisherPapersDashboard() {
       });
     } finally {
       setSendingEmail(false);
-      console.log("Email sending state reset");
+    }
+  };
+
+  const approvePaperPayment = async (paperId: string) => {
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${url}/publisher/approve/${paperId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to approve payment");
+      }
+
+      toast({
+        title: "Success",
+        description: "Paper marked as paid successfully",
+      });
+
+      setPapers((prev) =>
+        prev.map((paper) =>
+          paper.id === paperId ? { ...paper, status: "paid" } : paper,
+        ),
+      );
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to approve payment",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -158,10 +192,10 @@ export default function PublisherPapersDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case "approved":
+      case "paid":
         return (
           <Badge className="bg-green-500/20 text-green-400 border-green-500/30 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" /> Approved
+            <CheckCircle className="h-3 w-3" /> Paid
           </Badge>
         );
       case "pending":
@@ -203,7 +237,7 @@ export default function PublisherPapersDashboard() {
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="pending">Pending</TabsTrigger>
-                <TabsTrigger value="approved">Approved</TabsTrigger>
+                <TabsTrigger value="paid">Paid</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -253,7 +287,7 @@ export default function PublisherPapersDashboard() {
                     </p>
                   )}
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -263,7 +297,18 @@ export default function PublisherPapersDashboard() {
                       setEmailModalOpen(true);
                     }}
                   >
-                    <DollarSign className="h-4 w-4" /> Send Payment Request
+                    <DollarSign className="h-4 w-4" />
+                    Send Payment Request
+                  </Button>
+
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => approvePaperPayment(paper.id)}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Approve
                   </Button>
                 </CardFooter>
               </Card>

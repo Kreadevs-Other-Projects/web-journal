@@ -62,9 +62,13 @@ export const getAllPapers = async () => {
         p.updated_at,
         u.id AS author_id,
         u.username AS authors,
-        u.email AS author_email
+        u.email AS author_email,
+        j.title AS journal_name,
+        ji.label
       FROM papers p
       LEFT JOIN users u ON p.author_id = u.id
+      LEFT JOIN journals j ON p.journal_id = j.id
+      LEFT JOIN journal_issues ji ON p.issue_id = ji.id
       ORDER BY p.created_at DESC
     `);
 

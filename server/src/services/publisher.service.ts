@@ -1,6 +1,6 @@
 import { pool } from "../configs/db";
 import * as repo from "../repositories/publisher.repository";
-import { sendInvoiceEmail } from "../utils/email";
+import { sendInvoiceEmail, paperPaymentEmail } from "../utils/email";
 
 export type Journal = {
   journalId: string;
@@ -85,16 +85,6 @@ export const fetchJournalIssues = async (journalId: string) => {
   return repo.getJournalIssues(journalId);
 };
 
-export const addJournalIssue = async (journalId: string, data: Journal) => {
-  return repo.createJournalIssue(
-    journalId,
-    data.year,
-    data.volume,
-    data.issue,
-    data.label,
-  );
-};
-
 export const setIssuePublished = async (issueId: string) => {
   return repo.publishIssue(issueId);
 };
@@ -120,8 +110,9 @@ export const sendPaperPaymentInvoice = async ({
   currency = "USD",
   username,
   journalName,
-  issueLabel,
+  label,
   authorEmail,
+  title,
 }: {
   paperId: string;
   authorId: string;
@@ -130,8 +121,9 @@ export const sendPaperPaymentInvoice = async ({
   currency?: string;
   username: string;
   journalName: string;
-  issueLabel: string;
+  label: string;
   authorEmail: string;
+  title: string;
 }) => {
   const client = await pool.connect();
   const totalAmount = pages * pricePerPage;
@@ -149,15 +141,16 @@ export const sendPaperPaymentInvoice = async ({
 
     const paymentId = rows[0].id;
 
-    await sendInvoiceEmail({
+    await paperPaymentEmail({
       email: authorEmail,
       username,
+      title,
+      paymentId,
+      pages,
+      pricePerPage,
+      totalAmount,
       journalName,
-      issueLabel,
-      amount: totalAmount,
-      currency,
-      status,
-      invoiceId: paymentId,
+      label,
     });
 
     await client.query("COMMIT");
@@ -169,4 +162,18 @@ export const sendPaperPaymentInvoice = async ({
   } finally {
     client.release();
   }
+};
+
+export const approvePaperPaymentService = async (id: string) => {
+  if (!id) {
+    throw new Error("Payment ID is required");
+  }
+
+  const payment = await repo.approvePaperPaymentRepo(id);
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  return payment;
 };

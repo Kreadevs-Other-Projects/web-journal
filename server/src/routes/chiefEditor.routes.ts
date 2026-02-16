@@ -10,6 +10,9 @@ import {
   fetchSubEditors,
   getSubmittedReviews,
   SubEditorInvite,
+  getPapersByIssue,
+  assignPaperToIssue,
+  updateIssueStatus,
 } from "../controllers/chiefEditor.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import {
@@ -93,5 +96,11 @@ router.post(
   authorize("chief_editor"),
   SubEditorInvite,
 );
+
+router.get("/getPapersByIssue/:issueId", getPapersByIssue);
+
+router.post("/assignPaperToIssue", assignPaperToIssue);
+
+router.put("/updateIssueStatus/:issueId", updateIssueStatus);
 
 export default router;

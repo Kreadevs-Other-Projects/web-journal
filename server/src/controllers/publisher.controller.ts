@@ -65,12 +65,6 @@ export const getIssues = async (req: Request, res: Response) => {
   res.json({ success: true, data: issues });
 };
 
-export const createIssue = async (req: Request, res: Response) => {
-  const { journalId } = req.params;
-  const issue = await service.addJournalIssue(journalId, req.body);
-  res.json({ success: true, data: issue });
-};
-
 export const publishIssue = async (req: Request, res: Response) => {
   const { issueId } = req.params;
   const updatedIssue = await service.setIssuePublished(issueId);
@@ -96,46 +90,75 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
 };
 
 export const sendPaymentEmail = async (req: Request, res: Response) => {
-  const {
-    paperId,
-    authorId,
-    pages,
-    pricePerPage,
-    username,
-    journalName,
-    issueLabel,
-    authorEmail,
-    currency,
-  } = req.body;
+  try {
+    const {
+      paperId,
+      authorId,
+      pages,
+      pricePerPage,
+      username,
+      journal_name,
+      label,
+      author_email,
+      currency = "PKR",
+      title,
+    } = req.body;
 
-  if (
-    !paperId ||
-    !authorId ||
-    !pages ||
-    !pricePerPage ||
-    !username ||
-    !journalName ||
-    !issueLabel ||
-    !authorEmail
-  ) {
-    return res.status(400).json({ message: "Missing required fields" });
+    if (
+      !paperId ||
+      !authorId ||
+      !pages ||
+      !pricePerPage ||
+      !username ||
+      !journal_name ||
+      !label ||
+      !author_email
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const invoice = await service.sendPaperPaymentInvoice({
+      paperId,
+      authorId,
+      pages,
+      pricePerPage,
+      currency,
+      username,
+      journalName: journal_name,
+      label,
+      authorEmail: author_email,
+      title,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment email sent and record created",
+      invoice,
+    });
+  } catch (error: any) {
+    console.error("Error in sendPaymentEmail controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
   }
+};
 
-  const invoice = await service.sendPaperPaymentInvoice({
-    paperId,
-    authorId,
-    pages,
-    pricePerPage,
-    currency,
-    username,
-    journalName,
-    issueLabel,
-    authorEmail,
-  });
+export const approvePaper = async (req: Request, res: Response) => {
+  try {
+    const { paymentId } = req.params;
 
-  res.status(200).json({
-    success: true,
-    message: "Payment email sent and record created",
-    invoice,
-  });
+    const approvedPayment = await service.approvePaperPaymentService(paymentId);
+
+    res.status(200).json({
+      success: true,
+      message: "Paper payment approved successfully",
+      data: approvedPayment,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to approve payment",
+    });
+  }
 };

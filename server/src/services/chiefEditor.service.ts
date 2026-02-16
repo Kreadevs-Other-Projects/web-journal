@@ -90,3 +90,67 @@ export const sendInviteEmailSubEditor = async (email: string) => {
 
   return { email, signupLink };
 };
+
+export const getPapersByIssueService = async (issueId: string) => {
+  if (!issueId) throw new Error("Issue ID is required");
+
+  const papers = await repo.getPapersByIssueRepo(issueId);
+
+  return papers.map((paper: any) => ({
+    id: paper.id,
+    title: paper.title,
+    status: paper.status,
+    authors: paper.author_name ? [paper.author_name] : [],
+    submittedDate: paper.submitted_date,
+    issueId: paper.issue_id,
+    journalId: paper.journal_id,
+  }));
+};
+
+export const assignPaperToIssueService = async (
+  paperId: string,
+  issueId: string,
+) => {
+  if (!paperId || !issueId) {
+    throw new Error("Paper ID and Issue ID are required");
+  }
+
+  const issue = await repo.getIssueByIdRepo(issueId);
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+  if (issue.status === "closed" || issue.status === "published") {
+    throw new Error(`Cannot assign paper. Issue is ${issue.status}.`);
+  }
+
+  const paper = await repo.getPaperByIdRepo(paperId);
+  if (!paper) {
+    throw new Error("Paper not found");
+  }
+
+  if (paper.issue_id) {
+    throw new Error("Paper is already assigned to an issue");
+  }
+
+  if (paper.journal_id !== issue.journal_id) {
+    throw new Error("Paper does not belong to the same journal as this issue");
+  }
+
+  return await repo.assignPaperToIssueRepo(paperId, issueId);
+};
+
+export const updateIssueStatusService = async (
+  issueId: string,
+  status: "open" | "closed",
+) => {
+  if (!["open", "closed"].includes(status)) {
+    throw new Error("Invalid status. Must be 'open' or 'closed'");
+  }
+
+  const issue = await repo.getIssueByIdRepo(issueId);
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+
+  return await repo.updateIssueStatusRepo(issueId, status);
+};

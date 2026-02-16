@@ -21,7 +21,6 @@ import NotFound from "./pages/NotFound";
 import MySubmissions from "./pages/author/MySubmissions.tsx";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
-import Submissions from "./pages/chiefEditor/Submissions.tsx";
 import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
@@ -100,10 +99,6 @@ const App = () => (
                     <Route
                       path="/chief-editor"
                       element={<ChiefEditorDashboard />}
-                    />
-                    <Route
-                      path="/chief-editor/papers"
-                      element={<Submissions />}
                     />
                     <Route
                       path="/chief-editor/accepted"

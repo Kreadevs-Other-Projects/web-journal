@@ -286,3 +286,56 @@ export const sendInvoiceEmail = async ({
     text: `Invoice ${invoiceId} | Amount ${amount} ${currency} | Status ${status}`,
   });
 };
+
+export const paperPaymentEmail = async ({
+  email,
+  username,
+  title,
+  paymentId,
+  totalAmount,
+  journalName,
+  label,
+}: {
+  email: string;
+  username: string;
+  title: string;
+  paymentId: string;
+  pages: number;
+  pricePerPage: number;
+  totalAmount: number;
+  journalName: string;
+  label: string;
+}) => {
+  const status = "pending";
+
+  const content = `
+    <p>Dear ${username},</p>
+
+    <p>Your paper payment invoice has been generated successfully.</p>
+
+    <p><strong>Journal Name:</strong> ${journalName}</p>
+    <p><strong>Issue Label:</strong> ${label}</p>
+    <p><strong>Paper Title:</strong> ${title}</p>
+    <p><strong>Payment ID:</strong> ${paymentId}</p>
+
+    <p><strong>Amount:</strong> ${totalAmount}</p>
+
+    <p>
+      Please complete the payment to proceed with the publication process.
+    </p>
+
+    <p>
+      If you have any questions, feel free to contact the editorial office.
+    </p>
+
+    <p>Best regards,<br/>JournalHub Editorial Team</p>
+  `;
+
+  await transporter.sendMail({
+    from: `"JournalHub" <${env.EMAIL_FROM}>`,
+    to: email,
+    subject: `Invoice for Journal Issue (${status.toUpperCase()})`,
+    html: baseEmailTemplate("Paper Payment Invoice", content),
+    text: `Invoice ${paymentId} | Amount $${totalAmount} | Status ${status}`,
+  });
+};

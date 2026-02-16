@@ -158,22 +158,6 @@ export const createJournalPayment = async ({
   return res.rows[0];
 };
 
-export const createJournalIssue = async (
-  journalId: string,
-  year: number,
-  volume: number,
-  issue: number,
-  label: string,
-) => {
-  const result = await pool.query(
-    `INSERT INTO journal_issues (journal_id, year, volume, issue, label)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [journalId, year, volume, issue, label],
-  );
-  return result.rows[0];
-};
-
 export const publishIssue = async (issueId: string) => {
   const result = await pool.query(
     `UPDATE journal_issues
@@ -217,4 +201,19 @@ export const getPapersByIssueIdRepo = async (issueId: string) => {
   );
 
   return result.rows;
+};
+
+export const approvePaperPaymentRepo = async (paperId: string) => {
+  const { rows } = await pool.query(
+    `
+    UPDATE paper_payments
+    SET status = $1,
+        updated_at = NOW()
+    WHERE paper_id = $2
+    RETURNING *
+    `,
+    ["paid", paperId],
+  );
+
+  return rows[0];
 };

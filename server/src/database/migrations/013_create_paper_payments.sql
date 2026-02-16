@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS paper_payments (
   status TEXT DEFAULT 'pending',
   transaction_ref TEXT,
   paid_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -3,12 +3,12 @@ import {
   approveJournal,
   getJournals,
   getIssues,
-  createIssue,
   publishIssue,
   getPapers,
   getPapersByIssueId,
   sendInvoice,
   sendPaymentEmail,
+  approvePaper,
 } from "../controllers/publisher.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
 import { zPublisherIssueSchema } from "../schemas/publisher.schema";
@@ -39,14 +39,6 @@ router.post(
   sendInvoice,
 );
 
-router.post(
-  "/createIssue/:journalId",
-  authMiddleware,
-  authorize("publisher"),
-  validate(zPublisherIssueSchema),
-  createIssue,
-);
-
 router.put(
   "/publishIssue/:issueId",
   authMiddleware,
@@ -64,5 +56,7 @@ router.get(
 router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
 
 router.post("/sendEmail", authMiddleware, sendPaymentEmail);
+
+router.put("/approve/:paymentId", approvePaper);
 
 export default router;

@@ -236,3 +236,74 @@ export const getSubmittedReviewsByChiefEditor = async (
 
   return result.rows;
 };
+
+export const getPapersByIssueRepo = async (issueId: string) => {
+  const issueResult = await pool.query(
+    `SELECT journal_id FROM journal_issues WHERE id = $1`,
+    [issueId],
+  );
+
+  if (issueResult.rows.length === 0) {
+    throw new Error("Issue not found");
+  }
+
+  const journalId = issueResult.rows[0].journal_id;
+  const result = await pool.query(
+    `SELECT p.*, 
+            u.username as author_name,
+            u.email as author_email
+     FROM papers p
+     LEFT JOIN users u ON p.author_id = u.id
+     WHERE p.journal_id = $1
+       AND (p.issue_id = $2 OR p.issue_id IS NULL)
+     ORDER BY p.submitted_at DESC`,
+    [journalId, issueId],
+  );
+
+  return result.rows;
+};
+
+export const assignPaperToIssueRepo = async (
+  paperId: string,
+  issueId: string,
+) => {
+  const result = await pool.query(
+    `UPDATE papers
+     SET issue_id = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [issueId, paperId],
+  );
+
+  return result.rows[0];
+};
+
+export const updateIssueStatusRepo = async (
+  issueId: string,
+  status: "open" | "closed",
+) => {
+  const result = await pool.query(
+    `UPDATE journal_issues
+     SET status = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [status, issueId],
+  );
+
+  return result.rows[0];
+};
+
+export const getIssueByIdRepo = async (issueId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM journal_issues WHERE id = $1`,
+    [issueId],
+  );
+  return result.rows[0];
+};
+
+export const getPaperByIdRepo = async (paperId: string) => {
+  const result = await pool.query(`SELECT * FROM papers WHERE id = $1`, [
+    paperId,
+  ]);
+  return result.rows[0];
+};

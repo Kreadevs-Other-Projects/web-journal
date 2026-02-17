@@ -339,3 +339,55 @@ export const paperPaymentEmail = async ({
     text: `Invoice ${paymentId} | Amount $${totalAmount} | Status ${status}`,
   });
 };
+
+export const sendJournalExpiryInvoiceEmail = async ({
+  email,
+  username,
+  journalName,
+  expiryDate,
+  amount,
+  currency,
+  invoiceId,
+  status,
+}: {
+  email: string;
+  username: string;
+  journalName: string;
+  expiryDate: string;
+  amount: number;
+  currency: string;
+  invoiceId: string;
+  status: string;
+}) => {
+  await transporter.sendMail({
+    from: `"JournalHub" <${env.EMAIL_FROM}>`,
+    to: email,
+    subject: `Journal Renewal Invoice (${status.toUpperCase()})`,
+    html: baseEmailTemplate(
+      "Journal Subscription Renewal Invoice",
+      `
+      <p>Hi <strong>${username}</strong>,</p>
+
+      <p>Your journal subscription is about to <strong>expire</strong>. Please find your renewal invoice details below:</p>
+
+      <p><strong>Journal:</strong> ${journalName}</p>
+      <p><strong>Expiry Date:</strong> ${expiryDate}</p>
+      <p><strong>Invoice ID:</strong> ${invoiceId}</p>
+      <p><strong>Amount:</strong> ${amount} ${currency}</p>
+      <p><strong>Status:</strong> <strong>${status.toUpperCase()}</strong></p>
+
+      <a href="${env.CORS_ORIGIN}/dashboard/payments" class="button">
+        Renew Now
+      </a>
+
+      <p>
+        <strong>Important:</strong> If payment is not completed before the expiry date,
+        your journal access may be <strong>suspended</strong>.
+      </p>
+
+      <p>If you have already paid, please ignore this email.</p>
+      `,
+    ),
+    text: `Renewal Invoice ${invoiceId} | Journal ${journalName} | Amount ${amount} ${currency} | Status ${status}`,
+  });
+};

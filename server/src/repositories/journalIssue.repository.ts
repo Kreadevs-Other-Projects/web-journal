@@ -14,11 +14,20 @@ export const createJournalIssue = async (
 ) => {
   const { year, volume, issue, label, published_at } = data;
 
+  const indexResult = await pool.query(
+    `SELECT COALESCE(MAX(article_index), 0) + 1 AS next_index
+     FROM journal_issues
+     WHERE journal_id = $1`,
+    [journal_id],
+  );
+
+  const article_index = indexResult.rows[0].next_index;
+
   const result = await pool.query(
     `
     INSERT INTO journal_issues
-      (journal_id, year, volume, issue, label, published_at)
-    VALUES ($1, $2, $3, $4, $5, $6)
+      (journal_id, year, volume, issue, label, published_at, article_index)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
     `,
     [
@@ -28,6 +37,7 @@ export const createJournalIssue = async (
       issue || null,
       label,
       published_at || null,
+      article_index,
     ],
   );
 

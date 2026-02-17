@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Upload,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -72,19 +73,35 @@ interface Issue {
   created_at: string;
 }
 
+interface Journal {
+  pending_payment?: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+  } | null;
+}
+
 export default function OwnerDashboard(): JSX.Element {
   const { user, token, isLoading } = useAuth();
   const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [sendingInvoice, setSendingInvoice] = useState(false);
-  const [invoiceAmount, setInvoiceAmount] = useState<number | "">("");
   const [chiefEditors, setChiefEditors] = useState<Editor[]>([]);
   const [editorDialog, setEditorDialog] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [loadingEditors, setLoadingEditors] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [uploadReceiptDialog, setUploadReceiptDialog] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(
+    null,
+  );
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const fetchJournals = async () => {
     try {
@@ -166,37 +183,23 @@ export default function OwnerDashboard(): JSX.Element {
     }
   };
 
-  const sendInvoice = async (journalId: string, issueId: string) => {
-    if (!invoiceAmount || invoiceAmount <= 0) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Amount",
-        description: "Please enter a valid invoice amount",
-      });
-      return;
-    }
-
+  const sendInvoice = async (journalId: string) => {
     try {
       setSendingInvoice(true);
 
-      const endpoint = `${url}/publisher/sendInvoice`;
+      const endpoint = `${url}/owner/sendJournalExpiry/${journalId}`;
 
-      const payload = {
-        journalId,
-        issueId,
-        amount: invoiceAmount,
-      };
-
-      const options = {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
-      };
+        body: JSON.stringify({
+          expiryDate: new Date().toISOString(),
+        }),
+      });
 
-      const res = await fetch(endpoint, options);
       const data = await res.json();
 
       if (!res.ok) {
@@ -204,11 +207,9 @@ export default function OwnerDashboard(): JSX.Element {
       }
 
       toast({
-        title: "Invoice Sent",
-        description: `Invoice of ${invoiceAmount} PKR sent to the journal owner`,
+        title: "Invoice Sent Successfully",
+        description: `Total invoice amount: ${data.data.amount} PKR`,
       });
-
-      setInvoiceAmount("");
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -242,6 +243,72 @@ export default function OwnerDashboard(): JSX.Element {
         {status}
       </Badge>
     );
+  };
+
+  const fetchPendingPayments = async (journalId: string) => {
+    try {
+      setLoadingPayments(true);
+
+      const res = await fetch(
+        `${url}/owner/getPendingJournalPayment/${journalId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await res.json();
+      console.log(data);
+
+      if (!res.ok) throw new Error(data.message || "Failed to load payments");
+
+      setPendingPayments(data.data || []);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to fetch payments",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const uploadReceipt = async (paymentId: string, file: File) => {
+    try {
+      setUploadingPaymentId(paymentId);
+
+      const formData = new FormData();
+      formData.append("receipt", file);
+
+      const res = await fetch(`${url}/owner/uploadpaymentImage/${paymentId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Upload failed");
+
+      toast({
+        title: "Receipt Uploaded",
+        description: "Payment receipt uploaded successfully",
+      });
+
+      fetchPendingPayments(selectedJournal!.id);
+    } catch (err: any) {
+      toast({
+        title: "Upload Failed",
+        description: err.message || "Could not upload receipt",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPaymentId(null);
+    }
   };
 
   const filteredJournals = journals.filter((journal) => {
@@ -528,7 +595,7 @@ export default function OwnerDashboard(): JSX.Element {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <Button
+                                {/* <Button
                                   size="sm"
                                   variant="ghost"
                                   className="h-8 w-8 p-0"
@@ -539,31 +606,28 @@ export default function OwnerDashboard(): JSX.Element {
                                   }}
                                 >
                                   <UserPlus className="h-4 w-4" />
-                                </Button>
+                                </Button> */}
 
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="outline"
                                   className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    setSelectedJournal(journal);
+                                    fetchPendingPayments(journal.id);
+                                    setUploadReceiptDialog(true);
+                                  }}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Upload className="h-4 w-4" />
                                 </Button>
 
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-
-                                <Button
+                                {/* <Button
                                   size="sm"
                                   variant="ghost"
                                   className="h-8 w-8 p-0"
                                 >
                                   <MoreVertical className="h-4 w-4" />
-                                </Button>
+                                </Button> */}
 
                                 {new Date(journal.expiry_at).getTime() -
                                   Date.now() <=
@@ -573,9 +637,12 @@ export default function OwnerDashboard(): JSX.Element {
                                       size="sm"
                                       variant="outline"
                                       className="h-8 px-2"
-                                      // onClick={() => sendInvoice(journal.id)}
+                                      onClick={() => sendInvoice(journal.id)}
+                                      disabled={sendingInvoice}
                                     >
-                                      Send Invoice
+                                      {sendingInvoice
+                                        ? "Sending..."
+                                        : "Send Invoice"}
                                     </Button>
                                   )}
                               </div>
@@ -631,6 +698,71 @@ export default function OwnerDashboard(): JSX.Element {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={uploadReceiptDialog} onOpenChange={setUploadReceiptDialog}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              Upload Payment Receipts – {selectedJournal?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingPayments ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+          ) : pendingPayments.length === 0 ? (
+            <div className="text-center text-muted-foreground py-6">
+              No pending payments found
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingPayments.map((p) => (
+                <div
+                  key={p.id}
+                  className="border rounded-lg p-4 flex items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="font-medium text-black">
+                      {p.payment_type === "renewal"
+                        ? "Renewal Payment"
+                        : "Issue Payment"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Amount: {p.amount} {p.currency}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(p.created_at).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      ref={(el) => (fileInputRefs.current[p.id] = el)}
+                      onChange={(e) =>
+                        e.target.files && uploadReceipt(p.id, e.target.files[0])
+                      }
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={uploadingPaymentId === p.id}
+                      onClick={() => fileInputRefs.current[p.id]?.click()}
+                    >
+                      {uploadingPaymentId === p.id
+                        ? "Uploading..."
+                        : "Upload Receipt"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent className="sm:max-w-md">

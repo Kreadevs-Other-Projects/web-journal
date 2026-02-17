@@ -34,22 +34,24 @@ export const journalPaymentInvoice = async (
   amount: number,
 ) => {
   if (user.role !== "publisher") {
-    throw new Error("Only owners can generate journal invoices");
+    throw new Error("Only publishers can generate journal invoices");
   }
 
   const { rows } = await pool.query(
     `
-      SELECT j.id AS journal_id, 
-             j.title AS journal_name,
+      SELECT j.id        AS journal_id, 
+             j.title     AS journal_name,
              j.owner_id,
-             u.username AS owner_name, 
-             u.email AS owner_email,
-             ji.label AS issue_label
+             u.username  AS owner_name, 
+             u.email     AS owner_email,
+             ji.label    AS issue_label,
+             ji.article_index,
+             ji.created_at AS issue_created_at
       FROM journals j
       JOIN users u ON u.id = j.owner_id
       LEFT JOIN journal_issues ji ON ji.id = $1
       WHERE j.id = $2
-      `,
+    `,
     [issueId, journalId],
   );
 
@@ -58,12 +60,61 @@ export const journalPaymentInvoice = async (
   }
 
   const info = rows[0];
+  let finalAmount = amount;
+
+  if (issueId) {
+    if (info.article_index === 1) {
+      finalAmount = amount;
+    } else {
+      const { rows: firstArticleRows } = await pool.query(
+        `
+          SELECT created_at
+          FROM journal_issues
+          WHERE journal_id = $1 AND article_index = 1
+          LIMIT 1
+        `,
+        [journalId],
+      );
+
+      if (!firstArticleRows[0]) {
+        throw new Error("No article_index 1 found for this journal");
+      }
+
+      const startDate = new Date(firstArticleRows[0].created_at);
+
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+
+      const issueCreatedAt = new Date(info.issue_created_at);
+
+      const totalDays = Math.round(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      const daysRemaining = Math.max(
+        0,
+        Math.round(
+          (endDate.getTime() - issueCreatedAt.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      );
+
+      finalAmount = parseFloat(
+        ((amount * daysRemaining) / totalDays).toFixed(2),
+      );
+    }
+
+    await pool.query(`UPDATE journal_issues SET amount = $1 WHERE id = $2`, [
+      finalAmount,
+      issueId,
+    ]);
+  }
 
   const payment = await repo.createJournalPayment({
     journalId,
     ownerId: info.owner_id,
     issueId,
-    amount,
+    amount: finalAmount,
     status: "pending",
   });
 
@@ -176,4 +227,9 @@ export const approvePaperPaymentService = async (id: string) => {
   }
 
   return payment;
+};
+
+export const fetchJournalPayments = async () => {
+  const payments = await repo.getPaymentsByJournal();
+  return payments;
 };

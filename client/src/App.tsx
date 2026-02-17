@@ -7,18 +7,19 @@ import { AnimatePresence } from "framer-motion";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import BrowsePage from "./pages/BrowsePage";
-import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
+// import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
+import PublisherPayments from "./pages/publisher/lop.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import NotFound from "./pages/NotFound";
-import MySubmissions from "./pages/author/MySubmissions.tsx";
+// import MySubmissions from "./pages/author/MySubmissions.tsx";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
 import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
@@ -112,6 +113,10 @@ const App = () => (
                     <Route
                       path="/publisher/publish-paper"
                       element={<PublishPapers />}
+                    />
+                    <Route
+                      path="/publisher/payments"
+                      element={<PublisherPayments journalId={""} />}
                     />
                   </Route>
                   <Route

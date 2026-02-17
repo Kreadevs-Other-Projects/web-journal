@@ -162,3 +162,21 @@ export const approvePaper = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getJournalPayments = async (req: Request, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const payments = await service.fetchJournalPayments();
+
+    res.json({
+      success: true,
+      data: payments,
+    });
+  } catch (err: any) {
+    console.error("Fetch Payments Error:", err);
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to fetch payments",
+    });
+  }
+};

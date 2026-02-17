@@ -9,10 +9,9 @@ import {
   sendInvoice,
   sendPaymentEmail,
   approvePaper,
+  getJournalPayments,
 } from "../controllers/publisher.controller";
 import { authMiddleware, authorize } from "../middlewares/auth.middleware";
-import { zPublisherIssueSchema } from "../schemas/publisher.schema";
-import { validate } from "../middlewares/validate.middleware";
 
 const router = Router();
 
@@ -58,5 +57,12 @@ router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
 router.post("/sendEmail", authMiddleware, sendPaymentEmail);
 
 router.put("/approve/:paymentId", approvePaper);
+
+router.get(
+  "/getJournalPayments",
+  authMiddleware,
+  authorize("publisher"),
+  getJournalPayments,
+);
 
 export default router;

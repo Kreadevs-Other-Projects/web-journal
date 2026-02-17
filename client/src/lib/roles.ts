@@ -53,7 +53,7 @@ export const roleConfig: Record<
         path: "/publisher/publish-paper",
         icon: FileText,
       },
-      // { label: "Users", path: "/publisher/users", icon: Users },
+      { label: "Payments", path: "/publisher/payments", icon: Users },
     ],
   },
 

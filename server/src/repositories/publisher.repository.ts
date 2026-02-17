@@ -142,8 +142,8 @@ export const createJournalPayment = async ({
 }) => {
   const res = await pool.query(
     `
-    INSERT INTO journal_payments (journal_id, owner_id, issue_id, amount, currency, status)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO journal_payments (journal_id, owner_id, issue_id, amount, currency, status, payment_type)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
     `,
     [
@@ -153,6 +153,7 @@ export const createJournalPayment = async ({
       amount,
       currency || "PKR",
       status || "pending",
+      "first_time",
     ],
   );
   return res.rows[0];
@@ -204,7 +205,7 @@ export const getPapersByIssueIdRepo = async (issueId: string) => {
 };
 
 export const approvePaperPaymentRepo = async (paperId: string) => {
-  const { rows } = await pool.query(
+  const result = await pool.query(
     `
     UPDATE paper_payments
     SET status = $1,
@@ -215,5 +216,14 @@ export const approvePaperPaymentRepo = async (paperId: string) => {
     ["paid", paperId],
   );
 
-  return rows[0];
+  return result.rows;
+};
+
+export const getPaymentsByJournal = async () => {
+  const result = await pool.query(
+    `SELECT *
+     FROM journal_payments
+     ORDER BY created_at ASC`,
+  );
+  return result.rows;
 };

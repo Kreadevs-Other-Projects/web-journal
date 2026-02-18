@@ -49,16 +49,24 @@ interface Issue {
   year: number;
   volume: number;
   issue: number;
+  number: number;
   label: string;
   publishedAt: string;
   updatedAt: string;
-  status?: string; // 'open' | 'closed'
+  createdAt: string;
+  status?: string;
 }
 
 interface Journal {
   id: string;
   title: string;
+  acronym?: string;
   description?: string;
+  issn?: string;
+  website_url?: string;
+  status?: string;
+  created_at?: string;
+  expiry_at?: string;
   issues: Issue[];
 }
 
@@ -68,7 +76,7 @@ interface Paper {
   status: string;
   authors?: string[];
   submittedDate?: string;
-  issueId?: string; // Added to track which issue the paper is assigned to
+  issueId?: string;
   journalId?: string;
 }
 
@@ -543,7 +551,6 @@ export default function ChiefEditor() {
           </Card>
         </div>
 
-        {/* Active Filters */}
         {(selectedJournalId || selectedIssueId) && (
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="pt-4 pb-4">
@@ -570,7 +577,6 @@ export default function ChiefEditor() {
           </Card>
         )}
 
-        {/* Journals Section */}
         <Card>
           <CardHeader>
             <CardTitle>My Journals</CardTitle>
@@ -592,12 +598,41 @@ export default function ChiefEditor() {
                     className="border rounded-lg p-4 hover:shadow-md transition"
                   >
                     <div className="flex justify-between items-center">
-                      <h3
-                        className="font-semibold text-lg cursor-pointer hover:text-blue-600"
-                        onClick={() => handleJournalClick(journal.id)}
-                      >
-                        {journal.title}
-                      </h3>
+                      <div>
+                        <h3
+                          className="font-semibold text-lg cursor-pointer hover:text-blue-600"
+                          onClick={() => handleJournalClick(journal.id)}
+                        >
+                          {journal.title}
+                          {journal.acronym && (
+                            <span className="text-sm text-muted-foreground ml-2">
+                              ({journal.acronym})
+                            </span>
+                          )}
+                        </h3>
+                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                          {journal.issn && <span>ISSN: {journal.issn}</span>}
+                          {journal.status && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs capitalize"
+                            >
+                              {journal.status}
+                            </Badge>
+                          )}
+                          {journal.expiry_at && (
+                            <span>
+                              Expires:{" "}
+                              {new Date(journal.expiry_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        {journal.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                            {journal.description}
+                          </p>
+                        )}
+                      </div>
                       <Badge variant="outline">
                         {journal.issues.length} Issues
                       </Badge>
@@ -620,6 +655,12 @@ export default function ChiefEditor() {
                                 <p className="text-muted-foreground">
                                   Year: {issue.year}
                                 </p>
+                                <p className="text-muted-foreground text-xs">
+                                  Publishes:{" "}
+                                  {new Date(
+                                    issue.publishedAt,
+                                  ).toLocaleDateString()}
+                                </p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {issue.status === "closed" ? (
@@ -627,16 +668,21 @@ export default function ChiefEditor() {
                                     variant="outline"
                                     className="bg-red-100 text-red-800"
                                   >
-                                    <Lock className="h-3 w-3 mr-1" />
-                                    Closed
+                                    <Lock className="h-3 w-3 mr-1" /> Closed
+                                  </Badge>
+                                ) : issue.status === "draft" ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-yellow-100 text-yellow-800"
+                                  >
+                                    <FileEdit className="h-3 w-3 mr-1" /> Draft
                                   </Badge>
                                 ) : (
                                   <Badge
                                     variant="outline"
                                     className="bg-green-100 text-green-800"
                                   >
-                                    <Unlock className="h-3 w-3 mr-1" />
-                                    Open
+                                    <Unlock className="h-3 w-3 mr-1" /> Open
                                   </Badge>
                                 )}
                                 <Button
@@ -809,7 +855,6 @@ export default function ChiefEditor() {
           </div>
         )}
 
-        {/* Assign Sub-Editor Dialog */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -925,7 +970,6 @@ export default function ChiefEditor() {
           </DialogContent>
         </Dialog>
 
-        {/* Assign to Issue Dialog */}
         <Dialog open={openIssueDialog} onOpenChange={setOpenIssueDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>

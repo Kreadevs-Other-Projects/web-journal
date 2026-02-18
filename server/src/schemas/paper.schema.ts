@@ -21,7 +21,6 @@ export const createPaperSchema = z.object({
       }),
 
     journal_id: z.string().uuid("Invalid Journal ID"),
-    issue_id: z.string().uuid("Invalid Issue ID").optional(),
   }),
 });
 

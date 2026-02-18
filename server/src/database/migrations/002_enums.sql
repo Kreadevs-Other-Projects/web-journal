@@ -86,6 +86,7 @@ DO $$ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (
+      'pending',
       'draft',
       'open',
       'closed',

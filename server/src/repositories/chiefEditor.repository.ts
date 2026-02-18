@@ -13,6 +13,9 @@ export const getChiefEditorJournals = async (chiefEditorId: string) => {
             'volume', ji.volume,
             'issue', ji.issue,
             'label', ji.label,
+            'number', ji.article_index,
+            'status', ji.status,
+            'createdAt', ji.created_at,
             'publishedAt', ji.published_at,
             'updatedAt', ji.updated_at
           )
@@ -22,6 +25,7 @@ export const getChiefEditorJournals = async (chiefEditorId: string) => {
     FROM journals j
     LEFT JOIN journal_issues ji
       ON ji.journal_id = j.id
+      AND ji.status != 'pending'
     WHERE j.chief_editor_id = $1
     GROUP BY j.id
     ORDER BY j.created_at DESC

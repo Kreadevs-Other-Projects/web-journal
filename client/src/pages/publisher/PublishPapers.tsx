@@ -58,8 +58,8 @@ export default function PublisherPapersDashboard() {
   const [paymentAmount, setPaymentAmount] = useState("");
 
   const statusMap: Record<string, string[]> = {
-    all: ["pending", "paid", "submitted"],
-    pending: ["pending", "submitted"],
+    all: ["pending", "paid", "submitted", "accepted"],
+    pending: ["pending", "submitted", "accepted"],
     paid: ["paid"],
   };
 
@@ -205,6 +205,13 @@ export default function PublisherPapersDashboard() {
             <Clock className="h-3 w-3" /> {status}
           </Badge>
         );
+      case "accepted":
+        return (
+          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> Accepted
+          </Badge>
+        );
+
       default:
         return (
           <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 flex items-center gap-1">

@@ -10,18 +10,43 @@ import {
 export const uploadPaperVersionService = async (
   user: any,
   paper_id: string,
-  data: any,
+  data: {
+    version_label: string;
+    file_url: string;
+    file_size: number;
+    file_type: string;
+  },
 ) => {
   if (user.role !== "author") {
-    throw new Error("Only author can upload versions");
+    throw new Error("Only authors are allowed to upload paper versions.");
+  }
+
+  if (!paper_id) {
+    throw new Error("Paper ID is required.");
   }
 
   const paper = await getPaperById(paper_id);
+  if (!paper) {
+    throw new Error("The requested paper was not found.");
+  }
 
-  if (!paper) throw new Error("Paper not found");
+  if (["accepted", "published"].includes(paper.status)) {
+    throw new Error(
+      "This paper has already been finalized. You cannot upload new versions.",
+    );
+  }
 
-  if (["accepted", "published", "rejected"].includes(paper.status)) {
-    throw new Error("Cannot upload version for this paper status");
+  if (paper.status === "rejected") {
+    throw new Error(
+      "This paper has been rejected. New versions cannot be uploaded.",
+    );
+  }
+
+  const existingVersions = await getPaperVersions(paper_id);
+  if (existingVersions.some((v) => v.version_label === data.version_label)) {
+    throw new Error(
+      `A version with label "${data.version_label}" already exists.`,
+    );
   }
 
   const version = await createPaperVersion(paper_id, user.id, data);
@@ -31,5 +56,10 @@ export const uploadPaperVersionService = async (
   return version;
 };
 
-export const getPaperVersionsService = async (paper_id: string) =>
-  getPaperVersions(paper_id);
+export const getPaperVersionsService = async (paper_id: string) => {
+  if (!paper_id) {
+    throw new Error("Paper ID is required.");
+  }
+
+  return getPaperVersions(paper_id);
+};

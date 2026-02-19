@@ -40,7 +40,8 @@ interface Paper {
   authors?: string;
   author_email?: string;
   created_at: string;
-  status: string;
+  paper_status: string;
+  payment_status: string;
   abstract?: string;
 }
 
@@ -222,7 +223,7 @@ export default function PublisherPapersDashboard() {
   };
 
   const filteredPapers = papers.filter((paper) =>
-    statusMap[tab].includes(paper.status.toLowerCase()),
+    statusMap[tab].includes(paper.paper_status.toLowerCase()),
   );
 
   return (
@@ -281,7 +282,10 @@ export default function PublisherPapersDashboard() {
                         </p>
                       )}
                     </div>
-                    {getStatusBadge(paper.status)}
+                    <div className="flex flex-col gap-1 items-end">
+                      {getStatusBadge(paper.paper_status)}
+                      {getStatusBadge(paper.payment_status)}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -290,7 +294,7 @@ export default function PublisherPapersDashboard() {
                   </p>
                   {paper.abstract && (
                     <p className="text-sm text-muted-foreground line-clamp-3">
-                      {paper.abstract}
+                      Abstract: {paper.abstract}
                     </p>
                   )}
                 </CardContent>

@@ -175,8 +175,11 @@ export default function PublisherDashboard() {
         body: JSON.stringify({ issueId }),
       });
 
-      if (!res.ok) throw new Error("Failed to approve journal");
+      const data = await res.json();
 
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to approve payment");
+      }
       toast({
         title: "Success",
         description: "Journal issue approved successfully",

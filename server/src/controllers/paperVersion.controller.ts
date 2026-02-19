@@ -1,4 +1,5 @@
 import { Response } from "express";
+import fs from "fs";
 import {
   uploadPaperVersionService,
   getPaperVersionsService,
@@ -9,7 +10,7 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
     if (!req.file || !req.body.version_label) {
       return res.status(400).json({
         success: false,
-        message: "file and version_label required",
+        message: "Both file and version_label are required.",
       });
     }
 
@@ -24,9 +25,23 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
       },
     );
 
-    res.status(201).json({ success: true, version });
-  } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message });
+    return res.status(201).json({
+      success: true,
+      message: `Version "${version.version_label}" uploaded successfully.`,
+      version,
+    });
+  } catch (err: any) {
+    if (req.file?.path) {
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr)
+          console.error("Failed to delete orphaned file:", unlinkErr);
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Failed to upload paper version.",
+    });
   }
 };
 

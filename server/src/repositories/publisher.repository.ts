@@ -9,6 +9,24 @@ export const approveJournalRepo = async (
   try {
     await client.query("BEGIN");
 
+    const paymentCheck = await client.query(
+      `
+      SELECT status 
+      FROM journal_payments
+      WHERE issue_id = $1
+      LIMIT 1
+      `,
+      [issueId],
+    );
+
+    if (paymentCheck.rowCount === 0) {
+      throw new Error("Send invoice first");
+    }
+
+    if (paymentCheck.rows[0].status === "success") {
+      throw new Error("Payment already approved");
+    }
+
     const journalRes = await client.query(
       `
       UPDATE journals
@@ -23,7 +41,7 @@ export const approveJournalRepo = async (
       throw new Error("Journal not found");
     }
 
-    const { chief_editor_id, owner_id } = journalRes.rows[0];
+    const { chief_editor_id } = journalRes.rows[0];
 
     await client.query(
       `
@@ -38,8 +56,7 @@ export const approveJournalRepo = async (
       `
       UPDATE journal_payments
       SET status = 'success', updated_at = NOW()
-      WHERE issue_id = $1
-         OR journal_id = $2
+      WHERE issue_id = $1 OR journal_id = $2
       `,
       [issueId, journalId],
     );
@@ -205,18 +222,28 @@ export const getPapersByIssueIdRepo = async (issueId: string) => {
 };
 
 export const approvePaperPaymentRepo = async (paperId: string) => {
+  const check = await pool.query(
+    `SELECT id FROM paper_payments WHERE paper_id = $1`,
+    [paperId],
+  );
+
+  if (check.rowCount === 0) {
+    throw new Error("Send invoice first");
+  }
+
   const result = await pool.query(
     `
     UPDATE paper_payments
-    SET status = $1,
+    SET status   = 'paid',
+        paid_at = NOW(),
         updated_at = NOW()
-    WHERE paper_id = $2
+    WHERE paper_id = $1
     RETURNING *
-    `,
-    ["paid", paperId],
+  `,
+    [paperId],
   );
 
-  return result.rows;
+  return result.rows[0];
 };
 
 export const getPaymentsByJournal = async () => {

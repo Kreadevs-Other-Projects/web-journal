@@ -110,13 +110,23 @@ const App = () => (
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route path="/publisher" element={<PublisherDashboard />} />
-                    <Route
-                      path="/publisher/publish-paper"
-                      element={<PublishPapers />}
-                    />
+
                     <Route
                       path="/publisher/payments"
                       element={<PublisherPayments journalId={""} />}
+                    />
+                  </Route>
+
+                  <Route
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["publisher", "publisher_manager"]}
+                      />
+                    }
+                  >
+                    <Route
+                      path="/publisher/publish-paper"
+                      element={<PublishPapers />}
                     />
                   </Route>
                   <Route

@@ -259,9 +259,25 @@ export default function PaperVersions() {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Upload failed");
+      const data = await res.json();
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
       toast({
@@ -287,7 +303,7 @@ export default function PaperVersions() {
   };
 
   const formatFileSize = (bytes: number | null | undefined) => {
-    if (!bytes) return "N/A"; // <--- handles null/undefined
+    if (!bytes) return "N/A";
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i)) + " " + sizes[i];

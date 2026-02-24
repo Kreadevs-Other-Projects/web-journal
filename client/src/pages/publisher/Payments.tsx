@@ -23,11 +23,7 @@ interface Payment {
   created_at: string;
 }
 
-export default function PublisherPayments({
-  journalId,
-}: {
-  journalId: string;
-}) {
+export default function Payments({ journalId }: { journalId: string }) {
   const { user, token } = useAuth();
   const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
+import { Eye, Check, X } from "lucide-react";
 
 interface Payment {
   id: string;
@@ -29,6 +29,7 @@ export default function Payments({ journalId }: { journalId: string }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -37,9 +38,7 @@ export default function Payments({ journalId }: { journalId: string }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      console.log(data);
-
-      if (!res.ok) throw new Error(data.message || "Failed to fetch payments");
+      if (!res.ok) throw new Error(data.message);
       setPayments(data.data);
     } catch (err: any) {
       toast({
@@ -56,6 +55,40 @@ export default function Payments({ journalId }: { journalId: string }) {
     fetchPayments();
   }, [journalId]);
 
+  const updateStatus = async (id: string, status: "success" | "failed") => {
+    try {
+      setProcessingId(id);
+      const res = await fetch(`${url}/publisher/updatePaymentStatus/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      setPayments((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status } : p)),
+      );
+
+      toast({
+        title: "Success",
+        description: `Payment ${status} successfully`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Action failed",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "approved":
@@ -71,48 +104,84 @@ export default function Payments({ journalId }: { journalId: string }) {
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl text-white font-bold">Journal Payments</h1>
+          <p className="text-muted-foreground text-sm">
+            Review and manage journal payments
+          </p>
+        </div>
+
         {loading ? (
           <p>Loading payments...</p>
         ) : payments.length === 0 ? (
-          <p>No payments found for this journal.</p>
+          <p>No payments found.</p>
         ) : (
-          payments.map((p) => (
-            <Card key={p.id}>
-              <CardHeader>
-                <CardTitle>
-                  {p.issue_id ? `Issue ${p.issue_id}` : "First Issue / Renewal"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p>Amount: {p.amount} PKR</p>
-                  <div className="flex items-center gap-2">
-                    <span>Status:</span>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {payments.map((p) => (
+              <Card key={p.id} className="hover:shadow-md transition border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex justify-between items-center">
+                    {p.issue_id
+                      ? `Issue #${p.issue_id}`
+                      : "First Issue / Renewal"}
                     <Badge variant={statusColor(p.status)}>{p.status}</Badge>
-                  </div>
-                  <p>Created: {new Date(p.created_at).toLocaleDateString()}</p>
-                </div>
+                  </CardTitle>
+                </CardHeader>
 
-                {p.transaction_pic ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setSelectedReceipt(`${url}${p.transaction_pic}`)
-                    }
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Receipt
-                  </Button>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    No receipt uploaded
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                <CardContent className="space-y-3">
+                  <div className="text-sm space-y-1">
+                    <p>
+                      <span className="text-muted-foreground">Amount:</span>{" "}
+                      <strong>{p.amount} PKR</strong>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Date:</span>{" "}
+                      {new Date(p.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {p.transaction_pic && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setSelectedReceipt(`${url}${p.transaction_pic}`)
+                        }
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Receipt
+                      </Button>
+                    )}
+
+                    {p.status === "pending" && (
+                      <div className="flex gap-2 ml-auto">
+                        <Button
+                          size="sm"
+                          disabled={processingId === p.id}
+                          onClick={() => updateStatus(p.id, "success")}
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Approve
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={processingId === p.id}
+                          onClick={() => updateStatus(p.id, "failed")}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
 
@@ -120,7 +189,7 @@ export default function Payments({ journalId }: { journalId: string }) {
         open={!!selectedReceipt}
         onOpenChange={() => setSelectedReceipt(null)}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Transaction Receipt</DialogTitle>
           </DialogHeader>
@@ -128,7 +197,7 @@ export default function Payments({ journalId }: { journalId: string }) {
             <img
               src={selectedReceipt}
               alt="Transaction receipt"
-              className="w-full rounded-md object-contain max-h-[70vh]"
+              className="w-full rounded-md max-h-[70vh] object-contain"
             />
           )}
         </DialogContent>

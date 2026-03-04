@@ -1,34 +1,38 @@
 import cron from "node-cron";
 import { pool } from "../configs/db";
+import {
+  getJournalIssuesTotalAmount,
+  createJournalPayment,
+} from "../Api/owner/owner.reository";
 import { sendJournalExpiryInvoiceEmail } from "../utils/email";
 
 const yearlyEmailCron = () => {
-  // Runs every day at 12:00 AM
-  cron.schedule("* * * * *", async () => {
+  cron.schedule("0 0 * * *", async () => {
     try {
-      console.log(
-        // "⏰ Cron job running: Yearly Email Task"
-        "Cron running every minute",
-      );
+      console.log("⏰ Cron running: Midnight yearly expiry check");
 
       const { rows } = await pool.query(`
         SELECT 
-          j.id AS journal_id,
-          j.title AS journal_name,
-          j.expiry_at,
-          u.email,
-          u.username,
-          p.id AS payment_id,
-          p.amount,
-          p.currency,
-          p.status
+          j.id,
+          j.expiry_at
         FROM journals j
-        JOIN users u ON u.id = j.owner_id
-        LEFT JOIN journal_payments p ON p.journal_id = j.id
-        WHERE j.expiry_at::date = CURRENT_DATE
+        WHERE DATE(j.expiry_at) = CURRENT_DATE
       `);
 
-      for (const info of rows) {
+      console.log("Matched journals:", rows.length);
+
+      for (const journal of rows) {
+        const info = await getJournalIssuesTotalAmount(journal.id);
+        if (!info) continue;
+
+        const payment = await createJournalPayment({
+          journalId: journal.id,
+          ownerId: info.owner_id,
+          issueId: null,
+          amount: info.total_amount,
+          status: "pending",
+        });
+
         const expiryDate = new Date(info.expiry_at).toDateString();
 
         await sendJournalExpiryInvoiceEmail({
@@ -36,13 +40,13 @@ const yearlyEmailCron = () => {
           username: info.username,
           journalName: info.journal_name,
           expiryDate,
-          amount: info.amount,
-          currency: info.currency,
-          invoiceId: info.payment_id,
-          status: info.status,
+          amount: payment.amount,
+          currency: payment.currency,
+          invoiceId: payment.id,
+          status: payment.status,
         });
 
-        console.log(`📧 Invoice email sent → ${info.email}`);
+        console.log(`📧 Renewal invoice sent → ${info.email}`);
       }
     } catch (error) {
       console.error("❌ Cron job error:", error);

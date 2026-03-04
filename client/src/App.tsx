@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
-import BrowsePage from "./pages/BrowsePage";
+import BrowsePage from "./pages/BrowseJournal.tsx";
 // import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
@@ -33,6 +33,7 @@ import Unauthorized from "./pages/Unauthorized.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
 import PublicRoute from "./components/PublicRoutes.tsx";
 import InitialAuthCheck from "./components/InitialCheckout.tsx";
+import JournalDetail from "./components/PaperDetail.tsx";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
                   </Route>
 
                   <Route path="/browse" element={<BrowsePage />} />
+                  <Route path="/journal/:id" element={<JournalDetail />} />
                   <Route
                     path="/researchPapers/:paperId"
                     element={<ResearchPaperDetail />}

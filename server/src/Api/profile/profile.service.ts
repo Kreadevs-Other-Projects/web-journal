@@ -7,7 +7,7 @@ import {
   updateUser,
   updateUserProfile,
   softDeleteUser,
-} from "./user.repository";
+} from "./profile.repository";
 
 export const getFullProfile = async (userId: string) => {
   const user = await findUserById(userId);

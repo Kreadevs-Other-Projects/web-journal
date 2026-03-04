@@ -4,7 +4,7 @@ import {
   findUserById as findUserByIdRepo,
   createUser as createUserRepo,
   createUserProfile as createUserProfileRepo,
-} from "../profile/user.repository";
+} from "../profile/profile.repository";
 import { env } from "../../configs/envs";
 
 export const findUserByEmail = async (email: string) => {

@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 
 import { url } from "../url";
+import ThemeToggle from "./ThemeToggle";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -147,7 +148,7 @@ export function DashboardLayout({
               <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-serif text-lg font-semibold text-white">
+              <span className="font-serif text-lg font-semibold">
                 JournalHub
               </span>
             </motion.div>
@@ -301,6 +302,7 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {/* <Button
                 variant="ghost"
                 size="sm"

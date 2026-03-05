@@ -419,7 +419,6 @@ export default function Papers() {
                 label: "Total Papers",
                 value: stats.total,
                 color: "text-primary",
-                trend: "+2 this month",
               },
               {
                 icon: Send,
@@ -462,12 +461,6 @@ export default function Papers() {
                     <AnimatedCounter end={stat.value} duration={1.5} />
                   </div>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  {stat.trend && (
-                    <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      {stat.trend}
-                    </p>
-                  )}
                 </motion.div>
               </StaggerItem>
             ))}

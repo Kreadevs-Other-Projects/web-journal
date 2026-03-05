@@ -11,6 +11,8 @@ import {
   Grid3X3,
   List,
   Layers,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +60,9 @@ export default function BrowsePage() {
   const [selectedYear, setSelectedYear] = useState(
     params.get("year") || "All Years",
   );
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(
+    (params.get("view") as "grid" | "list") || "grid",
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,8 +90,9 @@ export default function BrowsePage() {
     if (selectedJournal !== "All Journals")
       queryParams.set("journal", selectedJournal);
     if (selectedYear !== "All Years") queryParams.set("year", selectedYear);
+    if (viewMode !== "grid") queryParams.set("view", viewMode);
     navigate(`/browse?${queryParams.toString()}`, { replace: true });
-  }, [searchQuery, selectedJournal, selectedYear, navigate]);
+  }, [searchQuery, selectedJournal, selectedYear, viewMode, navigate]);
 
   const journalTitles = [
     "All Journals",
@@ -141,6 +146,10 @@ export default function BrowsePage() {
     navigate(`/journal/${journal.journal_id}`, {
       state: { journal },
     });
+  };
+
+  const handleViewModeChange = (mode: "grid" | "list") => {
+    setViewMode(mode);
   };
 
   return (
@@ -255,16 +264,18 @@ export default function BrowsePage() {
                       <Button
                         variant={viewMode === "grid" ? "secondary" : "ghost"}
                         size="sm"
-                        onClick={() => setViewMode("grid")}
+                        onClick={() => handleViewModeChange("grid")}
                         className="h-8 w-8 p-0"
+                        title="Grid view"
                       >
                         <Grid3X3 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant={viewMode === "list" ? "secondary" : "ghost"}
                         size="sm"
-                        onClick={() => setViewMode("list")}
+                        onClick={() => handleViewModeChange("list")}
                         className="h-8 w-8 p-0 text-muted-foreground"
+                        title="List view"
                       >
                         <List className="h-4 w-4" />
                       </Button>
@@ -305,6 +316,32 @@ export default function BrowsePage() {
                 </span>
               )}
             </div>
+
+            {/* View mode toggle outside filters when filters are closed */}
+            {!showFilters && (
+              <div className="flex justify-end mt-4">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => handleViewModeChange("grid")}
+                    className="h-8 w-8 p-0"
+                    title="Grid view"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => handleViewModeChange("list")}
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    title="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -332,53 +369,110 @@ export default function BrowsePage() {
               </p>
             </motion.div>
           ) : (
-            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            <StaggerContainer
+              className={cn(
+                "gap-6 max-w-7xl mx-auto",
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                  : "flex flex-col",
+              )}
+            >
               {filteredJournals.map((journal) => (
                 <StaggerItem key={journal.journal_id}>
-                  <motion.div
-                    whileHover={{ y: -5 }}
-                    onClick={() => handleJournalClick(journal)}
-                    className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col"
-                  >
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="h-12 w-12 rounded-lg bg-gradient-primary/10 flex items-center justify-center shrink-0">
-                        <Layers className="h-6 w-6 text-primary" />
+                  {viewMode === "grid" ? (
+                    /* Grid View */
+                    <motion.div
+                      whileHover={{ y: -5 }}
+                      onClick={() => handleJournalClick(journal)}
+                      className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col"
+                    >
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="h-12 w-12 rounded-lg bg-gradient-primary/10 flex items-center justify-center shrink-0">
+                          <Layers className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                            {journal.journal_title}
+                          </h2>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {journal.issue}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                          {journal.journal_title}
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {journal.issue}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2 mb-4 flex-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Tag className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          ISSN: {journal.issn}
+                      <div className="space-y-2 mb-4 flex-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            ISSN: {journal.issn}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            {formatDate(journal.published_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                        <span className="text-sm font-medium text-accent">
+                          {journal.papers.length} paper
+                          {journal.papers.length !== 1 ? "s" : ""}
+                        </span>
+                        <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                          View Journal →
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {formatDate(journal.published_at)}
-                        </span>
+                    </motion.div>
+                  ) : (
+                    /* List View */
+                    <motion.div
+                      whileHover={{ x: 5 }}
+                      onClick={() => handleJournalClick(journal)}
+                      className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow flex items-center gap-6"
+                    >
+                      <div className="h-16 w-16 rounded-lg bg-gradient-primary/10 flex items-center justify-center shrink-0">
+                        <Layers className="h-8 w-8 text-primary" />
                       </div>
-                    </div>
 
-                    <div className="pt-4 border-t border-border/50 flex items-center justify-between">
-                      <span className="text-sm font-medium text-accent">
-                        {journal.papers.length} paper
-                        {journal.papers.length !== 1 ? "s" : ""}
-                      </span>
-                      <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                        View Journal →
-                      </span>
-                    </div>
-                  </motion.div>
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                        <div className="md:col-span-2">
+                          <h2 className="font-serif-outfit text-xl font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                            {journal.journal_title}
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            {journal.issue}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground truncate">
+                              ISSN: {journal.issn}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">
+                              {formatDate(journal.published_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-4">
+                          <span className="text-sm font-medium text-accent whitespace-nowrap">
+                            {journal.papers.length} paper
+                            {journal.papers.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform whitespace-nowrap">
+                            View Details →
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </StaggerItem>
               ))}
             </StaggerContainer>

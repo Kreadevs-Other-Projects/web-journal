@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
+import Navbar from "@/components/navbar";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -249,48 +250,50 @@ export default function SignupPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4 pt-20">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center justify-center gap-3 mb-4"
-          >
-            <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <BookOpen className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <h1 className="font-serif text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                JournalHub
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Academic Publishing Platform
-              </p>
-            </div>
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="inline-flex items-center justify-center gap-3 mb-4"
+            >
+              <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
+                <BookOpen className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div className="text-left">
+                <h1 className="font-serif text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  JournalHub
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Academic Publishing Platform
+                </p>
+              </div>
+            </motion.div>
+          </div>
 
-        <Card className="glass-card border-border/50 shadow-2xl overflow-hidden">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Create Account
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Join our academic community of researchers and reviewers
-            </CardDescription>
-          </CardHeader>
+          <Card className="glass-card border-border/50 shadow-2xl overflow-hidden">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-2xl font-bold text-foreground">
+                Create Account
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Join our academic community of researchers and reviewers
+              </CardDescription>
+            </CardHeader>
 
-          <CardContent>
-            {/* {step === "OTP" && (
+            <CardContent>
+              {/* {step === "OTP" && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -333,284 +336,289 @@ export default function SignupPage() {
               </motion.div>
             )} */}
 
-            <form
-              onSubmit={handleSubmit}
-              className={cn(
-                "space-y-6 transition-opacity",
-                step === "OTP" && "opacity-40 pointer-events-none",
-              )}
-            >
-              <div className="space-y-2">
-                <Label
-                  htmlFor="username"
-                  className="flex items-center gap-2 text-sm font-medium"
-                >
-                  <User className="h-4 w-4 text-primary" />
-                  Username
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="john_doe"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className={cn(
-                      "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      errors.username &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20",
-                    )}
-                    disabled={isLoading}
-                  />
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-                {errors.username && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    {errors.username}
-                  </p>
+              <form
+                onSubmit={handleSubmit}
+                className={cn(
+                  "space-y-6 transition-opacity",
+                  step === "OTP" && "opacity-40 pointer-events-none",
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="email"
-                  className="flex items-center gap-2 text-sm font-medium"
-                >
-                  <Mail className="h-4 w-4 text-primary" />
-                  Email Address
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={cn(
-                      "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      errors.email &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20",
-                    )}
-                    disabled={isLoading}
-                  />
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-                {errors.email && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="password"
-                  className="flex items-center gap-2 text-sm font-medium"
-                >
-                  <Lock className="h-4 w-4 text-primary" />
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className={cn(
-                      "pl-10 pr-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      errors.password &&
-                        "border-destructive focus:border-destructive focus:ring-destructive/20",
-                    )}
-                    disabled={isLoading}
-                  />
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="username"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+                    <User className="h-4 w-4 text-primary" />
+                    Username
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="username"
+                      name="username"
+                      type="text"
+                      placeholder="john_doe"
+                      value={formData.username}
+                      onChange={handleChange}
+                      className={cn(
+                        "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
+                        errors.username &&
+                          "border-destructive focus:border-destructive focus:ring-destructive/20",
+                      )}
+                      disabled={isLoading}
+                    />
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                  {errors.username && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      {errors.username}
+                    </p>
+                  )}
                 </div>
 
-                {formData.password && (
-                  <div className="space-y-2 pt-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        Password strength
-                      </span>
-                      <span className="font-medium">{passwordStrength()}%</span>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="email"
+                    className="flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Mail className="h-4 w-4 text-primary" />
+                    Email Address
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="john@example.com"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className={cn(
+                        "pl-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
+                        errors.email &&
+                          "border-destructive focus:border-destructive focus:ring-destructive/20",
+                      )}
+                      disabled={isLoading}
+                    />
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                  {errors.email && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="password"
+                    className="flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Lock className="h-4 w-4 text-primary" />
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={cn(
+                        "pl-10 pr-10 bg-background/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
+                        errors.password &&
+                          "border-destructive focus:border-destructive focus:ring-destructive/20",
+                      )}
+                      disabled={isLoading}
+                    />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+
+                  {formData.password && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Password strength
+                        </span>
+                        <span className="font-medium">
+                          {passwordStrength()}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${passwordStrength()}%` }}
+                          transition={{ duration: 0.3 }}
+                          className={cn(
+                            "h-full",
+                            getStrengthColor(passwordStrength()),
+                          )}
+                        />
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${passwordStrength()}%` }}
-                        transition={{ duration: 0.3 }}
-                        className={cn(
-                          "h-full",
-                          getStrengthColor(passwordStrength()),
-                        )}
-                      />
-                    </div>
+                  )}
+
+                  <div className="space-y-1.5 pt-2">
+                    {passwordRequirements.map((req, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <CheckCircle2
+                          className={cn(
+                            "h-3 w-3 flex-shrink-0",
+                            req.met
+                              ? "text-success"
+                              : "text-muted-foreground/30",
+                          )}
+                        />
+                        <span
+                          className={
+                            req.met ? "text-success" : "text-muted-foreground"
+                          }
+                        >
+                          {req.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {errors.password && (
+                    <p className="text-xs text-destructive flex items-center gap-1 pt-2">
+                      <Shield className="h-3 w-3" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Settings className="h-4 w-4 text-primary" />
+                    Select Your Role
+                  </Label>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+                      const config = roleConfig[role];
+                      const Icon = config.icon;
+                      const isSelected = selectedRole === role;
+
+                      return (
+                        <motion.button
+                          key={role}
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleRoleSelect(role)}
+                          className={cn(
+                            "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border",
+                            isSelected
+                              ? "bg-primary text-primary-foreground shadow-glow border-primary"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted border-border",
+                          )}
+                        >
+                          <Icon className="h-5 w-5" />
+                          <span className="text-[10px] font-medium uppercase tracking-wider">
+                            {config.label}
+                          </span>
+                          {isSelected && (
+                            <motion.div
+                              layoutId="roleIndicator"
+                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-6 rounded-full bg-primary"
+                            />
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground text-center">
+                      <span className="font-medium text-foreground">
+                        {roleConfig[selectedRole].label}
+                      </span>{" "}
+                      - {roleConfig[selectedRole].description}
+                    </p>
+                  </div>
+                </div>
+
+                {errors.general && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-sm text-destructive text-center">
+                      {errors.general}
+                    </p>
                   </div>
                 )}
 
-                <div className="space-y-1.5 pt-2">
-                  {passwordRequirements.map((req, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 text-xs"
+                <Button
+                  type="submit"
+                  className="w-full btn-physics bg-gradient-primary hover:opacity-90 py-6 text-base font-medium"
+                  disabled={isLoading || step === "OTP"}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    <>
+                      Create Account
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+
+                <div className="text-center pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Already have an account?{" "}
+                    <Link
+                      to="/login"
+                      className="text-primary font-medium hover:underline transition-colors"
                     >
-                      <CheckCircle2
-                        className={cn(
-                          "h-3 w-3 flex-shrink-0",
-                          req.met ? "text-success" : "text-muted-foreground/30",
-                        )}
-                      />
-                      <span
-                        className={
-                          req.met ? "text-success" : "text-muted-foreground"
-                        }
-                      >
-                        {req.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {errors.password && (
-                  <p className="text-xs text-destructive flex items-center gap-1 pt-2">
-                    <Shield className="h-3 w-3" />
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  <Settings className="h-4 w-4 text-primary" />
-                  Select Your Role
-                </Label>
-
-                <div className="grid grid-cols-5 gap-2">
-                  {(Object.keys(roleConfig) as UserRole[]).map((role) => {
-                    const config = roleConfig[role];
-                    const Icon = config.icon;
-                    const isSelected = selectedRole === role;
-
-                    return (
-                      <motion.button
-                        key={role}
-                        type="button"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleRoleSelect(role)}
-                        className={cn(
-                          "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border",
-                          isSelected
-                            ? "bg-primary text-primary-foreground shadow-glow border-primary"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted border-border",
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="text-[10px] font-medium uppercase tracking-wider">
-                          {config.label}
-                        </span>
-                        {isSelected && (
-                          <motion.div
-                            layoutId="roleIndicator"
-                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-6 rounded-full bg-primary"
-                          />
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-
-                <div className="p-3 bg-muted/30 rounded-lg border border-border">
-                  <p className="text-xs text-muted-foreground text-center">
-                    <span className="font-medium text-foreground">
-                      {roleConfig[selectedRole].label}
-                    </span>{" "}
-                    - {roleConfig[selectedRole].description}
+                      Sign in here
+                    </Link>
                   </p>
                 </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 text-center space-y-3"
+          >
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Shield className="h-3 w-3" />
+                <span>Secure & Encrypted</span>
               </div>
-
-              {errors.general && (
-                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <p className="text-sm text-destructive text-center">
-                    {errors.general}
-                  </p>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full btn-physics bg-gradient-primary hover:opacity-90 py-6 text-base font-medium"
-                disabled={isLoading || step === "OTP"}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    Create Account
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-
-              <div className="text-center pt-2">
-                <p className="text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <Link
-                    to="/login"
-                    className="text-primary font-medium hover:underline transition-colors"
-                  >
-                    Sign in here
-                  </Link>
-                </p>
+              <div className="w-px h-3 bg-border" />
+              <div className="flex items-center gap-1">
+                <BookOpen className="h-3 w-3" />
+                <span>Academic Integrity</span>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 text-center space-y-3"
-        >
-          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Shield className="h-3 w-3" />
-              <span>Secure & Encrypted</span>
             </div>
-            <div className="w-px h-3 bg-border" />
-            <div className="flex items-center gap-1">
-              <BookOpen className="h-3 w-3" />
-              <span>Academic Integrity</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground/70">
-            Join 10,000+ researchers and reviewers worldwide
-          </p>
+            <p className="text-xs text-muted-foreground/70">
+              Join 10,000+ researchers and reviewers worldwide
+            </p>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </div>
+      </div>
+    </>
   );
 }

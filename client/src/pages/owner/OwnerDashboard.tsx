@@ -51,6 +51,7 @@ interface Journal {
   acronym: string;
   issn: string;
   chief_editor_id: string;
+  chief_editor_username: string;
   owner_id: string;
   status: string;
   description: string;
@@ -109,6 +110,8 @@ export default function OwnerDashboard(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log(data);
+
       setJournals(data.journals ?? []);
     } catch (err) {
       console.error(err);
@@ -341,7 +344,7 @@ export default function OwnerDashboard(): JSX.Element {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="text-white">Loading dashboard...</p>
+          <p>Loading dashboard...</p>
         </div>
       </div>
     );
@@ -352,9 +355,7 @@ export default function OwnerDashboard(): JSX.Element {
         <Card className="glass-card p-8">
           <div className="text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-            <h2 className="text-2xl font-bold text-white">
-              Unauthorized Access
-            </h2>
+            <h2 className="text-2xl font-bold">Unauthorized Access</h2>
             <p className="text-muted-foreground">
               You don't have permission to view this page.
             </p>
@@ -368,7 +369,7 @@ export default function OwnerDashboard(): JSX.Element {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-white">Owner Dashboard</h1>
+            <h1 className="text-4xl font-bold">Owner Dashboard</h1>
             <p className="text-muted-foreground mt-1">
               Full authority over journals and editorial roles
             </p>
@@ -394,9 +395,7 @@ export default function OwnerDashboard(): JSX.Element {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {stats.totalJournals}
-              </div>
+              <div className="text-3xl font-bold">{stats.totalJournals}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 +{stats.activeJournals} active this month
               </p>
@@ -411,9 +410,7 @@ export default function OwnerDashboard(): JSX.Element {
               <CheckCircle className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {stats.activeJournals}
-              </div>
+              <div className="text-3xl font-bold">{stats.activeJournals}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {(stats.activeJournals / stats.totalJournals) * 100 || 0}% of
                 total
@@ -429,9 +426,7 @@ export default function OwnerDashboard(): JSX.Element {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {stats.totalEditors}
-              </div>
+              <div className="text-3xl font-bold">{stats.totalEditors}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Across {stats.totalJournals} journals
               </p>
@@ -446,7 +441,7 @@ export default function OwnerDashboard(): JSX.Element {
               <Settings className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">Full</div>
+              <div className="text-3xl font-bold">Full</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Complete editorial control
               </p>
@@ -502,21 +497,13 @@ export default function OwnerDashboard(): JSX.Element {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-gray-700">
-                        <TableHead className="text-white">
-                          Journal Details
-                        </TableHead>
-                        <TableHead className="text-white">ISSN</TableHead>
-                        <TableHead className="text-white">Status</TableHead>
-                        <TableHead className="text-white">
-                          Chief Editor
-                        </TableHead>
-                        <TableHead className="text-white">Created</TableHead>
-                        <TableHead className="text-white">
-                          Expiry Date
-                        </TableHead>
-                        <TableHead className="text-white text-right">
-                          Actions
-                        </TableHead>
+                        <TableHead>Journal Details</TableHead>
+                        <TableHead>ISSN</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Chief Editor</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Expiry Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -537,7 +524,7 @@ export default function OwnerDashboard(): JSX.Element {
                           >
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="font-medium text-white">
+                                <div className="font-medium">
                                   {journal.title}
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -567,13 +554,14 @@ export default function OwnerDashboard(): JSX.Element {
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-6 w-6">
                                   <AvatarFallback className="text-xs">
-                                    {journal.chief_editor_id
+                                    {journal.chief_editor_username
                                       ?.slice(0, 2)
                                       .toUpperCase() || "CE"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm truncate max-w-[100px]">
-                                  {journal.chief_editor_id || "Not assigned"}
+                                  {journal.chief_editor_username ||
+                                    "Not assigned"}
                                 </span>
                               </div>
                             </TableCell>
@@ -595,19 +583,6 @@ export default function OwnerDashboard(): JSX.Element {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                {/* <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => {
-                                    setSelectedJournal(journal);
-                                    fetchChiefEditors();
-                                    setEditorDialog(true);
-                                  }}
-                                >
-                                  <UserPlus className="h-4 w-4" />
-                                </Button> */}
-
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -620,14 +595,6 @@ export default function OwnerDashboard(): JSX.Element {
                                 >
                                   <Upload className="h-4 w-4" />
                                 </Button>
-
-                                {/* <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button> */}
 
                                 {new Date(journal.expiry_at).getTime() -
                                   Date.now() <=
@@ -678,9 +645,7 @@ export default function OwnerDashboard(): JSX.Element {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <h3 className="font-medium text-white">
-                                {editor.username}
-                              </h3>
+                              <h3 className="font-medium">{editor.username}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
                                 <Mail className="h-3 w-3" />
                                 {editor.email}
@@ -698,7 +663,6 @@ export default function OwnerDashboard(): JSX.Element {
           </TabsContent>
         </Tabs>
       </div>
-
       <Dialog open={uploadReceiptDialog} onOpenChange={setUploadReceiptDialog}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -763,7 +727,6 @@ export default function OwnerDashboard(): JSX.Element {
           )}
         </DialogContent>
       </Dialog>
-
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -802,9 +765,7 @@ export default function OwnerDashboard(): JSX.Element {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-white">
-                            {editor.username}
-                          </p>
+                          <p className="font-medium">{editor.username}</p>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Mail className="h-3 w-3" />
                             {editor.email}
@@ -827,7 +788,7 @@ export default function OwnerDashboard(): JSX.Element {
             </ScrollArea>
           )}
         </DialogContent>
-      </Dialog>
+      </Dialog>{" "}
     </DashboardLayout>
   );
 }

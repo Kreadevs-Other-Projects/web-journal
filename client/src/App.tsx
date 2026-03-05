@@ -34,17 +34,20 @@ import { AuthProvider } from "./context/AuthContext.tsx";
 import PublicRoute from "./components/PublicRoutes.tsx";
 import InitialAuthCheck from "./components/InitialCheckout.tsx";
 import JournalDetail from "./components/PaperDetail.tsx";
+import { ThemeProvider } from "./context/ThemeContext.tsx";
+import AboutPage from "./pages/aboutUs.tsx";
+import FAQPage from "./pages/faq.tsx";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <div className="dark">
+      <ThemeProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter>
             <AnimatePresence mode="wait">
               <InitialAuthCheck>
                 <Routes>
@@ -56,19 +59,21 @@ const App = () => (
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
-                  </Route>
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/faq" element={<FAQPage />} />
 
-                  <Route path="/browse" element={<BrowsePage />} />
-                  <Route path="/journal/:id" element={<JournalDetail />} />
-                  <Route
-                    path="/researchPapers/:paperId"
-                    element={<ResearchPaperDetail />}
-                  />
+                    <Route path="/browse" element={<BrowsePage />} />
+                    <Route path="/journal/:id" element={<JournalDetail />} />
+                    <Route
+                      path="/researchPapers/:paperId"
+                      element={<ResearchPaperDetail />}
+                    />
+                  </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     {/* <Route path="/author" element={<AuthorDashboard />} />
                     <Route
-                      path="/author/submissions"
+                    path="/author/submissions"
                       element={<MySubmissions />}
                     /> */}
                     <Route path="/author" element={<SubmitPaper />} />
@@ -155,9 +160,9 @@ const App = () => (
                 </Routes>
               </InitialAuthCheck>
             </AnimatePresence>
-          </div>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

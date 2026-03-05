@@ -7,7 +7,7 @@ import {
   uploadReceipt,
   getPendingJournalPay,
 } from "./owner.service";
-import { sendWelcomeEmail } from "../../utils/email";
+import { sendWelcomeEmail } from "../../utils/emails/userEmails";
 import { AuthUser } from "../../middlewares/auth.middleware";
 import { pool } from "../../configs/db";
 

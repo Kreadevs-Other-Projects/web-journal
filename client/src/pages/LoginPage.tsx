@@ -224,7 +224,7 @@ export default function LoginPage() {
                 <BookOpen className="h-8 w-8 text-primary-foreground" />
               </div>
               <span className="font-serif-roboto text-3xl font-bold text-muted-foreground">
-                JournalHub
+                Journal<span className="text-primary">Hub</span>
               </span>
             </div>
 

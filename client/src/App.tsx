@@ -37,6 +37,7 @@ import JournalDetail from "./components/PaperDetail.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 import AboutPage from "./pages/aboutUs.tsx";
 import FAQPage from "./pages/faq.tsx";
+import ContactPage from "./pages/contactUs.tsx";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/faq" element={<FAQPage />} />
+                    <Route path="/contact-us" element={<ContactPage />} />
 
                     <Route path="/browse" element={<BrowsePage />} />
                     <Route path="/journal/:id" element={<JournalDetail />} />

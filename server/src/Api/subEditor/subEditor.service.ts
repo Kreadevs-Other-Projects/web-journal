@@ -1,5 +1,5 @@
 import * as repo from "./subEditor.repository";
-import { sendReviewerInviteEmail } from "../../utils/email";
+import { sendReviewerInviteEmail } from "../../utils/emails/userEmails";
 
 export const fetchSubEditorPapers = async (subEditorId: string) => {
   return repo.getSubEditorPapers(subEditorId);

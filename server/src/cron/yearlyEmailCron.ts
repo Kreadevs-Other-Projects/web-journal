@@ -4,7 +4,7 @@ import {
   getJournalIssuesTotalAmount,
   createJournalPayment,
 } from "../Api/owner/owner.reository";
-import { sendJournalExpiryInvoiceEmail } from "../utils/email";
+import { sendJournalExpiryInvoiceEmail } from "../utils/emails/paymentEmails";
 
 const yearlyEmailCron = () => {
   cron.schedule("0 0 * * *", async () => {

@@ -1,5 +1,5 @@
 import * as repo from "./chiefEditor.repository";
-import { sendSubEditorInviteEmail } from "../../utils/email";
+import { sendSubEditorInviteEmail } from "../../utils/emails/userEmails";
 
 export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
   if (!chiefEditorId) {

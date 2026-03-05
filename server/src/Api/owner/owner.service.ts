@@ -7,7 +7,7 @@ import {
   getPendingJournalPayment,
   updateReceiptImage,
 } from "./owner.reository";
-import { sendJournalExpiryInvoiceEmail } from "../../utils/email";
+import { sendJournalExpiryInvoiceEmail } from "../../utils/emails/paymentEmails";
 import { generatePassword, hashPassword } from "../../utils/password";
 import { createJournalPayment } from "./owner.reository";
 

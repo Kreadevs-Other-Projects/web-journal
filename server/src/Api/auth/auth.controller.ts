@@ -23,7 +23,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from "./auth.repository";
-import { sendOTPEmail } from "../../utils/email";
+import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
 
 export const login = async (req: Request, res: Response) => {

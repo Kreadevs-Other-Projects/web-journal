@@ -1,6 +1,9 @@
 import { pool } from "../../configs/db";
 import * as repo from "./publisher.repository";
-import { sendInvoiceEmail, paperPaymentEmail } from "../../utils/email";
+import {
+  sendInvoiceEmail,
+  sendPaperPaymentEmail,
+} from "../../utils/emails/paymentEmails";
 
 export type Journal = {
   journalId: string;
@@ -192,7 +195,7 @@ export const sendPaperPaymentInvoice = async ({
 
     const paymentId = rows[0].id;
 
-    await paperPaymentEmail({
+    await sendPaperPaymentEmail({
       email: authorEmail,
       username,
       title,

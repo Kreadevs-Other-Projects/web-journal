@@ -252,7 +252,7 @@ export default function SignupPage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4 mt-20">
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
 
         <motion.div
@@ -261,27 +261,6 @@ export default function SignupPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="inline-flex items-center justify-center gap-3 mb-4"
-            >
-              <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-                <BookOpen className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div className="text-left">
-                <h1 className="font-serif text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  JournalHub
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  Academic Publishing Platform
-                </p>
-              </div>
-            </motion.div>
-          </div>
-
           <Card className="glass-card border-border/50 shadow-2xl overflow-hidden">
             <CardHeader className="text-center pb-6">
               <CardTitle className="text-2xl font-bold text-foreground">

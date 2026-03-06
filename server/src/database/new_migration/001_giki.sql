@@ -3,23 +3,27 @@
 -- =========================
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Optional but recommended (case-insensitive email uniqueness):
--- CREATE EXTENSION IF NOT EXISTS citext;
-
 
 -- =========================
--- 1) ENUMS (Roles + Workflow)
+-- 1) ENUMS
 -- =========================
 DO $$ BEGIN
+
+  -- Updated user_role enum
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
     CREATE TYPE user_role AS ENUM (
-      'admin',
-      'chief_editor',
-      'sub_editor',
-      'reviewer',
-      'author',
-      'owner',
-      'publisher'
+      -- Publisher-Level Roles
+      'publisher_admin',     -- Create journals, manage ISSN, DOI, indexing, global settings
+      'technical_admin',     -- System maintenance, backups, integrations
+      'finance_admin',       -- APC tracking, invoices (Phase 2)
+
+      -- Journal-Level Roles
+      'editor_in_chief',     -- Full control of journal workflow & decisions
+      'associate_editor',    -- Assign reviewers, manage decisions
+      'section_editor',      -- Handle subject-specific manuscripts
+      'journal_manager',     -- Content, issues, editorial pages
+      'reviewer',            -- Review assigned manuscripts
+      'author'               -- Submit manuscripts, revisions
     );
   END IF;
 
@@ -27,9 +31,6 @@ DO $$ BEGIN
     CREATE TYPE user_status AS ENUM ('pending', 'active', 'rejected', 'banned');
   END IF;
 
-  -- Updated to match TRD “System States Overview”
-  -- Draft → Submitted → Under Review → Revision → Accepted → Metadata Validation → Copyediting
-  -- → Proofing → Final Approval → DOI Registered → Published → Indexed :contentReference[oaicite:5]{index=5}
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paper_status') THEN
     CREATE TYPE paper_status AS ENUM (
       'draft',
@@ -57,17 +58,18 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_assignment_status') THEN
     CREATE TYPE review_assignment_status AS ENUM ('invited', 'assigned', 'accepted', 'rejected', 'submitted', 'expired');
   END IF;
+
 END $$;
 
 
 -- =========================
--- 2) USERS (Single login across all journals) :contentReference[oaicite:6]{index=6}
+-- 2) USERS
 -- =========================
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   username TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE, -- if using citext, set email CITEXT UNIQUE
+  email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
 
   status user_status NOT NULL DEFAULT 'active',
@@ -86,13 +88,13 @@ CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
 
 -- =========================
--- 3) USER PROFILES (expertise database for reviewer search) :contentReference[oaicite:7]{index=7}
+-- 3) USER PROFILES
 -- =========================
 CREATE TABLE IF NOT EXISTS user_profiles (
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 
   qualifications TEXT,
-  expertise TEXT[],          -- used in reviewer search
+  expertise TEXT[],
   certifications TEXT,
 
   affiliation TEXT,
@@ -105,7 +107,7 @@ CREATE INDEX IF NOT EXISTS gin_user_profiles_expertise ON user_profiles USING GI
 
 
 -- =========================
--- 4) REFRESH TOKENS (Auth)
+-- 4) REFRESH TOKENS
 -- =========================
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -122,14 +124,14 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_
 
 
 -- =========================
--- 5) OTP (Registration / Forgot / Verify email)
+-- 5) OTP
 -- =========================
 CREATE TABLE IF NOT EXISTS otp (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   email TEXT NOT NULL,
   otp_code VARCHAR(6) NOT NULL,
-  purpose TEXT NOT NULL,           -- e.g. 'verify_email', 'reset_password'
+  purpose TEXT NOT NULL,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -143,7 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_otp_expiry ON otp(expiry_at);
 
 
 -- =========================
--- 6) PUBLISHERS (Publisher-level website) :contentReference[oaicite:8]{index=8}
+-- 6) PUBLISHERS
 -- =========================
 CREATE TABLE IF NOT EXISTS publishers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -166,13 +168,40 @@ CREATE TABLE IF NOT EXISTS publishers (
 
 
 -- =========================
--- 7) JOURNALS (Hosted under publisher) :contentReference[oaicite:9]{index=9}
+-- 7) PUBLISHER MEMBERS  ← NEW
+-- Publisher-level roles (publisher_admin, technical_admin, finance_admin)
+-- These roles are scoped to a publisher, not a specific journal
+-- =========================
+CREATE TABLE IF NOT EXISTS publisher_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  publisher_id UUID NOT NULL REFERENCES publishers(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+  role user_role NOT NULL,
+
+  -- Enforce only publisher-level roles can be assigned here
+  CONSTRAINT chk_publisher_role CHECK (
+    role IN ('publisher_admin', 'technical_admin', 'finance_admin')
+  ),
+
+  added_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE (publisher_id, user_id, role)
+);
+
+CREATE INDEX IF NOT EXISTS idx_publisher_members_publisher ON publisher_members(publisher_id);
+CREATE INDEX IF NOT EXISTS idx_publisher_members_user ON publisher_members(user_id);
+
+
+-- =========================
+-- 8) JOURNALS
 -- =========================
 CREATE TABLE IF NOT EXISTS journals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   publisher_id UUID NOT NULL REFERENCES publishers(id) ON DELETE CASCADE,
-
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
   slug TEXT NOT NULL UNIQUE,
@@ -185,7 +214,7 @@ CREATE TABLE IF NOT EXISTS journals (
   logo_url TEXT,
   banner_url TEXT,
 
-  aims_scope TEXT,                -- shown on journal home page :contentReference[oaicite:10]{index=10}
+  aims_scope TEXT,
 
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
@@ -198,16 +227,16 @@ CREATE INDEX IF NOT EXISTS idx_journals_active ON journals(is_active);
 
 
 -- =========================
--- 8) JOURNAL STATIC PAGES (About / Aims & Scope / Editorial Board / Guidelines) :contentReference[oaicite:11]{index=11}
+-- 9) JOURNAL STATIC PAGES
 -- =========================
 CREATE TABLE IF NOT EXISTS journal_pages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   journal_id UUID NOT NULL REFERENCES journals(id) ON DELETE CASCADE,
 
-  page_key TEXT NOT NULL,       -- e.g. 'about', 'aims_scope', 'editorial_board', 'author_guidelines'
+  page_key TEXT NOT NULL,
   title TEXT NOT NULL,
-  content TEXT NOT NULL,        -- HTML/Markdown
+  content TEXT NOT NULL,
   is_published BOOLEAN NOT NULL DEFAULT TRUE,
 
   updated_by UUID REFERENCES users(id),
@@ -218,8 +247,9 @@ CREATE TABLE IF NOT EXISTS journal_pages (
 
 
 -- =========================
--- 9) JOURNAL MEMBERS (Role within each journal)
--- Note: one user can be author+reviewer+editor across journals. :contentReference[oaicite:12]{index=12}
+-- 10) JOURNAL MEMBERS
+-- Journal-level roles scoped to a specific journal
+-- One user can hold multiple roles across multiple journals
 -- =========================
 CREATE TABLE IF NOT EXISTS journal_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -228,8 +258,20 @@ CREATE TABLE IF NOT EXISTS journal_members (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
   role user_role NOT NULL,
-  added_by UUID REFERENCES users(id),
 
+  -- Enforce only journal-level roles can be assigned here
+  CONSTRAINT chk_journal_role CHECK (
+    role IN (
+      'editor_in_chief',
+      'associate_editor',
+      'section_editor',
+      'journal_manager',
+      'reviewer',
+      'author'
+    )
+  ),
+
+  added_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   UNIQUE (journal_id, user_id, role)
@@ -240,7 +282,7 @@ CREATE INDEX IF NOT EXISTS idx_journal_members_user ON journal_members(user_id);
 
 
 -- =========================
--- 10) JOURNAL ISSUES (Archive/Issues) :contentReference[oaicite:13]{index=13}
+-- 11) JOURNAL ISSUES
 -- =========================
 CREATE TABLE IF NOT EXISTS journal_issues (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -251,7 +293,7 @@ CREATE TABLE IF NOT EXISTS journal_issues (
   volume INT,
   issue INT,
 
-  label TEXT NOT NULL,        -- e.g. "Vol 2 Issue 1 (2026)"
+  label TEXT NOT NULL,
   published_at TIMESTAMPTZ,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -265,14 +307,14 @@ CREATE INDEX IF NOT EXISTS idx_journal_issues_year ON journal_issues(journal_id,
 
 
 -- =========================
--- 11) ARTICLE TYPES (TRD: “Select Article Type”) :contentReference[oaicite:14]{index=14}
+-- 12) ARTICLE TYPES
 -- =========================
 CREATE TABLE IF NOT EXISTS article_types (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   journal_id UUID NOT NULL REFERENCES journals(id) ON DELETE CASCADE,
 
-  name TEXT NOT NULL,          -- e.g. Research Article, Review, Case Study
+  name TEXT NOT NULL,
   description TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
@@ -281,12 +323,12 @@ CREATE TABLE IF NOT EXISTS article_types (
 
 
 -- =========================
--- 12) LICENSES (TRD: “Select license”) :contentReference[oaicite:15]{index=15}
+-- 13) LICENSES
 -- =========================
 CREATE TABLE IF NOT EXISTS licenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-  name TEXT NOT NULL UNIQUE,     -- e.g. CC BY 4.0
+  name TEXT NOT NULL UNIQUE,
   url TEXT,
   description TEXT,
 
@@ -295,7 +337,7 @@ CREATE TABLE IF NOT EXISTS licenses (
 
 
 -- =========================
--- 13) PAPERS (Core manuscript entity)
+-- 14) PAPERS
 -- =========================
 CREATE TABLE IF NOT EXISTS papers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -307,15 +349,15 @@ CREATE TABLE IF NOT EXISTS papers (
   abstract TEXT,
   keywords TEXT[],
 
-  category TEXT, -- optional free-text category, but prefer controlled vocab if needed
+  category TEXT,
 
-  submitted_by UUID NOT NULL REFERENCES users(id), -- the account that submitted (corresponding author)
+  submitted_by UUID NOT NULL REFERENCES users(id),
 
   license_id UUID REFERENCES licenses(id),
 
   status paper_status NOT NULL DEFAULT 'draft',
 
-  current_version_id UUID, -- FK added after paper_versions is created
+  current_version_id UUID,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -326,16 +368,16 @@ CREATE INDEX IF NOT EXISTS gin_papers_keywords ON papers USING GIN (keywords);
 
 
 -- =========================
--- 14) PAPER VERSIONS (DOCX uploads + revisions)
+-- 15) PAPER VERSIONS
 -- =========================
 CREATE TABLE IF NOT EXISTS paper_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   paper_id UUID NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
 
-  version_label TEXT NOT NULL,     -- e.g. v1, v2, r1
+  version_label TEXT NOT NULL,
   manuscript_file_url TEXT NOT NULL,
-  cover_letter_url TEXT,           -- TRD mentions cover letter option :contentReference[oaicite:16]{index=16}
+  cover_letter_url TEXT,
 
   uploaded_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -351,12 +393,12 @@ CREATE INDEX IF NOT EXISTS idx_paper_versions_paper ON paper_versions(paper_id);
 
 
 -- =========================
--- 15) AUTHORS + AFFILIATIONS (Published article page requires affiliations) :contentReference[oaicite:17]{index=17}
+-- 16) AFFILIATIONS + PAPER AUTHORS
 -- =========================
 CREATE TABLE IF NOT EXISTS affiliations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-  name TEXT NOT NULL,             -- e.g. "GIKI, Topi"
+  name TEXT NOT NULL,
   department TEXT,
   city TEXT,
   country TEXT,
@@ -369,7 +411,6 @@ CREATE TABLE IF NOT EXISTS paper_authors (
 
   paper_id UUID NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
 
-  -- If an author is a registered user, link it:
   user_id UUID REFERENCES users(id),
 
   full_name TEXT NOT NULL,
@@ -387,7 +428,7 @@ CREATE INDEX IF NOT EXISTS idx_paper_authors_paper ON paper_authors(paper_id);
 
 
 -- =========================
--- 16) EDITOR ASSIGNMENT (One active sub-editor assignment per paper)
+-- 17) EDITOR ASSIGNMENT
 -- =========================
 CREATE TABLE IF NOT EXISTS editor_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -403,7 +444,7 @@ CREATE TABLE IF NOT EXISTS editor_assignments (
 
 
 -- =========================
--- 17) REVIEW ASSIGNMENTS (TRD: invite reviewer + set deadline + track response) :contentReference[oaicite:18]{index=18}
+-- 18) REVIEW ASSIGNMENTS
 -- =========================
 CREATE TABLE IF NOT EXISTS review_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -417,7 +458,7 @@ CREATE TABLE IF NOT EXISTS review_assignments (
 
   invited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   responded_at TIMESTAMPTZ,
-  due_at TIMESTAMPTZ,               -- deadline countdown :contentReference[oaicite:19]{index=19}
+  due_at TIMESTAMPTZ,
 
   submitted_at TIMESTAMPTZ,
 
@@ -430,7 +471,7 @@ CREATE INDEX IF NOT EXISTS idx_review_assignments_due ON review_assignments(due_
 
 
 -- =========================
--- 18) REVIEWS (TRD: recommendation + confidential comments + comments to author + upload) :contentReference[oaicite:20]{index=20}
+-- 19) REVIEWS
 -- =========================
 CREATE TABLE IF NOT EXISTS reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -439,10 +480,10 @@ CREATE TABLE IF NOT EXISTS reviews (
 
   decision review_decision NOT NULL,
 
-  confidential_comments_to_editor TEXT, -- TRD required :contentReference[oaicite:21]{index=21}
-  comments_to_author TEXT,              -- TRD required :contentReference[oaicite:22]{index=22}
+  confidential_comments_to_editor TEXT,
+  comments_to_author TEXT,
 
-  attachment_url TEXT,                  -- optional review file upload :contentReference[oaicite:23]{index=23}
+  attachment_url TEXT,
 
   signature_url TEXT,
   signed_at TIMESTAMPTZ,
@@ -452,23 +493,21 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 
 -- =========================
--- 19) DECISIONS / DECISION LETTERS (TRD: “Send decision letter”) :contentReference[oaicite:24]{index=24}
+-- 20) EDITORIAL DECISIONS
 -- =========================
 CREATE TABLE IF NOT EXISTS editorial_decisions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   paper_id UUID NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
 
-  decided_by UUID NOT NULL REFERENCES users(id),  -- usually chief editor
-  decision review_decision NOT NULL,              -- accept/reject/minor/major
+  decided_by UUID NOT NULL REFERENCES users(id),
+  decision review_decision NOT NULL,
 
   letter_subject TEXT,
   letter_body TEXT NOT NULL,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-  -- allow multiple decisions across lifecycle (major revision, then accept, etc.)
-  -- So no UNIQUE(paper_id)
   CONSTRAINT editorial_decisions_paper_idx CHECK (char_length(letter_body) > 0)
 );
 
@@ -476,7 +515,7 @@ CREATE INDEX IF NOT EXISTS idx_editorial_decisions_paper ON editorial_decisions(
 
 
 -- =========================
--- 20) PRODUCTION CHECKLIST (metadata validation must block progression) :contentReference[oaicite:25]{index=25}
+-- 21) PRODUCTION METADATA CHECKS
 -- =========================
 CREATE TABLE IF NOT EXISTS production_metadata_checks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -496,16 +535,16 @@ CREATE TABLE IF NOT EXISTS production_metadata_checks (
 
 
 -- =========================
--- 21) PROOFING (author proof approval + correction submission) :contentReference[oaicite:26]{index=26}
+-- 22) PROOFING ROUNDS
 -- =========================
 CREATE TABLE IF NOT EXISTS proofing_rounds (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   paper_id UUID NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
 
-  proof_pdf_url TEXT NOT NULL,           -- generated proof for author review
+  proof_pdf_url TEXT NOT NULL,
   author_approved BOOLEAN NOT NULL DEFAULT FALSE,
-  author_corrections TEXT,               -- correction submission
+  author_corrections TEXT,
 
   approved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -515,8 +554,7 @@ CREATE INDEX IF NOT EXISTS idx_proofing_rounds_paper ON proofing_rounds(paper_id
 
 
 -- =========================
--- 22) PUBLICATIONS (Published record + DOI + issue assignment)
--- TRD published page must show DOI, PDF download, license info, citation format. :contentReference[oaicite:27]{index=27}
+-- 23) PUBLICATIONS
 -- =========================
 CREATE TABLE IF NOT EXISTS publications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -525,11 +563,11 @@ CREATE TABLE IF NOT EXISTS publications (
 
   issue_id UUID REFERENCES journal_issues(id),
 
-  doi TEXT UNIQUE,                      -- DOI registered
-  doi_url TEXT,                         -- clickable DOI
-  pdf_url TEXT NOT NULL,                -- final PDF download
+  doi TEXT UNIQUE,
+  doi_url TEXT,
+  pdf_url TEXT NOT NULL,
 
-  citation_text TEXT,                   -- formatted citation string
+  citation_text TEXT,
 
   published_by UUID REFERENCES users(id),
   published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -542,7 +580,7 @@ CREATE INDEX IF NOT EXISTS idx_publications_published_at ON publications(publish
 
 
 -- =========================
--- 23) REVIEWER CERTIFICATES (TRD: auto certificate after review) :contentReference[oaicite:28]{index=28}
+-- 24) REVIEWER CERTIFICATES
 -- =========================
 CREATE TABLE IF NOT EXISTS reviewer_certificates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -555,9 +593,8 @@ CREATE TABLE IF NOT EXISTS reviewer_certificates (
 
 
 -- =========================
--- 24) SEARCH (optional helper: materialized view later)
--- TRD requires platform search across journals. :contentReference[oaicite:29]{index=29}
--- Implement via Postgres full-text or external search; schema hooks:
+-- 25) PAPER SEARCH INDEX
+-- =========================
 CREATE TABLE IF NOT EXISTS paper_search_index (
   paper_id UUID PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
   document_tsv tsvector NOT NULL,

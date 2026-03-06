@@ -19,12 +19,8 @@ export default function Navbar() {
   const navItems = [
     { name: "Home", path: "/" },
     {
-      name: "Browse",
-      dropdown: [
-        { name: "Latest Journals", path: "/browse" },
-        { name: "Most Cited", path: "/browse/cited" },
-        { name: "Categories", path: "/browse/categories" },
-      ],
+      name: "Journals",
+      path: "/browse",
     },
     { name: "About", path: "/about" },
     { name: "FAQ", path: "/faq" },
@@ -70,34 +66,7 @@ export default function Navbar() {
                 className="group flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/50 hover:text-foreground"
               >
                 {item.name}
-                {item.dropdown && (
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      activeDropdown === item.name ? "rotate-180" : ""
-                    }`}
-                  />
-                )}
               </Link>
-
-              {item.dropdown && activeDropdown === item.name && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute left-0 mt-2 w-56 rounded-xl border border-border/50 bg-popover/95 p-2 shadow-2xl backdrop-blur-xl"
-                >
-                  {item.dropdown.map((dropItem) => (
-                    <Link
-                      key={dropItem.name}
-                      to={dropItem.path}
-                      className="block rounded-lg px-4 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
-                    >
-                      {dropItem.name}
-                    </Link>
-                  ))}
-                </motion.div>
-              )}
             </div>
           ))}
         </div>

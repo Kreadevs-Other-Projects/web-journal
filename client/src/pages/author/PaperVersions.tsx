@@ -646,7 +646,7 @@ export default function PaperVersions() {
       </PageTransition>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-gradient-to-b from-background to-background/95">
+        <DialogContent className="sm:max-w-[600px] bg-gradient-to-b from-background to-background/95 max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-serif-outfit flex items-center gap-2 text-2xl">
               <Upload className="w-6 h-6" />
@@ -657,7 +657,7 @@ export default function PaperVersions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-1">
             {!paperId ? (
               <div className="space-y-4">
                 <div className="rounded-lg border border-dashed border-border p-6 text-center">

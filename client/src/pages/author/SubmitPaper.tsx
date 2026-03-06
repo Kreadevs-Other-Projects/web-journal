@@ -30,8 +30,6 @@ import {
   XCircle,
   Edit3,
   ExternalLink,
-  CreditCard,
-  AlertCircle,
   Send,
   CheckCircle2,
   Eye,
@@ -127,22 +125,9 @@ export default function Papers() {
 
   const [open, setOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
 
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [status, setStatus] = useState("submitted");
-
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [createdPaperId, setCreatedPaperId] = useState<string | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<any>(null);
-  const [payLoading, setPayLoading] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({
-    cardBrand: "visa",
-    name: "",
-    cardNumber: "",
-    expiry: "",
-    cvc: "",
-  });
 
   const [form, setForm] = useState({
     title: "",
@@ -308,80 +293,30 @@ export default function Papers() {
         }
       }
 
-      const paperId = data.data.id;
-      setCreatedPaperId(paperId);
+      if (!res.ok) throw new Error(data.message);
 
-      const payRes = await fetch(
-        `${url}/paperPayment/createPaperPayment/${paperId}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-
-      const payData = await payRes.json();
-      if (!payRes.ok) throw new Error(payData.message);
-
-      setPaymentId(payData.payment.id);
-      setPendingPayment(payData.payment);
+      toast({
+        title: "Paper Submitted",
+        description: "Your paper has been submitted successfully.",
+      });
 
       setOpen(false);
-      setPaymentOpen(true);
+      setForm({
+        title: "",
+        abstract: "",
+        category: "",
+        keywords: "",
+        journal_id: "",
+        issue_id: "",
+      });
+
+      fetchPapers();
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Submit Failed",
         description: err.message,
       });
-    }
-  };
-
-  const confirmPayment = async () => {
-    if (!paymentId) return;
-
-    try {
-      setPayLoading(true);
-
-      const res = await fetch(
-        `${url}/paperPayment/payPaperPayment/${paymentId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            transaction_id: "TX-" + Date.now(),
-            provider: "manual",
-          }),
-        },
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      toast({
-        title: "Payment Successful",
-        description: "Paper submission completed",
-      });
-
-      setPaymentOpen(false);
-      setPaymentForm({
-        cardBrand: "visa",
-        name: "",
-        cardNumber: "",
-        expiry: "",
-        cvc: "",
-      });
-      fetchPapers();
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Payment Failed",
-        description: err.message,
-      });
-    } finally {
-      setPayLoading(false);
     }
   };
 
@@ -484,7 +419,6 @@ export default function Papers() {
                 label: "Total Papers",
                 value: stats.total,
                 color: "text-primary",
-                trend: "+2 this month",
               },
               {
                 icon: Send,
@@ -527,12 +461,6 @@ export default function Papers() {
                     <AnimatedCounter end={stat.value} duration={1.5} />
                   </div>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  {stat.trend && (
-                    <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      {stat.trend}
-                    </p>
-                  )}
                 </motion.div>
               </StaggerItem>
             ))}
@@ -703,7 +631,7 @@ export default function Papers() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            {/* <div className="flex items-center gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -729,7 +657,7 @@ export default function Papers() {
                                   Update
                                 </Button>
                               )}
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       </div>
@@ -827,7 +755,7 @@ export default function Papers() {
                   </Select>
                 </div>
 
-                <div>
+                {/* <div>
                   <Label htmlFor="issue" className="text-sm font-medium">
                     Journal Issue (Optional)
                   </Label>
@@ -850,7 +778,7 @@ export default function Papers() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -867,20 +795,6 @@ export default function Papers() {
                 rows={5}
               />
             </div>
-
-            <div className="glass-card p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-primary mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Submission Process</p>
-                  <p className="text-xs text-muted-foreground">
-                    After submitting, you'll be redirected to complete the
-                    payment. Your paper will be reviewed once payment is
-                    confirmed.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
           <DialogFooter>
@@ -888,181 +802,9 @@ export default function Papers() {
               Cancel
             </Button>
             <Button onClick={submitPaper} className="gap-2 bg-gradient-primary">
-              <CreditCard className="w-4 h-4" />
-              Continue to Payment
+              Submit Paper
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-        <DialogContent className="sm:max-w-[700px] bg-gradient-to-b from-background to-background/95">
-          <DialogHeader>
-            <DialogTitle className="font-serif-outfit flex items-center gap-2 text-2xl">
-              <CreditCard className="w-6 h-6" />
-              Complete Payment
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Secure payment gateway for paper submission
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            <Card className="border-border/40 bg-gradient-to-r from-primary/5 to-primary/10">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Paper Submission Fee
-                    </p>
-                    <p className="text-3xl font-bold mt-1">$49.99</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Paper ID: {pendingPayment?.paper_id || "N/A"}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-full bg-primary/10">
-                    <CreditCard className="w-8 h-8 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                confirmPayment();
-              }}
-              className="space-y-6"
-            >
-              <div className="space-y-4">
-                <Label>Payment Method</Label>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant={
-                      paymentForm.cardBrand === "visa" ? "default" : "outline"
-                    }
-                    onClick={() =>
-                      setPaymentForm((p) => ({ ...p, cardBrand: "visa" }))
-                    }
-                    className="flex-1 gap-2"
-                  >
-                    <div className="w-6 h-6 bg-blue-600 rounded-sm" />
-                    VISA
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      paymentForm.cardBrand === "mastercard"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setPaymentForm((p) => ({ ...p, cardBrand: "mastercard" }))
-                    }
-                    className="flex-1 gap-2"
-                  >
-                    <div className="w-6 h-6 bg-red-600 rounded-sm" />
-                    MasterCard
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label htmlFor="cardName">Cardholder Name</Label>
-                  <Input
-                    id="cardName"
-                    placeholder="John Doe"
-                    value={paymentForm.name}
-                    onChange={(e) =>
-                      setPaymentForm((p) => ({ ...p, name: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="cardNumber">Card Number</Label>
-                  <Input
-                    id="cardNumber"
-                    placeholder="1234 5678 9012 3456"
-                    value={paymentForm.cardNumber}
-                    onChange={(e) =>
-                      setPaymentForm((p) => ({
-                        ...p,
-                        cardNumber: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="expiry">Expiry Date</Label>
-                  <Input
-                    id="expiry"
-                    placeholder="MM/YY"
-                    value={paymentForm.expiry}
-                    onChange={(e) =>
-                      setPaymentForm((p) => ({
-                        ...p,
-                        expiry: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="cvc">CVC</Label>
-                  <Input
-                    id="cvc"
-                    placeholder="123"
-                    value={paymentForm.cvc}
-                    onChange={(e) =>
-                      setPaymentForm((p) => ({ ...p, cvc: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="glass-card p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-4 h-4 text-primary mt-0.5" />
-                  <p className="text-xs text-muted-foreground">
-                    Your payment is securely processed. No card details are
-                    stored on our servers.
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPaymentOpen(false)}
-                  disabled={payLoading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={payLoading}
-                  className="gap-2 bg-gradient-primary"
-                >
-                  {payLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      Pay $49.99
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </div>
         </DialogContent>
       </Dialog>
 

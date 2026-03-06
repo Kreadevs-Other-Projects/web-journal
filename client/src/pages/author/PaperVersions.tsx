@@ -259,9 +259,25 @@ export default function PaperVersions() {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Upload failed");
+      const data = await res.json();
+
+      if (!data.success) {
+        if (data.errors && data.errors.length) {
+          data.errors.forEach((err: any) => {
+            toast({
+              title: `Error in ${err.field.replace("body.", "")}`,
+              description: err.message,
+              variant: "destructive",
+            });
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
       toast({
@@ -287,7 +303,7 @@ export default function PaperVersions() {
   };
 
   const formatFileSize = (bytes: number | null | undefined) => {
-    if (!bytes) return "N/A"; // <--- handles null/undefined
+    if (!bytes) return "N/A";
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i)) + " " + sizes[i];
@@ -630,7 +646,7 @@ export default function PaperVersions() {
       </PageTransition>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-gradient-to-b from-background to-background/95">
+        <DialogContent className="sm:max-w-[600px] bg-gradient-to-b from-background to-background/95 max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-serif-outfit flex items-center gap-2 text-2xl">
               <Upload className="w-6 h-6" />
@@ -641,7 +657,7 @@ export default function PaperVersions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-1">
             {!paperId ? (
               <div className="space-y-4">
                 <div className="rounded-lg border border-dashed border-border p-6 text-center">

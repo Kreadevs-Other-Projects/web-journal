@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS journal_payments (
   amount NUMERIC(10,2) NOT NULL,
   currency TEXT DEFAULT 'PKR',
   status TEXT CHECK (status IN ('pending', 'success', 'failed')),
-  transaction_id TEXT,
+  payment_type journal_payment_type NOT NULL DEFAULT 'first_time',
+  transaction_pic TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

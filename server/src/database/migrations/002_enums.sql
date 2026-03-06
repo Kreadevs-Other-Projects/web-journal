@@ -86,10 +86,19 @@ DO $$ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'issue_status') THEN
     CREATE TYPE issue_status AS ENUM (
+      'pending',
       'draft',
       'open',
       'closed',
       'published'
+    );
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_payment_type') THEN
+    CREATE TYPE journal_payment_type AS ENUM (
+      'first_time',
+      'issue',
+      'renewal'
     );
   END IF;
 

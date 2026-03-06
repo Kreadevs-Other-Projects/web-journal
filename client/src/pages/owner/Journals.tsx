@@ -20,6 +20,13 @@ import {
   FilePlus2,
   Edit3,
   UserPlus,
+  Calendar,
+  Hash,
+  Globe,
+  FileText,
+  Users,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -32,6 +39,7 @@ interface Journal {
   acronym: string;
   description?: string;
   issn: string;
+  status: string;
   website_url?: string;
   created_at: string;
 }
@@ -125,19 +133,6 @@ export default function Journals(): JSX.Element {
 
   const [currentJournalId, setCurrentJournalId] = useState<string | null>(null);
   const [currentJournalName, setCurrentJournalName] = useState("");
-
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [pendingPaymentIssue, setPendingPaymentIssue] =
-    useState<JournalIssue | null>(null);
-  const [payLoading, setPayLoading] = useState(false);
-
-  const [paymentForm, setPaymentForm] = useState({
-    cardBrand: "visa" as "visa" | "mastercard",
-    cardNumber: "",
-    expiry: "",
-    cvc: "",
-    name: "",
-  });
 
   const fetchJournals = async () => {
     if (!user?.id) return;
@@ -507,19 +502,6 @@ export default function Journals(): JSX.Element {
 
         setModalOpen(false);
 
-        if (!editingIssue) {
-          let createdIssue: JournalIssue | null =
-            data.issue ?? data.journalIssue ?? data.createdIssue ?? null;
-
-          if (!createdIssue) {
-            const list = await fetchIssuesForJournal(journalId);
-            createdIssue = list?.[0] ?? null;
-          }
-
-          setPendingPaymentIssue(createdIssue);
-          setPaymentOpen(true);
-        }
-
         setEditingIssue(null);
         setActiveJournalForIssue(null);
         setIssueForm({
@@ -585,139 +567,310 @@ export default function Journals(): JSX.Element {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  const getJournalIssueStats = (journalId: string) => {
+    const issues = issuesByJournal[journalId] || [];
+    const activeCount = issues.filter(isActiveIssue).length;
+    const pendingCount = issues.filter((i) => !isActiveIssue(i)).length;
+    return { total: issues.length, active: activeCount, pending: pendingCount };
+  };
+
+  if (isLoading)
+    return (
+      <DashboardLayout
+        role={user?.role || "owner"}
+        userName={user?.username || ""}
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="text-white/60">Loading...</div>
+        </div>
+      </DashboardLayout>
+    );
+
   if (!user) return <div>Unauthorized</div>;
 
   return (
     <DashboardLayout role={user.role} userName={user.username}>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h1 className="text-3xl font-bold text-white">Journals</h1>
+      <div className="space-y-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-transparent p-6 border border-white/10">
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+                  Journals
+                </h1>
+                <p className="text-white/40 mt-1">
+                  Manage your academic journals and publications
+                </p>
+              </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => {
-                setModalMode("chief-editor");
-                setNewJournalModalOpen(true);
-              }}
-              className="btn-physics flex items-center gap-2 px-4 py-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              Add Chief Editor
-            </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => {
+                    setModalMode("chief-editor");
+                    setNewJournalModalOpen(true);
+                  }}
+                  className="btn-physics flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add Chief Editor
+                </Button>
 
-            <Button
-              onClick={() => {
-                setModalMode("journal");
-                setNewJournalModalOpen(true);
-              }}
-              className="btn-physics flex items-center gap-2 px-4 py-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Journal
-            </Button>
+                <Button
+                  onClick={() => {
+                    setModalMode("journal");
+                    setNewJournalModalOpen(true);
+                  }}
+                  className="btn-physics flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Journal
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">
+                      {journals.length}
+                    </p>
+                    <p className="text-xs text-white/40">Total Journals</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">
+                      {journals.reduce(
+                        (acc, j) => acc + getJournalIssueStats(j.id).active,
+                        0,
+                      )}
+                    </p>
+                    <p className="text-xs text-white/40">Active Issues</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-yellow-500/10">
+                    <Clock className="h-5 w-5 text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">
+                      {journals.reduce(
+                        (acc, j) => acc + getJournalIssueStats(j.id).pending,
+                        0,
+                      )}
+                    </p>
+                    <p className="text-xs text-white/40">Pending Issues</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Users className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">
+                      {chiefEditors.length}
+                    </p>
+                    <p className="text-xs text-white/40">Chief Editors</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {journals.map((j) => {
-            const hasActive = journalHasActiveIssue(j.id);
+        {journals.length === 0 ? (
+          <div className="glass-card p-12 text-center">
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto">
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold text-white">
+                No Journals Yet
+              </h3>
+              <p className="text-white/40">
+                Get started by creating your first journal. Click the "New
+                Journal" button above to begin.
+              </p>
+              <Button
+                onClick={() => {
+                  setModalMode("journal");
+                  setNewJournalModalOpen(true);
+                }}
+                className="btn-physics mt-4"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Journal
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {journals.map((j) => {
+              const hasActive = journalHasActiveIssue(j.id);
+              const stats = getJournalIssueStats(j.id);
 
-            return (
-              <Card key={j.id} className="glass-card">
-                <CardHeader>
-                  <CardTitle
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => openJournalIssues(j.id, j.title)}
-                  >
-                    <BookOpen className="h-5 w-5" />
-                    {j.title}
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent className="space-y-2">
-                  <p className="text-xs">Acronym: {j.acronym}</p>
-                  <p className="text-xs">ISSN: {j.issn}</p>
-
-                  {j.website_url ? (
-                    <a
-                      href={j.website_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-sm text-primary"
-                    >
-                      <LinkIcon className="h-4 w-4" />
-                      Website
-                    </a>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Website: <span className="italic">Optional</span>
-                    </p>
-                  )}
-
-                  <div className="pt-2">
-                    {!hasActive ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="w-full btn-physics"
-                        onClick={() => openApplyIssueModal(j)}
+              return (
+                <Card
+                  key={j.id}
+                  className="glass-card group hover:border-white/20 transition-all duration-300"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div
+                        className="flex items-start gap-3 cursor-pointer flex-1"
+                        onClick={() => openJournalIssues(j.id, j.title)}
                       >
-                        <FilePlus2 className="h-4 w-4 mr-2" />
-                        Apply for Issue
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full btn-physics"
-                        onClick={() => openEditActiveIssueModal(j)}
+                        <div className="p-2.5 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                          <BookOpen className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg font-semibold text-white truncate">
+                            {j.title}
+                          </CardTitle>
+                          <p className="text-xs text-white/40 mt-0.5">
+                            Created{" "}
+                            {new Date(j.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          hasActive
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-yellow-500/10 text-yellow-500"
+                        }`}
                       >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Edit Issue
-                      </Button>
+                        {j.status}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <Hash className="h-3.5 w-3.5" />
+                        <span className="font-mono">{j.acronym}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-white/60">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>ISSN: {j.issn}</span>
+                      </div>
+
+                      {j.website_url && (
+                        <a
+                          href={j.website_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <Globe className="h-3.5 w-3.5" />
+                          <span className="text-sm truncate">
+                            Visit Website
+                          </span>
+                        </a>
+                      )}
+                    </div>
+
+                    {stats.total > 0 && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span className="text-xs text-white/60">
+                            {stats.active} Active
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                          <span className="text-xs text-white/60">
+                            {stats.pending}
+                          </span>
+                        </div>
+                      </div>
                     )}
-                  </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedJournal(j);
-                        setForm({
-                          title: j.title,
-                          acronym: j.acronym,
-                          description: j.description ?? "",
-                          issn: j.issn,
-                          website_url: j.website_url ?? "",
-                          chief_editor_id: (j as any).chief_editor_id ?? "",
-                        });
+                    <div className="space-y-2 pt-2">
+                      {!hasActive ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="w-full btn-physics bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                          onClick={() => openApplyIssueModal(j)}
+                        >
+                          <FilePlus2 className="h-4 w-4 mr-2" />
+                          Apply for Issue
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full btn-physics border-white/10 hover:bg-white/5"
+                          onClick={() => openEditActiveIssueModal(j)}
+                        >
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Active Issue
+                        </Button>
+                      )}
 
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 btn-physics border-white/10 hover:bg-white/5"
+                          onClick={() => {
+                            setSelectedJournal(j);
+                            setForm({
+                              title: j.title,
+                              acronym: j.acronym,
+                              description: j.description ?? "",
+                              issn: j.issn,
+                              website_url: j.website_url ?? "",
+                              chief_editor_id: (j as any).chief_editor_id ?? "",
+                            });
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
 
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => {
-                        setSelectedJournal(j);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="flex-1 btn-physics bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20"
+                          onClick={() => {
+                            setSelectedJournal(j);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <Dialog open={newJournalModalOpen} onOpenChange={setNewJournalModalOpen}>
@@ -803,8 +956,9 @@ export default function Journals(): JSX.Element {
                 </div>
 
                 <div>
-                  <Label>Chief Editor</Label>
+                  <Label htmlFor="chief_editor">Chief Editor</Label>
                   <select
+                    id="chief_editor"
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                     value={form.chief_editor_id}
                     onChange={(e) =>
@@ -1130,181 +1284,6 @@ export default function Journals(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle className="text-left">
-              Payment Details
-              {pendingPaymentIssue ? (
-                <span className="block text-sm text-muted-foreground font-normal mt-1">
-                  Issue saved as <span className="font-semibold">Pending</span>.
-                  Pay to activate.
-                </span>
-              ) : null}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5">
-            <div className="glass-card p-4 text-left">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Pay for</p>
-                  <p className="font-semibold truncate">
-                    {activeJournalForIssue?.name || "Journal Issue"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Status after save:{" "}
-                    <span className="font-semibold">Pending</span>
-                  </p>
-                </div>
-
-                <div className="shrink-0 rounded-2xl border border-border/60 bg-background/40 px-4 py-3 w-[180px]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Card</span>
-                    <span className="text-xs font-semibold uppercase">
-                      {paymentForm.cardBrand === "visa" ? "VISA" : "MASTERCARD"}
-                    </span>
-                  </div>
-                  <div className="mt-4 text-sm tracking-widest text-foreground/90">
-                    •••• •••• ••••{" "}
-                    {paymentForm.cardNumber.replace(/\s/g, "").slice(-4) ||
-                      "----"}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>
-                      {paymentForm.name ? paymentForm.name : "Cardholder"}
-                    </span>
-                    <span>{paymentForm.expiry || "MM/YY"}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-              }}
-              className="space-y-4"
-            >
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPaymentForm((p) => ({ ...p, cardBrand: "visa" }))
-                  }
-                  className={`btn-physics rounded-full px-3 py-1.5 text-xs font-semibold border ${
-                    paymentForm.cardBrand === "visa"
-                      ? "bg-primary/10 text-primary border-primary/30 glow-primary"
-                      : "bg-background/30 text-muted-foreground border-border/60"
-                  }`}
-                >
-                  VISA
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPaymentForm((p) => ({ ...p, cardBrand: "mastercard" }))
-                  }
-                  className={`btn-physics rounded-full px-3 py-1.5 text-xs font-semibold border ${
-                    paymentForm.cardBrand === "mastercard"
-                      ? "bg-primary/10 text-primary border-primary/30 glow-primary"
-                      : "bg-background/30 text-muted-foreground border-border/60"
-                  }`}
-                >
-                  MasterCard
-                </button>
-              </div>
-
-              <div className="text-left">
-                <Label>Billing name</Label>
-                <Input
-                  className="input-glow"
-                  placeholder="Name on card"
-                  value={paymentForm.name}
-                  onChange={(e) =>
-                    setPaymentForm((p) => ({ ...p, name: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="text-left">
-                <Label>Card information</Label>
-
-                <div className="mt-2 rounded-2xl border border-border/60 bg-background/40 overflow-hidden">
-                  <div className="px-4 py-3">
-                    <Input
-                      className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
-                      placeholder="1234 1234 1234 1234"
-                      value={paymentForm.cardNumber}
-                      onChange={(e) =>
-                        setPaymentForm((p) => ({
-                          ...p,
-                          cardNumber: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="h-px bg-border/60" />
-
-                  <div className="grid grid-cols-2">
-                    <div className="px-4 py-3">
-                      <Input
-                        className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
-                        placeholder="MM / YY"
-                        value={paymentForm.expiry}
-                        onChange={(e) =>
-                          setPaymentForm((p) => ({
-                            ...p,
-                            expiry: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-
-                    <div className="px-4 py-3 border-l border-border/60">
-                      <Input
-                        className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 input-glow"
-                        placeholder="CVC"
-                        value={paymentForm.cvc}
-                        onChange={(e) =>
-                          setPaymentForm((p) => ({ ...p, cvc: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Your issue stays{" "}
-                  <span className="font-semibold">Pending</span> if you close
-                  this and pay later.
-                </p>
-              </div>
-
-              <DialogFooter className="pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setPaymentOpen(false)}
-                  disabled={payLoading}
-                >
-                  Pay later
-                </Button>
-
-                <Button
-                  type="submit"
-                  className="btn-physics"
-                  disabled={payLoading}
-                >
-                  {payLoading ? "Processing..." : "Pay now"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={issuesModalOpen} onOpenChange={setIssuesModalOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -1336,12 +1315,16 @@ export default function Journals(): JSX.Element {
 
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
-                        isActiveIssue(issue)
+                        issue.status === "active"
                           ? "bg-green-500/10 text-green-500"
-                          : "bg-yellow-500/10 text-yellow-500"
+                          : issue.status === "draft"
+                            ? "bg-yellow-500/10 text-yellow-500"
+                            : issue.status === "reject"
+                              ? "bg-red-500/10 text-red-500"
+                              : "bg-gray-500/10 text-gray-500"
                       }`}
                     >
-                      {isActiveIssue(issue) ? "Active" : "Pending"}
+                      {issue.status}
                     </span>
                   </div>
                 </div>

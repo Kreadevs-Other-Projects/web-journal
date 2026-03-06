@@ -1,7 +1,26 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  FileText,
+  Mail,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Loader2,
+  DollarSign,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { url } from "@/url";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -9,335 +28,245 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  FileText,
-  BookOpen,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { url } from "@/url";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Paper {
   id: string;
   title: string;
+  JournalId: string;
+  journal_name: string;
+  label: string;
+  author_id: string;
   authors?: string;
+  author_email?: string;
   created_at: string;
-  status: string;
+  paper_status: string;
+  payment_status: string;
   abstract?: string;
 }
 
-interface Issue {
-  id: string;
-  year: number;
-  volume?: number | null;
-  issue?: number | null;
-  label: string;
-  journal_id: string;
-}
-
-interface Journal {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export default function PublishPapersPage() {
+export default function PublisherPapersDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
 
-  const [journals, setJournals] = useState<Journal[]>([]);
-  const [selectedJournalId, setSelectedJournalId] = useState<string>("");
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedIssueId, setSelectedIssueId] = useState<string>("");
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("all");
 
-  const [loadingJournals, setLoadingJournals] = useState(true);
-  const [loadingIssues, setLoadingIssues] = useState(false);
-  const [loadingPapers, setLoadingPapers] = useState(false);
-
-  const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  const [publishing, setPublishing] = useState<string | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
 
-  const [publishForm, setPublishForm] = useState({
-    issue_id: "",
-    year_label: "",
-  });
+  const statusMap: Record<string, string[]> = {
+    all: ["pending", "paid", "submitted", "accepted"],
+    pending: ["pending", "submitted", "accepted"],
+    paid: ["paid"],
+  };
 
-  const fetchJournals = async () => {
+  const fetchPapers = async () => {
     try {
-      setLoadingJournals(true);
-
-      const response = await fetch(`${url}/publisher/getJournals`, {
+      setLoading(true);
+      const res = await fetch(`${url}/papers/getAllPapers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) throw new Error("Failed to fetch journals");
+      if (!res.ok) throw new Error("Failed to fetch papers");
 
-      const data = await response.json();
-      setJournals(data.data || data.journals || []);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to fetch journals",
-      });
-    } finally {
-      setLoadingJournals(false);
-    }
-  };
+      const data = await res.json();
 
-  const fetchIssues = async (journalId: string) => {
-    try {
-      setLoadingIssues(true);
-      setIssues([]);
-      setSelectedIssueId("");
-      setPapers([]);
+      console.log(data);
 
-      const response = await fetch(
-        `${url}/journal-issue/getJournalIssues/${journalId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+      setPapers(
+        Array.isArray(data?.papers)
+          ? data.papers
+          : data?.papers
+            ? [data.papers]
+            : [],
       );
-
-      if (!response.ok) throw new Error("Failed to fetch issues");
-
-      const data = await response.json();
-      setIssues(data.issues || []);
-    } catch (error: any) {
+    } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to fetch issues",
+        description: err.message || "Could not load papers",
       });
     } finally {
-      setLoadingIssues(false);
+      setLoading(false);
     }
   };
 
-  const fetchPapers = async (issueId: string) => {
-    try {
-      setLoadingPapers(true);
-      setPapers([]);
-
-      const response = await fetch(`${url}/publisher/papers/${issueId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch papers");
-
-      const data = await response.json();
-      setPapers(data?.data?.papers ?? []);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to fetch papers",
-      });
-    } finally {
-      setLoadingPapers(false);
-    }
-  };
-
-  const handleJournalChange = (journalId: string) => {
-    setSelectedJournalId(journalId);
-    if (journalId) {
-      fetchIssues(journalId);
-    } else {
-      setIssues([]);
-      setSelectedIssueId("");
-      setPapers([]);
-    }
-  };
-
-  const handleIssueChange = (issueId: string) => {
-    setSelectedIssueId(issueId);
-    if (issueId) {
-      fetchPapers(issueId);
-    } else {
-      setPapers([]);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!selectedPaper || !publishForm.issue_id) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please select an issue",
-      });
+  const sendPaymentRequest = async () => {
+    if (!selectedPaper || !paymentAmount.trim()) {
       return;
     }
 
     try {
-      setPublishing(selectedPaper.id);
+      setSendingEmail(true);
 
-      const response = await fetch(
-        `${url}/publication/publishPaper/${selectedPaper.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(publishForm),
+      const payload = {
+        paperId: selectedPaper.id,
+        title: selectedPaper.title,
+        authorId: selectedPaper.author_id,
+        pages: 1,
+        pricePerPage: parseFloat(paymentAmount),
+        username: selectedPaper.authors,
+        journal_name: selectedPaper.journal_name,
+        label: selectedPaper.label,
+        author_email: selectedPaper.author_email,
+      };
+
+      const res = await fetch(`${url}/publisher/sendEmail`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send payment");
+      }
+
+      toast({
+        title: "Payment Sent",
+        description: `Payment request sent to ${selectedPaper.authors}`,
+      });
+
+      setEmailModalOpen(false);
+      setPaymentAmount("");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to send payment",
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const approvePaperPayment = async (paperId: string) => {
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${url}/publisher/approve/${paperId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to publish paper");
+        throw new Error(data.message || "Failed to approve payment");
       }
 
       toast({
-        title: "Paper Published",
-        description: "The paper has been published successfully",
+        title: "Success",
+        description: "Paper marked as paid successfully",
       });
 
-      setPublishModalOpen(false);
-      setSelectedPaper(null);
-      setPublishForm({ issue_id: "", year_label: "" });
-
-      if (selectedIssueId) fetchPapers(selectedIssueId);
+      setPapers((prev) =>
+        prev.map((paper) =>
+          paper.id === paperId ? { ...paper, status: "paid" } : paper,
+        ),
+      );
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Publish Failed",
-        description: error.message || "Could not publish paper",
+        title: "Error",
+        description: error.message || "Failed to approve payment",
       });
     } finally {
-      setPublishing(null);
+      setLoading(false);
     }
-  };
-
-  const openPublishModal = (paper: Paper) => {
-    setSelectedPaper(paper);
-    setPublishForm({
-      issue_id: selectedIssueId,
-      year_label: "",
-    });
-    setPublishModalOpen(true);
   };
 
   useEffect(() => {
-    if (user) {
-      fetchJournals();
+    if (user && token) fetchPapers();
+  }, [user, token]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "paid":
+        return (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> Paid
+          </Badge>
+        );
+      case "pending":
+      case "submitted":
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 flex items-center gap-1">
+            <Clock className="h-3 w-3" /> {status}
+          </Badge>
+        );
+      case "accepted":
+        return (
+          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> Accepted
+          </Badge>
+        );
+
+      default:
+        return (
+          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" /> {status}
+          </Badge>
+        );
     }
-  }, [user]);
+  };
+
+  const filteredPapers = papers.filter((paper) =>
+    statusMap[tab].includes(paper.paper_status.toLowerCase()),
+  );
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Publish Papers</h1>
-          <p className="mt-2 text-muted-foreground">
-            Select journal and issue to view and publish accepted papers
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-white">
+            Publisher Papers Dashboard
+          </h1>
+          <div className="flex items-center gap-4">
+            <Button onClick={fetchPapers} variant="outline" size="sm">
+              Refresh
+            </Button>
+            <Tabs
+              value={tab}
+              onValueChange={setTab}
+              className="bg-background rounded-lg p-1"
+            >
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="pending">Pending</TabsTrigger>
+                <TabsTrigger value="paid">Paid</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white mb-2 block">
-                  Select Journal <span className="text-red-500">*</span>
-                </Label>
-                {loadingJournals ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading journals...</span>
-                  </div>
-                ) : (
-                  <select
-                    value={selectedJournalId}
-                    onChange={(e) => handleJournalChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Select a journal</option>
-                    {journals?.map((journal) => (
-                      <option key={journal.id} value={journal.id}>
-                        {journal.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <Label className="text-white mb-2 block">
-                  Select Issue <span className="text-red-500">*</span>
-                </Label>
-                {loadingIssues ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading issues...</span>
-                  </div>
-                ) : (
-                  <select
-                    value={selectedIssueId}
-                    onChange={(e) => handleIssueChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    disabled={!selectedJournalId}
-                  >
-                    <option value="">
-                      {selectedJournalId
-                        ? "Select an issue"
-                        : "Select a journal first"}
-                    </option>
-                    {issues?.map((issue) => (
-                      <option key={issue.id} value={issue.id}>
-                        {issue.label} ({issue.year})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {loadingPapers ? (
-          <Card className="glass-card">
-            <CardContent className="p-12 text-center">
-              <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
-              <p className="mt-4 text-muted-foreground">Loading papers...</p>
-            </CardContent>
-          </Card>
-        ) : !selectedIssueId ? (
-          <Card className="glass-card">
-            <CardContent className="p-12 text-center">
-              <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium text-white">
-                Select Journal and Issue
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Choose a journal and issue to view accepted papers
-              </p>
-            </CardContent>
-          </Card>
-        ) : papers.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="p-12 text-center">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium text-white">
-                No accepted papers
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                There are no accepted papers for this issue.
-              </p>
-            </CardContent>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-12 w-12 text-primary animate-spin" />
+          </div>
+        ) : filteredPapers.length === 0 ? (
+          <Card className="glass-card text-center py-12">
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-gray-400 text-lg">No papers found</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {papers?.map((paper) => (
-              <Card key={paper.id} className="glass-card">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPapers.map((paper) => (
+              <Card
+                key={paper.id}
+                className="glass-card border border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer"
+              >
                 <CardHeader>
                   <CardTitle className="flex justify-between items-start">
                     <div className="flex-1">
@@ -353,110 +282,108 @@ export default function PublishPapersPage() {
                         </p>
                       )}
                     </div>
-                    <Button size="sm" onClick={() => openPublishModal(paper)}>
-                      Publish
-                    </Button>
+                    <div className="flex flex-col gap-1 items-end">
+                      {getStatusBadge(paper.paper_status)}
+                      {getStatusBadge(paper.payment_status)}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span>
-                      Submitted:{" "}
-                      {new Date(paper.created_at).toLocaleDateString()}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/10 text-green-500">
-                      <CheckCircle className="h-3 w-3" />
-                      {paper.status}
-                    </span>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Submitted: {new Date(paper.created_at).toLocaleDateString()}
+                  </p>
                   {paper.abstract && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {paper.abstract}
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      Abstract: {paper.abstract}
                     </p>
                   )}
                 </CardContent>
+                <CardFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setSelectedPaper(paper);
+                      setEmailModalOpen(true);
+                    }}
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Send Payment Request
+                  </Button>
+
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => approvePaperPayment(paper.id)}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Approve
+                  </Button>
+                </CardFooter>
               </Card>
             ))}
           </div>
         )}
+
+        <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Send Payment Request</DialogTitle>
+            </DialogHeader>
+
+            {selectedPaper && (
+              <div className="space-y-4">
+                <p>
+                  To:{" "}
+                  <span className="font-medium">
+                    {selectedPaper.author_email}
+                  </span>
+                </p>
+
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="paymentAmount"
+                    className="text-sm font-medium"
+                  >
+                    Amount (USD)
+                  </label>
+                  <input
+                    id="paymentAmount"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="Enter payment amount"
+                    className="w-full p-3 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+
+                <DialogFooter className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEmailModalOpen(false);
+                      setPaymentAmount("");
+                    }}
+                    disabled={sendingEmail}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={sendPaymentRequest}
+                    disabled={sendingEmail || !paymentAmount.trim()}
+                  >
+                    {sendingEmail ? "Sending..." : "Send Payment"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={publishModalOpen} onOpenChange={setPublishModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Publish Paper</DialogTitle>
-          </DialogHeader>
-
-          {selectedPaper && (
-            <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground mb-1">Paper:</p>
-                <p className="font-medium">{selectedPaper.title}</p>
-              </div>
-
-              <div>
-                <Label>
-                  Issue <span className="text-red-500">*</span>
-                </Label>
-                <select
-                  value={publishForm.issue_id}
-                  onChange={(e) =>
-                    setPublishForm({ ...publishForm, issue_id: e.target.value })
-                  }
-                  className="w-full mt-1 px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  required
-                >
-                  <option value="">Select an issue</option>
-                  {issues?.map((issue) => (
-                    <option key={issue.id} value={issue.id}>
-                      {issue.label} ({issue.year})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <Label>Year Label (Optional)</Label>
-                <Input
-                  type="text"
-                  value={publishForm.year_label}
-                  onChange={(e) =>
-                    setPublishForm({
-                      ...publishForm,
-                      year_label: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 2024"
-                  className="mt-1"
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="ghost"
-                  onClick={() => setPublishModalOpen(false)}
-                  disabled={publishing === selectedPaper.id}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handlePublish}
-                  disabled={publishing === selectedPaper.id}
-                >
-                  {publishing === selectedPaper.id ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Publishing...
-                    </span>
-                  ) : (
-                    "Publish Paper"
-                  )}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }

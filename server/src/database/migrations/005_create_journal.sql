@@ -10,5 +10,6 @@ CREATE TABLE IF NOT EXISTS journals (
   chief_editor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ,
+  expiry_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '1 year'),
   UNIQUE (acronym)
 );

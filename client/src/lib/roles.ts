@@ -53,7 +53,7 @@ export const roleConfig: Record<
         path: "/publisher/publish-paper",
         icon: FileText,
       },
-      // { label: "Users", path: "/publisher/users", icon: Users },
+      { label: "Payments", path: "/publisher/payments", icon: Users },
     ],
   },
 
@@ -65,11 +65,11 @@ export const roleConfig: Record<
     route: "/publisher-manager",
     navigation: [
       { label: "Dashboard", path: "/publisher-manager", icon: Home },
-      // {
-      //   label: "Manage Papers",
-      //   path: "/publisher-manager/papers",
-      //   icon: FileText,
-      // },
+      {
+        label: "Publish Paper",
+        path: "/publisher/publish-paper",
+        icon: FileText,
+      },
       // {
       //   label: "Analytics",
       //   path: "/publisher-manager/analytics",

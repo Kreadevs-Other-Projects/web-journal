@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Card,
@@ -50,6 +50,8 @@ interface JournalIssue {
   year: number;
   label: string;
   issueStatus: string;
+  article_index: number;
+  created_at: string;
   published_at: string;
   updated_at: string | null;
 }
@@ -71,6 +73,33 @@ interface Journal {
   issues: JournalIssue[];
 }
 
+function calcProration(
+  issues: JournalIssue[],
+  selectedIssue: JournalIssue,
+  fullAmount: number,
+) {
+  const firstIssue = issues.find((i) => i.article_index === 1);
+  if (!firstIssue) return null;
+  const startDate = new Date(firstIssue.created_at);
+  const endDate = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + 1);
+  const totalDays = Math.round(
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const daysRemaining = Math.max(
+    0,
+    Math.round(
+      (endDate.getTime() - new Date(selectedIssue.created_at).getTime()) /
+        (1000 * 60 * 60 * 24),
+    ),
+  );
+  return {
+    proratedAmount: parseFloat(
+      ((fullAmount * daysRemaining) / totalDays).toFixed(2),
+    ),
+  };
+}
+
 export default function PublisherDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
@@ -83,6 +112,25 @@ export default function PublisherDashboard() {
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<JournalIssue | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isProrated =
+    selectedIssue !== null && selectedIssue.article_index !== 1;
+
+  const prorationInfo = useMemo(() => {
+    if (
+      !selectedJournal ||
+      !selectedIssue ||
+      !invoiceAmount ||
+      Number(invoiceAmount) <= 0
+    )
+      return null;
+    if (!isProrated) return null;
+    return calcProration(
+      selectedJournal.issues,
+      selectedIssue,
+      Number(invoiceAmount),
+    );
+  }, [selectedJournal, selectedIssue, invoiceAmount, isProrated]);
 
   const statusMap: Record<string, string[]> = {
     all: ["pending_payment", "draft", "active", "suspended", "archived"],
@@ -127,8 +175,11 @@ export default function PublisherDashboard() {
         body: JSON.stringify({ issueId }),
       });
 
-      if (!res.ok) throw new Error("Failed to approve journal");
+      const data = await res.json();
 
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to approve payment");
+      }
       toast({
         title: "Success",
         description: "Journal issue approved successfully",
@@ -147,7 +198,7 @@ export default function PublisherDashboard() {
     }
   };
 
-  const sendInvoice = async (journalId: string) => {
+  const sendInvoice = async (journalId: string, issueId: string) => {
     if (!invoiceAmount || invoiceAmount <= 0) {
       toast({
         variant: "destructive",
@@ -164,6 +215,7 @@ export default function PublisherDashboard() {
 
       const payload = {
         journalId,
+        issueId,
         amount: invoiceAmount,
       };
 
@@ -631,6 +683,20 @@ export default function PublisherDashboard() {
                         </p>
                       </div>
 
+                      {prorationInfo && (
+                        <div
+                          className="flex items-center justify-between px-4 py-3 rounded-lg
+                  bg-yellow-500/10 border border-yellow-500/30"
+                        >
+                          <span className="text-sm text-yellow-300">
+                            Prorated amount for this issue
+                          </span>
+                          <span className="text-yellow-400 font-bold font-mono text-lg">
+                            {prorationInfo.proratedAmount.toLocaleString()} PKR
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                           onClick={() =>
@@ -651,7 +717,9 @@ export default function PublisherDashboard() {
                         </Button>
 
                         <Button
-                          onClick={() => sendInvoice(selectedJournal.id)}
+                          onClick={() =>
+                            sendInvoice(selectedJournal.id, selectedIssue.id)
+                          }
                           disabled={
                             sendingInvoice ||
                             !invoiceAmount ||
@@ -661,11 +729,13 @@ export default function PublisherDashboard() {
                           size="lg"
                         >
                           {sendingInvoice ? (
-                            "Sending Invoice..."
+                            "Sending..."
                           ) : (
                             <>
                               <DollarSign className="h-4 w-4 mr-2" />
-                              Send Invoice
+                              {prorationInfo
+                                ? `Send ${prorationInfo.proratedAmount.toLocaleString()} PKR`
+                                : "Send Invoice"}
                             </>
                           )}
                         </Button>

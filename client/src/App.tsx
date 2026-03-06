@@ -6,22 +6,22 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
-import BrowsePage from "./pages/BrowsePage";
-import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
+import BrowsePage from "./pages/BrowseJournal.tsx";
+// import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
+import PublisherPayments from "./pages/publisher/Payments.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import NotFound from "./pages/NotFound";
-import MySubmissions from "./pages/author/MySubmissions.tsx";
+// import MySubmissions from "./pages/author/MySubmissions.tsx";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
-import Submissions from "./pages/chiefEditor/Submissions.tsx";
 import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
@@ -33,17 +33,22 @@ import Unauthorized from "./pages/Unauthorized.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
 import PublicRoute from "./components/PublicRoutes.tsx";
 import InitialAuthCheck from "./components/InitialCheckout.tsx";
+import JournalDetail from "./components/PaperDetail.tsx";
+import { ThemeProvider } from "./context/ThemeContext.tsx";
+import AboutPage from "./pages/aboutUs.tsx";
+import FAQPage from "./pages/faq.tsx";
+import ContactPage from "./pages/contactUs.tsx";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <div className="dark">
+      <ThemeProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter>
             <AnimatePresence mode="wait">
               <InitialAuthCheck>
                 <Routes>
@@ -55,18 +60,22 @@ const App = () => (
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
-                  </Route>
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/faq" element={<FAQPage />} />
+                    <Route path="/contact-us" element={<ContactPage />} />
 
-                  <Route path="/browse" element={<BrowsePage />} />
-                  <Route
-                    path="/researchPapers/:paperId"
-                    element={<ResearchPaperDetail />}
-                  />
+                    <Route path="/browse" element={<BrowsePage />} />
+                    <Route path="/journal/:id" element={<JournalDetail />} />
+                    <Route
+                      path="/researchPapers/:paperId"
+                      element={<ResearchPaperDetail />}
+                    />
+                  </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     {/* <Route path="/author" element={<AuthorDashboard />} />
                     <Route
-                      path="/author/submissions"
+                    path="/author/submissions"
                       element={<MySubmissions />}
                     /> */}
                     <Route path="/author" element={<SubmitPaper />} />
@@ -102,10 +111,6 @@ const App = () => (
                       element={<ChiefEditorDashboard />}
                     />
                     <Route
-                      path="/chief-editor/papers"
-                      element={<Submissions />}
-                    />
-                    <Route
                       path="/chief-editor/accepted"
                       element={<ReviewedPapers />}
                     />
@@ -114,6 +119,20 @@ const App = () => (
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route path="/publisher" element={<PublisherDashboard />} />
+
+                    <Route
+                      path="/publisher/payments"
+                      element={<PublisherPayments journalId={""} />}
+                    />
+                  </Route>
+
+                  <Route
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["publisher", "publisher_manager"]}
+                      />
+                    }
+                  >
                     <Route
                       path="/publisher/publish-paper"
                       element={<PublishPapers />}
@@ -143,9 +162,9 @@ const App = () => (
                 </Routes>
               </InitialAuthCheck>
             </AnimatePresence>
-          </div>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

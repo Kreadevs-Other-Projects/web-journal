@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { BookOpen, User, Users, UserCheck, Shield } from "lucide-react";
+import {
+  BookOpen,
+  User,
+  Users,
+  UserCheck,
+  Shield,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/AnimationWrappers";
@@ -10,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
+import Navbar from "@/components/navbar";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -184,6 +193,7 @@ export default function LoginPage() {
 
   return (
     <PageTransition className="min-h-screen bg-background relative overflow-hidden">
+      <Navbar />
       <div className="absolute inset-0 animated-gradient" />
       <div className="absolute inset-0 bg-mesh-pattern opacity-50" />
       <div className="noise-overlay" />
@@ -214,7 +224,7 @@ export default function LoginPage() {
                 <BookOpen className="h-8 w-8 text-primary-foreground" />
               </div>
               <span className="font-serif-roboto text-3xl font-bold text-muted-foreground">
-                JournalHub
+                Journal<span className="text-primary">Hub</span>
               </span>
             </div>
 
@@ -378,18 +388,31 @@ export default function LoginPage() {
                       className="pl-5 pr-10 input-glow text-muted-foreground"
                       required
                     />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Password"
-                      className="pl-5 pr-10 input-glow text-muted-foreground"
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        className="pl-5 pr-10 input-glow text-muted-foreground"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </>
                 )}
-
                 {/* {step === "otp" && (
                   <>
                     <p className="text-sm input-glow text-muted-foreground">

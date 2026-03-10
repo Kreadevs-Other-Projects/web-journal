@@ -71,7 +71,7 @@ export default function JournalListPage() {
     <div className="min-h-screen bg-[#05070A] text-slate-300 py-12 px-6 lg:px-12 selection:bg-blue-500/30">
       <Navbar />
       <div className="max-w-7xl mx-auto">
-        {/* --- HEADER --- hggh*/}
+        {/* --- HEADER --- */}
         <header className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-slate-800 pb-10 mb-12 gap-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-blue-500 font-bold uppercase tracking-widest text-xs">

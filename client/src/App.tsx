@@ -38,6 +38,7 @@ import { ThemeProvider } from "./context/ThemeContext.tsx";
 import AboutPage from "./pages/aboutUs.tsx";
 import FAQPage from "./pages/faq.tsx";
 import ContactPage from "./pages/contactUs.tsx";
+import JournalListPage from "./pages/JournalList.tsx";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/faq" element={<FAQPage />} />
                     <Route path="/contact-us" element={<ContactPage />} />
+                    <Route path="/journalList" element={<JournalListPage />} />
 
                     <Route path="/browse" element={<BrowsePage />} />
                     <Route path="/journal/:id" element={<JournalDetail />} />

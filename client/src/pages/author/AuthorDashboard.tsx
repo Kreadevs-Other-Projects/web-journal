@@ -1,146 +1,176 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PaperCard } from "@/components/PaperCard";
-import { PaperTimeline } from "@/components/PaperTimeline";
-import { AnimatedCounter } from "@/components/AnimatedCounter";
-import {
-  PageTransition,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/AnimationWrappers";
-import { motion } from "framer-motion";
-import { FileText, Clock, CheckCircle2, Send, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect } from "react";
+import { url } from "@/url";
+import { Plus, FileText } from "lucide-react";
+import { PageTransition } from "@/components/AnimationWrappers";
+import { UserRole } from "@/lib/roles";
 
-export const sampleSubmissions = [
-  {
-    id: "SUB-2026-042",
-    title: "Machine Learning Approaches for Climate Pattern Recognition",
-    category: "Machine Learning",
-    keywords: ["ML", "Climate", "Pattern Recognition"],
-    status: "under_review" as const,
-    currentVersion: "v1.2",
-    submittedAt: "Dec 15, 2025",
-  },
-  {
-    id: "SUB-2026-038",
-    title: "Quantum Error Correction in Noisy Environments",
-    category: "Quantum Computing",
-    keywords: ["Quantum", "Error Correction", "NISQ"],
-    status: "pending_revision" as const,
-    currentVersion: "v1.0",
-    submittedAt: "Dec 10, 2025",
-  },
-];
+interface Paper {
+  id: string;
+  title: string;
+  status: string;
+  authors?: string;
+  updated_at: string;
+}
 
-const timelineEvents = [
+const STATUS_CONFIG: Record<
+  string,
   {
-    id: "1",
-    status: "submitted" as const,
-    date: "Dec 15, 2025",
-    description: "Paper submitted successfully",
-    actor: "You",
-  },
-  {
-    id: "2",
-    status: "assigned" as const,
-    date: "Dec 16, 2025",
-    description: "Assigned to sub-editor",
-    actor: "System",
-  },
-  {
-    id: "3",
-    status: "under_review" as const,
-    date: "Dec 18, 2025",
-    description: "Review in progress by 2 reviewers",
-    isCurrent: true,
-  },
-];
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  }
+> = {
+  submitted: { label: "Submitted", variant: "secondary" },
+  under_review: { label: "Under Review", variant: "default" },
+  accepted: { label: "Accepted", variant: "default" },
+  rejected: { label: "Rejected", variant: "destructive" },
+  published: { label: "Published", variant: "default" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status] ?? {
+    label: status,
+    variant: "outline" as const,
+  };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function AuthorDashboard() {
-  const { user, isLoading, userData } = useAuth();
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (!user) return null;
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${url}/paper/getPapersByAuthor`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setPapers(data.papers);
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const recentSubmissions = papers.filter((p) => p.status !== "published");
+  const publishedArticles = papers.filter((p) => p.status === "published");
 
   return (
-    <DashboardLayout role={user.role} userName={user.username}>
+    <DashboardLayout
+      role={(user?.role as UserRole) ?? "author"}
+      userName={user?.username}
+    >
       <PageTransition>
-        <div className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="font-serif-outfit text-3xl font-bold text-foreground">
-                Welcome back, {user.username || "Author"}
+              <h1 className="text-2xl font-bold">
+                Welcome back, {user?.username || "Author"}
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm mt-1">
                 Track your submissions and manage your research papers.
               </p>
             </div>
-            <Link to="/author/submit">
-              <Button className="btn-physics bg-gradient-primary hover:opacity-90">
-                <Plus className="h-4 w-4 mr-2" />
-                Submit New Paper
-              </Button>
-            </Link>
+            <Button onClick={() => navigate("/author/submit")}>
+              <Plus className="h-4 w-4 mr-2" /> Submit Paper
+            </Button>
           </div>
 
-          <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              {
-                icon: Send,
-                label: "Total Submissions",
-                value: 8,
-                color: "text-primary",
-              },
-              {
-                icon: Clock,
-                label: "Under Review",
-                value: 2,
-                color: "text-warning",
-              },
-              {
-                icon: FileText,
-                label: "Pending Revision",
-                value: 1,
-                color: "text-accent",
-              },
-              {
-                icon: CheckCircle2,
-                label: "Published",
-                value: 5,
-                color: "text-success",
-              },
-            ].map((stat) => (
-              <StaggerItem key={stat.label}>
-                <motion.div whileHover={{ y: -4 }} className="glass-card p-5">
-                  <stat.icon className={`h-6 w-6 ${stat.color} mb-3`} />
-                  <div className="text-3xl font-bold text-foreground mb-1">
-                    <AnimatedCounter end={stat.value} duration={1.5} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left panel — Recent Submissions */}
+            <div className="border rounded-lg flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <h2 className="font-semibold">Recent Submissions</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/author/submit")}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Submit Paper
+                </Button>
+              </div>
+              <div className="overflow-y-auto flex-1 max-h-[60vh]">
+                {loading ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    Loading…
                   </div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                </motion.div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="font-serif-outfit text-xl font-semibold text-foreground">
-                Recent Submissions
-              </h2>
-              {sampleSubmissions.map((paper) => (
-                <PaperCard key={paper.id} {...paper} />
-              ))}
+                ) : recentSubmissions.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                    No submissions yet.
+                  </div>
+                ) : (
+                  <ul className="divide-y">
+                    {recentSubmissions.map((paper) => (
+                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1">
+                        <span className="font-medium text-sm leading-snug">
+                          {paper.title}
+                        </span>
+                        <div className="flex items-center justify-between">
+                          <StatusBadge status={paper.status} />
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(paper.updated_at)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <h2 className="font-serif-outfit text-xl font-semibold text-foreground">
-                Latest Activity
-              </h2>
-              <div className="glass-card p-4">
-                <PaperTimeline events={timelineEvents} />
+            {/* Right panel — Published Articles */}
+            <div className="border rounded-lg flex flex-col">
+              <div className="px-4 py-3 border-b">
+                <h2 className="font-semibold">Publisher</h2>
+                <p className="text-xs text-muted-foreground">Published Articles</p>
+              </div>
+              <div className="overflow-y-auto flex-1 max-h-[60vh]">
+                {loading ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    Loading…
+                  </div>
+                ) : publishedArticles.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                    No published articles yet.
+                  </div>
+                ) : (
+                  <ul className="divide-y">
+                    {publishedArticles.map((paper) => (
+                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1">
+                        <span className="font-medium text-sm leading-snug">
+                          {paper.title}
+                        </span>
+                        {paper.authors && (
+                          <span className="text-xs text-muted-foreground">
+                            {paper.authors}
+                          </span>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <StatusBadge status={paper.status} />
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(paper.updated_at)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           </div>

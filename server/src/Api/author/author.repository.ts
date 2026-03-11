@@ -3,9 +3,11 @@ import { pool } from "../../configs/db";
 export const getAuthorJournals = async () => {
   const res = await pool.query(
     `
-    SELECT *
-    FROM journals
-    WHERE status = 'active';
+    SELECT DISTINCT j.*
+    FROM journals j
+    JOIN journal_issues ji ON ji.journal_id = j.id
+    WHERE ji.status = 'open'
+    ORDER BY j.created_at DESC;
     `,
   );
   return res.rows;

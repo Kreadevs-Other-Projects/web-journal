@@ -3,10 +3,36 @@ import {
   getAllPapers,
   updatePaperStatus,
   getPapersByAuthor,
+  insertStatusLog,
+  getKeywordSuggestions,
 } from "./paper.repository";
+import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
 
-export const createPaperService = async (data: any) => {
-  return createPaper(data);
+export const createPaperService = async (
+  data: any,
+  authorEmail?: string,
+  authorUsername?: string,
+) => {
+  const paper = await createPaper(data);
+
+  await insertStatusLog({
+    paper_id: paper.id,
+    status: "submitted",
+    changed_by: data.author_id,
+    note: "Paper submitted",
+  });
+
+  if (authorEmail && authorUsername) {
+    sendSubmissionConfirmationEmail(authorEmail, authorUsername, paper.title, paper.id).catch(
+      () => {},
+    );
+  }
+
+  return paper;
+};
+
+export const getKeywordSuggestionsService = async (q: string) => {
+  return getKeywordSuggestions(q);
 };
 
 export const getAllPapersService = async () => getAllPapers();

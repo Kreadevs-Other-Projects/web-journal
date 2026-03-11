@@ -5,17 +5,21 @@ import {
   getAllPapers,
   updatePaperStatus,
   getPapersByAuthor,
+  getKeywordSuggestions,
 } from "./paper.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import { createPaperSchema, updatePaperSchema } from "./paper.schema";
+import { manuscriptUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
+
+router.get("/keyword-suggestions", authMiddleware, getKeywordSuggestions);
 
 router.post(
   "/createPaper",
   authMiddleware,
   authorize("author"),
-  validate(createPaperSchema),
+  manuscriptUpload.single("manuscript"),
   createPaper,
 );
 

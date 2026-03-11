@@ -7,7 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import BrowsePage from "./pages/BrowseJournal.tsx";
-// import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
+import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
@@ -74,12 +74,8 @@ const App = () => (
                   </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
-                    {/* <Route path="/author" element={<AuthorDashboard />} />
-                    <Route
-                    path="/author/submissions"
-                      element={<MySubmissions />}
-                    /> */}
-                    <Route path="/author" element={<SubmitPaper />} />
+                    <Route path="/author" element={<AuthorDashboard />} />
+                    <Route path="/author/submit" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />
                   </Route>
                   <Route

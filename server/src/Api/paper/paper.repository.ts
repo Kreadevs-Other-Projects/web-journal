@@ -2,12 +2,16 @@ import { pool } from "../../configs/db";
 
 export const createPaper = async (data: {
   title: string;
-  abstract: string;
+  abstract?: string;
   category?: string;
   keywords: string[];
   journal_id: string;
   author_id: string;
   issue_id?: string;
+  author_names: string[];
+  corresponding_authors?: string[];
+  paper_references?: { text: string; link?: string }[];
+  manuscript_url?: string;
 }) => {
   const {
     title,
@@ -17,25 +21,60 @@ export const createPaper = async (data: {
     journal_id,
     author_id,
     issue_id,
+    author_names,
+    corresponding_authors,
+    paper_references,
+    manuscript_url,
   } = data;
 
   const result = await pool.query(
-    `INSERT INTO papers 
-      (title, abstract, category, keywords, journal_id, author_id, issue_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO papers
+      (title, abstract, category, keywords, journal_id, author_id, issue_id,
+       author_names, corresponding_authors, paper_references, manuscript_url)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      RETURNING *`,
     [
       title,
-      abstract,
-      category,
+      abstract || "",
+      category || null,
       keywords,
       journal_id,
       author_id,
       issue_id || null,
+      author_names,
+      corresponding_authors || [],
+      JSON.stringify(paper_references || []),
+      manuscript_url || null,
     ],
   );
 
   return result.rows[0];
+};
+
+export const insertStatusLog = async (data: {
+  paper_id: string;
+  status: string;
+  changed_by?: string;
+  note?: string;
+}) => {
+  await pool.query(
+    `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+     VALUES ($1, $2, $3, $4)`,
+    [data.paper_id, data.status, data.changed_by || null, data.note || null],
+  );
+};
+
+export const getKeywordSuggestions = async (q: string) => {
+  const result = await pool.query(
+    `SELECT DISTINCT unnest(keywords) AS keyword
+     FROM papers
+     WHERE EXISTS (
+       SELECT 1 FROM unnest(keywords) AS k WHERE k ILIKE $1
+     )
+     LIMIT 20`,
+    [`%${q}%`],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
 };
 
 export const getPaperById = async (id: string) => {

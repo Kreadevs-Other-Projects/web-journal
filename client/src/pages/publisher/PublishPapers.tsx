@@ -54,9 +54,9 @@ export default function PublisherPapersDashboard() {
   const [tab, setTab] = useState("all");
 
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
+  // PAYMENT_DISABLED: const [emailModalOpen, setEmailModalOpen] = useState(false);
+  // PAYMENT_DISABLED: const [sendingEmail, setSendingEmail] = useState(false);
+  // PAYMENT_DISABLED: const [paymentAmount, setPaymentAmount] = useState("");
 
   const statusMap: Record<string, string[]> = {
     all: ["pending", "paid", "submitted", "accepted"],
@@ -95,6 +95,7 @@ export default function PublisherPapersDashboard() {
     }
   };
 
+  /* PAYMENT_DISABLED: Payment step hidden per client instruction
   const sendPaymentRequest = async () => {
     if (!selectedPaper || !paymentAmount.trim()) {
       return;
@@ -186,6 +187,7 @@ export default function PublisherPapersDashboard() {
       setLoading(false);
     }
   };
+  */
 
   useEffect(() => {
     if (user && token) fetchPapers();
@@ -298,7 +300,8 @@ export default function PublisherPapersDashboard() {
                     </p>
                   )}
                 </CardContent>
-                <CardFooter className="flex gap-2">
+                {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
+                {/* <CardFooter className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -321,13 +324,14 @@ export default function PublisherPapersDashboard() {
                     <CheckCircle className="h-4 w-4" />
                     Approve
                   </Button>
-                </CardFooter>
+                </CardFooter> */}
               </Card>
             ))}
           </div>
         )}
 
-        <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
+        {/* <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Send Payment Request</DialogTitle>
@@ -382,7 +386,7 @@ export default function PublisherPapersDashboard() {
               </div>
             )}
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
       </div>
     </DashboardLayout>
   );

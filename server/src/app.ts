@@ -23,7 +23,7 @@ import chiefEditorRoutes from "./Api/chiefEditor/chiefEditor.routes";
 import ownerRoutes from "./Api/owner/owner.route";
 import subEditorRoutes from "./Api/subEditor/subEditor.routes";
 import browseRoutes from "./Api/browse/browse.route";
-import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
+// PAYMENT_DISABLED: import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
 
 const app = express();
 app.use(express.json());
@@ -46,7 +46,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
-app.use("/api/paperPayment", paperPaymentRoutes);
+// PAYMENT_DISABLED: app.use("/api/paperPayment", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);
 app.use("/api/publisher", publisherRoutes);

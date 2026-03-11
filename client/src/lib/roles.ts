@@ -53,7 +53,7 @@ export const roleConfig: Record<
         path: "/publisher/publish-paper",
         icon: FileText,
       },
-      { label: "Payments", path: "/publisher/payments", icon: Users },
+      // PAYMENT_DISABLED: { label: "Payments", path: "/publisher/payments", icon: Users },
     ],
   },
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Card,
@@ -20,7 +20,6 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -73,6 +72,7 @@ interface Journal {
   issues: JournalIssue[];
 }
 
+/* PAYMENT_DISABLED: Payment step hidden per client instruction
 function calcProration(
   issues: JournalIssue[],
   selectedIssue: JournalIssue,
@@ -99,6 +99,7 @@ function calcProration(
     ),
   };
 }
+*/
 
 export default function PublisherDashboard() {
   const { user, token } = useAuth();
@@ -107,30 +108,13 @@ export default function PublisherDashboard() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [invoiceAmount, setInvoiceAmount] = useState<number | "">("");
+  // PAYMENT_DISABLED: const [invoiceAmount, setInvoiceAmount] = useState<number | "">("");
   const [approving, setApproving] = useState(false);
-  const [sendingInvoice, setSendingInvoice] = useState(false);
+  // PAYMENT_DISABLED: const [sendingInvoice, setSendingInvoice] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<JournalIssue | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isProrated =
-    selectedIssue !== null && selectedIssue.article_index !== 1;
-
-  const prorationInfo = useMemo(() => {
-    if (
-      !selectedJournal ||
-      !selectedIssue ||
-      !invoiceAmount ||
-      Number(invoiceAmount) <= 0
-    )
-      return null;
-    if (!isProrated) return null;
-    return calcProration(
-      selectedJournal.issues,
-      selectedIssue,
-      Number(invoiceAmount),
-    );
-  }, [selectedJournal, selectedIssue, invoiceAmount, isProrated]);
+  // PAYMENT_DISABLED: isProrated and prorationInfo removed
 
   const statusMap: Record<string, string[]> = {
     all: ["pending_payment", "draft", "active", "suspended", "archived"],
@@ -198,6 +182,7 @@ export default function PublisherDashboard() {
     }
   };
 
+  /* PAYMENT_DISABLED: Payment step hidden per client instruction
   const sendInvoice = async (journalId: string, issueId: string) => {
     if (!invoiceAmount || invoiceAmount <= 0) {
       toast({
@@ -252,6 +237,7 @@ export default function PublisherDashboard() {
       setSendingInvoice(false);
     }
   };
+  */
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -638,108 +624,34 @@ export default function PublisherDashboard() {
                   </CardContent>
                 </Card>
 
+                {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
+                {/* Invoice Management card removed */}
                 <Card className="glass-card border-blue-500/30">
                   <CardHeader>
-                    {selectedIssue && (
-                      <Card className="glass-card border-blue-500/30">
-                        <CardContent className="py-4">
-                          <p className="text-sm text-black">Selected Issue</p>
-                          <p className="text-black font-medium">
-                            {selectedIssue.label} — Volume{" "}
-                            {selectedIssue.volume}, Issue {selectedIssue.issue}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    )}
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      Invoice Management
+                      <CheckCircle className="h-4 w-4" />
+                      Issue Approval
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Invoice Amount (PKR)
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            step="100"
-                            value={invoiceAmount}
-                            onChange={(e) =>
-                              setInvoiceAmount(Number(e.target.value))
-                            }
-                            className="flex-1 p-3 rounded-lg bg-white/5 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter invoice amount"
-                          />
-                          <span className="flex items-center px-4 bg-white/5 border border-gray-700 rounded-lg text-gray-400">
-                            PKR
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Enter the amount to be invoiced to the journal owner
-                        </p>
-                      </div>
-
-                      {prorationInfo && (
-                        <div
-                          className="flex items-center justify-between px-4 py-3 rounded-lg
-                  bg-yellow-500/10 border border-yellow-500/30"
-                        >
-                          <span className="text-sm text-yellow-300">
-                            Prorated amount for this issue
-                          </span>
-                          <span className="text-yellow-400 font-bold font-mono text-lg">
-                            {prorationInfo.proratedAmount.toLocaleString()} PKR
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                        <Button
-                          onClick={() =>
-                            approveJournal(selectedJournal.id, selectedIssue.id)
-                          }
-                          disabled={approving || !selectedIssue}
-                          className="bg-green-600 hover:bg-green-700 flex-1"
-                          size="lg"
-                        >
-                          {approving ? (
-                            "Approving..."
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Approve Selected Issue
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          onClick={() =>
-                            sendInvoice(selectedJournal.id, selectedIssue.id)
-                          }
-                          disabled={
-                            sendingInvoice ||
-                            !invoiceAmount ||
-                            invoiceAmount <= 0
-                          }
-                          className="flex-1"
-                          size="lg"
-                        >
-                          {sendingInvoice ? (
-                            "Sending..."
-                          ) : (
-                            <>
-                              <DollarSign className="h-4 w-4 mr-2" />
-                              {prorationInfo
-                                ? `Send ${prorationInfo.proratedAmount.toLocaleString()} PKR`
-                                : "Send Invoice"}
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Button
+                        onClick={() =>
+                          approveJournal(selectedJournal.id, selectedIssue?.id ?? "")
+                        }
+                        disabled={approving || !selectedIssue}
+                        className="bg-green-600 hover:bg-green-700 flex-1"
+                        size="lg"
+                      >
+                        {approving ? (
+                          "Approving..."
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Approve Selected Issue
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

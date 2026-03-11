@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,6 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Upload,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -88,21 +87,19 @@ export default function OwnerDashboard(): JSX.Element {
   const { toast } = useToast();
 
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [sendingInvoice, setSendingInvoice] = useState(false);
+  // PAYMENT_DISABLED: const [sendingInvoice, setSendingInvoice] = useState(false);
   const [chiefEditors, setChiefEditors] = useState<Editor[]>([]);
   const [editorDialog, setEditorDialog] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [loadingEditors, setLoadingEditors] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [uploadReceiptDialog, setUploadReceiptDialog] = useState(false);
-  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
-  const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(
-    null,
-  );
+  // PAYMENT_DISABLED: const [uploadReceiptDialog, setUploadReceiptDialog] = useState(false);
+  // PAYMENT_DISABLED: const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  // PAYMENT_DISABLED: const [loadingPayments, setLoadingPayments] = useState(false);
+  // PAYMENT_DISABLED: const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(null);
 
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // PAYMENT_DISABLED: const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const fetchJournals = async () => {
     try {
@@ -186,6 +183,7 @@ export default function OwnerDashboard(): JSX.Element {
     }
   };
 
+  /* PAYMENT_DISABLED: Payment step hidden per client instruction
   const sendInvoice = async (journalId: string) => {
     try {
       setSendingInvoice(true);
@@ -223,6 +221,7 @@ export default function OwnerDashboard(): JSX.Element {
       setSendingInvoice(false);
     }
   };
+  */
 
   const getStatusBadge = (status: string) => {
     const variants: Record<
@@ -248,6 +247,7 @@ export default function OwnerDashboard(): JSX.Element {
     );
   };
 
+  /* PAYMENT_DISABLED: Payment step hidden per client instruction
   const fetchPendingPayments = async (journalId: string) => {
     try {
       setLoadingPayments(true);
@@ -313,6 +313,7 @@ export default function OwnerDashboard(): JSX.Element {
       setUploadingPaymentId(null);
     }
   };
+  */
 
   const filteredJournals = journals.filter((journal) => {
     const matchesSearch =
@@ -581,9 +582,10 @@ export default function OwnerDashboard(): JSX.Element {
                                 ).toLocaleDateString()}
                               </div>
                             </TableCell>
+                            {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <Button
+                                {/* <Button
                                   size="sm"
                                   variant="outline"
                                   className="h-8 w-8 p-0"
@@ -611,7 +613,7 @@ export default function OwnerDashboard(): JSX.Element {
                                         ? "Sending..."
                                         : "Send Invoice"}
                                     </Button>
-                                  )}
+                                  )} */}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -663,7 +665,8 @@ export default function OwnerDashboard(): JSX.Element {
           </TabsContent>
         </Tabs>
       </div>
-      <Dialog open={uploadReceiptDialog} onOpenChange={setUploadReceiptDialog}>
+      {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
+      {/* <Dialog open={uploadReceiptDialog} onOpenChange={setUploadReceiptDialog}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
@@ -726,7 +729,7 @@ export default function OwnerDashboard(): JSX.Element {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
       <Dialog open={editorDialog} onOpenChange={setEditorDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -34,3 +34,33 @@ export const getOwnerJournalSchema = z.object({
     id: z.string().uuid("Invalid journal ID"),
   }),
 });
+
+const staffMemberSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const publisherCreateJournalSchema = z.object({
+  body: z.object({
+    title: z
+      .string()
+      .min(3, "Journal name must be at least 3 characters")
+      .max(255, "Journal name cannot exceed 255 characters"),
+    issn: z
+      .string()
+      .regex(/^\d{4}-\d{3}[\dxX]$/, "ISSN must be in the format 1234-567X")
+      .optional()
+      .or(z.literal("")),
+    doi: z.string().optional().nullable(),
+    publisher_name: z.string().min(1, "Publisher name is required"),
+    type: z.enum(["open_access", "subscription"]),
+    peer_review_policy: z.string().min(1, "Peer review policy is required"),
+    oa_policy: z.string().min(1, "OA policy is required"),
+    author_guidelines: z.string().min(1, "Author guidelines are required"),
+    publication_fee: z.number().optional().nullable(),
+    currency: z.enum(["USD", "PKR"]).optional().nullable(),
+    chief_editor: staffMemberSchema,
+    journal_manager: staffMemberSchema,
+  }),
+});

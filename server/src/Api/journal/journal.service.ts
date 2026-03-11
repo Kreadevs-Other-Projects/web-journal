@@ -1,4 +1,5 @@
 import { pool } from "../../configs/db";
+import bcrypt from "bcrypt";
 import {
   createJournal,
   getOwnerJournals,
@@ -6,7 +7,15 @@ import {
   findJournalById,
   updateJournalById,
   delteJournalById,
+  createJournalByPublisher,
 } from "./journal.repository";
+import {
+  createUser as createUserInDB,
+  createUserProfile as createUserProfileInDB,
+} from "../profile/profile.repository";
+import { insertUserRole } from "../auth/auth.repository";
+import { sendWelcomeEmail } from "../../utils/emails/userEmails";
+import { env } from "../../configs/envs";
 
 export type Journal = {
   title: string;
@@ -16,6 +25,29 @@ export type Journal = {
   website_url?: string;
   chief_editor_id: string;
 };
+
+export type PublisherJournalData = {
+  title: string;
+  issn?: string;
+  doi?: string | null;
+  publisher_name: string;
+  type: string;
+  peer_review_policy: string;
+  oa_policy: string;
+  author_guidelines: string;
+  publication_fee?: number | null;
+  currency?: string | null;
+};
+
+function generateAcronym(title: string): string {
+  const words = title.trim().split(/\s+/).filter((w) => w.length > 0);
+  let acronym = words
+    .map((w) => w[0].toUpperCase())
+    .join("")
+    .slice(0, 4);
+  while (acronym.length < 4) acronym += "J";
+  return acronym;
+}
 
 export const addJournalService = async (
   user: { id: string; role: string },
@@ -110,4 +142,77 @@ export const deleteJournalService = async (id: string) => {
     console.log(error);
     throw new Error("Failed to delete journal!");
   }
+};
+
+export const publisherCreateJournalService = async (
+  publisherId: string,
+  data: PublisherJournalData & {
+    chief_editor: { name: string; email: string; password: string };
+    journal_manager: { name: string; email: string; password: string };
+  },
+) => {
+  const existingCE = await pool.query(
+    "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL",
+    [data.chief_editor.email],
+  );
+  if (existingCE.rowCount) {
+    throw new Error("Chief editor email is already in use");
+  }
+
+  const existingJM = await pool.query(
+    "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL",
+    [data.journal_manager.email],
+  );
+  if (existingJM.rowCount) {
+    throw new Error("Journal manager email is already in use");
+  }
+
+  const saltRounds = Number(env.SALT_ROUND) || 10;
+
+  const ceHashedPwd = await bcrypt.hash(data.chief_editor.password, saltRounds);
+  const ceUser = await createUserInDB({
+    email: data.chief_editor.email,
+    password: ceHashedPwd,
+    username: data.chief_editor.name,
+    role: "chief_editor",
+  });
+  await createUserProfileInDB(ceUser.id);
+
+  const jmHashedPwd = await bcrypt.hash(
+    data.journal_manager.password,
+    saltRounds,
+  );
+  const jmUser = await createUserInDB({
+    email: data.journal_manager.email,
+    password: jmHashedPwd,
+    username: data.journal_manager.name,
+    role: "journal_manager",
+  });
+  await createUserProfileInDB(jmUser.id);
+
+  const acronym = generateAcronym(data.title);
+
+  const journal = await createJournalByPublisher(
+    publisherId,
+    ceUser.id,
+    acronym,
+    data,
+  );
+
+  await insertUserRole(ceUser.id, "chief_editor", journal.id, publisherId);
+  await insertUserRole(jmUser.id, "journal_manager", journal.id, publisherId);
+
+  sendWelcomeEmail(
+    data.chief_editor.email,
+    data.chief_editor.name,
+    data.chief_editor.password,
+  ).catch(console.error);
+
+  sendWelcomeEmail(
+    data.journal_manager.email,
+    data.journal_manager.name,
+    data.journal_manager.password,
+  ).catch(console.error);
+
+  return journal;
 };

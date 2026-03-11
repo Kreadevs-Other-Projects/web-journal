@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Card,
@@ -20,6 +21,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -104,6 +106,7 @@ function calcProration(
 export default function PublisherDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
@@ -303,6 +306,13 @@ export default function PublisherDashboard() {
             </div>
             <Button onClick={fetchJournals} variant="outline" size="sm">
               Refresh
+            </Button>
+            <Button
+              onClick={() => navigate("/publisher/create-journal")}
+              size="sm"
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Create Journal
             </Button>
           </div>
         </div>

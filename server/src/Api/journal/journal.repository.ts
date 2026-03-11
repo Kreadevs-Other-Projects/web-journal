@@ -1,5 +1,5 @@
 import { pool } from "../../configs/db";
-import { Journal } from "./journal.service";
+import { Journal, PublisherJournalData } from "./journal.service";
 
 export const createJournal = async (owner_id: string, data: Journal) => {
   const { title, acronym, description, issn, website_url, chief_editor_id } =
@@ -74,4 +74,38 @@ export const updateJournalById = async (id: string, data: Journal) => {
 export const delteJournalById = async (id: string) => {
   await pool.query("DELETE FROM journals WHERE id = $1", [id]);
   return true;
+};
+
+export const createJournalByPublisher = async (
+  publisher_id: string,
+  chief_editor_id: string,
+  acronym: string,
+  data: PublisherJournalData,
+) => {
+  const result = await pool.query(
+    `
+    INSERT INTO journals
+      (owner_id, chief_editor_id, title, acronym, issn, doi, publisher_name,
+       type, peer_review_policy, oa_policy, author_guidelines, publication_fee, currency)
+    VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING id, title, acronym
+    `,
+    [
+      publisher_id,
+      chief_editor_id,
+      data.title,
+      acronym,
+      data.issn || null,
+      data.doi || null,
+      data.publisher_name,
+      data.type,
+      data.peer_review_policy,
+      data.oa_policy,
+      data.author_guidelines,
+      data.publication_fee ?? null,
+      data.currency ?? null,
+    ],
+  );
+  return result.rows[0];
 };

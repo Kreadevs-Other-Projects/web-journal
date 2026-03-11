@@ -7,6 +7,7 @@ import {
   getJournalService,
   updateJournalService,
   deleteJournalService,
+  publisherCreateJournalService,
 } from "./journal.service";
 
 export const addJournal = async (req: AuthUser, res: Response) => {
@@ -91,4 +92,25 @@ export const deleteJournal = async (req: Request, res: Response) => {
     success: true,
     message: "Journal has been deleted successfully!",
   });
+};
+
+export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const journal = await publisherCreateJournalService(req.user.id, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: "Journal created successfully",
+      journal,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create journal",
+    });
+  }
 };

@@ -39,6 +39,8 @@ import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import { useToast } from "@/hooks/use-toast";
 
+const EDITORIAL_ROLES: UserRole[] = ["chief_editor", "sub_editor", "reviewer"];
+
 const defaultUserData = {
   id: "",
   username: "",
@@ -54,6 +56,8 @@ const defaultUserData = {
   expertise: [] as string[],
   qualifications: "" as string | null,
   certifications: "" as string | null,
+  degrees: [] as string[],
+  keywords: [] as string[],
   role: null as UserRole | null,
 };
 
@@ -75,6 +79,8 @@ export default function ProfilePage() {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [newDegree, setNewDegree] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
 
   const config = userData.role ? roleConfig[userData.role] : null;
 
@@ -114,6 +120,10 @@ export default function ProfilePage() {
             : [],
           qualifications: apiProfile.qualifications || "",
           certifications: apiProfile.certifications || "",
+          degrees: Array.isArray(apiProfile.degrees) ? apiProfile.degrees : [],
+          keywords: Array.isArray(apiProfile.keywords)
+            ? apiProfile.keywords
+            : [],
         });
       } else {
         toast({
@@ -150,6 +160,10 @@ export default function ProfilePage() {
         formData.append("certifications", userData.certifications);
       if (userData.expertise.length)
         formData.append("expertise", JSON.stringify(userData.expertise));
+      if (userData.degrees.length)
+        formData.append("degrees", JSON.stringify(userData.degrees));
+      if (userData.keywords.length)
+        formData.append("keywords", JSON.stringify(userData.keywords));
       if (profilePic) formData.append("profilePic", profilePic);
 
       const res = await fetch(`${url}/profile/updateProfile`, {
@@ -558,6 +572,203 @@ export default function ProfilePage() {
                               "No certifications added yet"}
                           </p>
                         )}
+
+                        {userData.role &&
+                          EDITORIAL_ROLES.includes(userData.role) && (
+                            <>
+                              <Label>Degrees</Label>
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-2">
+                                    {userData.degrees.map((deg, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-sm"
+                                      >
+                                        {deg}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setUserData({
+                                              ...userData,
+                                              degrees: userData.degrees.filter(
+                                                (_, i) => i !== idx,
+                                              ),
+                                            })
+                                          }
+                                          className="text-muted-foreground hover:text-destructive ml-1"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={newDegree}
+                                      onChange={(e) =>
+                                        setNewDegree(e.target.value)
+                                      }
+                                      placeholder="e.g. PhD Computer Science"
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key === "Enter" &&
+                                          newDegree.trim()
+                                        ) {
+                                          e.preventDefault();
+                                          setUserData({
+                                            ...userData,
+                                            degrees: [
+                                              ...userData.degrees,
+                                              newDegree.trim(),
+                                            ],
+                                          });
+                                          setNewDegree("");
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (newDegree.trim()) {
+                                          setUserData({
+                                            ...userData,
+                                            degrees: [
+                                              ...userData.degrees,
+                                              newDegree.trim(),
+                                            ],
+                                          });
+                                          setNewDegree("");
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {userData.degrees.length ? (
+                                    userData.degrees.map((deg, idx) => (
+                                      <Badge key={idx} variant="secondary">
+                                        {deg}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      No degrees added yet
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              <Label>
+                                Keywords{" "}
+                                <span className="text-xs text-muted-foreground">
+                                  (max 5)
+                                </span>
+                              </Label>
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-2">
+                                    {userData.keywords.map((kw, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm"
+                                      >
+                                        {kw}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setUserData({
+                                              ...userData,
+                                              keywords: userData.keywords.filter(
+                                                (_, i) => i !== idx,
+                                              ),
+                                            })
+                                          }
+                                          className="hover:text-destructive ml-1"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={newKeyword}
+                                      onChange={(e) =>
+                                        setNewKeyword(e.target.value)
+                                      }
+                                      placeholder="e.g. Machine Learning"
+                                      disabled={userData.keywords.length >= 5}
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key === "Enter" &&
+                                          newKeyword.trim() &&
+                                          userData.keywords.length < 5
+                                        ) {
+                                          e.preventDefault();
+                                          setUserData({
+                                            ...userData,
+                                            keywords: [
+                                              ...userData.keywords,
+                                              newKeyword.trim(),
+                                            ],
+                                          });
+                                          setNewKeyword("");
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={userData.keywords.length >= 5}
+                                      onClick={() => {
+                                        if (
+                                          newKeyword.trim() &&
+                                          userData.keywords.length < 5
+                                        ) {
+                                          setUserData({
+                                            ...userData,
+                                            keywords: [
+                                              ...userData.keywords,
+                                              newKeyword.trim(),
+                                            ],
+                                          });
+                                          setNewKeyword("");
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                  {userData.keywords.length >= 5 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Maximum 5 keywords reached
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {userData.keywords.length ? (
+                                    userData.keywords.map((kw, idx) => (
+                                      <Badge key={idx} variant="outline">
+                                        {kw}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      No keywords added yet
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
                       </div>
                     </CardContent>
                   </Card>

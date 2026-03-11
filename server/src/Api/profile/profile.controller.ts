@@ -71,8 +71,15 @@ export const editProfile = async (req: AuthUser, res: Response) => {
       });
     }
 
-    const { username, email, qualifications, expertise, certifications } =
-      req.body;
+    const {
+      username,
+      email,
+      qualifications,
+      expertise,
+      certifications,
+      degrees,
+      keywords,
+    } = req.body;
 
     const userData: {
       username?: string;
@@ -83,14 +90,19 @@ export const editProfile = async (req: AuthUser, res: Response) => {
     if (username) userData.username = username;
     if (email) userData.email = email;
 
+    let uploadedPicUrl: string | undefined;
     if (req.file) {
-      userData.profile_pic = `/api/uploads/${req.file.filename}`;
+      uploadedPicUrl = `/api/uploads/${req.file.filename}`;
+      userData.profile_pic = uploadedPicUrl;
     }
 
     const profileData: {
       qualifications?: string | null;
       expertise?: string[] | null;
       certifications?: string | null;
+      degrees?: string[] | null;
+      keywords?: string[] | null;
+      profile_pic_url?: string | null;
     } = {};
 
     if (qualifications !== undefined)
@@ -103,6 +115,27 @@ export const editProfile = async (req: AuthUser, res: Response) => {
 
     if (certifications !== undefined)
       profileData.certifications = certifications;
+
+    if (degrees !== undefined) {
+      profileData.degrees =
+        typeof degrees === "string" ? JSON.parse(degrees) : degrees;
+    }
+
+    if (keywords !== undefined) {
+      const parsedKeywords =
+        typeof keywords === "string" ? JSON.parse(keywords) : keywords;
+      if (parsedKeywords.length > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Maximum 5 keywords allowed",
+        });
+      }
+      profileData.keywords = parsedKeywords;
+    }
+
+    if (uploadedPicUrl) {
+      profileData.profile_pic_url = uploadedPicUrl;
+    }
 
     const updated = await updateProfileService(
       userId,
@@ -121,6 +154,13 @@ export const editProfile = async (req: AuthUser, res: Response) => {
       return res.status(400).json({
         success: false,
         message: "Email already in use",
+      });
+    }
+
+    if (err.message === "KEYWORDS_LIMIT_EXCEEDED") {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 5 keywords allowed",
       });
     }
 

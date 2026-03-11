@@ -43,8 +43,14 @@ export const updateProfileService = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
+    degrees?: string[] | null;
+    keywords?: string[] | null;
+    profile_pic_url?: string | null;
   },
 ) => {
+  if (profileData?.keywords && profileData.keywords.length > 5) {
+    throw new Error("KEYWORDS_LIMIT_EXCEEDED");
+  }
   if (userData.email) {
     const existing = await findUserByEmail(userData.email);
     if (existing && existing.id !== userId) {

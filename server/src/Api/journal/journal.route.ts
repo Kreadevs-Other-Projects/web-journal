@@ -6,10 +6,15 @@ import {
   getJournal,
   updateJournal,
   deleteJournal,
+  publisherCreateJournal,
 } from "./journal.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { validate } from "../../middlewares/validate.middleware";
-import { createJournalSchema, getOwnerJournalSchema } from "./journal.schema";
+import {
+  createJournalSchema,
+  getOwnerJournalSchema,
+  publisherCreateJournalSchema,
+} from "./journal.schema";
 
 const router = Router();
 
@@ -43,6 +48,14 @@ router.delete(
   authMiddleware,
   authorize("owner"),
   deleteJournal,
+);
+
+router.post(
+  "/publisherCreate",
+  authMiddleware,
+  authorize("publisher"),
+  validate(publisherCreateJournalSchema),
+  publisherCreateJournal,
 );
 
 export default router;

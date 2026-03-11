@@ -126,6 +126,9 @@ export const updateUserProfile = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
+    degrees?: string[] | null;
+    keywords?: string[] | null;
+    profile_pic_url?: string | null;
   },
 ) => {
   const fields: string[] = [];
@@ -149,6 +152,25 @@ export const updateUserProfile = async (
     values.push(data.certifications);
   }
 
+  if (data.degrees !== undefined) {
+    fields.push(`degrees = $${paramCount++}`);
+    values.push(
+      data.degrees && data.degrees.length > 0 ? data.degrees : null,
+    );
+  }
+
+  if (data.keywords !== undefined) {
+    fields.push(`keywords = $${paramCount++}`);
+    values.push(
+      data.keywords && data.keywords.length > 0 ? data.keywords : null,
+    );
+  }
+
+  if (data.profile_pic_url !== undefined) {
+    fields.push(`profile_pic_url = $${paramCount++}`);
+    values.push(data.profile_pic_url);
+  }
+
   if (fields.length === 0) {
     return null;
   }
@@ -156,7 +178,7 @@ export const updateUserProfile = async (
   values.push(userId);
 
   const result = await pool.query(
-    `UPDATE user_profiles 
+    `UPDATE user_profiles
      SET ${fields.join(", ")}
      WHERE user_id = $${paramCount}
      RETURNING *`,

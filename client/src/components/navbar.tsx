@@ -25,6 +25,7 @@ export default function Navbar() {
     { name: "About", path: "/about" },
     { name: "FAQ", path: "/faq" },
     { name: "Contact Us", path: "/contact-us" },
+    { name: "Journal List", path: "/JournalList" },
   ];
 
   return (

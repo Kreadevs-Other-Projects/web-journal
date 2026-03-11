@@ -39,6 +39,7 @@ import AboutPage from "./pages/aboutUs.tsx";
 import FAQPage from "./pages/faq.tsx";
 import ContactPage from "./pages/contactUs.tsx";
 import JournalListPage from "./pages/JournalList.tsx";
+import ViewJournal from "./pages/ViewJournal.tsx";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
                     <Route path="/faq" element={<FAQPage />} />
                     <Route path="/contact-us" element={<ContactPage />} />
                     <Route path="/journalList" element={<JournalListPage />} />
+                    <Route path="/journal/:id" element={<ViewJournal />} />
 
                     <Route path="/browse" element={<BrowsePage />} />
                     <Route path="/journal/:id" element={<JournalDetail />} />

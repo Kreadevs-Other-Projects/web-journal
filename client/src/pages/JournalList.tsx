@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { journalsData } from "../components/journalsData";
+import { Link } from "react-router-dom";
 import {
   LayoutGrid,
   List,
@@ -11,42 +13,6 @@ import {
   Loader2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
-
-// Mock Data based on your reference image
-const journalsData = [
-  {
-    id: 1,
-    title: "Advanced Materials & Sustainable Manufacturing",
-    issn: "ISSN: 3008-2829 (Online) ; 3006-2810 (Print)",
-    editors: ["Prof. Dr. Shunqi Mei", "Prof. Dr. Xianyi Zeng"],
-    image:
-      "https://www.tandfonline.com/cms/asset/b3d0e1bb-6f8e-4b5b-8563-8d8fc2558f0e/tpai20.v002.i01.cover.jpg",
-  },
-  {
-    id: 2,
-    title: "Biobreeding",
-    issn: "ISSN: 3080-9681 (Online) ; 3080-9673 (Print)",
-    editors: ["Prof. Dr. Xuexiao Zou", "Prof. Dr. Zhangjun Fei"],
-    image:
-      "https://www.enago.com/academy/wp-content/uploads/2023/02/Research-Through-Ages-%E2%80%94-Evolution-of-research-publishing-with-the-advent-of-AI-_910x340-750x340.png",
-  },
-  {
-    id: 3,
-    title: "Blood and Genomics Discovery",
-    issn: "ISSN: 3078-221X (Online) ; 3078-5081 (Print)",
-    editors: ["Prof. Dr. Sarah Ahmed", "Dr. Fatima Hassan"],
-    image:
-      "https://sub.ifspress.hk/public/journals/1/cover_issue_25_en.png?t=1772048949",
-  },
-  {
-    id: 4,
-    title: "Cardiovascular Science",
-    issn: "ISSN: 3006-3906 (Online) ; 3006-3892 (Print)",
-    editors: ["Prof. Dr. Cheng Zhang", "Prof. Dr. Yihai Cao"],
-    image:
-      "https://preview.redd.it/acs-has-some-amusing-ai-generated-journal-covers-v0-qrh4vb5nh1cd1.jpg?width=640&crop=smart&auto=webp&s=64e4c35b9358f2d84c71cc0a73c34a90d8cbca74",
-  },
-];
 
 export default function JournalListPage() {
   const [isGridView, setIsGridView] = useState(true);
@@ -116,6 +82,14 @@ export default function JournalListPage() {
 
         {/* --- MAIN CONTENT --- */}
         <main>
+          {/* // Loop chalane ke liye: */}
+          {/* {journalsData.map((journal) => (
+            <JournalCard
+              key={journal.id}
+              journal={journal}
+              isGrid={isGridView}
+            />
+          ))} */}
           <div
             className={
               isGridView
@@ -140,7 +114,6 @@ export default function JournalListPage() {
               </>
             )}
           </div>
-
           {/* Empty State */}
           {filteredJournals.length === 0 && !isLoading && (
             <div className="text-center py-20 border border-dashed border-slate-800 rounded-3xl">
@@ -150,7 +123,6 @@ export default function JournalListPage() {
               </p>
             </div>
           )}
-
           {/* --- LOAD MORE BUTTON --- */}
           <div className="mt-24 mb-12 flex flex-col items-center justify-center border-t border-slate-800 pt-16">
             <p className="text-slate-500 text-sm mb-6 font-medium tracking-wide">
@@ -217,13 +189,16 @@ function JournalCard({ journal, isGrid }: { journal: any; isGrid: boolean }) {
           </div>
         </div>
         <div className="mt-auto flex items-center justify-between">
-          <button className="flex items-center gap-2 text-xs font-bold text-blue-500 group/btn hover:text-blue-400 transition-all uppercase tracking-widest">
-            Read Journal{" "}
+          <Link
+            to={`/journal/${journal.id}`}
+            className="flex items-center gap-2 text-xs font-bold text-blue-500 group/btn hover:text-blue-400 transition-all uppercase tracking-widest"
+          >
+            Read Journal
             <ChevronRight
               size={16}
               className="group-hover/btn:translate-x-1 transition-transform"
             />
-          </button>
+          </Link>
           {!isGrid && (
             <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-all">
               <ExternalLink size={14} />

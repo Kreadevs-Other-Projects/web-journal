@@ -20,10 +20,10 @@ export const publishPaper = async (req: AuthUser, res: Response) => {
     const { issueId } = req.body;
     const user = req.user!;
 
-    if (user.role !== "publisher_manager") {
+    if (user.role !== "journal_manager") {
       return res.status(403).json({
         success: false,
-        message: "Only Publisher Manager can publish paper",
+        message: "Only Journal Manager can publish paper",
       });
     }
 

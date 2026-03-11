@@ -12,7 +12,7 @@ export type UserRole =
   | "reviewer"
   | "chief_editor"
   | "publisher"
-  | "publisher_manager"
+  | "journal_manager"
   | "owner"
   | "sub_editor";
 
@@ -57,9 +57,9 @@ export const roleConfig: Record<
     ],
   },
 
-  publisher_manager: {
+  journal_manager: {
     icon: BarChart3,
-    label: "Publisher Manager",
+    label: "Journal Manager",
     color: "text-warning",
     description: "Manage publisher operations and reports",
     route: "/publisher-manager",

@@ -129,7 +129,7 @@ const App = () => (
                   <Route
                     element={
                       <ProtectedRoute
-                        allowedRoles={["publisher", "publisher_manager"]}
+                        allowedRoles={["publisher", "journal_manager"]}
                       />
                     }
                   >
@@ -140,7 +140,7 @@ const App = () => (
                   </Route>
                   <Route
                     element={
-                      <ProtectedRoute allowedRoles={["publisher_manager"]} />
+                      <ProtectedRoute allowedRoles={["journal_manager"]} />
                     }
                   >
                     <Route

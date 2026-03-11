@@ -12,14 +12,14 @@ const router = Router();
 router.get(
   "/getSubmittedReviews",
   authMiddleware,
-  authorize("publisher_manager"),
+  authorize("journal_manager"),
   getSubmittedReviewsService,
 );
 
 router.put(
   "/publishPaper/:paperId",
   authMiddleware,
-  authorize("publisher_manager"),
+  authorize("journal_manager"),
   validate(publishPaperSchema),
   publishPaper,
 );

@@ -6,6 +6,7 @@ import {
   createUser,
   validatePassword,
   createUserProfile,
+  getUserRoles,
 } from "./auth.service";
 import {
   createOTP,
@@ -17,11 +18,13 @@ import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
+  verifyAccessToken,
 } from "../../utils/jwt";
 import {
   deleteRefreshToken,
   findRefreshToken,
   saveRefreshToken,
+  getUserRoles as getUserRolesRepo,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
@@ -76,11 +79,17 @@ export const login = async (req: Request, res: Response) => {
   // ========================
   // DEV: Skip OTP, return token directly
   // ========================
+  const userRoleRows = await getUserRoles(user.id, user.role);
+  const roles = userRoleRows.map((r) => r.role);
+
   const accessToken = await generateAccessToken(
     user.id,
     user.role,
     user.email,
     user.username,
+    roles,
+    user.role,
+    null,
   );
   const refreshToken = await generateRefreshToken(user.id, user.role);
 
@@ -116,6 +125,7 @@ export const login = async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       username: user.username,
+      roles,
     },
   });
 
@@ -301,11 +311,17 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     await deleteOTP(email);
 
+    const userRoleRows = await getUserRoles(user.id, user.role);
+    const roles = userRoleRows.map((r) => r.role);
+
     const accessToken = await generateAccessToken(
       user.id,
       user.role,
       user.email,
       user.username,
+      roles,
+      user.role,
+      null,
     );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
@@ -340,6 +356,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        roles,
       },
     });
   } catch (error: any) {
@@ -416,6 +433,67 @@ export const refreshToken = async (req: Request, res: Response) => {
     message: "Token refreshed successfully",
     token: newAccessToken,
   });
+};
+
+export const switchRole = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyAccessToken(token);
+
+    const { role, journal_id = null } = req.body;
+
+    // Verify user has this role in user_roles table
+    const userRoleRows = await getUserRolesRepo(payload.id);
+    const primaryRole = payload.role;
+
+    // Build the full set of roles (including primary)
+    const allRoles = userRoleRows.map((r) => r.role);
+    if (!allRoles.includes(primaryRole)) allRoles.unshift(primaryRole);
+
+    const hasRole = userRoleRows.some(
+      (r) =>
+        r.role === role &&
+        (journal_id ? r.journal_id === journal_id : true),
+    ) || role === primaryRole;
+
+    if (!hasRole) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have the requested role",
+      });
+    }
+
+    const user = await findUserById(payload.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const newToken = await generateAccessToken(
+      user.id,
+      user.role,
+      user.email,
+      user.username,
+      allRoles,
+      role,
+      journal_id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Role switched successfully",
+      token: newToken,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to switch role",
+    });
+  }
 };
 
 export const logout = async (req: Request, res: Response) => {

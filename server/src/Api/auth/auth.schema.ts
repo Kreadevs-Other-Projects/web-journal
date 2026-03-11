@@ -54,3 +54,18 @@ export const logoutSchema = z.object({
     refreshToken: z.string().min(1, "Refresh token is required"),
   }),
 });
+
+export const switchRoleSchema = z.object({
+  body: z.object({
+    role: z.enum([
+      "author",
+      "chief_editor",
+      "sub_editor",
+      "reviewer",
+      "owner",
+      "publisher",
+      "journal_manager",
+    ]),
+    journal_id: z.string().uuid("Invalid journal ID").optional().nullable(),
+  }),
+});

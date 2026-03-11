@@ -8,6 +8,8 @@ export interface AuthUser {
   role: UserRole;
   email?: string;
   username?: string;
+  roles: UserRole[];
+  active_journal_id: string | null;
 }
 
 export interface UserProfile {
@@ -33,6 +35,9 @@ interface JwtPayload {
   role: UserRole;
   email?: string;
   username?: string;
+  roles?: UserRole[];
+  active_role?: UserRole;
+  active_journal_id?: string | null;
   exp: number;
 }
 
@@ -44,9 +49,22 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string) => void;
   logout: () => void;
+  switchRole: (role: UserRole, journalId?: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function decodeAuthUser(token: string): AuthUser {
+  const decoded = jwtDecode<JwtPayload>(token);
+  return {
+    id: decoded.id,
+    role: decoded.active_role ?? decoded.role,
+    email: decoded.email,
+    username: decoded.username,
+    roles: decoded.roles ?? [decoded.role],
+    active_journal_id: decoded.active_journal_id ?? null,
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -74,13 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        setUser({
-          id: decoded.id,
-          role: decoded.role,
-          email: decoded.email,
-          username: decoded.username,
-        });
-
+        setUser(decodeAuthUser(storedToken));
         setToken(storedToken);
       } catch {
         logout();
@@ -93,18 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const login = (newToken: string) => {
-    const decoded = jwtDecode<JwtPayload>(newToken);
-
-    const authUser: AuthUser = {
-      id: decoded.id,
-      role: decoded.role,
-      email: decoded.email,
-      username: decoded.username,
-    };
-
     localStorage.setItem("accessToken", newToken);
-
-    setUser(authUser);
+    setUser(decodeAuthUser(newToken));
     setToken(newToken);
   };
 
@@ -112,6 +114,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("accessToken");
     setUser(null);
     setToken(null);
+  };
+
+  const switchRole = async (role: UserRole, journalId?: string | null) => {
+    const storedToken = localStorage.getItem("accessToken");
+    if (!storedToken) throw new Error("Not authenticated");
+
+    const res = await fetch(`${url}/auth/switch-role`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${storedToken}`,
+      },
+      body: JSON.stringify({ role, journal_id: journalId ?? null }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to switch role");
+
+    login(data.token);
   };
 
   useEffect(() => {
@@ -165,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isAuthenticated: !!user && !!token,
         login,
         logout,
+        switchRole,
       }}
     >
       {children}

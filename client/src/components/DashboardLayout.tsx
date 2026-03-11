@@ -17,11 +17,20 @@ import {
   Moon,
   Sun,
   Router,
+  ChevronDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -41,7 +50,8 @@ export function DashboardLayout({
   role,
   userName,
 }: DashboardLayoutProps) {
-  const { logout, userData } = useAuth();
+  const { logout, userData, user, switchRole } = useAuth();
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -106,6 +116,20 @@ export function DashboardLayout({
         description: err.message || "Failed to logout, Please try again later",
       });
     } finally {
+    }
+  };
+
+  const handleSwitchRole = async (newRole: UserRole) => {
+    if (newRole === role || switchingRole) return;
+    try {
+      setSwitchingRole(true);
+      await switchRole(newRole, null);
+      const target = roleConfig[newRole]?.route ?? "/";
+      navigate(target);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to switch role", variant: "destructive" });
+    } finally {
+      setSwitchingRole(false);
     }
   };
 
@@ -302,6 +326,50 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
+              {user && user.roles.length > 1 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-sm"
+                      disabled={switchingRole}
+                    >
+                      <Shield className={cn("h-3.5 w-3.5", config.color)} />
+                      {config.label}
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      Switch Role
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {user.roles.map((r) => {
+                      const rc = roleConfig[r as UserRole];
+                      if (!rc) return null;
+                      return (
+                        <DropdownMenuItem
+                          key={r}
+                          onClick={() => handleSwitchRole(r as UserRole)}
+                          className={cn(
+                            "gap-2 cursor-pointer",
+                            r === role && "font-semibold",
+                          )}
+                        >
+                          <rc.icon className={cn("h-4 w-4", rc.color)} />
+                          {rc.label}
+                          {r === role && (
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              Active
+                            </span>
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <ThemeToggle />
               {/* <Button
                 variant="ghost"

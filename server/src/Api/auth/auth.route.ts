@@ -9,6 +9,7 @@ import {
   resendOTP,
   refreshToken,
   logout,
+  switchRole,
 } from "./auth.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import {
@@ -19,6 +20,7 @@ import {
   resendOTPSchema,
   refreshTokenSchema,
   logoutSchema,
+  switchRoleSchema,
 } from "./auth.schema";
 
 const router = Router();
@@ -35,5 +37,6 @@ router.post(
 router.post("/resend", validate(resendOTPSchema), asyncHandler(resendOTP));
 router.post("/token", validate(refreshTokenSchema), asyncHandler(refreshToken));
 router.post("/logout", validate(logoutSchema), asyncHandler(logout));
+router.post("/switch-role", validate(switchRoleSchema), asyncHandler(switchRole));
 
 export default router;

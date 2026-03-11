@@ -5,6 +5,7 @@ import {
   createUser as createUserRepo,
   createUserProfile as createUserProfileRepo,
 } from "../profile/profile.repository";
+import { getUserRoles as getUserRolesRepo } from "./auth.repository";
 import { env } from "../../configs/envs";
 
 export const findUserByEmail = async (email: string) => {
@@ -38,4 +39,26 @@ export const createUser = async (userData: {
 
 export const createUserProfile = async (userId: string) => {
   return await createUserProfileRepo(userId);
+};
+
+/**
+ * Returns all active roles for a user from the user_roles table.
+ * Always includes the user's primary role from the users table.
+ */
+export const getUserRoles = async (
+  userId: string,
+  primaryRole: string,
+): Promise<{ role: string; journal_id: string | null }[]> => {
+  const rows = await getUserRolesRepo(userId);
+
+  // Ensure primary role is always present
+  const hasPrimary = rows.some(
+    (r) => r.role === primaryRole && r.journal_id === null,
+  );
+
+  if (!hasPrimary) {
+    return [{ role: primaryRole, journal_id: null }, ...rows];
+  }
+
+  return rows;
 };

@@ -72,13 +72,13 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             className="hidden lg:inline-flex h-10 w-10 rounded-full border border-border/50 bg-background/50 hover:bg-accent hover:text-foreground"
           >
             <Search className="h-4 w-4" />
-          </Button>
+          </Button> */}
 
           <ThemeToggle />
 

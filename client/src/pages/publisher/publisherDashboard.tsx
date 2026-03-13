@@ -300,9 +300,13 @@ export default function PublisherDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="glass-card px-4 py-2 rounded-lg">
-              <p className="text-sm text-gray-400">Total Journals</p>
-              <p className="text-2xl font-bold text-white">{journals.length}</p>
+            <div className="glass-card px-4 py-2 rounded-lg align-item-center">
+              <p className="text-sm text-gray-400">
+                Total Journals:{" "}
+                <span className="text-xl font-bold text-white">
+                  {journals.length}
+                </span>
+              </p>
             </div>
             <Button onClick={fetchJournals} variant="outline" size="sm">
               Refresh
@@ -647,7 +651,10 @@ export default function PublisherDashboard() {
                     <div className="flex flex-col sm:flex-row gap-3 pt-2">
                       <Button
                         onClick={() =>
-                          approveJournal(selectedJournal.id, selectedIssue?.id ?? "")
+                          approveJournal(
+                            selectedJournal.id,
+                            selectedIssue?.id ?? "",
+                          )
                         }
                         disabled={approving || !selectedIssue}
                         className="bg-green-600 hover:bg-green-700 flex-1"

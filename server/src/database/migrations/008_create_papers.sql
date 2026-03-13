@@ -55,9 +55,17 @@ CREATE TABLE IF NOT EXISTS paper_versions (
   UNIQUE (paper_id, version_number)
 );
 
-ALTER TABLE papers
-ADD CONSTRAINT fk_current_version
-FOREIGN KEY (current_version_id)
-REFERENCES paper_versions(id)
-ON DELETE SET NULL;
-
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fk_current_version'
+      AND conrelid = 'papers'::regclass
+  ) THEN
+    ALTER TABLE papers
+      ADD CONSTRAINT fk_current_version
+      FOREIGN KEY (current_version_id)
+      REFERENCES paper_versions(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;

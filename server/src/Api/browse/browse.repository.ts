@@ -1,5 +1,49 @@
 import { pool } from "../../configs/db";
 
+export const getPublicPaperRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `
+    SELECT
+      p.id,
+      p.title,
+      p.abstract,
+      p.keywords,
+      p.author_names,
+      p.submitted_at,
+      p.accepted_at,
+      p.published_at,
+      p.status,
+
+      u.username AS author_username,
+
+      j.id AS journal_id,
+      j.title AS journal_title,
+      j.issn,
+
+      ji.volume,
+      ji.issue,
+      ji.year,
+      ji.label AS issue_label,
+
+      pub.doi,
+      pub.article_index,
+      pub.published_at AS publication_date,
+
+      pv.file_url,
+      pv.version_number
+    FROM papers p
+    LEFT JOIN users u ON u.id = p.author_id
+    LEFT JOIN journals j ON j.id = p.journal_id
+    LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+    LEFT JOIN publications pub ON pub.paper_id = p.id
+    LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
+    WHERE p.id = $1
+    `,
+    [paperId],
+  );
+  return result.rows[0] || null;
+};
+
 export const getBrowseDataRepo = async (filters: any) => {
   const { search, year, journalId } = filters;
 
@@ -8,6 +52,7 @@ export const getBrowseDataRepo = async (filters: any) => {
     j.id as journal_id,
     j.title as journal_title,
     j.issn,
+    j.aims_and_scope,
     ji.id as issue_id,
     ji.year,
     ji.volume,

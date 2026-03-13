@@ -17,7 +17,7 @@ export const getSubmittedReviewsService = async (
 export const publishPaper = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { issueId } = req.body;
+    const { issueId, doi } = req.body;
     const user = req.user!;
 
     if (user.role !== "journal_manager") {
@@ -34,14 +34,22 @@ export const publishPaper = async (req: AuthUser, res: Response) => {
       });
     }
 
-    const published = await setPaperPublished(paperId, user.id, issueId);
+    if (!doi || !doi.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "DOI is required before publication",
+      });
+    }
+
+    const published = await setPaperPublished(paperId, user.id, issueId, doi);
 
     return res.json({
       success: true,
       data: published,
     });
   } catch (error: any) {
-    return res.status(500).json({
+    const status = error.message?.includes("DOI") ? 400 : 500;
+    return res.status(status).json({
       success: false,
       message: error.message || "Failed to publish paper",
     });

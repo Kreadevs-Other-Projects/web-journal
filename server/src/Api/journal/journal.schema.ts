@@ -58,6 +58,7 @@ export const publisherCreateJournalSchema = z.object({
     peer_review_policy: z.string().min(1, "Peer review policy is required"),
     oa_policy: z.string().min(1, "OA policy is required"),
     author_guidelines: z.string().min(1, "Author guidelines are required"),
+    aims_and_scope: z.string().optional().nullable(),
     publication_fee: z.number().optional().nullable(),
     currency: z.enum(["USD", "PKR"]).optional().nullable(),
     chief_editor: staffMemberSchema,

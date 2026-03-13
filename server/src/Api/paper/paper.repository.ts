@@ -159,3 +159,17 @@ export const setCurrentVersion = async (
     [version_id, paper_id],
   );
 };
+
+export const assignPaperToIssue = async (
+  paper_id: string,
+  issue_id: string,
+) => {
+  const result = await pool.query(
+    `UPDATE papers
+     SET issue_id = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [issue_id, paper_id],
+  );
+  return result.rows[0];
+};

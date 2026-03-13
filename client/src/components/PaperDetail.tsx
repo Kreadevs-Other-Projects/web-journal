@@ -36,6 +36,7 @@ interface Journal {
   journal_id: string;
   journal_title: string;
   issn: string;
+  aims_and_scope?: string;
   issue: string;
   published_at: string;
   papers: Paper[];
@@ -150,6 +151,26 @@ export default function JournalDetail() {
               </div>
             </div>
           </motion.div>
+
+          {/* Aims & Scope */}
+          {journal.aims_and_scope && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="glass-card p-6 mb-8"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  Aims &amp; Scope
+                </h2>
+              </div>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                {journal.aims_and_scope}
+              </p>
+            </motion.div>
+          )}
 
           {/* Search and View Toggle */}
           <motion.div

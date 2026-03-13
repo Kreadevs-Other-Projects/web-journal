@@ -53,20 +53,12 @@ export const publishPaper = async (
   paperId: string,
   editorId: string,
   issueId: string,
+  doi: string,
 ) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
-
-    const payment = await client.query(
-      `SELECT status FROM paper_payments WHERE paper_id = $1`,
-      [paperId],
-    );
-
-    if (!payment.rows.length || payment.rows[0].status !== "paid") {
-      throw new Error("Author page charges not paid");
-    }
 
     const journal = await client.query(
       `SELECT j.acronym
@@ -77,7 +69,6 @@ export const publishPaper = async (
     );
 
     const acronym = journal.rows[0]?.acronym || "JNL";
-
     const year = new Date().getFullYear();
 
     const serialRes = await client.query(
@@ -88,25 +79,25 @@ export const publishPaper = async (
     );
 
     const serial = serialRes.rows[0].serial.toString().padStart(2, "0");
-
-    const articleIndex = `${acronym}-${year}-${issueId}-${serial}`;
+    const articleIndex = `${acronym}-${year}-${issueId.slice(0, 8)}-${serial}`;
 
     const publication = await client.query(
-      `INSERT INTO publications 
-       (paper_id, published_by, published_at, issue_id, article_index)
-       VALUES ($1, $2, NOW(), $3, $4)
+      `INSERT INTO publications
+       (paper_id, published_by, published_at, issue_id, article_index, doi)
+       VALUES ($1, $2, NOW(), $3, $4, $5)
        ON CONFLICT (paper_id)
-       DO UPDATE SET 
+       DO UPDATE SET
          published_by = $2,
          published_at = NOW(),
          issue_id = $3,
-         article_index = $4
+         article_index = $4,
+         doi = $5
        RETURNING *`,
-      [paperId, editorId, issueId, articleIndex],
+      [paperId, editorId, issueId, articleIndex, doi],
     );
 
     await client.query(
-      `UPDATE papers 
+      `UPDATE papers
        SET status = 'published', updated_at = NOW()
        WHERE id = $1`,
       [paperId],

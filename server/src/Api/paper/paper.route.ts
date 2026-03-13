@@ -6,6 +6,8 @@ import {
   updatePaperStatus,
   getPapersByAuthor,
   getKeywordSuggestions,
+  assignPaperToIssue,
+  getPaperVersionsList,
 } from "./paper.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import { createPaperSchema, updatePaperSchema } from "./paper.schema";
@@ -22,6 +24,15 @@ router.post(
   manuscriptUpload.single("manuscript"),
   createPaper,
 );
+
+router.patch(
+  "/:paperId/assign-issue",
+  authMiddleware,
+  authorize("journal_manager", "chief_editor"),
+  assignPaperToIssue,
+);
+
+router.get("/:paperId/versions", authMiddleware, getPaperVersionsList);
 
 router.get("/getAllPapers", authMiddleware, getAllPapers);
 

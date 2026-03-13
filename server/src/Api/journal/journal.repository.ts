@@ -86,9 +86,9 @@ export const createJournalByPublisher = async (
     `
     INSERT INTO journals
       (owner_id, chief_editor_id, title, acronym, issn, doi, publisher_name,
-       type, peer_review_policy, oa_policy, author_guidelines, publication_fee, currency)
+       type, peer_review_policy, oa_policy, author_guidelines, aims_and_scope, publication_fee, currency)
     VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     RETURNING id, title, acronym
     `,
     [
@@ -103,6 +103,7 @@ export const createJournalByPublisher = async (
       data.peer_review_policy,
       data.oa_policy,
       data.author_guidelines,
+      data.aims_and_scope ?? null,
       data.publication_fee ?? null,
       data.currency ?? null,
     ],

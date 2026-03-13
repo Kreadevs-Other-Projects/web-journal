@@ -3,10 +3,10 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SignatureModal } from "@/components/SignatureModal";
 import { PageTransition } from "@/components/AnimationWrappers";
-import { 
-  ArrowLeft, FileText, Clock, Calendar, AlertTriangle, 
+import {
+  ArrowLeft, FileText, Clock, Calendar, AlertTriangle,
   CheckCircle2, Edit3, Eye, Download, Send, Star,
-  ChevronDown, User, Building, Hash, Globe
+  ChevronDown, User, Building, Hash, Globe, ExternalLink, Tag, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,27 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { url } from "@/url";
+
+interface PublicPaper {
+  id: string;
+  title: string;
+  abstract: string;
+  keywords: string[];
+  author_names: string[];
+  author_username: string;
+  journal_title: string;
+  issn: string;
+  volume: number;
+  issue: number;
+  year: number;
+  issue_label: string;
+  doi: string | null;
+  publication_date: string;
+  published_at: string;
+  file_url: string;
+  status: string;
+}
 
 // This would come from your backend API
 const mockPaperData = {
@@ -112,7 +133,8 @@ export default function ResearchPaperDetail() {
   const navigate = useNavigate();
   const [paper, setPaper] = useState(mockPaperData);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [publicPaper, setPublicPaper] = useState<PublicPaper | null>(null);
+
   // Review form state
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
@@ -122,30 +144,17 @@ export default function ResearchPaperDetail() {
   const [pdfZoom, setPdfZoom] = useState(100);
   const [activeTab, setActiveTab] = useState("review");
 
-  // Fetch paper data based on ID (mock for now, will be replaced with API)
+  // Fetch real public paper data for metadata display
   useEffect(() => {
-    const fetchPaperData = async () => {
-      setIsLoading(true);
-      try {
-        // In real implementation, this would be:
-        // const response = await fetch(`/api/papers/${paperId}`);
-        // const data = await response.json();
-        // setPaper(data);
-        
-        // For now, using mock data
-        setTimeout(() => {
-          setPaper(mockPaperData);
-          setIsLoading(false);
-        }, 300);
-      } catch (error) {
-        console.error("Error fetching paper:", error);
-        setIsLoading(false);
-      }
-    };
-
-    if (paperId) {
-      fetchPaperData();
-    }
+    if (!paperId) return;
+    setIsLoading(true);
+    fetch(`${url}/browse/paper/${paperId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.paper) setPublicPaper(d.paper);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, [paperId]);
 
   const handleSubmitReview = () => {
@@ -208,6 +217,123 @@ export default function ResearchPaperDetail() {
     <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
       <PageTransition>
         <div className="space-y-6">
+
+          {/* Public Article Metadata Panel */}
+          {publicPaper && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <BookOpen className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-lg text-foreground leading-snug">
+                      {publicPaper.title}
+                    </h2>
+                    {publicPaper.author_names?.length > 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {publicPaper.author_names.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Journal:</span>
+                    <span>{publicPaper.journal_title}</span>
+                  </div>
+                  {publicPaper.issn && (
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">ISSN:</span>
+                      <span className="font-mono">{publicPaper.issn}</span>
+                    </div>
+                  )}
+                  {(publicPaper.volume || publicPaper.issue) && (
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Issue:</span>
+                      <span>
+                        {publicPaper.issue_label ||
+                          `Vol ${publicPaper.volume}, Issue ${publicPaper.issue} (${publicPaper.year})`}
+                      </span>
+                    </div>
+                  )}
+                  {(publicPaper.publication_date || publicPaper.published_at) && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Published:</span>
+                      <span>
+                        {new Date(
+                          publicPaper.publication_date || publicPaper.published_at,
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">License:</span>
+                    <span>CC BY 4.0</span>
+                  </div>
+                </div>
+
+                {publicPaper.doi && (
+                  <div className="flex items-center gap-2 text-sm mt-2 pt-2 border-t border-border/50">
+                    <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-muted-foreground">DOI:</span>
+                    <a
+                      href={`https://doi.org/${publicPaper.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-mono"
+                    >
+                      https://doi.org/{publicPaper.doi}
+                    </a>
+                  </div>
+                )}
+
+                {publicPaper.abstract && (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Abstract</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
+                      {publicPaper.abstract}
+                    </p>
+                  </div>
+                )}
+
+                {publicPaper.keywords?.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    {publicPaper.keywords.map((kw) => (
+                      <Badge key={kw} variant="secondary" className="text-xs">
+                        {kw}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {publicPaper.file_url && (
+                  <div className="mt-3">
+                    <a
+                      href={`${url}${publicPaper.file_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Download Manuscript
+                      </Button>
+                    </a>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header with navigation */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

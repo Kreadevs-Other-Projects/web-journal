@@ -40,6 +40,13 @@ import {
   Info,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
@@ -73,12 +80,26 @@ export default function PublisherManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("accepted");
+  const [issueFilter, setIssueFilter] = useState<string>("all");
   const [viewPdf, setViewPdf] = useState<Review | null>(null);
 
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [openPublish, setOpenPublish] = useState(false);
+  const [openProof, setOpenProof] = useState(false);
   const [yearLabel, setYearLabel] = useState("");
+  const [doi, setDoi] = useState("");
   const [publishing, setPublishing] = useState(false);
+
+  // Derive unique issues from loaded data for the filter dropdown
+  const issueOptions = reviews.reduce<{ id: string; label: string }[]>(
+    (acc, r) => {
+      if (r.issueId && !acc.find((i) => i.id === r.issueId)) {
+        acc.push({ id: r.issueId, label: r.issueId.slice(0, 8) + "…" });
+      }
+      return acc;
+    },
+    [],
+  );
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -88,7 +109,6 @@ export default function PublisherManager() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        console.log(data);
 
         if (data.success) {
           const normalized = data.data.map((r: any) => ({
@@ -97,7 +117,7 @@ export default function PublisherManager() {
             journalId: r.journalid,
           }));
           setReviews(normalized);
-          applyFilters(normalized, searchQuery, statusFilter);
+          applyFilters(normalized, searchQuery, statusFilter, issueFilter);
         } else {
           throw new Error("Failed to fetch reviews");
         }
@@ -117,13 +137,14 @@ export default function PublisherManager() {
   }, [token]);
 
   useEffect(() => {
-    applyFilters(reviews, searchQuery, statusFilter);
-  }, [searchQuery, statusFilter]);
+    applyFilters(reviews, searchQuery, statusFilter, issueFilter);
+  }, [searchQuery, statusFilter, issueFilter]);
 
   const applyFilters = (
     reviewsList: Review[],
     query: string,
     status: StatusFilter,
+    issue: string,
   ) => {
     let filtered = reviewsList;
 
@@ -140,16 +161,45 @@ export default function PublisherManager() {
       filtered = filtered.filter((review) => review.paperStatus === status);
     }
 
+    if (issue !== "all") {
+      filtered = filtered.filter((review) => review.issueId === issue);
+    }
+
     setFilteredReviews(filtered);
+  };
+
+  const handleOpenPublish = (review: Review) => {
+    setSelectedReview(review);
+    setOpenPublish(true);
+    setOpenProof(false);
+  };
+
+  const handlePreviewProof = () => {
+    if (!doi.trim()) {
+      toast({
+        title: "DOI required",
+        description: "Please enter a DOI before previewing the proof.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setOpenProof(true);
   };
 
   const publishPaper = async () => {
     if (!selectedReview) return;
 
+    if (!doi.trim()) {
+      toast({
+        title: "DOI required",
+        description: "DOI is required before publication.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setPublishing(true);
-
-      console.log("Publishing paper:", selectedReview.paperId);
 
       const res = await fetch(
         `${url}/publication/publishPaper/${selectedReview.paperId}`,
@@ -162,13 +212,12 @@ export default function PublisherManager() {
           body: JSON.stringify({
             year_label: yearLabel,
             issueId: selectedReview.issueId,
+            doi: doi.trim(),
           }),
         },
       );
 
       const data = await res.json();
-      console.log("Response status:", res.status);
-      console.log("Response data:", data);
 
       if (!res.ok) throw new Error(data.message || "Failed to publish paper");
 
@@ -178,17 +227,19 @@ export default function PublisherManager() {
             ? { ...r, paperStatus: "published" }
             : r,
         );
-        applyFilters(updated, searchQuery, statusFilter);
+        applyFilters(updated, searchQuery, statusFilter, issueFilter);
         return updated;
       });
 
       toast({
-        title: "🎉 Paper Published",
+        title: "Paper Published",
         description: `"${selectedReview.title}" has been published successfully`,
       });
 
       setOpenPublish(false);
+      setOpenProof(false);
       setYearLabel("");
+      setDoi("");
       setSelectedReview(null);
     } catch (err: any) {
       console.error("Publish error:", err);
@@ -296,19 +347,33 @@ export default function PublisherManager() {
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Tabs
                   value={statusFilter}
                   onValueChange={(value) =>
                     setStatusFilter(value as StatusFilter)
                   }
-                  className="w-full"
                 >
                   <TabsList className="bg-white/5 border border-white/10">
                     <TabsTrigger value="accepted">Accepted</TabsTrigger>
                     <TabsTrigger value="published">Published</TabsTrigger>
                   </TabsList>
                 </Tabs>
+                {issueOptions.length > 0 && (
+                  <Select value={issueFilter} onValueChange={setIssueFilter}>
+                    <SelectTrigger className="w-44 bg-white/5 border-white/10 text-sm">
+                      <SelectValue placeholder="Filter by Issue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Issues</SelectItem>
+                      {issueOptions.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>
+                          Issue {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </CardContent>
@@ -359,9 +424,17 @@ export default function PublisherManager() {
                       v{review.versionNumber}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {getStatusBadge(review.paperStatus)}
                     {getDecisionBadge(review.decision)}
+                    {review.issueId && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-purple-300 border-purple-500/30"
+                      >
+                        Issue: {review.issueId.slice(0, 8)}…
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
 
@@ -417,10 +490,7 @@ export default function PublisherManager() {
                     <Button
                       size="sm"
                       className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                      onClick={() => {
-                        setSelectedReview(review);
-                        setOpenPublish(true);
-                      }}
+                      onClick={() => handleOpenPublish(review)}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Publish
@@ -575,7 +645,7 @@ export default function PublisherManager() {
               </div>
             </DialogHeader>
 
-            <div className="space-y-6 py-4">
+            <div className="space-y-5 py-4">
               <div className="bg-white/5 p-4 rounded-lg border border-white/10">
                 <h4 className="font-medium text-white mb-2">Paper Details</h4>
                 <p className="text-sm text-gray-300 truncate">
@@ -590,20 +660,31 @@ export default function PublisherManager() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-white">
-                  Year Label *
+                  DOI *
                 </label>
                 <Input
-                  placeholder="e.g., 2024-Proceedings-Vol1"
+                  placeholder="e.g., 10.12345/journal-name.2026.01"
+                  value={doi}
+                  onChange={(e) => setDoi(e.target.value)}
+                  className="border-white/10 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-400">
+                  Required. Format: 10.XXXXX/journal-acronym.year.index
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">
+                  Year Label
+                </label>
+                <Input
+                  placeholder="e.g., 2026-Vol1"
                   value={yearLabel}
                   onChange={(e) => setYearLabel(e.target.value)}
                   className="border-white/10 focus:border-blue-500"
                 />
-                <p className="text-xs text-gray-400">
-                  This label will be used to categorize the paper in
-                  publications
-                </p>
               </div>
             </div>
 
@@ -617,8 +698,17 @@ export default function PublisherManager() {
                 Cancel
               </Button>
               <Button
+                variant="outline"
+                onClick={handlePreviewProof}
+                disabled={!doi.trim()}
+                className="flex-1 border-blue-500/30 hover:bg-blue-500/10"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview Proof
+              </Button>
+              <Button
                 onClick={publishPaper}
-                disabled={publishing || !yearLabel.trim()}
+                disabled={publishing || !doi.trim()}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50"
               >
                 {publishing ? (
@@ -631,6 +721,74 @@ export default function PublisherManager() {
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Publish Paper
                   </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Publication Proof Preview Modal */}
+        <Dialog open={openProof} onOpenChange={setOpenProof}>
+          <DialogContent className="bg-gray-900 border-white/20 max-w-lg backdrop-blur-sm">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <FileText className="h-6 w-6 text-green-400" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl text-white font-bold">
+                    Publication Proof
+                  </DialogTitle>
+                  <p className="text-sm text-gray-400">Read-only preview before publication</p>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 py-4 text-sm">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Article Title</p>
+                  <p className="text-white font-medium">{selectedReview?.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">DOI</p>
+                  <p className="text-blue-400 font-mono">
+                    https://doi.org/{doi}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Year / Label</p>
+                  <p className="text-gray-300">{yearLabel || new Date().getFullYear().toString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Version</p>
+                  <p className="text-gray-300">v{selectedReview?.versionNumber}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">License</p>
+                  <p className="text-gray-300">CC BY 4.0</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Issue ID</p>
+                  <p className="text-gray-400 font-mono text-xs">{selectedReview?.issueId}</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                This is a read-only proof. Click "Publish Paper" to confirm.
+              </p>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setOpenProof(false)} className="flex-1">
+                Back to Edit
+              </Button>
+              <Button
+                onClick={publishPaper}
+                disabled={publishing}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700"
+              >
+                {publishing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Publishing...</>
+                ) : (
+                  <><CheckCircle className="h-4 w-4 mr-2" />Publish Paper</>
                 )}
               </Button>
             </DialogFooter>

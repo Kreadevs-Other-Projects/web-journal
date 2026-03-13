@@ -9,7 +9,12 @@ export const setPaperPublished = async (
   paperId: string,
   editorId: string,
   issueId: string,
+  doi: string,
 ) => {
+  if (!doi || !doi.trim()) {
+    throw new Error("DOI is required before publication");
+  }
+
   const paperRes = await pool.query(`SELECT status FROM papers WHERE id = $1`, [
     paperId,
   ]);
@@ -39,5 +44,5 @@ export const setPaperPublished = async (
     throw new Error("Editor decision must be accept before publishing");
   }
 
-  return publishPaper(paperId, editorId, issueId);
+  return publishPaper(paperId, editorId, issueId, doi);
 };

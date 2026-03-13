@@ -1,4 +1,4 @@
-import { getBrowseDataRepo } from "./browse.repository";
+import { getBrowseDataRepo, getPublicPaperRepo } from "./browse.repository";
 
 export const getBrowseDataService = async (filters: any) => {
   const rows = await getBrowseDataRepo(filters);
@@ -13,6 +13,7 @@ export const getBrowseDataService = async (filters: any) => {
         journal_id: row.journal_id,
         journal_title: row.journal_title,
         issn: row.issn,
+        aims_and_scope: row.aims_and_scope,
         issue: `Vol ${row.volume} Issue ${row.issue} (${row.year})`,
         published_at: row.published_at,
         papers: [],
@@ -28,4 +29,8 @@ export const getBrowseDataService = async (filters: any) => {
   });
 
   return Object.values(grouped);
+};
+
+export const getPublicPaperService = async (paperId: string) => {
+  return getPublicPaperRepo(paperId);
 };

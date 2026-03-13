@@ -43,6 +43,7 @@ interface Journal {
   journal_id: string;
   journal_title: string;
   issn: string;
+  aims_and_scope?: string;
   issue: string;
   published_at: string;
   papers: Paper[];

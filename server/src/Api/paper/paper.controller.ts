@@ -5,6 +5,8 @@ import {
   updatePaperStatusService,
   getPapersByAuthorService,
   getKeywordSuggestionsService,
+  assignPaperToIssueService,
+  getPaperVersionsService,
 } from "./paper.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
@@ -40,6 +42,8 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     corresponding_authors: parse(body.corresponding_authors),
     paper_references: parse(body.paper_references),
     manuscript_url,
+    manuscript_size: req.file?.size,
+    manuscript_type: req.file?.mimetype,
   };
 
   const paper = await createPaperService(
@@ -66,6 +70,28 @@ export const getAllPapers = async (req: AuthUser, res: Response) => {
 export const getPapersByAuthor = async (req: any, res: Response) => {
   const papers = await getPapersByAuthorService(req.user.id);
   res.json({ success: true, papers });
+};
+
+export const assignPaperToIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { issue_id } = req.body;
+    const { paperId } = req.params;
+    if (!issue_id)
+      return res
+        .status(400)
+        .json({ success: false, message: "issue_id is required" });
+
+    const paper = await assignPaperToIssueService(req.user!, paperId, issue_id);
+    res.json({ success: true, paper });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getPaperVersionsList = async (req: Request, res: Response) => {
+  const { paperId } = req.params;
+  const versions = await getPaperVersionsService(paperId);
+  res.json({ success: true, versions });
 };
 
 export const updatePaperStatus = async (req: any, res: Response) => {

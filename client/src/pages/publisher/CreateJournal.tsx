@@ -33,6 +33,7 @@ interface JournalFields {
   peer_review_policy: string;
   oa_policy: string;
   author_guidelines: string;
+  aims_and_scope: string;
   publication_fee: string;
   currency: string;
 }
@@ -52,6 +53,7 @@ const defaultJournal: JournalFields = {
   peer_review_policy: "",
   oa_policy: "",
   author_guidelines: "",
+  aims_and_scope: "",
   publication_fee: "",
   currency: "",
 };
@@ -145,6 +147,7 @@ export default function CreateJournal() {
         peer_review_policy: journal.peer_review_policy,
         oa_policy: journal.oa_policy,
         author_guidelines: journal.author_guidelines,
+        aims_and_scope: journal.aims_and_scope || null,
         publication_fee: journal.publication_fee
           ? Number(journal.publication_fee)
           : null,
@@ -340,6 +343,18 @@ export default function CreateJournal() {
                   }
                   rows={4}
                   placeholder="Guidelines for authors submitting manuscripts..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Aims &amp; Scope</Label>
+                <Textarea
+                  value={journal.aims_and_scope}
+                  onChange={(e) =>
+                    updateJournal("aims_and_scope", e.target.value)
+                  }
+                  rows={4}
+                  placeholder="Describe the journal's aims and scope..."
                 />
               </div>
             </CardContent>

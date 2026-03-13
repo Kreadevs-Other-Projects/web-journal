@@ -35,6 +35,7 @@ export type PublisherJournalData = {
   peer_review_policy: string;
   oa_policy: string;
   author_guidelines: string;
+  aims_and_scope?: string | null;
   publication_fee?: number | null;
   currency?: string | null;
 };

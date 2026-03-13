@@ -204,6 +204,18 @@
     animation: gradient-shift 15s ease infinite;
   }
 
+  :root:not(.dark) .animated-gradient {
+    background: linear-gradient(
+      -45deg,
+      hsl(210 20% 97%),
+      hsl(217 91% 95%),
+      hsl(199 89% 96%),
+      hsl(210 20% 98%)
+    );
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+  }
+
   /* Noise texture overlay */
   .noise-overlay {
     @apply pointer-events-none fixed inset-0 z-50 opacity-[0.015];

@@ -190,24 +190,24 @@ export default function LandingPage() {
       >
         {/* Animated background */}
         <div className="absolute inset-0 animated-gradient" />
-        <div className="absolute inset-0 bg-mesh-pattern opacity-50" />
+        <div className="absolute inset-0 bg-mesh-pattern opacity-30 dark:opacity-50" />
 
         {/* Floating elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <FloatingElement delay={0} className="absolute top-1/4 left-[10%]">
-            <div className="h-32 w-24 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/20 rotate-[-15deg]" />
+            <div className="h-32 w-24 rounded-lg bg-gradient-to-br from-primary/35 dark:from-primary/20 to-primary/15 dark:to-primary/5 backdrop-blur-sm border border-primary/35 dark:border-primary/20 rotate-[-15deg]" />
           </FloatingElement>
           <FloatingElement delay={1} className="absolute top-1/3 right-[15%]">
-            <div className="h-40 w-28 rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 backdrop-blur-sm border border-accent/20 rotate-[10deg]" />
+            <div className="h-40 w-28 rounded-lg bg-gradient-to-br from-accent/35 dark:from-accent/20 to-accent/15 dark:to-accent/5 backdrop-blur-sm border border-accent/35 dark:border-accent/20 rotate-[10deg]" />
           </FloatingElement>
           <FloatingElement delay={2} className="absolute bottom-1/4 left-[20%]">
-            <div className="h-28 w-20 rounded-lg bg-gradient-to-br from-info/20 to-info/5 backdrop-blur-sm border border-info/20 rotate-[5deg]" />
+            <div className="h-28 w-20 rounded-lg bg-gradient-to-br from-info/35 dark:from-info/20 to-info/15 dark:to-info/5 backdrop-blur-sm border border-info/35 dark:border-info/20 rotate-[5deg]" />
           </FloatingElement>
           <FloatingElement
             delay={0.5}
             className="absolute bottom-1/3 right-[25%]"
           >
-            <div className="h-36 w-26 rounded-lg bg-gradient-to-br from-success/20 to-success/5 backdrop-blur-sm border border-success/20 rotate-[-8deg]" />
+            <div className="h-36 w-26 rounded-lg bg-gradient-to-br from-success/35 dark:from-success/20 to-success/15 dark:to-success/5 backdrop-blur-sm border border-success/35 dark:border-success/20 rotate-[-8deg]" />
           </FloatingElement>
         </div>
 
@@ -549,8 +549,8 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-dark" />
-        <div className="absolute inset-0 bg-mesh-pattern opacity-30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 dark:bg-gradient-dark" />
+        <div className="absolute inset-0 bg-mesh-pattern opacity-15 dark:opacity-30" />
 
         <div className="relative container mx-auto px-4 text-center">
           <motion.div

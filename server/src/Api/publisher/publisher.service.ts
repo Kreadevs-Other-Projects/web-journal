@@ -17,17 +17,12 @@ export const approveJournalService = async (
   journalId: string,
   issueId: string,
 ) => {
-  const chiefEditorId = await repo.approveJournalRepo(journalId, issueId);
-  if (!chiefEditorId)
-    throw new Error("Journal not found or no chief editor assigned");
-
-  await repo.activateUserRepo(chiefEditorId);
-
-  return { journalId, chiefEditorId };
+  await repo.approveJournalRepo(journalId, issueId);
+  return { journalId, issueId };
 };
 
-export const fetchPublisherJournals = async () => {
-  return repo.getPublisherJournals();
+export const fetchPublisherJournals = async (publisherId: string) => {
+  return repo.getPublisherJournals(publisherId);
 };
 
 export const journalPaymentInvoice = async (

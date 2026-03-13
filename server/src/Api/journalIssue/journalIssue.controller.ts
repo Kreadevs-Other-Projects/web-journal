@@ -19,7 +19,7 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      message: "Journal issue created. Invoice sent to your email.",
+      message: "Journal issue created successfully.",
       issue,
     });
   } catch (error: any) {

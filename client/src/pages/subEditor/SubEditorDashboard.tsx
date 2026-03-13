@@ -36,6 +36,7 @@ import {
   Users,
   ArrowLeft,
   Eye,
+  EyeOff,
   Calendar,
   Clock,
   CheckCircle,
@@ -107,6 +108,9 @@ export default function SubEditorDashboard() {
   );
   const [assignLoading, setAssignLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [newReviewer, setNewReviewer] = useState({ name: "", email: "", password: "" });
+  const [showRevPassword, setShowRevPassword] = useState(false);
+  const [creatingReviewer, setCreatingReviewer] = useState(false);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
@@ -317,6 +321,47 @@ export default function SubEditorDashboard() {
       });
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  const createAndAssignReviewer = async () => {
+    if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
+      return;
+    }
+    if (!selectedPaper) return;
+    try {
+      setCreatingReviewer(true);
+      const res = await fetch(`${url}/auth/create-staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newReviewer.name,
+          email: newReviewer.email,
+          password: newReviewer.password,
+          role: "reviewer",
+          journal_id: selectedPaper.id, // fallback; ideally paper's journal_id
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
+
+      // Assign the new reviewer to the paper
+      const assignRes = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reviewerId: data.user.id }),
+      });
+      const assignData = await assignRes.json();
+      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign reviewer");
+
+      toast({ title: "Success", description: `${newReviewer.name} created and assigned as reviewer` });
+      setNewReviewer({ name: "", email: "", password: "" });
+      setOpenAssignReviewerDialog(false);
+      fetchAllReviewers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingReviewer(false);
     }
   };
 
@@ -1063,26 +1108,50 @@ export default function SubEditorDashboard() {
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label className="text-sm text-white font-medium">
-                  Invite New Reviewer
+                  Create New Reviewer
                 </Label>
                 <Input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={reviewerEmail}
-                  onChange={(e) => setReviewerEmail(e.target.value)}
+                  placeholder="Full Name"
+                  value={newReviewer.name}
+                  onChange={(e) => setNewReviewer((p) => ({ ...p, name: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
                 />
+                <Input
+                  type="email"
+                  placeholder="Email address"
+                  value={newReviewer.email}
+                  onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                />
+                <div className="relative">
+                  <Input
+                    type={showRevPassword ? "text" : "password"}
+                    placeholder="Temporary password (min. 6 chars)"
+                    value={newReviewer.password}
+                    onChange={(e) => setNewReviewer((p) => ({ ...p, password: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRevPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    tabIndex={-1}
+                  >
+                    {showRevPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
             <Button
-              variant="outline"
-              className="w-full"
-              onClick={inviteReviewerByEmail}
-              disabled={!reviewerEmail}
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+              onClick={createAndAssignReviewer}
+              disabled={creatingReviewer || !newReviewer.name || !newReviewer.email || !newReviewer.password}
             >
-              {inviteLoading ? "Sending Invitation..." : "Send Invitation"}
+              <UserCheck className="h-4 w-4 mr-2" />
+              {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
             </Button>
           </div>
         </DialogContent>

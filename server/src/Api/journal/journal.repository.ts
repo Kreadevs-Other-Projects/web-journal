@@ -79,23 +79,22 @@ export const delteJournalById = async (id: string) => {
 export const createJournalByPublisher = async (
   publisher_id: string,
   chief_editor_id: string,
-  acronym: string,
   data: PublisherJournalData,
 ) => {
   const result = await pool.query(
     `
     INSERT INTO journals
       (owner_id, chief_editor_id, title, acronym, issn, doi, publisher_name,
-       type, peer_review_policy, oa_policy, author_guidelines, aims_and_scope, publication_fee, currency)
+       type, peer_review_policy, oa_policy, author_guidelines, aims_and_scope, publication_fee, currency, status)
     VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
     RETURNING id, title, acronym
     `,
     [
       publisher_id,
       chief_editor_id,
       data.title,
-      acronym,
+      data.acronym.toUpperCase(),
       data.issn || null,
       data.doi || null,
       data.publisher_name,

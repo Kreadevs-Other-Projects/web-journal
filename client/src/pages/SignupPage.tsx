@@ -41,7 +41,7 @@ export default function SignupPage() {
     password: "",
   });
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<"FORM" | "OTP">("FORM");
@@ -488,8 +488,8 @@ export default function SignupPage() {
                     Select Your Role
                   </Label>
 
-                  <div className="grid grid-cols-5 gap-2">
-                    {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["publisher", "author", "reviewer"] as UserRole[]).map((role) => {
                       const config = roleConfig[role];
                       const Icon = config.icon;
                       const isSelected = selectedRole === role;

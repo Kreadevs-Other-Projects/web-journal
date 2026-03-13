@@ -20,12 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, BookOpen, User } from "lucide-react";
 
 interface JournalFields {
   title: string;
+  acronym: string;
   issn: string;
   doi: string;
   publisher_name: string;
@@ -34,8 +36,6 @@ interface JournalFields {
   oa_policy: string;
   author_guidelines: string;
   aims_and_scope: string;
-  publication_fee: string;
-  currency: string;
 }
 
 interface StaffFields {
@@ -46,6 +46,7 @@ interface StaffFields {
 
 const defaultJournal: JournalFields = {
   title: "",
+  acronym: "",
   issn: "",
   doi: "",
   publisher_name: "",
@@ -54,8 +55,6 @@ const defaultJournal: JournalFields = {
   oa_policy: "",
   author_guidelines: "",
   aims_and_scope: "",
-  publication_fee: "",
-  currency: "",
 };
 
 const defaultStaff: StaffFields = { name: "", email: "", password: "" };
@@ -63,7 +62,7 @@ const defaultStaff: StaffFields = { name: "", email: "", password: "" };
 const STEPS = ["Journal Details", "Chief Editor", "Journal Manager"];
 
 export default function CreateJournal() {
-  const { user, token } = useAuth();
+  const { user, token, switchRole } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -87,6 +86,7 @@ export default function CreateJournal() {
     if (step === 0) {
       if (
         !journal.title ||
+        !journal.acronym ||
         !journal.publisher_name ||
         !journal.type ||
         !journal.peer_review_policy ||
@@ -140,6 +140,7 @@ export default function CreateJournal() {
       setSubmitting(true);
       const payload = {
         title: journal.title,
+        acronym: journal.acronym.toUpperCase(),
         issn: journal.issn || undefined,
         doi: journal.doi || null,
         publisher_name: journal.publisher_name,
@@ -148,10 +149,6 @@ export default function CreateJournal() {
         oa_policy: journal.oa_policy,
         author_guidelines: journal.author_guidelines,
         aims_and_scope: journal.aims_and_scope || null,
-        publication_fee: journal.publication_fee
-          ? Number(journal.publication_fee)
-          : null,
-        currency: journal.currency || null,
         chief_editor: chiefEditor,
         journal_manager: journalManager,
       };
@@ -175,6 +172,9 @@ export default function CreateJournal() {
         title: "Success",
         description: "Journal created successfully. Welcome emails sent.",
       });
+
+      // Refresh JWT so new journal_manager role appears in role switcher
+      try { await switchRole("publisher" as UserRole, null); } catch {}
 
       navigate("/publisher");
     } catch (err: any) {
@@ -235,6 +235,19 @@ export default function CreateJournal() {
                 </div>
                 <div className="space-y-1">
                   <Label>
+                    Journal Acronym <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={journal.acronym}
+                    onChange={(e) =>
+                      updateJournal("acronym", e.target.value.toUpperCase())
+                    }
+                    maxLength={10}
+                    placeholder="e.g. JAI"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>
                     Publisher Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -275,32 +288,6 @@ export default function CreateJournal() {
                     <SelectContent>
                       <SelectItem value="open_access">Open Access</SelectItem>
                       <SelectItem value="subscription">Subscription</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Publication Fee (per page)</Label>
-                  <Input
-                    type="number"
-                    value={journal.publication_fee}
-                    onChange={(e) =>
-                      updateJournal("publication_fee", e.target.value)
-                    }
-                    placeholder="e.g. 50"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Currency</Label>
-                  <Select
-                    value={journal.currency}
-                    onValueChange={(v) => updateJournal("currency", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="PKR">PKR</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

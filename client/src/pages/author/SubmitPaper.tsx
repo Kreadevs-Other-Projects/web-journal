@@ -78,7 +78,7 @@ export default function SubmitPaper() {
       return;
     }
     const timer = setTimeout(() => {
-      fetch(`${url}/paper/keyword-suggestions?q=${encodeURIComponent(keywordInput)}`, {
+      fetch(`${url}/papers/keyword-suggestions?q=${encodeURIComponent(keywordInput)}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((r) => r.json())
@@ -170,7 +170,7 @@ export default function SubmitPaper() {
       formData.append("paper_references", JSON.stringify(references.filter((r) => r.text.trim())));
       if (manuscript) formData.append("manuscript", manuscript);
 
-      const res = await fetch(`${url}/paper/createPaper`, {
+      const res = await fetch(`${url}/papers/createPaper`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

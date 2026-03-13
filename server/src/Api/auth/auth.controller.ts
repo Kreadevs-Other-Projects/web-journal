@@ -25,6 +25,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
   getUserRoles as getUserRolesRepo,
+  insertUserRole,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
@@ -69,18 +70,26 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  if (user.role !== role) {
-    return res.status(403).json({
-      success: false,
-      message: "Invalid role selected for this account",
-    });
-  }
-
   // ========================
   // DEV: Skip OTP, return token directly
   // ========================
   const userRoleRows = await getUserRoles(user.id, user.role);
   const roles = userRoleRows.map((r) => r.role);
+
+  // Validate the requested role: check user_roles table first, then fall back to users.role
+  const requestedRole = role || user.role;
+  const matchingUserRole = userRoleRows.find((r) => r.role === requestedRole);
+  const hasPrimaryRole = user.role === requestedRole;
+
+  if (!matchingUserRole && !hasPrimaryRole) {
+    return res.status(403).json({
+      success: false,
+      message: `You are not registered as ${requestedRole.replace(/_/g, " ")}`,
+    });
+  }
+
+  // For journal-scoped roles, pick the first matching journal_id
+  const activeJournalId = matchingUserRole?.journal_id ?? null;
 
   const accessToken = await generateAccessToken(
     user.id,
@@ -88,8 +97,8 @@ export const login = async (req: Request, res: Response) => {
     user.email,
     user.username,
     roles,
-    user.role,
-    null,
+    requestedRole,
+    activeJournalId,
   );
   const refreshToken = await generateRefreshToken(user.id, user.role);
 
@@ -202,12 +211,10 @@ export const login = async (req: Request, res: Response) => {
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
 
-  // const otpVerified = await checkOTPVerified(email);
-  // if (!otpVerified) {
-  //   return res
-  //     .status(403)
-  //     .json({ success: false, message: "Email not verified via OTP" });
-  // }
+  const BLOCKED_ROLES = ["owner", "chief_editor", "sub_editor", "journal_manager"];
+  if (BLOCKED_ROLES.includes(role)) {
+    return res.status(400).json({ success: false, message: "Invalid role" });
+  }
 
   const existingUser = await findUserByEmail(email);
 
@@ -494,6 +501,33 @@ export const switchRole = async (req: Request, res: Response) => {
       message: error.message || "Failed to switch role",
     });
   }
+};
+
+export const createStaff = async (req: Request, res: Response) => {
+  const { name, email, password, role, journal_id, keywords, degrees } = req.body;
+
+  const BLOCKED = ["publisher", "owner"];
+  if (BLOCKED.includes(role)) {
+    return res.status(403).json({ success: false, message: "Cannot create this role via this endpoint" });
+  }
+
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ success: false, message: "Email is already in use" });
+  }
+
+  const hashed = await hashPassword(password);
+  const newUser = await createUser({ email, password: hashed, username: name, role });
+  await createUserProfile(newUser.id);
+
+  // Insert user_roles entry scoped to the journal
+  const grantedBy = (req as any).user?.id ?? null;
+  await insertUserRole(newUser.id, role, journal_id, grantedBy);
+
+  return res.status(201).json({
+    success: true,
+    user: { id: newUser.id, email: newUser.email, role: newUser.role, username: newUser.username },
+  });
 };
 
 export const logout = async (req: Request, res: Response) => {

@@ -23,7 +23,7 @@ import Navbar from "@/components/navbar";
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -78,12 +78,13 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(result.user));
       localStorage.setItem("refreshToken", result.refreshToken);
 
-      const userRole = result.user.role as UserRole;
-      navigate(roleConfig[userRole].route, { replace: true });
+      // Use active_role from JWT (the role the user logged in as)
+      const activeRole = selectedRole as UserRole;
+      navigate(roleConfig[activeRole].route, { replace: true });
 
       toast({
         title: "Login Successful",
-        description: `Welcome ${roleConfig[userRole].label}!`,
+        description: `Welcome ${roleConfig[activeRole].label}!`,
         variant: "default",
       });
 
@@ -296,15 +297,29 @@ export default function LoginPage() {
                   {selectedRole === "chief_editor" && (
                     <>
                       <p>✓ Manage paper assignments</p>
-                      <p>✓ Coordinate review process</p>
-                      <p>✓ Access analytics dashboard</p>
+                      <p>✓ Coordinate the review process</p>
+                      <p>✓ Open and close submission calls</p>
                     </>
                   )}
-                  {selectedRole === "owner" && (
+                  {selectedRole === "sub_editor" && (
                     <>
-                      <p>✓ System-wide oversight</p>
-                      <p>✓ User management</p>
-                      <p>✓ Platform configuration</p>
+                      <p>✓ Manage revisions and edits</p>
+                      <p>✓ Coordinate with authors</p>
+                      <p>✓ Prepare papers for publication</p>
+                    </>
+                  )}
+                  {selectedRole === "journal_manager" && (
+                    <>
+                      <p>✓ Manage journal issues</p>
+                      <p>✓ Oversee editorial board</p>
+                      <p>✓ Publish accepted articles</p>
+                    </>
+                  )}
+                  {selectedRole === "publisher" && (
+                    <>
+                      <p>✓ Create and manage journals</p>
+                      <p>✓ Oversee all publications</p>
+                      <p>✓ Configure journal settings</p>
                     </>
                   )}
                 </div>
@@ -337,8 +352,8 @@ export default function LoginPage() {
                 Choose your role and enter your credentials
               </p>
 
-              <div className="grid grid-cols-4 gap-2 mb-6">
-                {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {(["publisher", "journal_manager", "chief_editor", "sub_editor", "reviewer", "author"] as UserRole[]).map((role) => {
                   const config = roleConfig[role];
                   const Icon = config.icon;
                   const isSelected = selectedRole === role;
@@ -358,7 +373,7 @@ export default function LoginPage() {
                     >
                       <Icon className="h-5 w-5" />
                       <span className="text-[10px] font-medium uppercase tracking-wider">
-                        {config.label}
+                        {role === "sub_editor" ? "Assoc. Editor" : config.label}
                       </span>
                       {isSelected && (
                         <motion.div
@@ -431,14 +446,8 @@ export default function LoginPage() {
                   </>
                 )} */}
 
-                <Button type="submit" disabled={isLoading}>
-                  {step === "credentials"
-                    ? isLoading
-                      ? "Sending..."
-                      : "Send OTP"
-                    : isLoading
-                      ? "Verifying..."
-                      : "Verify OTP"}
+                <Button type="submit" disabled={isLoading} className="w-full">
+                  {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
 
                 {step === "otp" && (

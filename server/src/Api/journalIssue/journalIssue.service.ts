@@ -14,8 +14,8 @@ export const addJournalIssueService = async (
   journal_id: string,
   data: JournalIssueData,
 ) => {
-  if (user.role !== "owner") {
-    throw new Error("Only owners can create journal issues");
+  if (user.role !== "publisher" && user.role !== "journal_manager") {
+    throw new Error("Only publishers or journal managers can create journal issues");
   }
 
   const journalResult = await pool.query(
@@ -25,12 +25,6 @@ export const addJournalIssueService = async (
 
   if (!journalResult.rows.length) {
     throw new Error("Journal not found");
-  }
-
-  const journal = journalResult.rows[0];
-
-  if (user.id !== journal.owner_id) {
-    throw new Error("Forbidden: You cannot create issues for this journal");
   }
 
   const issue = await createJournalIssue(journal_id, data);

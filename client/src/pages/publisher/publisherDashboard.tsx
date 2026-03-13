@@ -22,7 +22,10 @@ import {
   Clock,
   AlertCircle,
   Plus,
+  Layers,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -116,12 +119,19 @@ export default function PublisherDashboard() {
   // PAYMENT_DISABLED: const [sendingInvoice, setSendingInvoice] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<JournalIssue | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // PAYMENT_DISABLED: isProrated and prorationInfo removed
+  const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [issueForm, setIssueForm] = useState({
+    label: "",
+    volume: "",
+    issue: "",
+    year: new Date().getFullYear().toString(),
+    amount: "",
+  });
+  const [creatingIssue, setCreatingIssue] = useState(false);
 
   const statusMap: Record<string, string[]> = {
-    all: ["pending_payment", "draft", "active", "suspended", "archived"],
-    pending: ["pending_payment", "draft"],
+    all: ["draft", "active", "suspended", "archived"],
+    pending: ["draft"],
     approved: ["active"],
   };
 
@@ -185,6 +195,36 @@ export default function PublisherDashboard() {
     }
   };
 
+  const createIssue = async () => {
+    if (!selectedJournal || !issueForm.label) {
+      toast({ variant: "destructive", title: "Error", description: "Label is required" });
+      return;
+    }
+    try {
+      setCreatingIssue(true);
+      const res = await fetch(`${url}/journal-issue/addJournalIssue/${selectedJournal.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: issueForm.label,
+          volume: issueForm.volume ? Number(issueForm.volume) : undefined,
+          issue: issueForm.issue ? Number(issueForm.issue) : undefined,
+          year: Number(issueForm.year),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create issue");
+      toast({ title: "Success", description: "Issue created successfully" });
+      setIssueForm({ label: "", volume: "", issue: "", year: new Date().getFullYear().toString(), amount: "" });
+      setCreateIssueOpen(false);
+      fetchJournals();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setCreatingIssue(false);
+    }
+  };
+
   /* PAYMENT_DISABLED: Payment step hidden per client instruction
   const sendInvoice = async (journalId: string, issueId: string) => {
     if (!invoiceAmount || invoiceAmount <= 0) {
@@ -243,33 +283,31 @@ export default function PublisherDashboard() {
   */
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "approved":
+    switch (status) {
+      case "active":
         return (
-          <Badge
-            variant="default"
-            className="bg-green-500/20 text-green-400 border-green-500/30"
-          >
+          <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
             <CheckCircle className="h-3 w-3 mr-1" />
-            Approved
+            Active
           </Badge>
         );
-      case "pending":
+      case "draft":
         return (
-          <Badge
-            variant="default"
-            className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-          >
+          <Badge variant="default" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
             <Clock className="h-3 w-3 mr-1" />
-            Pending
+            Draft
+          </Badge>
+        );
+      case "suspended":
+        return (
+          <Badge variant="default" className="bg-red-500/20 text-red-400 border-red-500/30">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Suspended
           </Badge>
         );
       default:
         return (
-          <Badge
-            variant="default"
-            className="bg-gray-500/20 text-gray-400 border-gray-500/30"
-          >
+          <Badge variant="default" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
             <AlertCircle className="h-3 w-3 mr-1" />
             {status}
           </Badge>
@@ -326,13 +364,9 @@ export default function PublisherDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Pending Review</p>
+                  <p className="text-sm text-muted-foreground">Draft</p>
                   <p className="text-2xl font-bold text-white">
-                    {
-                      journals.filter(
-                        (j) => j.status.toLowerCase() === "pending",
-                      ).length
-                    }
+                    {journals.filter((j) => j.status === "draft").length}
                   </p>
                 </div>
                 <Clock className="h-8 w-8 text-blue-400" />
@@ -343,13 +377,9 @@ export default function PublisherDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Approved</p>
+                  <p className="text-sm text-gray-400">Active</p>
                   <p className="text-2xl font-bold text-white">
-                    {
-                      journals.filter(
-                        (j) => j.status.toLowerCase() === "approved",
-                      ).length
-                    }
+                    {journals.filter((j) => j.status === "active").length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-400" />
@@ -380,8 +410,8 @@ export default function PublisherDashboard() {
             <Tabs value={tab} onValueChange={setTab} className="w-[300px]">
               <TabsList className="glass-card">
                 <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="pending">Pending</TabsTrigger>
-                <TabsTrigger value="approved">Approved</TabsTrigger>
+                <TabsTrigger value="pending">Draft</TabsTrigger>
+                <TabsTrigger value="approved">Active</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -585,13 +615,22 @@ export default function PublisherDashboard() {
 
                 <Card className="glass-card">
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Journal Issues
-                      <Badge variant="outline" className="ml-2">
-                        {selectedJournal.issues.length}
-                      </Badge>
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Journal Issues
+                        <Badge variant="outline" className="ml-2">
+                          {selectedJournal.issues.length}
+                        </Badge>
+                      </CardTitle>
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={(e) => { e.stopPropagation(); setCreateIssueOpen(true); }}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Create New Issue
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {selectedJournal.issues.map((issue) => {
@@ -685,6 +724,63 @@ export default function PublisherDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      <Dialog open={createIssueOpen} onOpenChange={setCreateIssueOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Create New Issue
+            </DialogTitle>
+            <DialogDescription>
+              {selectedJournal?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Label <span className="text-destructive">*</span></Label>
+              <Input
+                placeholder="e.g. Vol 1, Issue 1"
+                value={issueForm.label}
+                onChange={(e) => setIssueForm((p) => ({ ...p, label: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Volume</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  value={issueForm.volume}
+                  onChange={(e) => setIssueForm((p) => ({ ...p, volume: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Issue No.</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  value={issueForm.issue}
+                  onChange={(e) => setIssueForm((p) => ({ ...p, issue: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Year</Label>
+              <Input
+                type="number"
+                value={issueForm.year}
+                onChange={(e) => setIssueForm((p) => ({ ...p, year: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateIssueOpen(false)}>Cancel</Button>
+            <Button onClick={createIssue} disabled={creatingIssue || !issueForm.label}>
+              {creatingIssue ? "Creating..." : "Create Issue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </DashboardLayout>
   );

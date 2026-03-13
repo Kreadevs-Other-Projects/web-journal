@@ -30,6 +30,7 @@ import {
 import {
   FileText,
   UserPlus,
+  UserCheck,
   Search,
   Filter,
   Users,
@@ -40,6 +41,8 @@ import {
   BookOpen,
   Lock,
   Unlock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -113,6 +116,15 @@ export default function ChiefEditor() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openIssueDialog, setOpenIssueDialog] = useState(false);
   const [subEditorEmail, setSubEditorEmail] = useState("");
+  const [newSubEditor, setNewSubEditor] = useState({ name: "", email: "", password: "" });
+  const [showSEPassword, setShowSEPassword] = useState(false);
+  const [creatingSubEditor, setCreatingSubEditor] = useState(false);
+  const [openReviewerDialog, setOpenReviewerDialog] = useState(false);
+  const [selectedReviewerId, setSelectedReviewerId] = useState("");
+  const [newReviewer, setNewReviewer] = useState({ name: "", email: "", password: "" });
+  const [showRevPassword, setShowRevPassword] = useState(false);
+  const [creatingReviewer, setCreatingReviewer] = useState(false);
+  const [assigningReviewer, setAssigningReviewer] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
@@ -412,6 +424,110 @@ export default function ChiefEditor() {
       });
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  const createAndAssignSubEditor = async () => {
+    if (!newSubEditor.name || !newSubEditor.email || !newSubEditor.password) {
+      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+    if (!selectedPaper) return;
+    try {
+      setCreatingSubEditor(true);
+      const journalId = selectedPaper.journalId ?? selectedJournalId;
+      const res = await fetch(`${url}/auth/create-staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newSubEditor.name,
+          email: newSubEditor.email,
+          password: newSubEditor.password,
+          role: "sub_editor",
+          journal_id: journalId ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create sub-editor");
+
+      // Assign the new sub-editor to the paper
+      const assignRes = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subEditorId: data.user.id }),
+      });
+      const assignData = await assignRes.json();
+      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign sub-editor");
+
+      toast({ title: "Success", description: `${newSubEditor.name} created and assigned as sub-editor` });
+      setNewSubEditor({ name: "", email: "", password: "" });
+      setOpenDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingSubEditor(false);
+    }
+  };
+
+  const assignExistingReviewer = async () => {
+    if (!selectedPaper || !selectedReviewerId) return;
+    try {
+      setAssigningReviewer(true);
+      const res = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subEditorId: selectedReviewerId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to assign reviewer");
+      toast({ title: "Success", description: "Reviewer assigned successfully" });
+      setSelectedReviewerId("");
+      setOpenReviewerDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setAssigningReviewer(false);
+    }
+  };
+
+  const createAndAssignReviewer = async () => {
+    if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
+      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+    if (!selectedPaper) return;
+    try {
+      setCreatingReviewer(true);
+      const journalId = selectedPaper.journalId ?? selectedJournalId;
+      const res = await fetch(`${url}/auth/create-staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newReviewer.name,
+          email: newReviewer.email,
+          password: newReviewer.password,
+          role: "reviewer",
+          journal_id: journalId ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
+
+      const assignRes = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subEditorId: data.user.id }),
+      });
+      const assignData = await assignRes.json();
+      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign reviewer");
+
+      toast({ title: "Success", description: `${newReviewer.name} created and assigned as reviewer` });
+      setNewReviewer({ name: "", email: "", password: "" });
+      setOpenReviewerDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingReviewer(false);
     }
   };
 
@@ -823,29 +939,46 @@ export default function ChiefEditor() {
                     )}
                   </div>
                 </CardContent>
-                <CardFooter className="pt-0 flex gap-2">
+                <CardFooter className="pt-0 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     className="flex-1 group-hover:border-blue-300 group-hover:text-blue-700 transition-colors"
                     onClick={() => {
                       setSelectedPaper(paper);
                       setOpenDialog(true);
                     }}
                   >
-                    <UserPlus className="h-4 w-4 mr-2" />
+                    <UserPlus className="h-4 w-4 mr-1" />
                     Assign Editor
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 group-hover:border-purple-300 group-hover:text-purple-700 transition-colors"
+                    onClick={() => {
+                      setSelectedPaper(paper);
+                      setSelectedReviewerId("");
+                      setNewReviewer({ name: "", email: "", password: "" });
+                      setOpenReviewerDialog(true);
+                    }}
+                  >
+                    <UserCheck className="h-4 w-4 mr-1" />
+                    Assign Reviewer
                   </Button>
 
                   {!paper.issueId && (
                     <Button
                       variant="outline"
+                      size="sm"
                       className="flex-1"
                       onClick={() => {
                         setSelectedPaper(paper);
                         setOpenIssueDialog(true);
                       }}
                     >
-                      <BookOpen className="h-4 w-4 mr-2" />
+                      <BookOpen className="h-4 w-4 mr-1" />
                       Assign Issue
                     </Button>
                   )}
@@ -937,23 +1070,43 @@ export default function ChiefEditor() {
 
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">
-                    Invite New Sub-Editor
+                    Create New Sub-Editor
                   </Label>
                   <Input
-                    type="email"
-                    placeholder="Enter email address"
-                    value={subEditorEmail}
-                    onChange={(e) => setSubEditorEmail(e.target.value)}
+                    placeholder="Full Name"
+                    value={newSubEditor.name}
+                    onChange={(e) => setNewSubEditor((p) => ({ ...p, name: e.target.value }))}
                   />
+                  <Input
+                    type="email"
+                    placeholder="Email address"
+                    value={newSubEditor.email}
+                    onChange={(e) => setNewSubEditor((p) => ({ ...p, email: e.target.value }))}
+                  />
+                  <div className="relative">
+                    <Input
+                      type={showSEPassword ? "text" : "password"}
+                      placeholder="Temporary password (min. 6 chars)"
+                      value={newSubEditor.password}
+                      onChange={(e) => setNewSubEditor((p) => ({ ...p, password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSEPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showSEPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <Button
-                    variant="outline"
                     className="w-full"
-                    onClick={inviteSubEditorByEmail}
-                    disabled={!subEditorEmail}
+                    onClick={createAndAssignSubEditor}
+                    disabled={creatingSubEditor || !newSubEditor.name || !newSubEditor.email || !newSubEditor.password}
                   >
-                    {inviteLoading
-                      ? "Sending Invitation..."
-                      : "Send Invitation"}
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {creatingSubEditor ? "Creating..." : "Create & Assign Sub-Editor"}
                   </Button>
                 </div>
               </div>
@@ -1021,6 +1174,108 @@ export default function ChiefEditor() {
               <Button variant="ghost" onClick={() => setOpenIssueDialog(false)}>
                 Close
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openReviewerDialog} onOpenChange={setOpenReviewerDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Assign Reviewer
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedPaper && (
+              <div className="space-y-6">
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-4">
+                    <p className="font-medium text-foreground text-sm">{selectedPaper.title}</p>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Select Existing Reviewer</Label>
+                  <Select value={selectedReviewerId} onValueChange={setSelectedReviewerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a reviewer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reviewers.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 bg-purple-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-purple-800">
+                                {r.username.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{r.username}</p>
+                              <p className="text-xs text-muted-foreground">{r.email}</p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button className="w-full" onClick={assignExistingReviewer} disabled={!selectedReviewerId || assigningReviewer}>
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    {assigningReviewer ? "Assigning..." : "Assign Reviewer"}
+                  </Button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Create New Reviewer</Label>
+                  <Input
+                    placeholder="Full Name"
+                    value={newReviewer.name}
+                    onChange={(e) => setNewReviewer((p) => ({ ...p, name: e.target.value }))}
+                  />
+                  <Input
+                    type="email"
+                    placeholder="Email address"
+                    value={newReviewer.email}
+                    onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
+                  />
+                  <div className="relative">
+                    <Input
+                      type={showRevPassword ? "text" : "password"}
+                      placeholder="Temporary password (min. 6 chars)"
+                      value={newReviewer.password}
+                      onChange={(e) => setNewReviewer((p) => ({ ...p, password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRevPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showRevPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={createAndAssignReviewer}
+                    disabled={creatingReviewer || !newReviewer.name || !newReviewer.email || !newReviewer.password}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="sm:justify-between">
+              <div className="text-xs text-muted-foreground">{reviewers.length} available reviewers</div>
+              <Button variant="ghost" onClick={() => setOpenReviewerDialog(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

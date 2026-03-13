@@ -4,71 +4,19 @@ export const approveJournalRepo = async (
   journalId: string,
   issueId: string,
 ) => {
-  const client = await pool.connect();
+  // PAYMENT_DISABLED: Removed payment/invoice check per client instruction (Mar 2026)
+  const result = await pool.query(
+    `
+    UPDATE journal_issues
+    SET status = 'open', updated_at = NOW()
+    WHERE id = $1 AND journal_id = $2
+    RETURNING id
+    `,
+    [issueId, journalId],
+  );
 
-  try {
-    await client.query("BEGIN");
-
-    const paymentCheck = await client.query(
-      `
-      SELECT status 
-      FROM journal_payments
-      WHERE issue_id = $1
-      LIMIT 1
-      `,
-      [issueId],
-    );
-
-    if (paymentCheck.rowCount === 0) {
-      throw new Error("Send invoice first");
-    }
-
-    if (paymentCheck.rows[0].status === "success") {
-      throw new Error("Payment already approved");
-    }
-
-    const journalRes = await client.query(
-      `
-      UPDATE journals
-      SET status = 'active', updated_at = NOW()
-      WHERE id = $1
-      RETURNING chief_editor_id, owner_id
-      `,
-      [journalId],
-    );
-
-    if (!journalRes.rows.length) {
-      throw new Error("Journal not found");
-    }
-
-    const { chief_editor_id } = journalRes.rows[0];
-
-    await client.query(
-      `
-      UPDATE journal_issues
-      SET status = 'draft', updated_at = NOW()
-      WHERE id = $1 AND journal_id = $2
-      `,
-      [issueId, journalId],
-    );
-
-    await client.query(
-      `
-      UPDATE journal_payments
-      SET status = 'success', updated_at = NOW()
-      WHERE issue_id = $1 OR journal_id = $2
-      `,
-      [issueId, journalId],
-    );
-
-    await client.query("COMMIT");
-
-    return chief_editor_id;
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
+  if (!result.rows.length) {
+    throw new Error("Issue not found for this journal");
   }
 };
 
@@ -81,8 +29,9 @@ export const activateUserRepo = async (userId: string) => {
   );
 };
 
-export const getPublisherJournals = async () => {
-  const result = await pool.query(`
+export const getPublisherJournals = async (publisherId: string) => {
+  const result = await pool.query(
+    `
     SELECT
       j.*,
 
@@ -124,9 +73,13 @@ export const getPublisherJournals = async () => {
     JOIN users o ON o.id = j.owner_id
     LEFT JOIN journal_issues ji ON ji.journal_id = j.id
 
+    WHERE j.owner_id = $1
+
     GROUP BY j.id, ce.id, o.id
     ORDER BY j.created_at DESC
-  `);
+  `,
+    [publisherId],
+  );
 
   return result.rows;
 };

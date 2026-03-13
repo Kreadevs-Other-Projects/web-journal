@@ -28,6 +28,7 @@ export type Journal = {
 
 export type PublisherJournalData = {
   title: string;
+  acronym: string;
   issn?: string;
   doi?: string | null;
   publisher_name: string;
@@ -40,15 +41,6 @@ export type PublisherJournalData = {
   currency?: string | null;
 };
 
-function generateAcronym(title: string): string {
-  const words = title.trim().split(/\s+/).filter((w) => w.length > 0);
-  let acronym = words
-    .map((w) => w[0].toUpperCase())
-    .join("")
-    .slice(0, 4);
-  while (acronym.length < 4) acronym += "J";
-  return acronym;
-}
 
 export const addJournalService = async (
   user: { id: string; role: string },
@@ -191,17 +183,15 @@ export const publisherCreateJournalService = async (
   });
   await createUserProfileInDB(jmUser.id);
 
-  const acronym = generateAcronym(data.title);
-
   const journal = await createJournalByPublisher(
     publisherId,
     ceUser.id,
-    acronym,
     data,
   );
 
   await insertUserRole(ceUser.id, "chief_editor", journal.id, publisherId);
   await insertUserRole(jmUser.id, "journal_manager", journal.id, publisherId);
+  await insertUserRole(publisherId, "journal_manager", journal.id, publisherId);
 
   sendWelcomeEmail(
     data.chief_editor.email,

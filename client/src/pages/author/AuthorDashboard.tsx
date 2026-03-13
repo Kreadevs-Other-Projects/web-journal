@@ -56,7 +56,7 @@ export default function AuthorDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${url}/paper/getPapersByAuthor`, {
+    fetch(`${url}/papers/getPapersByAuthor`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())

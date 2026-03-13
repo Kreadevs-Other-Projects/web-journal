@@ -18,7 +18,7 @@ const router = Router();
 router.post(
   "/addJournalIssue/:journalId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("owner", "publisher", "journal_manager"),
   validate(createJournalIssueSchema),
   addJournalIssue,
 );
@@ -26,14 +26,14 @@ router.post(
 router.get(
   "/getJournalIssues/:journalId",
   authMiddleware,
-  authorize("owner", "publisher", "author"),
+  authorize("owner", "publisher", "journal_manager", "author"),
   getJournalIssues,
 );
 
 router.put(
   "/updateJournalIssue/:issueId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("owner", "publisher", "journal_manager"),
   validate(updateJournalIssueSchema),
   updateJournalIssue,
 );
@@ -41,7 +41,7 @@ router.put(
 router.delete(
   "/deleteJournalIssue/:issueId",
   authMiddleware,
-  authorize("owner", "publisher"),
+  authorize("owner", "publisher", "journal_manager"),
   deleteJournalIssue,
 );
 

@@ -30,7 +30,7 @@ export const approveJournal = async (req: Request, res: Response) => {
 };
 
 export const getJournals = async (req: AuthUser, res: Response) => {
-  const journals = await service.fetchPublisherJournals();
+  const journals = await service.fetchPublisherJournals(req.user!.id);
   res.json({ success: true, journals });
 };
 

@@ -23,6 +23,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { url } from "@/url";
+import { useAuth } from "@/context/AuthContext";
 
 interface PublicPaper {
   id: string;
@@ -131,6 +132,7 @@ const similarPapers = [
 export default function ResearchPaperDetail() {
   const { paperId } = useParams<{ paperId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [paper, setPaper] = useState(mockPaperData);
   const [isLoading, setIsLoading] = useState(false);
   const [publicPaper, setPublicPaper] = useState<PublicPaper | null>(null);
@@ -202,7 +204,7 @@ export default function ResearchPaperDetail() {
 
   if (isLoading) {
     return (
-      <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+      <DashboardLayout role="reviewer" userName={user?.username}>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -214,7 +216,7 @@ export default function ResearchPaperDetail() {
   }
 
   return (
-    <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+    <DashboardLayout role="reviewer" userName={user?.username}>
       <PageTransition>
         <div className="space-y-6">
 

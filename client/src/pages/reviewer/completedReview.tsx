@@ -43,7 +43,7 @@ interface CompletedReview extends Paper {
 const ITEMS_PER_PAGE = 5;
 
 export default function CompletedReviewPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
     [],
   );
@@ -102,7 +102,7 @@ export default function CompletedReviewPage() {
   );
 
   return (
-    <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+    <DashboardLayout role="reviewer" userName={user?.username}>
       <PageTransition>
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -143,8 +143,8 @@ export default function CompletedReviewPage() {
                       <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              {review.paper_id}
+                            <Badge variant="outline" className="text-xs max-w-[200px] truncate">
+                              {review.title}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {review.category}
@@ -227,6 +227,7 @@ export default function CompletedReviewPage() {
                             >
                               <Link
                                 to={`/reviewer/completed/${review.paper_id}`}
+                                state={{ review }}
                               >
                                 <Eye className="h-4 w-4" />
                                 View Details

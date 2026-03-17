@@ -8,6 +8,7 @@ import {
   decidePaper,
   fetchChiefEditors,
   fetchSubEditors,
+  fetchReviewers,
   getSubmittedReviews,
   SubEditorInvite,
   getPapersByIssue,
@@ -53,10 +54,17 @@ router.get(
 );
 
 router.get(
-  "/getsubEditors",
+  "/getSubEditors",
   authMiddleware,
   authorize("author", "chief_editor", "owner", "publisher"),
   fetchSubEditors,
+);
+
+router.get(
+  "/getReviewers",
+  authMiddleware,
+  authorize("chief_editor", "sub_editor"),
+  fetchReviewers,
 );
 
 router.post(

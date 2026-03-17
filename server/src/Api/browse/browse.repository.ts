@@ -9,6 +9,8 @@ export const getPublicPaperRepo = async (paperId: string) => {
       p.abstract,
       p.keywords,
       p.author_names,
+      p.corresponding_authors,
+      p.paper_references,
       p.submitted_at,
       p.accepted_at,
       p.published_at,

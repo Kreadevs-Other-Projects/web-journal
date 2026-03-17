@@ -26,9 +26,31 @@ export type Journal = {
   chief_editor_id: string;
 };
 
+const SKIP_WORDS = new Set(['of', 'the', 'and', 'for', 'in', 'a', 'an']);
+
+function buildAcronym(title: string): string {
+  const letters = title
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !SKIP_WORDS.has(w.toLowerCase()))
+    .map((w) => w[0].toUpperCase())
+    .join('');
+  return letters || title.slice(0, 3).toUpperCase();
+}
+
+async function getUniqueAcronym(base: string): Promise<string> {
+  const check = await pool.query('SELECT 1 FROM journals WHERE acronym = $1', [base]);
+  if (!check.rows.length) return base;
+  for (let n = 2; n <= 99; n++) {
+    const candidate = `${base}${n}`;
+    const r = await pool.query('SELECT 1 FROM journals WHERE acronym = $1', [candidate]);
+    if (!r.rows.length) return candidate;
+  }
+  return `${base}${Date.now()}`;
+}
+
 export type PublisherJournalData = {
   title: string;
-  acronym: string;
+  acronym?: string;
   issn?: string;
   doi?: string | null;
   publisher_name: string;
@@ -144,6 +166,12 @@ export const publisherCreateJournalService = async (
     journal_manager: { name: string; email: string; password: string };
   },
 ) => {
+  // Auto-generate acronym from title if not provided
+  if (!data.acronym) {
+    const base = buildAcronym(data.title);
+    data.acronym = await getUniqueAcronym(base);
+  }
+
   const existingCE = await pool.query(
     "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL",
     [data.chief_editor.email],

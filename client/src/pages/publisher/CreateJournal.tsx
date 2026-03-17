@@ -27,7 +27,6 @@ import { ChevronRight, ChevronLeft, BookOpen, User } from "lucide-react";
 
 interface JournalFields {
   title: string;
-  acronym: string;
   issn: string;
   doi: string;
   publisher_name: string;
@@ -46,7 +45,6 @@ interface StaffFields {
 
 const defaultJournal: JournalFields = {
   title: "",
-  acronym: "",
   issn: "",
   doi: "",
   publisher_name: "",
@@ -86,7 +84,6 @@ export default function CreateJournal() {
     if (step === 0) {
       if (
         !journal.title ||
-        !journal.acronym ||
         !journal.publisher_name ||
         !journal.type ||
         !journal.peer_review_policy ||
@@ -140,7 +137,6 @@ export default function CreateJournal() {
       setSubmitting(true);
       const payload = {
         title: journal.title,
-        acronym: journal.acronym.toUpperCase(),
         issn: journal.issn || undefined,
         doi: journal.doi || null,
         publisher_name: journal.publisher_name,
@@ -231,19 +227,6 @@ export default function CreateJournal() {
                     value={journal.title}
                     onChange={(e) => updateJournal("title", e.target.value)}
                     placeholder="e.g. Journal of Artificial Intelligence"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>
-                    Journal Acronym <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={journal.acronym}
-                    onChange={(e) =>
-                      updateJournal("acronym", e.target.value.toUpperCase())
-                    }
-                    maxLength={10}
-                    placeholder="e.g. JAI"
                   />
                 </div>
                 <div className="space-y-1">

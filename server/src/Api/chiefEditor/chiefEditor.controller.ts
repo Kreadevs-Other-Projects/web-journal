@@ -56,6 +56,15 @@ export const fetchSubEditors = async (req: Request, res: Response) => {
   });
 };
 
+export const fetchReviewers = async (req: Request, res: Response) => {
+  const users = await service.getReviewers();
+
+  res.json({
+    success: true,
+    data: users,
+  });
+};
+
 export const assignSubEditor = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;

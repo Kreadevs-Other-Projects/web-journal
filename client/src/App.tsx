@@ -27,6 +27,7 @@ import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
+import ArticlePage from "./pages/ArticlePage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
 import PublisherManagerDashborad from "./pages/publisherManager/PublisherManagerDashborad.tsx";
@@ -71,6 +72,10 @@ const App = () => (
                     <Route
                       path="/researchPapers/:paperId"
                       element={<ResearchPaperDetail />}
+                    />
+                    <Route
+                      path="/articles/:paperId"
+                      element={<ArticlePage />}
                     />
                   </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />

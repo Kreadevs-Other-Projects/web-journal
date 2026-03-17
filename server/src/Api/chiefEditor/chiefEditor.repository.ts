@@ -76,15 +76,18 @@ export const findChiefEditors = async () => {
 export const getAllPapers = async (chiefEditorId: string) => {
   const result = await pool.query(
     `
-    SELECT p.*
+    SELECT
+      p.*,
+      u.username AS author_name,
+      j.title AS journal_name,
+      ji.label AS issue_label,
+      ed.decision AS editor_decision
     FROM papers p
     JOIN journals j ON j.id = p.journal_id
+    LEFT JOIN users u ON u.id = p.author_id
+    LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+    LEFT JOIN editor_decisions ed ON ed.paper_id = p.id
     WHERE j.chief_editor_id = $1
-      AND NOT EXISTS (
-        SELECT 1
-        FROM editor_decisions ed
-        WHERE ed.paper_id = p.id
-      )
     ORDER BY p.created_at DESC
     `,
     [chiefEditorId],
@@ -99,6 +102,20 @@ export const findSubEditors = async () => {
     SELECT id, username, email
     FROM users
     WHERE role = 'sub_editor'
+      AND status = 'active'
+    ORDER BY username ASC
+    `,
+  );
+
+  return result.rows;
+};
+
+export const findReviewers = async () => {
+  const result = await pool.query(
+    `
+    SELECT id, username, email
+    FROM users
+    WHERE role = 'reviewer'
       AND status = 'active'
     ORDER BY username ASC
     `,

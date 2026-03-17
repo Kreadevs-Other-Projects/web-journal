@@ -32,6 +32,10 @@ export const getSubEditors = async () => {
   return repo.findSubEditors();
 };
 
+export const getReviewers = async () => {
+  return repo.findReviewers();
+};
+
 export const addSubEditor = async (
   paperId: string,
   subEditorId: string,

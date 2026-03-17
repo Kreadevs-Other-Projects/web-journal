@@ -94,7 +94,7 @@ export const createJournalByPublisher = async (
       publisher_id,
       chief_editor_id,
       data.title,
-      data.acronym.toUpperCase(),
+      (data.acronym ?? '').toUpperCase(),
       data.issn || null,
       data.doi || null,
       data.publisher_name,

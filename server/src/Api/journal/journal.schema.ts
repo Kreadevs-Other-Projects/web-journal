@@ -49,8 +49,8 @@ export const publisherCreateJournalSchema = z.object({
       .max(255, "Journal name cannot exceed 255 characters"),
     acronym: z
       .string()
-      .min(1, "Acronym is required")
-      .max(10, "Acronym cannot exceed 10 characters"),
+      .max(10, "Acronym cannot exceed 10 characters")
+      .optional(),
     issn: z
       .string()
       .regex(/^\d{4}-\d{3}[\dxX]$/, "ISSN must be in the format 1234-567X")

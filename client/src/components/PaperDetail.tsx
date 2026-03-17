@@ -396,14 +396,22 @@ export default function JournalDetail() {
                 </p>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-border/50">
+              <div className="flex gap-3 pt-6 border-t border-border/50 flex-wrap">
+                <Link
+                  to={`/articles/${selectedPaper.id}`}
+                  className="inline-flex"
+                >
+                  <Button className="btn-physics bg-gradient-primary hover:opacity-90">
+                    View Full Article
+                  </Button>
+                </Link>
                 <a
                   href={`${url}${selectedPaper.pdf_url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex"
                 >
-                  <Button className="btn-physics bg-gradient-primary hover:opacity-90">
+                  <Button variant="outline" className="btn-physics">
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                   </Button>

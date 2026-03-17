@@ -129,6 +129,7 @@ export default function SubEditorDashboard() {
       const res = await fetch(`${url}/subEditor/getSubEditorPapers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) return;
       const data = await res.json();
 
       setPapers(data.papers || []);

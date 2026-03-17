@@ -136,11 +136,14 @@ export const assignSubEditor = async (
 
     const assignmentResult = await client.query(
       `
-      INSERT INTO editor_assignments 
+      INSERT INTO editor_assignments
         (paper_id, sub_editor_id, assigned_by, assigned_at)
       VALUES ($1, $2, $3, NOW())
       ON CONFLICT (paper_id)
-      DO NOTHING
+      DO UPDATE SET
+        sub_editor_id = EXCLUDED.sub_editor_id,
+        assigned_by = EXCLUDED.assigned_by,
+        assigned_at = EXCLUDED.assigned_at
       RETURNING *
       `,
       [paperId, subEditorId, assignedBy],

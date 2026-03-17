@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { useParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -42,6 +43,7 @@ interface PublicPaper {
   publication_date: string;
   published_at: string;
   file_url: string;
+  html_content?: string;
   status: string;
 }
 
@@ -145,6 +147,8 @@ export default function ResearchPaperDetail() {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
   const [activeTab, setActiveTab] = useState("review");
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
 
   // Fetch real public paper data for metadata display
   useEffect(() => {
@@ -153,11 +157,26 @@ export default function ResearchPaperDetail() {
     fetch(`${url}/browse/paper/${paperId}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.success && d.paper) setPublicPaper(d.paper);
+        if (d.success && d.paper) {
+          setPublicPaper(d.paper);
+          if (d.paper.html_content) setHtmlContent(d.paper.html_content);
+        }
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [paperId]);
+
+  // Option B: on-demand HTML fetch for .docx without cached html_content
+  useEffect(() => {
+    if (!publicPaper || htmlContent !== null) return;
+    if (!publicPaper.file_url || !publicPaper.file_url.endsWith(".docx")) return;
+    setHtmlLoading(true);
+    fetch(`${url}/browse/paper/${paperId}/html`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.html) setHtmlContent(d.html); })
+      .catch(() => {})
+      .finally(() => setHtmlLoading(false));
+  }, [publicPaper, paperId, htmlContent]);
 
   const handleSubmitReview = () => {
     if (decision === "accept" || decision === "reject") {
@@ -688,25 +707,49 @@ export default function ResearchPaperDetail() {
                       >
                         <ChevronDown className="h-4 w-4 rotate-180" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
+                      {publicPaper?.file_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`${url}${publicPaper.file_url}`, "_blank")}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      )}
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="aspect-[4/3] bg-muted/30">
-                    <iframe
-                      src={`${paper.pdfUrl}#view=FitH`}
-                      className="w-full h-full border-0"
-                      style={{
-                        transform: `scale(${pdfZoom / 100})`,
-                        transformOrigin: "top center",
-                      }}
-                      title="Paper PDF"
+                <CardContent className="p-4">
+                  {htmlLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Loading document…
+                    </div>
+                  ) : htmlContent ? (
+                    <div
+                      className="paper-content"
+                      style={{ fontSize: `${pdfZoom}%` }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
                     />
-                  </div>
+                  ) : (
+                    <div className="text-center space-y-3 py-8">
+                      <p className="text-muted-foreground text-sm">
+                        Full text is not available for web viewing
+                        {publicPaper?.file_url?.endsWith(".tex") ? " (.tex files cannot be rendered inline)" : ""}.
+                      </p>
+                      {publicPaper?.file_url && (
+                        <Button
+                          size="sm"
+                          onClick={() => window.open(`${url}${publicPaper.file_url}`, "_blank")}
+                          className="gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download Manuscript
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

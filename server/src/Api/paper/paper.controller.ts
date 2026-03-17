@@ -42,6 +42,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     corresponding_authors: parse(body.corresponding_authors),
     paper_references: parse(body.paper_references),
     manuscript_url,
+    manuscript_path: req.file?.path,
     manuscript_size: req.file?.size,
     manuscript_type: req.file?.mimetype,
   };

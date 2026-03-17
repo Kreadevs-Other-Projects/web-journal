@@ -32,7 +32,8 @@ export const getPublicPaperRepo = async (paperId: string) => {
       pub.published_at AS publication_date,
 
       pv.file_url,
-      pv.version_number
+      pv.version_number,
+      pv.html_content
     FROM papers p
     LEFT JOIN users u ON u.id = p.author_id
     LEFT JOIN journals j ON j.id = p.journal_id
@@ -109,4 +110,22 @@ export const getBrowseDataRepo = async (filters: any) => {
 
   const result = await pool.query(query, values);
   return result.rows;
+};
+
+export const getPaperVersionForHtmlRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT pv.id, pv.file_url, pv.html_content
+     FROM paper_versions pv
+     JOIN papers p ON p.current_version_id = pv.id
+     WHERE p.id = $1`,
+    [paperId],
+  );
+  return result.rows[0] || null;
+};
+
+export const cacheVersionHtmlRepo = async (versionId: string, html: string) => {
+  await pool.query(
+    "UPDATE paper_versions SET html_content = $1 WHERE id = $2",
+    [html, versionId],
+  );
 };

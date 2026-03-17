@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getBrowseDataService, getPublicPaperService } from "./browse.service";
+import { getBrowseDataService, getPublicPaperService, getPublicPaperHtmlService } from "./browse.service";
 
 export const getPublicPaper = async (req: Request, res: Response) => {
   try {
@@ -11,6 +11,16 @@ export const getPublicPaper = async (req: Request, res: Response) => {
     res.json({ success: true, paper });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch paper" });
+  }
+};
+
+export const getPaperHtml = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const html = await getPublicPaperHtmlService(paperId);
+    res.json({ success: true, html: html || null });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to get paper HTML" });
   }
 };
 

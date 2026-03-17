@@ -9,9 +9,10 @@ import {
   getPaperById,
   setCurrentVersion,
 } from "./paper.repository";
-import { createPaperVersion, getPaperVersions } from "../paperVersion/paperVersion.repository";
+import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
+import mammoth from "mammoth";
 
 export const createPaperService = async (
   data: any,
@@ -29,6 +30,18 @@ export const createPaperService = async (
       file_type: data.manuscript_type || "application/octet-stream",
     });
     await setCurrentVersion(paper.id, version.id);
+
+    // Option A: extract HTML from .docx on upload for inline web view
+    if (data.manuscript_path && data.manuscript_path.endsWith(".docx")) {
+      try {
+        const result = await mammoth.convertToHtml({ path: data.manuscript_path });
+        if (result.value) {
+          await updateVersionHtmlContent(version.id, result.value);
+        }
+      } catch {
+        // non-fatal — paper is still saved, just no inline view
+      }
+    }
   }
 
   await insertStatusLog({

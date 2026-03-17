@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import DOMPurify from "dompurify";
 import Navbar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ interface ArticleData {
   issue_label?: string;
   doi?: string;
   file_url?: string;
+  html_content?: string;
   status: string;
 }
 
@@ -48,16 +50,37 @@ export default function ArticlePage() {
   const { toast } = useToast();
   const [article, setArticle] = useState<ArticleData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
 
   useEffect(() => {
     fetch(`${url}/browse/paper/${paperId}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setArticle(data.paper);
+        if (data.success) {
+          setArticle(data.paper);
+          if (data.paper?.html_content) {
+            setHtmlContent(data.paper.html_content);
+          }
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [paperId]);
+
+  // Option B: fetch HTML on-demand for papers without cached html_content
+  useEffect(() => {
+    if (!article || htmlContent !== null) return;
+    if (!article.file_url || !article.file_url.endsWith(".docx")) return;
+    setHtmlLoading(true);
+    fetch(`${url}/browse/paper/${paperId}/html`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.html) setHtmlContent(data.html);
+      })
+      .catch(() => {})
+      .finally(() => setHtmlLoading(false));
+  }, [article, paperId, htmlContent]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -217,6 +240,40 @@ export default function ArticlePage() {
               <p className="text-base text-muted-foreground leading-relaxed">
                 {article.abstract || "No abstract available."}
               </p>
+            </section>
+
+            {/* FULL TEXT */}
+            <Separator />
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold text-foreground">Full Text</h2>
+              {htmlLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  Loading full text…
+                </div>
+              ) : htmlContent ? (
+                <div
+                  className="paper-content"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                />
+              ) : (
+                <div className="rounded-lg border border-border/60 bg-muted/40 p-6 text-center space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    Full text is not available for web viewing
+                    {article.file_url?.endsWith(".tex") ? " (.tex files cannot be rendered inline)" : ""}.
+                  </p>
+                  {article.file_url && (
+                    <Button
+                      size="sm"
+                      onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Manuscript
+                    </Button>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* REFERENCES */}

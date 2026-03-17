@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -48,6 +49,7 @@ export default function SubmitPaper() {
   // Form state
   const [journalId, setJournalId] = useState("");
   const [title, setTitle] = useState("");
+  const [abstract, setAbstract] = useState("");
   const [authorNames, setAuthorNames] = useState<string[]>([""]);
   const [correspondingAuthors, setCorrespondingAuthors] = useState<string[]>([""]);
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -138,6 +140,9 @@ export default function SubmitPaper() {
     if (!journalId) return "Please select a journal.";
     if (!title.trim()) return "Title is required.";
     if (title.length > 200) return "Title cannot exceed 200 characters.";
+    if (!abstract.trim()) return "Abstract is required.";
+    if (abstract.length < 100) return "Abstract must be at least 100 characters.";
+    if (abstract.length > 3000) return "Abstract cannot exceed 3000 characters.";
     if (authorNames.filter((n) => n.trim()).length === 0) return "At least one author name is required.";
     if (keywords.length === 0) return "At least one keyword is required.";
     if (keywords.length > 5) return "Maximum 5 keywords allowed.";
@@ -164,6 +169,7 @@ export default function SubmitPaper() {
       const formData = new FormData();
       formData.append("journal_id", journalId);
       formData.append("title", title);
+      formData.append("abstract", abstract);
       formData.append("author_names", JSON.stringify(authorNames.filter((n) => n.trim())));
       formData.append("corresponding_authors", JSON.stringify(correspondingAuthors.filter((c) => c.trim())));
       formData.append("keywords", JSON.stringify(keywords));
@@ -245,7 +251,29 @@ export default function SubmitPaper() {
               />
             </div>
 
-            {/* 3. Author Names */}
+            {/* 3. Abstract */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <Label>Abstract *</Label>
+                <span className={`text-xs ${abstract.length > 3000 ? "text-destructive" : "text-muted-foreground"}`}>
+                  {abstract.length}/3000
+                </span>
+              </div>
+              <Textarea
+                value={abstract}
+                onChange={(e) => setAbstract(e.target.value)}
+                maxLength={3000}
+                placeholder="Provide a brief summary of your research (100–3000 characters)"
+                rows={6}
+              />
+              {abstract.length > 0 && abstract.length < 100 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {100 - abstract.length} more characters needed
+                </p>
+              )}
+            </div>
+
+            {/* 4. Author Names (was 3) */}
             <div>
               <Label className="mb-1.5 block">Author Name(s) *</Label>
               <div className="space-y-2">
@@ -522,6 +550,10 @@ export default function SubmitPaper() {
               <div>
                 <p className="font-medium text-muted-foreground">Title</p>
                 <p>{title}</p>
+              </div>
+              <div>
+                <p className="font-medium text-muted-foreground">Abstract</p>
+                <p className="whitespace-pre-wrap">{abstract}</p>
               </div>
               <div>
                 <p className="font-medium text-muted-foreground">Authors</p>

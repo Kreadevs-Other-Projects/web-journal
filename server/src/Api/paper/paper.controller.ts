@@ -27,7 +27,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
   };
 
   const manuscript_url = req.file
-    ? `/api/uploads/${req.file.filename}`
+    ? `/uploads/${req.file.filename}`
     : undefined;
 
   const data = {

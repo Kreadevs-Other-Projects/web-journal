@@ -339,7 +339,7 @@ export default function SubEditorDashboard() {
           email: newReviewer.email,
           password: newReviewer.password,
           role: "reviewer",
-          journal_id: selectedPaper.id, // fallback; ideally paper's journal_id
+          journal_id: undefined,
         }),
       });
       const data = await res.json();

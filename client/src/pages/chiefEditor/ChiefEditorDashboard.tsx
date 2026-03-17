@@ -473,10 +473,10 @@ export default function ChiefEditor() {
     if (!selectedPaper || !selectedReviewerId) return;
     try {
       setAssigningReviewer(true);
-      const res = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
+      const res = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ subEditorId: selectedReviewerId }),
+        body: JSON.stringify({ reviewerId: selectedReviewerId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to assign reviewer");
@@ -513,10 +513,10 @@ export default function ChiefEditor() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
 
-      const assignRes = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
+      const assignRes = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ subEditorId: data.user.id }),
+        body: JSON.stringify({ reviewerId: data.user.id }),
       });
       const assignData = await assignRes.json();
       if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign reviewer");

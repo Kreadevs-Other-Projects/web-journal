@@ -23,7 +23,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Upload, Loader2 } from "lucide-react";
+import { Plus, X, Upload, Loader2, BookOpen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -60,6 +61,9 @@ export default function SubmitPaper() {
 
   const [submitting, setSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [guidelines, setGuidelines] = useState<string | null>(null);
+  const [guidelinesRead, setGuidelinesRead] = useState(false);
+  const [showGuidelinesModal, setShowGuidelinesModal] = useState(false);
 
   useEffect(() => {
     setLoadingJournals(true);
@@ -89,6 +93,15 @@ export default function SubmitPaper() {
     }, 300);
     return () => clearTimeout(timer);
   }, [keywordInput, token]);
+
+  useEffect(() => {
+    if (!journalId) { setGuidelines(null); setGuidelinesRead(false); return; }
+    fetch(`${url}/journal/${journalId}/guidelines`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setGuidelines(d.guidelines || null); })
+      .catch(() => {});
+    setGuidelinesRead(false);
+  }, [journalId]);
 
   const addKeyword = (kw: string) => {
     const trimmed = kw.trim();
@@ -138,6 +151,8 @@ export default function SubmitPaper() {
 
   const validate = (): string | null => {
     if (!journalId) return "Please select a journal.";
+    if (guidelines && !guidelinesRead)
+      return "Please confirm you have read the author guidelines before submitting.";
     if (!title.trim()) return "Title is required.";
     if (title.length > 200) return "Title cannot exceed 200 characters.";
     if (!abstract.trim()) return "Abstract is required.";
@@ -234,6 +249,35 @@ export default function SubmitPaper() {
                 </Select>
               )}
             </div>
+
+            {/* Author Guidelines Acknowledgement */}
+            {journalId && guidelines && (
+              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="guidelines-read"
+                    checked={guidelinesRead}
+                    onCheckedChange={(checked) => setGuidelinesRead(!!checked)}
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="guidelines-read" className="text-sm font-medium cursor-pointer">
+                      I have read and agree to the author guidelines
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Please read the guidelines for this journal before submitting.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowGuidelinesModal(true)}
+                >
+                  <BookOpen className="h-4 w-4 mr-2" /> Read Author Guidelines
+                </Button>
+              </div>
+            )}
 
             {/* 2. Title */}
             <div>
@@ -602,6 +646,22 @@ export default function SubmitPaper() {
               <Button onClick={handleSubmit} disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Confirm Submission
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Guidelines Modal */}
+        <Dialog open={showGuidelinesModal} onOpenChange={setShowGuidelinesModal}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Author Guidelines</DialogTitle>
+            </DialogHeader>
+            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              {guidelines || "No guidelines available."}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => { setGuidelinesRead(true); setShowGuidelinesModal(false); }}>
+                I have read the guidelines
               </Button>
             </DialogFooter>
           </DialogContent>

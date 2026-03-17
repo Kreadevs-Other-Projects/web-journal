@@ -56,6 +56,7 @@ export const getBrowseDataRepo = async (filters: any) => {
     j.title as journal_title,
     j.issn,
     j.aims_and_scope,
+    j.logo_url,
     ji.id as issue_id,
     ji.year,
     ji.volume,

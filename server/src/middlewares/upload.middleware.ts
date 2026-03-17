@@ -60,3 +60,16 @@ export const manuscriptUpload = multer({
     }
   },
 });
+
+export const logoUpload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
+    }
+  },
+});

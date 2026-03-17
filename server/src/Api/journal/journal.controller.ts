@@ -8,7 +8,10 @@ import {
   updateJournalService,
   deleteJournalService,
   publisherCreateJournalService,
+  updateJournalLogoService,
+  getEditorialBoardService,
 } from "./journal.service";
+import { findJournalById } from "./journal.repository";
 
 export const addJournal = async (req: AuthUser, res: Response) => {
   try {
@@ -92,6 +95,39 @@ export const deleteJournal = async (req: Request, res: Response) => {
     success: true,
     message: "Journal has been deleted successfully!",
   });
+};
+
+export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.file)
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    const logo_url = `/uploads/${req.file.filename}`;
+    await updateJournalLogoService(id, logo_url);
+    res.json({ success: true, logo_url });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getEditorialBoard = async (req: Request, res: Response) => {
+  try {
+    const board = await getEditorialBoardService(req.params.id);
+    res.json({ success: true, ...board });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const getAuthorGuidelines = async (req: Request, res: Response) => {
+  try {
+    const journal = await findJournalById(req.params.id);
+    if (!journal)
+      return res.status(404).json({ success: false, message: "Journal not found" });
+    res.json({ success: true, guidelines: journal.author_guidelines || "" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 };
 
 export const publisherCreateJournal = async (req: AuthUser, res: Response) => {

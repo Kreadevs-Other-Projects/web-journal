@@ -16,6 +16,7 @@ export const getBrowseDataService = async (filters: any) => {
         journal_title: row.journal_title,
         issn: row.issn,
         aims_and_scope: row.aims_and_scope,
+        logo_url: row.logo_url,
         issue: `Vol ${row.volume} Issue ${row.issue} (${row.year})`,
         published_at: row.published_at,
         papers: [],

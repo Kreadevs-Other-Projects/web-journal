@@ -76,6 +76,30 @@ export const delteJournalById = async (id: string) => {
   return true;
 };
 
+export const findEditorialBoard = async (journalId: string) => {
+  const result = await pool.query(
+    `SELECT
+      u.id,
+      u.username AS name,
+      up.profile_pic_url,
+      up.degrees,
+      up.keywords,
+      ur.role
+    FROM user_roles ur
+    JOIN users u ON u.id = ur.user_id
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    WHERE ur.journal_id = $1
+      AND ur.is_active = true
+      AND ur.role IN ('chief_editor', 'sub_editor')
+    ORDER BY (ur.role = 'chief_editor') DESC, u.username ASC`,
+    [journalId],
+  );
+
+  const chief_editors = result.rows.filter((r) => r.role === "chief_editor");
+  const associate_editors = result.rows.filter((r) => r.role === "sub_editor");
+  return { chief_editors, associate_editors };
+};
+
 export const createJournalByPublisher = async (
   publisher_id: string,
   chief_editor_id: string,

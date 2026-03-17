@@ -7,6 +7,9 @@ import {
   updateJournal,
   deleteJournal,
   publisherCreateJournal,
+  uploadJournalLogo,
+  getEditorialBoard,
+  getAuthorGuidelines,
 } from "./journal.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { validate } from "../../middlewares/validate.middleware";
@@ -15,6 +18,7 @@ import {
   getOwnerJournalSchema,
   publisherCreateJournalSchema,
 } from "./journal.schema";
+import { logoUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -57,5 +61,16 @@ router.post(
   validate(publisherCreateJournalSchema),
   publisherCreateJournal,
 );
+
+router.post(
+  "/:id/logo",
+  authMiddleware,
+  authorize("publisher", "journal_manager"),
+  logoUpload.single("logo"),
+  uploadJournalLogo,
+);
+
+router.get("/:id/editorial-board", getEditorialBoard);
+router.get("/:id/guidelines", getAuthorGuidelines);
 
 export default router;

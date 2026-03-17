@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
@@ -23,7 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, BookOpen, User } from "lucide-react";
+import { ChevronRight, ChevronLeft, BookOpen, User, Upload, X } from "lucide-react";
 
 interface JournalFields {
   title: string;
@@ -70,6 +70,25 @@ export default function CreateJournal() {
   const [journalManager, setJournalManager] =
     useState<StaffFields>(defaultStaff);
   const [submitting, setSubmitting] = useState(false);
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Only JPG, PNG, WebP, or GIF allowed.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be under 2MB.", variant: "destructive" });
+      return;
+    }
+    setLogo(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
 
   const updateJournal = (field: keyof JournalFields, value: string) =>
     setJournal((prev) => ({ ...prev, [field]: value }));
@@ -164,6 +183,21 @@ export default function CreateJournal() {
         throw new Error(data.message || "Failed to create journal");
       }
 
+      // Upload logo if selected
+      if (logo && data.journal?.id) {
+        try {
+          const logoForm = new FormData();
+          logoForm.append("logo", logo);
+          await fetch(`${url}/journal/${data.journal.id}/logo`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: logoForm,
+          });
+        } catch {
+          // non-fatal
+        }
+      }
+
       toast({
         title: "Success",
         description: "Journal created successfully. Welcome emails sent.",
@@ -218,6 +252,39 @@ export default function CreateJournal() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Logo Upload */}
+              <div className="space-y-1">
+                <Label>Journal Logo</Label>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
+                    onClick={() => logoRef.current?.click()}
+                  >
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+                        <span className="text-xs text-muted-foreground">Upload</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Optional. JPG, PNG, WebP or GIF, max 2MB.</p>
+                    {logo && (
+                      <button
+                        type="button"
+                        className="text-destructive text-xs mt-1 flex items-center gap-1"
+                        onClick={() => { setLogo(null); setLogoPreview(null); if (logoRef.current) logoRef.current.value = ""; }}
+                      >
+                        <X className="h-3 w-3" /> Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleLogoChange} />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>

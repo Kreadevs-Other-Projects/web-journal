@@ -8,6 +8,7 @@ import {
   updateJournalById,
   delteJournalById,
   createJournalByPublisher,
+  findEditorialBoard,
 } from "./journal.repository";
 import {
   createUser as createUserInDB,
@@ -157,6 +158,15 @@ export const deleteJournalService = async (id: string) => {
     console.log(error);
     throw new Error("Failed to delete journal!");
   }
+};
+
+export const updateJournalLogoService = async (id: string, logo_url: string) => {
+  const { pool } = await import("../../configs/db");
+  await pool.query("UPDATE journals SET logo_url = $1 WHERE id = $2", [logo_url, id]);
+};
+
+export const getEditorialBoardService = async (journalId: string) => {
+  return findEditorialBoard(journalId);
 };
 
 export const publisherCreateJournalService = async (

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import DOMPurify from "dompurify";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,9 @@ export default function SubEditorDashboard() {
   const [newReviewer, setNewReviewer] = useState({ name: "", email: "", password: "" });
   const [showRevPassword, setShowRevPassword] = useState(false);
   const [creatingReviewer, setCreatingReviewer] = useState(false);
+
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [docxLoading, setDocxLoading] = useState(false);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
@@ -335,6 +339,24 @@ export default function SubEditorDashboard() {
     }
   };
 
+  const fetchDocxHtml = useCallback(async (paperId: string) => {
+    try {
+      setDocxLoading(true);
+      setDocxHtml(null);
+      const res = await fetch(`${url}/browse/paper/${paperId}/html`);
+      const data = await res.json();
+      if (data.success && data.html) {
+        setDocxHtml(data.html);
+      } else {
+        setDocxHtml("");
+      }
+    } catch {
+      setDocxHtml("");
+    } finally {
+      setDocxLoading(false);
+    }
+  }, []);
+
   const createAndAssignReviewer = async () => {
     if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
       return;
@@ -412,6 +434,16 @@ export default function SubEditorDashboard() {
       fetchAllReviewers();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!selectedVersion || !selectedPaper) return;
+    const ext = selectedVersion.file_url?.split(".").pop()?.toLowerCase();
+    if (ext === "docx") {
+      fetchDocxHtml(selectedPaper.id);
+    } else {
+      setDocxHtml(null);
+    }
+  }, [selectedVersion, selectedPaper, fetchDocxHtml]);
 
   useEffect(() => {
     let filtered = papers;
@@ -604,13 +636,53 @@ export default function SubEditorDashboard() {
                       </TabsList>
 
                       <TabsContent value="preview" className="mt-4">
-                        <div className="rounded-lg overflow-hidden border border-white/10">
-                          <iframe
-                            src={`${url}${selectedVersion?.file_url}`}
-                            className="w-full h-[600px]"
-                            title="Paper Preview"
-                          />
-                        </div>
+                        {(() => {
+                          const ext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
+                          if (ext === "pdf") {
+                            return (
+                              <div className="rounded-lg overflow-hidden border border-white/10">
+                                <iframe
+                                  src={`${url}${selectedVersion?.file_url}`}
+                                  className="w-full h-[600px]"
+                                  title="Paper Preview"
+                                />
+                              </div>
+                            );
+                          }
+                          if (ext === "docx") {
+                            if (docxLoading) {
+                              return (
+                                <div className="rounded-lg border border-white/10 p-8 text-center text-muted-foreground">
+                                  Converting document…
+                                </div>
+                              );
+                            }
+                            if (docxHtml) {
+                              return (
+                                <div
+                                  className="rounded-lg border border-white/10 p-6 bg-white text-black overflow-y-auto max-h-[600px] prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docxHtml) }}
+                                />
+                              );
+                            }
+                            return (
+                              <div className="rounded-lg border border-white/10 p-8 text-center space-y-3">
+                                <p className="text-muted-foreground">Could not render document preview.</p>
+                                <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
+                                  <Download className="h-4 w-4 mr-2" /> Download DOCX
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="rounded-lg border border-white/10 p-8 text-center space-y-3">
+                              <p className="text-muted-foreground">Preview not available for this file type.</p>
+                              <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
+                                <Download className="h-4 w-4 mr-2" /> Download File
+                              </Button>
+                            </div>
+                          );
+                        })()}
                       </TabsContent>
 
                       <TabsContent value="abstract" className="mt-4">

@@ -255,7 +255,7 @@ export default function PublisherDashboard() {
       const res = await fetch(`${url}/journal-issue/requests/${requestId}/review`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ action: status }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);

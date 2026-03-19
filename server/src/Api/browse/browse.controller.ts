@@ -18,6 +18,7 @@ export const getPaperHtml = async (req: Request, res: Response) => {
   try {
     const { paperId } = req.params;
     const html = await getPublicPaperHtmlService(paperId);
+    console.log("html content length:", html?.length ?? 0, "paperId:", paperId);
     res.json({ success: true, html: html || null });
   } catch {
     res.status(500).json({ success: false, message: "Failed to get paper HTML" });

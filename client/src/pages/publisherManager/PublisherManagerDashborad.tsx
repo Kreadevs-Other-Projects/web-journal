@@ -180,12 +180,12 @@ export default function PublisherManager() {
   const fetchIssues = async () => {
     try {
       setIssuesLoading(true);
-      const res = await fetch(`${url}/journalIssue/my-issues`, {
+      const res = await fetch(`${url}/journal-issue/my-issues`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (data.success || Array.isArray(data.data)) {
-        setIssues(data.data || []);
+      if (data.success || Array.isArray(data.issues)) {
+        setIssues(data.issues || []);
       } else {
         throw new Error("Failed to fetch issues");
       }
@@ -212,8 +212,8 @@ export default function PublisherManager() {
     }
     try {
       setRequestingIssue(true);
-      const journalId = (user as any)?.active_journal_id ?? null;
-      const res = await fetch(`${url}/journalIssue/request`, {
+      const journalId = user?.active_journal_id ?? issues[0]?.journal_id ?? null;
+      const res = await fetch(`${url}/journal-issue/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

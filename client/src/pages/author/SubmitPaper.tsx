@@ -138,8 +138,8 @@ export default function SubmitPaper() {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (!["docx", "tex", "latex"].includes(ext || "")) {
-      toast({ title: "Invalid file type", description: "Only .docx and .tex/.latex files are accepted.", variant: "destructive" });
+    if (!["docx", "pdf", "tex", "latex"].includes(ext || "")) {
+      toast({ title: "Invalid file type", description: "Only .docx, .pdf and .tex/.latex files are accepted.", variant: "destructive" });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -552,7 +552,8 @@ export default function SubmitPaper() {
                   <>
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      Click to upload <span className="font-medium text-foreground">.docx</span> or{" "}
+                      Click to upload <span className="font-medium text-foreground">.docx</span>,{" "}
+                      <span className="font-medium text-foreground">.pdf</span> or{" "}
                       <span className="font-medium text-foreground">.tex/.latex</span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Max 10MB</p>
@@ -563,7 +564,7 @@ export default function SubmitPaper() {
                 ref={fileRef}
                 type="file"
                 className="hidden"
-                accept=".docx,.tex,.latex"
+                accept=".docx,.pdf,.tex,.latex"
                 onChange={handleFileChange}
               />
             </div>

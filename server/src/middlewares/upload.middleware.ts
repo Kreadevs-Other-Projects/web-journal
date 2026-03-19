@@ -45,18 +45,19 @@ export const manuscriptUpload = multer({
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = [
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
       "application/x-tex",
       "text/x-tex",
       "application/x-latex",
       "text/plain", // .tex files may be sent as text/plain
     ];
     const ext = path.extname(file.originalname).toLowerCase();
-    const allowedExts = [".docx", ".tex", ".latex"];
+    const allowedExts = [".docx", ".pdf", ".tex", ".latex"];
 
     if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error("Only .docx and .tex/.latex files are allowed"));
+      cb(new Error("Only .docx, .pdf and .tex/.latex files are accepted"));
     }
   },
 });

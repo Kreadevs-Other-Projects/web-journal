@@ -721,35 +721,71 @@ export default function ResearchPaperDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  {htmlLoading ? (
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      Loading document…
-                    </div>
-                  ) : htmlContent ? (
-                    <div
-                      className="paper-content"
-                      style={{ fontSize: `${pdfZoom}%` }}
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
-                    />
-                  ) : (
-                    <div className="text-center space-y-3 py-8">
-                      <p className="text-muted-foreground text-sm">
-                        Full text is not available for web viewing
-                        {publicPaper?.file_url?.endsWith(".tex") ? " (.tex files cannot be rendered inline)" : ""}.
-                      </p>
-                      {publicPaper?.file_url && (
-                        <Button
-                          size="sm"
-                          onClick={() => window.open(`${url}${publicPaper.file_url}`, "_blank")}
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download Manuscript
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const fileExt = publicPaper?.file_url?.split(".").pop()?.toLowerCase();
+                    if (fileExt === "pdf") {
+                      return (
+                        <div className="h-[600px]">
+                          <iframe
+                            src={`${url}${publicPaper!.file_url}`}
+                            className="w-full h-full border-0 rounded"
+                            title="Paper PDF"
+                          />
+                        </div>
+                      );
+                    }
+                    if (fileExt === "tex" || fileExt === "latex") {
+                      return (
+                        <div className="text-center space-y-3 py-8">
+                          <p className="text-muted-foreground text-sm">
+                            LaTeX files cannot be previewed. Please download to view.
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => window.open(`${url}${publicPaper!.file_url}`, "_blank")}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download Manuscript
+                          </Button>
+                        </div>
+                      );
+                    }
+                    if (htmlLoading) {
+                      return (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          Loading document…
+                        </div>
+                      );
+                    }
+                    if (htmlContent) {
+                      return (
+                        <div
+                          className="paper-content"
+                          style={{ fontSize: `${pdfZoom}%` }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                        />
+                      );
+                    }
+                    return (
+                      <div className="text-center space-y-3 py-8">
+                        <p className="text-muted-foreground text-sm">
+                          Full text is not available for web viewing.
+                        </p>
+                        {publicPaper?.file_url && (
+                          <Button
+                            size="sm"
+                            onClick={() => window.open(`${url}${publicPaper.file_url}`, "_blank")}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download Manuscript
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>

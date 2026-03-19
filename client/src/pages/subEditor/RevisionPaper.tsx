@@ -40,6 +40,7 @@ import {
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import DOMPurify from "dompurify";
 
 interface Reviewer {
   id: string;
@@ -82,6 +83,8 @@ export default function RevisionPaper() {
     null,
   );
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
+  const [viewerHtml, setViewerHtml] = useState<string | null>(null);
+  const [viewerHtmlLoading, setViewerHtmlLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [assignmentStatus, setAssignmentStatus] = useState<string>("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
@@ -182,6 +185,19 @@ export default function RevisionPaper() {
   useEffect(() => {
     if (token) fetchPapers();
   }, [token]);
+
+  useEffect(() => {
+    setViewerHtml(null);
+    if (!viewPdf?.fileUrl) return;
+    const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
+    if (ext !== "docx") return;
+    setViewerHtmlLoading(true);
+    fetch(`${url}/browse/paper/${viewPdf.paperId}/html`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.html) setViewerHtml(d.html); })
+      .catch(() => {})
+      .finally(() => setViewerHtmlLoading(false));
+  }, [viewPdf?.paperId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -679,9 +695,52 @@ export default function RevisionPaper() {
                 </div>
 
                 <div className="flex-1 relative overflow-hidden">
-                  <Worker workerUrl="/pdf.worker.min.js">
-                    <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
-                  </Worker>
+                  {(() => {
+                    const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                    if (ext === "pdf") {
+                      return (
+                        <Worker workerUrl="/pdf.worker.min.js">
+                          <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                        </Worker>
+                      );
+                    }
+                    if (ext === "tex" || ext === "latex") {
+                      return (
+                        <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-300">
+                          <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
+                          <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Download Manuscript
+                          </Button>
+                        </div>
+                      );
+                    }
+                    if (viewerHtmlLoading) {
+                      return (
+                        <div className="flex items-center justify-center h-full gap-2 text-gray-300 text-sm">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                          Loading document…
+                        </div>
+                      );
+                    }
+                    if (viewerHtml) {
+                      return (
+                        <div
+                          className="paper-content h-full overflow-y-auto p-6 bg-white text-gray-900"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                        />
+                      );
+                    }
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-300">
+                        <p className="text-sm">Document preview not available.</p>
+                        <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Download
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="p-3 bg-gray-800 border-t border-white/10">
@@ -689,7 +748,7 @@ export default function RevisionPaper() {
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Eye className="h-4 w-4" />
-                        <span>PDF Viewer</span>
+                        <span>Document Viewer</span>
                       </div>
                       <div className="h-4 w-px bg-white/10" />
                       <div className="hidden md:flex items-center gap-2">
@@ -711,7 +770,7 @@ export default function RevisionPaper() {
                       <div className="h-4 w-px bg-white/10" />
                       <div className="flex items-center gap-1">
                         <Shield className="h-4 w-4" />
-                        <span>Secure PDF Viewer</span>
+                        <span>Secure Document Viewer</span>
                       </div>
                     </div>
                   </div>

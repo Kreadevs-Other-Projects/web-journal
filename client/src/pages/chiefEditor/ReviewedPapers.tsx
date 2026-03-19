@@ -33,6 +33,7 @@ import { url } from "@/url";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import DOMPurify from "dompurify";
 import { useToast } from "@/hooks/use-toast";
 
 interface SubmittedReview {
@@ -59,6 +60,8 @@ export default function ChiefEditorSubmittedReviews() {
   const [filteredReviews, setFilteredReviews] = useState<SubmittedReview[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
+  const [viewerHtml, setViewerHtml] = useState<string | null>(null);
+  const [viewerHtmlLoading, setViewerHtmlLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -133,6 +136,19 @@ export default function ChiefEditorSubmittedReviews() {
     setFilteredReviews(filtered);
     setCurrentPage(1);
   }, [reviews, searchQuery, activeTab]);
+
+  useEffect(() => {
+    setViewerHtml(null);
+    if (!viewPdf?.fileUrl) return;
+    const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
+    if (ext !== "docx") return;
+    setViewerHtmlLoading(true);
+    fetch(`${url}/browse/paper/${viewPdf.paperId}/html`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.html) setViewerHtml(d.html); })
+      .catch(() => {})
+      .finally(() => setViewerHtmlLoading(false));
+  }, [viewPdf?.paperId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -616,11 +632,54 @@ export default function ChiefEditorSubmittedReviews() {
                     Download
                   </Button>
                 </div>
-                <Worker workerUrl="/pdf.worker.min.js">
-                  <div className="h-full">
-                    <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} />
-                  </div>
-                </Worker>
+                {(() => {
+                  const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                  if (ext === "pdf") {
+                    return (
+                      <Worker workerUrl="/pdf.worker.min.js">
+                        <div className="h-full">
+                          <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} />
+                        </div>
+                      </Worker>
+                    );
+                  }
+                  if (ext === "tex" || ext === "latex") {
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full gap-4">
+                        <p className="text-sm text-muted-foreground">LaTeX files cannot be previewed. Please download to view.</p>
+                        <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Download Manuscript
+                        </Button>
+                      </div>
+                    );
+                  }
+                  if (viewerHtmlLoading) {
+                    return (
+                      <div className="flex items-center justify-center h-full gap-2 text-sm text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Loading document…
+                      </div>
+                    );
+                  }
+                  if (viewerHtml) {
+                    return (
+                      <div
+                        className="paper-content h-full overflow-y-auto p-6"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <p className="text-sm text-muted-foreground">Document preview not available.</p>
+                      <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

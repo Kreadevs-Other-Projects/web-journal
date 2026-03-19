@@ -14,8 +14,6 @@ import {
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
-import mammoth from "mammoth";
-
 export const createPaperService = async (
   data: any,
   authorEmail?: string,
@@ -36,6 +34,7 @@ export const createPaperService = async (
     // Option A: extract HTML from .docx on upload for inline web view
     if (data.manuscript_path && data.manuscript_path.endsWith(".docx")) {
       try {
+        const mammoth = (await import("mammoth")).default;
         const result = await mammoth.convertToHtml({ path: data.manuscript_path });
         if (result.value) {
           await updateVersionHtmlContent(version.id, result.value);
@@ -141,6 +140,7 @@ export const extractMetadataService = async (filePath: string): Promise<{
   authors: string[];
   references: string[];
 }> => {
+  const mammoth = (await import("mammoth")).default;
   const result = await mammoth.convertToHtml({ path: filePath });
   const html = result.value;
 

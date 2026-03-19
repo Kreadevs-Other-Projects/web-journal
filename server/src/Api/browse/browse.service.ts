@@ -1,5 +1,4 @@
 import path from "path";
-import mammoth from "mammoth";
 import { getBrowseDataRepo, getPublicPaperRepo, getPaperVersionForHtmlRepo, cacheVersionHtmlRepo } from "./browse.repository";
 
 export const getBrowseDataService = async (filters: any) => {
@@ -50,15 +49,18 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
 
   // Option B: on-demand conversion for existing papers
   const filename = path.basename(version.file_url);
-  const filePath = path.join(__dirname, "../../../uploads", filename);
+  const filePath = path.join(process.cwd(), "uploads", filename);
 
   try {
+    const mammoth = (await import("mammoth")).default;
     const result = await mammoth.convertToHtml({ path: filePath });
+    console.log("mammoth result length:", result.value.length, "filePath:", filePath);
     if (result.value) {
       await cacheVersionHtmlRepo(version.id, result.value);
       return result.value;
     }
-  } catch {
+  } catch (err) {
+    console.error("mammoth conversion failed:", err);
     return null;
   }
 

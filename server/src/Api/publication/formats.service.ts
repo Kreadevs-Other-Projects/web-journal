@@ -6,7 +6,10 @@ const ensureDir = (dir: string) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
-export const generateFormatsService = async (paperId: string, publicationId: string) => {
+export const generateFormatsService = async (
+  paperId: string,
+  publicationId: string,
+) => {
   // Fetch all needed data
   const result = await pool.query(
     `SELECT p.title, p.abstract, p.author_names, p.keywords, p.paper_references,
@@ -32,9 +35,16 @@ export const generateFormatsService = async (paperId: string, publicationId: str
   ensureDir(htmlDir);
   const htmlFilePath = path.join(htmlDir, `${paperId}.html`);
 
-  const authors = Array.isArray(d.author_names) ? d.author_names.join(", ") : "";
+  const authors = Array.isArray(d.author_names)
+    ? d.author_names.join(", ")
+    : "";
   let refs: any[] = [];
-  try { refs = typeof d.paper_references === "string" ? JSON.parse(d.paper_references) : (d.paper_references || []); } catch {}
+  try {
+    refs =
+      typeof d.paper_references === "string"
+        ? JSON.parse(d.paper_references)
+        : d.paper_references || [];
+  } catch {}
 
   const standaloneHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -75,15 +85,21 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
   const xmlFilePath = path.join(xmlDir, `${paperId}.xml`);
 
   const escapeXml = (s: string) =>
-    String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
 
   const authorContribs = Array.isArray(d.author_names)
-    ? d.author_names.map((a: string) => {
-        const parts = a.trim().split(" ");
-        const given = parts.slice(0, -1).join(" ");
-        const surname = parts[parts.length - 1] || a;
-        return `<contrib contrib-type="author"><name><surname>${escapeXml(surname)}</surname><given-names>${escapeXml(given)}</given-names></name></contrib>`;
-      }).join("\n")
+    ? d.author_names
+        .map((a: string) => {
+          const parts = a.trim().split(" ");
+          const given = parts.slice(0, -1).join(" ");
+          const surname = parts[parts.length - 1] || a;
+          return `<contrib contrib-type="author"><name><surname>${escapeXml(surname)}</surname><given-names>${escapeXml(given)}</given-names></name></contrib>`;
+        })
+        .join("\n")
     : "";
 
   const jatsXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -102,17 +118,29 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
       <issue>${d.issue || ""}</issue>
       ${d.published_at ? `<pub-date><year>${new Date(d.published_at).getFullYear()}</year></pub-date>` : ""}
       <abstract><p>${escapeXml(d.abstract || "")}</p></abstract>
-      ${Array.isArray(d.keywords) && d.keywords.length > 0
-        ? `<kwd-group kwd-group-type="author">${d.keywords.map((k: string) => `<kwd>${escapeXml(k)}</kwd>`).join("")}</kwd-group>`
-        : ""}
+      ${
+        Array.isArray(d.keywords) && d.keywords.length > 0
+          ? `<kwd-group kwd-group-type="author">${d.keywords.map((k: string) => `<kwd>${escapeXml(k)}</kwd>`).join("")}</kwd-group>`
+          : ""
+      }
     </article-meta>
   </front>
-  <body><sec><p>${escapeXml((d.html_content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())}</p></sec></body>
-  ${refs.length > 0
-    ? `<back><ref-list>${refs.map((r: any, i: number) =>
-        `<ref id="r${i + 1}"><label>${i + 1}</label><mixed-citation>${escapeXml(r.text || r)}</mixed-citation></ref>`
-      ).join("")}</ref-list></back>`
-    : ""}
+  <body><sec><p>${escapeXml(
+    (d.html_content || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  )}</p></sec></body>
+  ${
+    refs.length > 0
+      ? `<back><ref-list>${refs
+          .map(
+            (r: any, i: number) =>
+              `<ref id="r${i + 1}"><label>${i + 1}</label><mixed-citation>${escapeXml(r.text || r)}</mixed-citation></ref>`,
+          )
+          .join("")}</ref-list></back>`
+      : ""
+  }
 </article>`;
 
   fs.writeFileSync(xmlFilePath, jatsXml, "utf8");
@@ -121,14 +149,20 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
   // 3. PDF FORMAT (puppeteer, non-fatal if unavailable)
   let pdf_url: string | null = null;
   try {
-    const puppeteer = await import("puppeteer");
-    const browser = await puppeteer.default.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    const puppeteer = await import("puppeteer-core");
+    const browser = await puppeteer.default.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
     const page = await browser.newPage();
     await page.setContent(standaloneHtml, { waitUntil: "networkidle0" });
     const pdfDir = path.join(uploadsBase, "pdf");
     ensureDir(pdfDir);
     const pdfFilePath = path.join(pdfDir, `${paperId}.pdf`);
-    await page.pdf({ path: pdfFilePath, format: "A4", margin: { top: "40px", bottom: "40px", left: "40px", right: "40px" } });
+    await page.pdf({
+      path: pdfFilePath,
+      format: "A4",
+      margin: { top: "40px", bottom: "40px", left: "40px", right: "40px" },
+    });
     await browser.close();
     pdf_url = `/uploads/pdf/${paperId}.pdf`;
   } catch {

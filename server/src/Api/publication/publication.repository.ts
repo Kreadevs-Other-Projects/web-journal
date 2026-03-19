@@ -103,6 +103,12 @@ export const publishPaper = async (
       [paperId],
     );
 
+    await client.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+       VALUES ($1, 'published', $2, 'Paper published')`,
+      [paperId, editorId],
+    );
+
     await client.query("COMMIT");
 
     return publication.rows[0];

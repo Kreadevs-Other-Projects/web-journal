@@ -33,6 +33,9 @@ interface ArticleData {
   doi?: string;
   file_url?: string;
   html_content?: string;
+  html_url?: string;
+  pdf_url?: string;
+  xml_url?: string;
   status: string;
 }
 
@@ -215,15 +218,50 @@ export default function ArticlePage() {
                   </div>
                 ) : null}
 
-                <div className="flex gap-2 pt-1">
-                  {article.file_url && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {/* PDF: use generated pdf_url first, fallback to file_url */}
+                  {(article.pdf_url || article.file_url) && (
                     <Button
                       size="sm"
-                      onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
+                      onClick={() => window.open(`${url}${article.pdf_url || article.file_url}`, "_blank")}
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
                       Download PDF
+                    </Button>
+                  )}
+                  {/* HTML format */}
+                  {article.html_url ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`${url}${article.html_url}`, "_blank")}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download HTML
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled className="gap-2 opacity-50">
+                      <Download className="h-4 w-4" />
+                      HTML
+                    </Button>
+                  )}
+                  {/* XML format */}
+                  {article.xml_url ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`${url}${article.xml_url}`, "_blank")}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download XML
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled className="gap-2 opacity-50">
+                      <Download className="h-4 w-4" />
+                      XML
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={handleShare} className="gap-2">
@@ -310,11 +348,11 @@ export default function ArticlePage() {
             )}
 
             {/* BOTTOM DOWNLOAD */}
-            {article.file_url && (
+            {(article.pdf_url || article.file_url) && (
               <div className="flex justify-center pt-4">
                 <Button
                   size="lg"
-                  onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
+                  onClick={() => window.open(`${url}${article.pdf_url || article.file_url}`, "_blank")}
                   className="gap-2"
                 >
                   <Download className="h-5 w-5" />

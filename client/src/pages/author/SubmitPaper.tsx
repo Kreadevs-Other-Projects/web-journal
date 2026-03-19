@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Upload, Loader2, BookOpen } from "lucide-react";
+import { Plus, X, Upload, Loader2, BookOpen, Sparkles, CheckCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
@@ -59,6 +59,8 @@ export default function SubmitPaper() {
   const [references, setReferences] = useState<Reference[]>([{ text: "", link: "" }]);
   const [manuscript, setManuscript] = useState<File | null>(null);
 
+  const [extracting, setExtracting] = useState(false);
+  const [extractedBanner, setExtractedBanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [guidelines, setGuidelines] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export default function SubmitPaper() {
     setter(arr.filter((_, i) => i !== idx));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
@@ -147,6 +149,37 @@ export default function SubmitPaper() {
       return;
     }
     setManuscript(file);
+    setExtractedBanner(false);
+
+    if (ext === "docx") {
+      setExtracting(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`${url}/papers/extract-metadata`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (data.title) setTitle(data.title);
+          if (data.abstract) setAbstract(data.abstract);
+          if (Array.isArray(data.keywords) && data.keywords.length > 0) setKeywords(data.keywords.slice(0, 5));
+          if (Array.isArray(data.authors) && data.authors.length > 0) {
+            setAuthorNames(data.authors.length > 0 ? data.authors : [""]);
+          }
+          if (Array.isArray(data.references) && data.references.length > 0) {
+            setReferences(data.references.slice(0, 5).map((t: string) => ({ text: t, link: "" })));
+          }
+          setExtractedBanner(true);
+        }
+      } catch {
+        // extraction failed silently — form stays empty
+      } finally {
+        setExtracting(false);
+      }
+    }
   };
 
   const validate = (): string | null => {
@@ -223,6 +256,69 @@ export default function SubmitPaper() {
           </div>
 
           <div className="space-y-6">
+            {/* 0. Upload Manuscript First (auto-extraction for .docx) */}
+            <div>
+              <Label className="mb-1.5 block">Upload Manuscript *</Label>
+              <div
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {extracting ? (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="text-sm">Extracting metadata…</span>
+                  </div>
+                ) : manuscript ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Upload className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">{manuscript.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setManuscript(null);
+                        setExtractedBanner(false);
+                        if (fileRef.current) fileRef.current.value = "";
+                      }}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Click to upload <span className="font-medium text-foreground">.docx</span>,{" "}
+                      <span className="font-medium text-foreground">.pdf</span> or{" "}
+                      <span className="font-medium text-foreground">.tex/.latex</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max 10MB · .docx files will auto-fill the form fields below
+                    </p>
+                  </>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                className="hidden"
+                accept=".docx,.pdf,.tex,.latex"
+                onChange={handleFileChange}
+              />
+            </div>
+
+            {/* Extraction success banner */}
+            {extractedBanner && (
+              <div className="flex items-start gap-3 rounded-lg border border-green-500/30 bg-green-500/10 p-3">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">Metadata extracted from your document</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Please review and correct the pre-filled fields below if needed.</p>
+                </div>
+              </div>
+            )}
+
             {/* 1. Select Journal */}
             <div>
               <Label className="mb-1.5 block">Select Journal *</Label>
@@ -525,49 +621,7 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* 7. Upload Manuscript */}
-            <div>
-              <Label className="mb-1.5 block">Upload Manuscript *</Label>
-              <div
-                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 transition-colors"
-                onClick={() => fileRef.current?.click()}
-              >
-                {manuscript ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Upload className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">{manuscript.name}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setManuscript(null);
-                        if (fileRef.current) fileRef.current.value = "";
-                      }}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Click to upload <span className="font-medium text-foreground">.docx</span>,{" "}
-                      <span className="font-medium text-foreground">.pdf</span> or{" "}
-                      <span className="font-medium text-foreground">.tex/.latex</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Max 10MB</p>
-                  </>
-                )}
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                className="hidden"
-                accept=".docx,.pdf,.tex,.latex"
-                onChange={handleFileChange}
-              />
-            </div>
+            {/* Manuscript already uploaded at top */}
 
             {/* Submit button */}
             <div className="flex gap-3 pt-2">

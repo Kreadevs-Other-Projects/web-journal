@@ -8,6 +8,8 @@ import {
   assignPaperToIssue,
   getPaperById,
   setCurrentVersion,
+  getPaperTracking,
+  getPaperMetadata,
 } from "./paper.repository";
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
@@ -130,4 +132,111 @@ export const updatePaperStatusService = async (
   }
 
   return updatePaperStatus(paper_id, status);
+};
+
+export const extractMetadataService = async (filePath: string): Promise<{
+  title: string;
+  abstract: string;
+  keywords: string[];
+  authors: string[];
+  references: string[];
+}> => {
+  const result = await mammoth.convertToHtml({ path: filePath });
+  const html = result.value;
+
+  const stripTags = (s: string) =>
+    s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+
+  const blocks: Array<{ level: number; text: string }> = [];
+  const re = /<(h[1-6]|p)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const tag = m[1].toLowerCase();
+    const text = stripTags(m[2]);
+    if (text.length < 2) continue;
+    blocks.push({ level: tag === "p" ? 0 : parseInt(tag[1]), text });
+  }
+
+  // Title: first heading h1-h3, else first block
+  const firstHeading = blocks.find(b => b.level >= 1 && b.level <= 3);
+  const title = firstHeading?.text || blocks[0]?.text || "";
+
+  // Abstract
+  let abstract = "";
+  const absIdx = blocks.findIndex(b => /^abstract\b/i.test(b.text));
+  if (absIdx >= 0) {
+    const raw = blocks[absIdx].text.replace(/^abstract\s*[:\-–]?\s*/i, "").trim();
+    abstract = raw.length > 20 ? raw : (blocks[absIdx + 1]?.text || "");
+  }
+
+  // Keywords
+  let keywords: string[] = [];
+  const kwIdx = blocks.findIndex(b => /^key[\s-]?words?\b/i.test(b.text));
+  if (kwIdx >= 0) {
+    const raw = blocks[kwIdx].text.replace(/^key[\s-]?words?\s*[:\-–]?\s*/i, "").trim();
+    const src = raw.length > 3 ? raw : (blocks[kwIdx + 1]?.text || "");
+    keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+  }
+
+  // Authors: blocks between title and abstract
+  let authors: string[] = [];
+  const titleIdx = blocks.findIndex(b => b.text === title);
+  const absSearchIdx = absIdx >= 0 ? absIdx : blocks.findIndex(b => /^abstract\b/i.test(b.text));
+  if (titleIdx >= 0 && absSearchIdx > titleIdx + 1) {
+    authors = blocks.slice(titleIdx + 1, absSearchIdx)
+      .filter(b => b.text.length > 2 && b.text.length < 150 && !/^(abstract|introduction|keywords?)/i.test(b.text))
+      .map(b => b.text)
+      .slice(0, 5);
+  }
+
+  // References
+  let references: string[] = [];
+  const refIdx = blocks.findIndex(b => /^(references?|bibliography)\s*$/i.test(b.text));
+  if (refIdx >= 0) {
+    references = blocks.slice(refIdx + 1, refIdx + 20)
+      .filter(b => b.text.length > 10)
+      .map(b => b.text)
+      .slice(0, 5);
+  }
+
+  return { title, abstract, keywords, authors, references };
+};
+
+export const getPaperTrackingService = async (paperId: string, authorId: string) => {
+  const data = await getPaperTracking(paperId, authorId);
+  if (!data) throw new Error("Paper not found or access denied");
+  return data;
+};
+
+export const getPaperMetadataCheckService = async (paperId: string) => {
+  const paper = await getPaperMetadata(paperId);
+  if (!paper) throw new Error("Paper not found");
+
+  const checks: Record<string, boolean> = {
+    title: !!(paper.title?.trim()),
+    authors: Array.isArray(paper.author_names) && paper.author_names.filter((a: string) => a.trim()).length > 0,
+    abstract: !!(paper.abstract?.trim()),
+    keywords: Array.isArray(paper.keywords) && paper.keywords.length > 0,
+    references: (() => {
+      try {
+        const refs = typeof paper.paper_references === "string"
+          ? JSON.parse(paper.paper_references)
+          : paper.paper_references;
+        return Array.isArray(refs) && refs.filter((r: any) => r.text?.trim()).length > 0;
+      } catch { return false; }
+    })(),
+    journal_title: !!(paper.journal_title?.trim()),
+    volume: paper.volume != null,
+    issue: paper.issue != null,
+    doi: !!(paper.doi?.trim()),
+    publication_date: !!(paper.publication_date),
+  };
+
+  const missing_fields = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+
+  return {
+    valid: missing_fields.length === 0,
+    missing_fields,
+    paper,
+  };
 };

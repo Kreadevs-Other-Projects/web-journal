@@ -41,6 +41,8 @@ import { ThemeProvider } from "./context/ThemeContext.tsx";
 import AboutPage from "./pages/aboutUs.tsx";
 import FAQPage from "./pages/faq.tsx";
 import ContactPage from "./pages/contactUs.tsx";
+import TrackPaper from "./pages/author/TrackPaper.tsx";
+import Archive from "./pages/Archive.tsx";
 
 const queryClient = new QueryClient();
 
@@ -77,12 +79,14 @@ const App = () => (
                       path="/articles/:paperId"
                       element={<ArticlePage />}
                     />
+                    <Route path="/archive" element={<Archive />} />
                   </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     <Route path="/author" element={<AuthorDashboard />} />
                     <Route path="/author/submit" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />
+                    <Route path="/author/track/:paperId" element={<TrackPaper />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["reviewer"]} />}

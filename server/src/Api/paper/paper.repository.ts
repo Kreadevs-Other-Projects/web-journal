@@ -173,3 +173,81 @@ export const assignPaperToIssue = async (
   );
   return result.rows[0];
 };
+
+export const getPaperTracking = async (paperId: string, authorId: string) => {
+  const paperRes = await pool.query(
+    `SELECT p.id, p.title, p.status, p.submitted_at, p.accepted_at, p.published_at,
+            j.title as journal_title
+     FROM papers p
+     JOIN journals j ON j.id = p.journal_id
+     WHERE p.id = $1 AND p.author_id = $2`,
+    [paperId, authorId],
+  );
+  if (!paperRes.rows.length) return null;
+
+  const logRes = await pool.query(
+    `SELECT psl.status, psl.changed_at, psl.note,
+            u.username as changed_by_name, u.role as changed_by_role
+     FROM paper_status_log psl
+     LEFT JOIN users u ON u.id = psl.changed_by
+     WHERE psl.paper_id = $1
+     ORDER BY psl.changed_at ASC`,
+    [paperId],
+  );
+
+  const assignRes = await pool.query(
+    `SELECT ea.assigned_at, u.username as sub_editor_name
+     FROM editor_assignments ea
+     JOIN users u ON u.id = ea.sub_editor_id
+     WHERE ea.paper_id = $1
+     ORDER BY ea.assigned_at DESC LIMIT 1`,
+    [paperId],
+  );
+
+  const reviewRes = await pool.query(
+    `SELECT r.decision, r.comments, ra.submitted_at
+     FROM reviews r
+     JOIN review_assignments ra ON ra.id = r.review_assignment_id
+     WHERE ra.paper_id = $1 AND ra.status = 'submitted'`,
+    [paperId],
+  );
+
+  const pubRes = await pool.query(
+    `SELECT pub.doi, pub.published_at, ji.label as issue_label, ji.volume, ji.year
+     FROM publications pub
+     LEFT JOIN journal_issues ji ON ji.id = pub.issue_id
+     WHERE pub.paper_id = $1`,
+    [paperId],
+  );
+
+  // Latest paper version for revision upload
+  const versionRes = await pool.query(
+    `SELECT version_number FROM paper_versions WHERE paper_id = $1 ORDER BY version_number DESC LIMIT 1`,
+    [paperId],
+  );
+
+  return {
+    paper: paperRes.rows[0],
+    status_log: logRes.rows,
+    current_assignment: assignRes.rows[0] || null,
+    reviews: reviewRes.rows,
+    publication: pubRes.rows[0] || null,
+    latest_version_number: versionRes.rows[0]?.version_number || 1,
+  };
+};
+
+export const getPaperMetadata = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT p.id, p.title, p.abstract, p.keywords, p.author_names, p.paper_references,
+            j.title as journal_title,
+            ji.volume, ji.issue, ji.year,
+            pub.doi, pub.published_at as publication_date
+     FROM papers p
+     LEFT JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
+     WHERE p.id = $1`,
+    [paperId],
+  );
+  return result.rows[0] || null;
+};

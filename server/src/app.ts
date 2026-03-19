@@ -23,6 +23,7 @@ import chiefEditorRoutes from "./Api/chiefEditor/chiefEditor.routes";
 import ownerRoutes from "./Api/owner/owner.route";
 import subEditorRoutes from "./Api/subEditor/subEditor.routes";
 import browseRoutes from "./Api/browse/browse.route";
+import archiveRouter from "./Api/archive/archive.route";
 // PAYMENT_DISABLED: import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
 
 const app = express();
@@ -58,6 +59,7 @@ app.use("/api/chiefEditor", chiefEditorRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/subEditor", subEditorRoutes);
 app.use("/api/browse", browseRoutes);
+app.use("/api/archive", archiveRouter);
 
 app.use(notFound);
 app.use(errorHandler);

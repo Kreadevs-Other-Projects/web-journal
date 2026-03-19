@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-import { Plus, FileText, ExternalLink } from "lucide-react";
+import { Plus, FileText, ExternalLink, MapPin } from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -126,6 +126,13 @@ export default function AuthorDashboard() {
                             {formatDate(paper.updated_at)}
                           </span>
                         </div>
+                        <Link
+                          to={`/author/track/${paper.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          Track Paper
+                        </Link>
                       </li>
                     ))}
                   </ul>

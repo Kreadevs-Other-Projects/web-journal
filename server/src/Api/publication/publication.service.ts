@@ -1,5 +1,6 @@
 import { pool } from "../../configs/db";
 import { getPaperForPublish, publishPaper } from "./publication.repository";
+import { generateFormatsService } from "./formats.service";
 
 export const getSubmittedReviews = async () => {
   return getPaperForPublish();
@@ -44,5 +45,8 @@ export const setPaperPublished = async (
     throw new Error("Editor decision must be accept before publishing");
   }
 
-  return publishPaper(paperId, editorId, issueId, doi);
+  const publication = await publishPaper(paperId, editorId, issueId, doi);
+  // Trigger format generation in background (non-blocking)
+  generateFormatsService(paperId, publication.id).catch(() => {});
+  return publication;
 };

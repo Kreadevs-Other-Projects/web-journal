@@ -1,3 +1,4 @@
+import fs from "fs";
 import { Request, Response } from "express";
 import {
   createPaperService,
@@ -7,6 +8,9 @@ import {
   getKeywordSuggestionsService,
   assignPaperToIssueService,
   getPaperVersionsService,
+  extractMetadataService,
+  getPaperTrackingService,
+  getPaperMetadataCheckService,
 } from "./paper.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
@@ -105,5 +109,44 @@ export const updatePaperStatus = async (req: any, res: Response) => {
     res.json({ success: true, paper });
   } catch (e: any) {
     res.status(403).json({ success: false, message: e.message });
+  }
+};
+
+export const extractMetadata = async (req: AuthUser, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded" });
+  }
+  const ext = req.file.originalname.split(".").pop()?.toLowerCase();
+  if (ext !== "docx") {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ success: false, message: "Only .docx files support metadata extraction" });
+  }
+  try {
+    const metadata = await extractMetadataService(req.file.path);
+    fs.unlink(req.file.path, () => {});
+    res.json({ success: true, ...metadata });
+  } catch {
+    fs.unlink(req.file.path, () => {});
+    res.status(500).json({ success: false, message: "Failed to extract metadata" });
+  }
+};
+
+export const getPaperTrackingController = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  try {
+    const data = await getPaperTrackingService(paperId, req.user!.id);
+    res.json({ success: true, data });
+  } catch (e: any) {
+    res.status(404).json({ success: false, message: e.message });
+  }
+};
+
+export const getMetadataCheck = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  try {
+    const result = await getPaperMetadataCheckService(paperId);
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    res.status(404).json({ success: false, message: e.message });
   }
 };

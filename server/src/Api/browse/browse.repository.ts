@@ -30,6 +30,9 @@ export const getPublicPaperRepo = async (paperId: string) => {
       pub.doi,
       pub.article_index,
       pub.published_at AS publication_date,
+      pub.html_url,
+      pub.pdf_url,
+      pub.xml_url,
 
       pv.file_url,
       pv.version_number,

@@ -8,6 +8,9 @@ import {
   getKeywordSuggestions,
   assignPaperToIssue,
   getPaperVersionsList,
+  extractMetadata,
+  getPaperTrackingController,
+  getMetadataCheck,
 } from "./paper.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import { createPaperSchema, updatePaperSchema } from "./paper.schema";
@@ -16,6 +19,14 @@ import { manuscriptUpload } from "../../middlewares/upload.middleware";
 const router = Router();
 
 router.get("/keyword-suggestions", authMiddleware, getKeywordSuggestions);
+
+router.post(
+  "/extract-metadata",
+  authMiddleware,
+  authorize("author"),
+  manuscriptUpload.single("file"),
+  extractMetadata,
+);
 
 router.post(
   "/createPaper",
@@ -49,6 +60,20 @@ router.put(
   authorize("editor", "owner", "admin"),
   validate(updatePaperSchema),
   updatePaperStatus,
+);
+
+router.get(
+  "/:paperId/tracking",
+  authMiddleware,
+  authorize("author"),
+  getPaperTrackingController,
+);
+
+router.get(
+  "/:paperId/metadata-check",
+  authMiddleware,
+  authorize("publisher", "chief_editor", "journal_manager"),
+  getMetadataCheck,
 );
 
 export default router;

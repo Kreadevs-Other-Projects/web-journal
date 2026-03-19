@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Upload, Loader2, BookOpen, Sparkles, CheckCircle } from "lucide-react";
+import { Plus, X, Upload, Loader2, BookOpen, Sparkles, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
@@ -36,6 +38,25 @@ interface Journal {
 interface Reference {
   text: string;
   link: string;
+}
+
+interface AuthorDetail {
+  name: string;
+  email: string;
+  affiliation: string;
+  orcid: string;
+}
+
+interface CorrespondingAuthorDetail {
+  name: string;
+  email: string;
+  affiliation: string;
+  phone: string;
+}
+
+interface JournalPolicies {
+  oa_policy: string | null;
+  peer_review_policy: string | null;
 }
 
 export default function SubmitPaper() {
@@ -51,8 +72,12 @@ export default function SubmitPaper() {
   const [journalId, setJournalId] = useState("");
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
-  const [authorNames, setAuthorNames] = useState<string[]>([""]);
-  const [correspondingAuthors, setCorrespondingAuthors] = useState<string[]>([""]);
+  const [authorDetails, setAuthorDetails] = useState<AuthorDetail[]>([
+    { name: "", email: "", affiliation: "", orcid: "" },
+  ]);
+  const [correspondingAuthorDetails, setCorrespondingAuthorDetails] = useState<
+    CorrespondingAuthorDetail[]
+  >([{ name: "", email: "", affiliation: "", phone: "" }]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [keywordSuggestions, setKeywordSuggestions] = useState<string[]>([]);
@@ -66,6 +91,23 @@ export default function SubmitPaper() {
   const [guidelines, setGuidelines] = useState<string | null>(null);
   const [guidelinesRead, setGuidelinesRead] = useState(false);
   const [showGuidelinesModal, setShowGuidelinesModal] = useState(false);
+
+  // Journal policies
+  const [journalPolicies, setJournalPolicies] = useState<JournalPolicies>({
+    oa_policy: null,
+    peer_review_policy: null,
+  });
+  const [showPolicies, setShowPolicies] = useState(false);
+
+  // Additional information (collapsible)
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [articleType, setArticleType] = useState("");
+  const [category, setCategory] = useState("");
+  const [conflictOfInterest, setConflictOfInterest] = useState("");
+  const [fundingInfo, setFundingInfo] = useState("");
+  const [dataAvailability, setDataAvailability] = useState("");
+  const [ethicalApproval, setEthicalApproval] = useState("");
+  const [authorContributions, setAuthorContributions] = useState("");
 
   useEffect(() => {
     setLoadingJournals(true);
@@ -97,13 +139,37 @@ export default function SubmitPaper() {
   }, [keywordInput, token]);
 
   useEffect(() => {
-    if (!journalId) { setGuidelines(null); setGuidelinesRead(false); return; }
+    if (!journalId) {
+      setGuidelines(null);
+      setGuidelinesRead(false);
+      setJournalPolicies({ oa_policy: null, peer_review_policy: null });
+      return;
+    }
     fetch(`${url}/journal/${journalId}/guidelines`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setGuidelines(d.guidelines || null); })
+      .then((d) => {
+        if (d.success) setGuidelines(d.guidelines || null);
+      })
       .catch(() => {});
+
+    // Fetch journal policies
+    fetch(`${url}/journal/getJournal/${journalId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        const j = d.journal || d;
+        if (j) {
+          setJournalPolicies({
+            oa_policy: j.oa_policy || null,
+            peer_review_policy: j.peer_review_policy || null,
+          });
+        }
+      })
+      .catch(() => {});
+
     setGuidelinesRead(false);
-  }, [journalId]);
+  }, [journalId, token]);
 
   const addKeyword = (kw: string) => {
     const trimmed = kw.trim();
@@ -167,7 +233,14 @@ export default function SubmitPaper() {
           if (data.abstract) setAbstract(data.abstract);
           if (Array.isArray(data.keywords) && data.keywords.length > 0) setKeywords(data.keywords.slice(0, 5));
           if (Array.isArray(data.authors) && data.authors.length > 0) {
-            setAuthorNames(data.authors.length > 0 ? data.authors : [""]);
+            setAuthorDetails(
+              data.authors.map((name: string) => ({
+                name,
+                email: "",
+                affiliation: "",
+                orcid: "",
+              })),
+            );
           }
           if (Array.isArray(data.references) && data.references.length > 0) {
             setReferences(data.references.slice(0, 5).map((t: string) => ({ text: t, link: "" })));
@@ -185,16 +258,17 @@ export default function SubmitPaper() {
   const validate = (): string | null => {
     if (!journalId) return "Please select a journal.";
     if (guidelines && !guidelinesRead)
-      return "Please confirm you have read the author guidelines before submitting.";
+      return "Please confirm you have read the author guidelines and submission policies before submitting.";
     if (!title.trim()) return "Title is required.";
     if (title.length > 200) return "Title cannot exceed 200 characters.";
     if (!abstract.trim()) return "Abstract is required.";
     if (abstract.length < 100) return "Abstract must be at least 100 characters.";
     if (abstract.length > 3000) return "Abstract cannot exceed 3000 characters.";
-    if (authorNames.filter((n) => n.trim()).length === 0) return "At least one author name is required.";
+    if (authorDetails.filter((a) => a.name.trim()).length === 0) return "At least one author name is required.";
+    if (!articleType) return "Please select an article type.";
     if (keywords.length === 0) return "At least one keyword is required.";
     if (keywords.length > 5) return "Maximum 5 keywords allowed.";
-    if (correspondingAuthors.filter((c) => c.trim()).length > 5)
+    if (correspondingAuthorDetails.filter((c) => c.name.trim()).length > 5)
       return "Maximum 5 corresponding authors allowed.";
     if (references.filter((r) => r.text.trim()).length > 5)
       return "Maximum 5 references allowed.";
@@ -218,11 +292,27 @@ export default function SubmitPaper() {
       formData.append("journal_id", journalId);
       formData.append("title", title);
       formData.append("abstract", abstract);
-      formData.append("author_names", JSON.stringify(authorNames.filter((n) => n.trim())));
-      formData.append("corresponding_authors", JSON.stringify(correspondingAuthors.filter((c) => c.trim())));
+
+      const filledAuthors = authorDetails.filter((a) => a.name.trim());
+      formData.append("author_details", JSON.stringify(filledAuthors));
+      formData.append("author_names", JSON.stringify(filledAuthors.map((a) => a.name)));
+
+      const filledCorresponding = correspondingAuthorDetails.filter((c) => c.name.trim());
+      formData.append("corresponding_author_details", JSON.stringify(filledCorresponding));
+      formData.append("corresponding_authors", JSON.stringify(filledCorresponding.map((c) => c.name)));
+
       formData.append("keywords", JSON.stringify(keywords));
       formData.append("paper_references", JSON.stringify(references.filter((r) => r.text.trim())));
       if (manuscript) formData.append("manuscript", manuscript);
+
+      // Additional fields
+      if (articleType) formData.append("article_type", articleType);
+      if (category) formData.append("category", category);
+      if (conflictOfInterest) formData.append("conflict_of_interest", conflictOfInterest);
+      if (fundingInfo) formData.append("funding_info", fundingInfo);
+      if (dataAvailability) formData.append("data_availability", dataAvailability);
+      if (ethicalApproval) formData.append("ethical_approval", ethicalApproval);
+      if (authorContributions) formData.append("author_contributions", authorContributions);
 
       const res = await fetch(`${url}/papers/createPaper`, {
         method: "POST",
@@ -243,6 +333,19 @@ export default function SubmitPaper() {
   };
 
   const selectedJournal = journals.find((j) => j.id === journalId);
+
+  const renderPolicyContent = (content: string | null) => {
+    if (!content) return <p className="text-sm text-muted-foreground">No policy available.</p>;
+    if (content.trimStart().startsWith("<")) {
+      return (
+        <div
+          className="prose prose-sm dark:prose-invert max-w-none text-sm"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+        />
+      );
+    }
+    return <p className="text-sm text-muted-foreground whitespace-pre-line">{content}</p>;
+  };
 
   return (
     <DashboardLayout role={(user?.role as UserRole) ?? "author"} userName={user?.username}>
@@ -346,7 +449,7 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* Author Guidelines Acknowledgement */}
+            {/* Author Guidelines & Policies Acknowledgement */}
             {journalId && guidelines && (
               <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -357,10 +460,10 @@ export default function SubmitPaper() {
                   />
                   <div className="flex-1">
                     <label htmlFor="guidelines-read" className="text-sm font-medium cursor-pointer">
-                      I have read and agree to the author guidelines
+                      I have read and agree to the author guidelines and submission policies
                     </label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Please read the guidelines for this journal before submitting.
+                      Please read the guidelines and policies for this journal before submitting.
                     </p>
                   </div>
                 </div>
@@ -372,6 +475,40 @@ export default function SubmitPaper() {
                 >
                   <BookOpen className="h-4 w-4 mr-2" /> Read Author Guidelines
                 </Button>
+              </div>
+            )}
+
+            {/* Journal Policies collapsible panel */}
+            {journalId && (journalPolicies.oa_policy || journalPolicies.peer_review_policy) && (
+              <div className="rounded-lg border border-border">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors rounded-lg"
+                  onClick={() => setShowPolicies((v) => !v)}
+                >
+                  <span>View Journal Policies</span>
+                  {showPolicies ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+                {showPolicies && (
+                  <div className="px-4 pb-4">
+                    <Tabs defaultValue="oa-policy">
+                      <TabsList className="mb-3">
+                        <TabsTrigger value="oa-policy">OA Policy</TabsTrigger>
+                        <TabsTrigger value="peer-review">Peer Review Policy</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="oa-policy">
+                        {renderPolicyContent(journalPolicies.oa_policy)}
+                      </TabsContent>
+                      <TabsContent value="peer-review">
+                        {renderPolicyContent(journalPolicies.peer_review_policy)}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
               </div>
             )}
 
@@ -413,29 +550,81 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* 4. Author Names (was 3) */}
+            {/* 4. Author Details */}
             <div>
-              <Label className="mb-1.5 block">Author Name(s) *</Label>
-              <div className="space-y-2">
-                {authorNames.map((name, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      value={name}
-                      onChange={(e) =>
-                        updateArrayField(authorNames, setAuthorNames, i, e.target.value)
-                      }
-                      placeholder={`Author ${i + 1}`}
-                    />
-                    {authorNames.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeRow(authorNames, setAuthorNames, i)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+              <Label className="mb-1.5 block">Author(s) *</Label>
+              <div className="space-y-4">
+                {authorDetails.map((author, i) => (
+                  <div key={i} className="rounded-lg border border-border p-4 space-y-3 relative">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Author {i + 1}</span>
+                      {authorDetails.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => removeRow(authorDetails, setAuthorDetails, i)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs mb-1 block">Full Name *</Label>
+                        <Input
+                          value={author.name}
+                          onChange={(e) =>
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="Dr. Jane Smith"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Email *</Label>
+                        <Input
+                          type="email"
+                          value={author.email}
+                          onChange={(e) =>
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="jane@university.edu"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Affiliation/Institution *</Label>
+                        <Input
+                          value={author.affiliation}
+                          onChange={(e) =>
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              affiliation: e.target.value,
+                            })
+                          }
+                          placeholder="University of Science"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">ORCID</Label>
+                        <Input
+                          value={author.orcid}
+                          onChange={(e) =>
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              orcid: e.target.value,
+                            })
+                          }
+                          placeholder="0000-0000-0000-0000"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -444,56 +633,126 @@ export default function SubmitPaper() {
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                onClick={() => addRow(authorNames, setAuthorNames, "")}
+                onClick={() =>
+                  addRow(authorDetails, setAuthorDetails, {
+                    name: "",
+                    email: "",
+                    affiliation: "",
+                    orcid: "",
+                  })
+                }
               >
                 <Plus className="h-4 w-4 mr-1" /> Add another author
               </Button>
             </div>
 
-            {/* 4. Corresponding Authors */}
+            {/* 5. Corresponding Authors */}
             <div>
               <Label className="mb-1.5 block">
                 Corresponding Author(s){" "}
                 <span className="text-muted-foreground text-xs">(max 5)</span>
               </Label>
-              <div className="space-y-2">
-                {correspondingAuthors.map((ca, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      value={ca}
-                      onChange={(e) =>
-                        updateArrayField(
-                          correspondingAuthors,
-                          setCorrespondingAuthors,
-                          i,
-                          e.target.value,
-                        )
-                      }
-                      placeholder={`Corresponding author ${i + 1}`}
-                    />
-                    {correspondingAuthors.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          removeRow(correspondingAuthors, setCorrespondingAuthors, i)
-                        }
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+              <div className="space-y-4">
+                {correspondingAuthorDetails.map((ca, i) => (
+                  <div key={i} className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Corresponding Author {i + 1}
+                      </span>
+                      {correspondingAuthorDetails.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() =>
+                            removeRow(correspondingAuthorDetails, setCorrespondingAuthorDetails, i)
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs mb-1 block">Full Name *</Label>
+                        <Input
+                          value={ca.name}
+                          onChange={(e) =>
+                            updateArrayField(
+                              correspondingAuthorDetails,
+                              setCorrespondingAuthorDetails,
+                              i,
+                              { ...ca, name: e.target.value },
+                            )
+                          }
+                          placeholder="Dr. Jane Smith"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Email *</Label>
+                        <Input
+                          type="email"
+                          value={ca.email}
+                          onChange={(e) =>
+                            updateArrayField(
+                              correspondingAuthorDetails,
+                              setCorrespondingAuthorDetails,
+                              i,
+                              { ...ca, email: e.target.value },
+                            )
+                          }
+                          placeholder="jane@university.edu"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Affiliation *</Label>
+                        <Input
+                          value={ca.affiliation}
+                          onChange={(e) =>
+                            updateArrayField(
+                              correspondingAuthorDetails,
+                              setCorrespondingAuthorDetails,
+                              i,
+                              { ...ca, affiliation: e.target.value },
+                            )
+                          }
+                          placeholder="University of Science"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Phone</Label>
+                        <Input
+                          type="tel"
+                          value={ca.phone}
+                          onChange={(e) =>
+                            updateArrayField(
+                              correspondingAuthorDetails,
+                              setCorrespondingAuthorDetails,
+                              i,
+                              { ...ca, phone: e.target.value },
+                            )
+                          }
+                          placeholder="+1 (555) 000-0000"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-              {correspondingAuthors.length < 5 && (
+              {correspondingAuthorDetails.length < 5 && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="mt-2"
                   onClick={() =>
-                    addRow(correspondingAuthors, setCorrespondingAuthors, "", 5)
+                    addRow(
+                      correspondingAuthorDetails,
+                      setCorrespondingAuthorDetails,
+                      { name: "", email: "", affiliation: "", phone: "" },
+                      5,
+                    )
                   }
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add corresponding author
@@ -501,7 +760,7 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* 5. Keywords */}
+            {/* 6. Keywords */}
             <div>
               <Label className="mb-1.5 block">
                 Keywords *{" "}
@@ -562,7 +821,7 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* 6. References */}
+            {/* 7. References */}
             <div>
               <Label className="mb-1.5 block">
                 References{" "}
@@ -621,6 +880,108 @@ export default function SubmitPaper() {
               )}
             </div>
 
+            {/* 8. Article Type (required, always visible) */}
+            <div>
+              <Label className="mb-1.5 block">Article Type *</Label>
+              <Select value={articleType} onValueChange={setArticleType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select article type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Original Research">Original Research</SelectItem>
+                  <SelectItem value="Review Article">Review Article</SelectItem>
+                  <SelectItem value="Case Report">Case Report</SelectItem>
+                  <SelectItem value="Editorial">Editorial</SelectItem>
+                  <SelectItem value="Commentary">Commentary</SelectItem>
+                  <SelectItem value="Letter to Editor">Letter to Editor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 9. Additional Information (collapsible) */}
+            <div className="rounded-lg border border-border">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors rounded-lg"
+                onClick={() => setShowAdditionalInfo((v) => !v)}
+              >
+                <span>Additional Information</span>
+                {showAdditionalInfo ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+              {showAdditionalInfo && (
+                <div className="px-4 pb-4 space-y-4">
+                  {/* Category/Subject Area */}
+                  <div>
+                    <Label className="mb-1.5 block">Category / Subject Area</Label>
+                    <Input
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="e.g., Computer Science, Medicine"
+                    />
+                  </div>
+
+                  {/* Conflict of Interest */}
+                  <div>
+                    <Label className="mb-1.5 block">Conflict of Interest Statement</Label>
+                    <Textarea
+                      value={conflictOfInterest}
+                      onChange={(e) => setConflictOfInterest(e.target.value)}
+                      placeholder="The authors declare no conflict of interest"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Funding Information */}
+                  <div>
+                    <Label className="mb-1.5 block">Funding Information</Label>
+                    <Textarea
+                      value={fundingInfo}
+                      onChange={(e) => setFundingInfo(e.target.value)}
+                      placeholder="List grant numbers and funding bodies"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Data Availability */}
+                  <div>
+                    <Label className="mb-1.5 block">Data Availability Statement</Label>
+                    <Textarea
+                      value={dataAvailability}
+                      onChange={(e) => setDataAvailability(e.target.value)}
+                      placeholder="Describe where data can be accessed"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Ethical Approval */}
+                  <div>
+                    <Label className="mb-1.5 block">Ethical Approval</Label>
+                    <Textarea
+                      value={ethicalApproval}
+                      onChange={(e) => setEthicalApproval(e.target.value)}
+                      placeholder="IRB number or 'Not applicable'"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Author Contributions */}
+                  <div>
+                    <Label className="mb-1.5 block">Author Contributions</Label>
+                    <Textarea
+                      value={authorContributions}
+                      onChange={(e) => setAuthorContributions(e.target.value)}
+                      placeholder="Who did what"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Manuscript already uploaded at top */}
 
             {/* Submit button */}
@@ -654,14 +1015,42 @@ export default function SubmitPaper() {
                 <p className="font-medium text-muted-foreground">Abstract</p>
                 <p className="whitespace-pre-wrap">{abstract}</p>
               </div>
+              {articleType && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Article Type</p>
+                  <p>{articleType}</p>
+                </div>
+              )}
               <div>
                 <p className="font-medium text-muted-foreground">Authors</p>
-                <p>{authorNames.filter((n) => n.trim()).join(", ")}</p>
+                <ul className="space-y-1 mt-1">
+                  {authorDetails
+                    .filter((a) => a.name.trim())
+                    .map((a, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{a.name}</span>
+                        {a.affiliation && <span className="text-muted-foreground"> · {a.affiliation}</span>}
+                        {a.email && <span className="text-muted-foreground"> · {a.email}</span>}
+                        {a.orcid && <span className="text-muted-foreground"> · ORCID: {a.orcid}</span>}
+                      </li>
+                    ))}
+                </ul>
               </div>
-              {correspondingAuthors.filter((c) => c.trim()).length > 0 && (
+              {correspondingAuthorDetails.filter((c) => c.name.trim()).length > 0 && (
                 <div>
                   <p className="font-medium text-muted-foreground">Corresponding Authors</p>
-                  <p>{correspondingAuthors.filter((c) => c.trim()).join(", ")}</p>
+                  <ul className="space-y-1 mt-1">
+                    {correspondingAuthorDetails
+                      .filter((c) => c.name.trim())
+                      .map((c, i) => (
+                        <li key={i}>
+                          <span className="font-medium">{c.name}</span>
+                          {c.affiliation && <span className="text-muted-foreground"> · {c.affiliation}</span>}
+                          {c.email && <span className="text-muted-foreground"> · {c.email}</span>}
+                          {c.phone && <span className="text-muted-foreground"> · {c.phone}</span>}
+                        </li>
+                      ))}
+                  </ul>
                 </div>
               )}
               <div>
@@ -687,6 +1076,43 @@ export default function SubmitPaper() {
                         </li>
                       ))}
                   </ul>
+                </div>
+              )}
+              {/* Additional info summary */}
+              {conflictOfInterest && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Conflict of Interest</p>
+                  <p className="whitespace-pre-wrap">{conflictOfInterest}</p>
+                </div>
+              )}
+              {fundingInfo && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Funding Information</p>
+                  <p className="whitespace-pre-wrap">{fundingInfo}</p>
+                </div>
+              )}
+              {dataAvailability && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Data Availability</p>
+                  <p className="whitespace-pre-wrap">{dataAvailability}</p>
+                </div>
+              )}
+              {ethicalApproval && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Ethical Approval</p>
+                  <p className="whitespace-pre-wrap">{ethicalApproval}</p>
+                </div>
+              )}
+              {authorContributions && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Author Contributions</p>
+                  <p className="whitespace-pre-wrap">{authorContributions}</p>
+                </div>
+              )}
+              {category && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Category / Subject Area</p>
+                  <p>{category}</p>
                 </div>
               )}
               <div>

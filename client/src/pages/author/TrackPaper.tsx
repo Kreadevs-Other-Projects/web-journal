@@ -4,11 +4,10 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText } from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -20,19 +19,22 @@ interface TrackingData {
     submitted_at?: string;
     accepted_at?: string;
     published_at?: string;
+    updated_at?: string;
+    abstract?: string;
+    category?: string;
+    keywords?: string[];
+    author_names?: string[];
+    corresponding_authors?: string[];
     journal_title: string;
+    issue_label?: string;
+    issue_volume?: number;
+    issue_number?: number;
+    issue_year?: number;
   };
   status_log: Array<{
     status: string;
     changed_at: string;
-    changed_by_name?: string;
-    changed_by_role?: string;
-    note?: string;
   }>;
-  current_assignment?: {
-    sub_editor_name: string;
-    assigned_at: string;
-  } | null;
   reviews: Array<{
     decision: string;
     comments: string;
@@ -66,13 +68,6 @@ function getStageIndex(status: string): number {
   if (status === "accepted" || status === "rejected") return 2;
   if (status === "published") return 3;
   return 0;
-}
-
-function DecisionBadge({ status }: { status: string }) {
-  if (status === "accepted") return <Badge className="bg-green-600 text-white">Accepted</Badge>;
-  if (status === "rejected") return <Badge variant="destructive">Rejected</Badge>;
-  if (status === "pending_revision") return <Badge variant="secondary">Revision Requested</Badge>;
-  return null;
 }
 
 export default function TrackPaper() {
@@ -148,7 +143,7 @@ export default function TrackPaper() {
     );
   }
 
-  const { paper, status_log, current_assignment, reviews, publication } = data;
+  const { paper, status_log, reviews, publication } = data;
   const currentStageIdx = getStageIndex(paper.status);
 
   return (
@@ -165,12 +160,18 @@ export default function TrackPaper() {
               <span className="text-sm text-muted-foreground flex items-center gap-1">
                 <BookOpen className="h-4 w-4" /> {paper.journal_title}
               </span>
+              {(paper.issue_label || (paper.issue_volume && paper.issue_number)) && (
+                <span className="text-sm text-muted-foreground">
+                  · {paper.issue_label || `Vol ${paper.issue_volume}, Issue ${paper.issue_number}`}
+                </span>
+              )}
             </div>
             <h1 className="text-xl font-bold leading-snug">{paper.title}</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="secondary">{paper.status.replace(/_/g, " ")}</Badge>
               {paper.status === "accepted" && <Badge className="bg-green-600 text-white">Accepted</Badge>}
               {paper.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+              {paper.category && <Badge variant="outline">{paper.category}</Badge>}
             </div>
           </div>
 
@@ -201,10 +202,6 @@ export default function TrackPaper() {
                       <div className="mt-2 text-center px-1">
                         <p className={`text-xs font-medium ${active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground"}`}>{stage.label}</p>
                         {logEntry && <p className="text-xs text-muted-foreground mt-0.5">{formatDate(logEntry.changed_at)}</p>}
-                        {stage.key === "under_review" && current_assignment && (
-                          <p className="text-xs text-muted-foreground">{current_assignment.sub_editor_name}</p>
-                        )}
-                        {stage.key === "decision" && active && <DecisionBadge status={paper.status} />}
                         {stage.key === "published" && publication?.doi && (
                           <a href={`https://doi.org/${publication.doi}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center justify-center gap-0.5 mt-0.5">
                             DOI <ExternalLink className="h-3 w-3" />
@@ -222,12 +219,47 @@ export default function TrackPaper() {
           <Card className="mb-6">
             <CardContent className="p-4 grid grid-cols-3 gap-4 text-sm">
               <div><p className="text-muted-foreground text-xs">Submitted</p><p className="font-medium">{formatDate(paper.submitted_at)}</p></div>
-              <div><p className="text-muted-foreground text-xs">Accepted</p><p className="font-medium">{formatDate(paper.accepted_at)}</p></div>
-              <div><p className="text-muted-foreground text-xs">Published</p><p className="font-medium">{formatDate(paper.published_at)}</p></div>
+              <div><p className="text-muted-foreground text-xs">Last Updated</p><p className="font-medium">{formatDate(paper.updated_at)}</p></div>
+              <div><p className="text-muted-foreground text-xs">{paper.status === "published" ? "Published" : "Accepted"}</p><p className="font-medium">{formatDate(paper.status === "published" ? paper.published_at : paper.accepted_at)}</p></div>
             </CardContent>
           </Card>
 
-          {/* Review Feedback */}
+          {/* Paper Details */}
+          <Card className="mb-6">
+            <CardHeader><CardTitle className="text-base">Paper Details</CardTitle></CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {paper.author_names && paper.author_names.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Authors</p>
+                  <p>{paper.author_names.join(", ")}</p>
+                </div>
+              )}
+              {paper.corresponding_authors && paper.corresponding_authors.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Corresponding Author(s)</p>
+                  <p>{paper.corresponding_authors.join(", ")}</p>
+                </div>
+              )}
+              {paper.keywords && paper.keywords.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Keywords</p>
+                  <div className="flex flex-wrap gap-1">
+                    {paper.keywords.map((kw) => (
+                      <Badge key={kw} variant="secondary" className="text-xs">{kw}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {paper.abstract && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Abstract</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{paper.abstract}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Review Feedback (blind) */}
           {reviews.length > 0 && (
             <Card className="mb-6">
               <CardHeader><CardTitle className="text-base">Review Feedback</CardTitle></CardHeader>
@@ -249,7 +281,7 @@ export default function TrackPaper() {
 
           {/* Upload Revision */}
           {paper.status === "pending_revision" && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
+            <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
               <CardHeader><CardTitle className="text-base text-amber-700 dark:text-amber-400">Revision Required</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">The editors have requested a revision. Please address the review comments and upload a revised manuscript.</p>
@@ -270,19 +302,39 @@ export default function TrackPaper() {
 
           {/* Publication info */}
           {publication && (
-            <Card className="mt-6">
+            <Card className="mb-6">
               <CardHeader><CardTitle className="text-base">Publication Details</CardTitle></CardHeader>
-              <CardContent className="text-sm space-y-1">
-                {publication.issue_label && <p><span className="text-muted-foreground">Issue:</span> {publication.issue_label}</p>}
-                {publication.volume && <p><span className="text-muted-foreground">Volume:</span> {publication.volume}</p>}
-                {publication.year && <p><span className="text-muted-foreground">Year:</span> {publication.year}</p>}
-                {publication.doi && (
-                  <p><span className="text-muted-foreground">DOI:</span>{" "}
-                    <a href={`https://doi.org/${publication.doi}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{publication.doi}</a>
-                  </p>
+              <CardContent className="text-sm space-y-3">
+                <div className="space-y-1">
+                  {publication.issue_label && <p><span className="text-muted-foreground">Issue:</span> {publication.issue_label}</p>}
+                  {publication.volume && <p><span className="text-muted-foreground">Volume:</span> {publication.volume}</p>}
+                  {publication.year && <p><span className="text-muted-foreground">Year:</span> {publication.year}</p>}
+                  {publication.doi && (
+                    <p><span className="text-muted-foreground">DOI:</span>{" "}
+                      <a href={`https://doi.org/${publication.doi}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{publication.doi}</a>
+                    </p>
+                  )}
+                </div>
+                {paper.status === "published" && (
+                  <Link to={`/articles/${paper.id}`}>
+                    <Button className="gap-2 w-full sm:w-auto">
+                      <FileText className="h-4 w-4" /> View Published Article
+                    </Button>
+                  </Link>
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* Published but no publication record yet */}
+          {paper.status === "published" && !publication && (
+            <div className="mt-4">
+              <Link to={`/articles/${paper.id}`}>
+                <Button className="gap-2">
+                  <FileText className="h-4 w-4" /> View Published Article
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </PageTransition>

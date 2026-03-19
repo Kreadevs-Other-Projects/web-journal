@@ -117,3 +117,55 @@ export const getAssignedReviewers = async (paperId: string) => {
   );
   return result.rows;
 };
+
+
+// ---- Reviewer Requests ----
+
+export const createReviewerRequest = async (data: {
+  paper_id: string;
+  sub_editor_id: string;
+  suggested_name: string;
+  suggested_email: string;
+  keywords?: string[];
+  degrees?: string[];
+}) => {
+  const result = await pool.query(
+    `INSERT INTO reviewer_requests
+       (paper_id, sub_editor_id, suggested_name, suggested_email, keywords, degrees)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [data.paper_id, data.sub_editor_id, data.suggested_name, data.suggested_email,
+     data.keywords || [], data.degrees || []],
+  );
+  return result.rows[0];
+};
+
+export const getPendingReviewerRequestsForCE = async (chiefEditorId: string) => {
+  const result = await pool.query(
+    `SELECT rr.*, p.title as paper_title, u.username as sub_editor_name,
+            j.title as journal_title
+     FROM reviewer_requests rr
+     JOIN papers p ON p.id = rr.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     JOIN users u ON u.id = rr.sub_editor_id
+     WHERE j.chief_editor_id = $1 AND rr.status = 'pending'
+     ORDER BY rr.created_at DESC`,
+    [chiefEditorId],
+  );
+  return result.rows;
+};
+
+export const reviewReviewerRequest = async (
+  request_id: string,
+  status: "approved" | "rejected",
+  reviewed_by: string,
+) => {
+  const result = await pool.query(
+    `UPDATE reviewer_requests
+     SET status = $1, reviewed_by = $2, reviewed_at = NOW()
+     WHERE id = $3
+     RETURNING *`,
+    [status, reviewed_by, request_id],
+  );
+  return result.rows[0];
+};

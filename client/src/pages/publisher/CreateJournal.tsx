@@ -24,6 +24,7 @@ import { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, BookOpen, User, Upload, X } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface JournalFields {
   title: string;
@@ -347,12 +348,9 @@ export default function CreateJournal() {
                 <Label>
                   Peer Review Policy <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
+                <RichTextEditor
                   value={journal.peer_review_policy}
-                  onChange={(e) =>
-                    updateJournal("peer_review_policy", e.target.value)
-                  }
-                  rows={4}
+                  onChange={(html) => updateJournal("peer_review_policy", html)}
                   placeholder="Describe the peer review process..."
                 />
               </div>
@@ -361,10 +359,9 @@ export default function CreateJournal() {
                 <Label>
                   OA Policy <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
+                <RichTextEditor
                   value={journal.oa_policy}
-                  onChange={(e) => updateJournal("oa_policy", e.target.value)}
-                  rows={4}
+                  onChange={(html) => updateJournal("oa_policy", html)}
                   placeholder="Describe the open access policy..."
                 />
               </div>

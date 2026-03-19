@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   FileText,
   UserPlus,
@@ -43,6 +44,9 @@ import {
   Unlock,
   Eye,
   EyeOff,
+  ThumbsUp,
+  ThumbsDown,
+  Tag,
 } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +87,24 @@ interface Paper {
   journalId?: string;
 }
 
+interface StaffMember {
+  id: string;
+  username: string;
+  email: string;
+}
+
+interface ReviewerRequest {
+  id: string;
+  paper_id: string;
+  paper_title: string;
+  sub_editor_name: string;
+  suggested_name: string;
+  suggested_email: string;
+  keywords: string[];
+  status: string;
+  created_at: string;
+}
+
 export default function ChiefEditor() {
   const { user, token } = useAuth();
   const { toast } = useToast();
@@ -97,20 +119,8 @@ export default function ChiefEditor() {
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [subEditors, setSubEditors] = useState<
-    {
-      id: string;
-      username: string;
-      email: string;
-    }[]
-  >([]);
-  const [reviewers, setReviewers] = useState<
-    {
-      id: string;
-      username: string;
-      email: string;
-    }[]
-  >([]);
+  const [subEditors, setSubEditors] = useState<StaffMember[]>([]);
+  const [reviewers, setReviewers] = useState<StaffMember[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [subEditorId, setSubEditorId] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
@@ -133,6 +143,28 @@ export default function ChiefEditor() {
     reviewed: 0,
   });
   const [loading, setLoading] = useState(false);
+
+  // Top-level dashboard tab: overview | team
+  const [dashboardTab, setDashboardTab] = useState("overview");
+
+  // Team sub-tab
+  const [teamTab, setTeamTab] = useState("sub_editors");
+
+  // Team creation dialogs (standalone, no paper required)
+  const [openCreateSE, setOpenCreateSE] = useState(false);
+  const [newTeamSE, setNewTeamSE] = useState({ name: "", email: "", password: "" });
+  const [showTeamSEPw, setShowTeamSEPw] = useState(false);
+  const [creatingTeamSE, setCreatingTeamSE] = useState(false);
+
+  const [openCreateRev, setOpenCreateRev] = useState(false);
+  const [newTeamRev, setNewTeamRev] = useState({ name: "", email: "", password: "" });
+  const [showTeamRevPw, setShowTeamRevPw] = useState(false);
+  const [creatingTeamRev, setCreatingTeamRev] = useState(false);
+
+  // Reviewer requests
+  const [reviewerRequests, setReviewerRequests] = useState<ReviewerRequest[]>([]);
+  const [reviewerRequestsLoading, setReviewerRequestsLoading] = useState(false);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   const fetchJournals = async () => {
     try {
@@ -234,9 +266,8 @@ export default function ChiefEditor() {
     }
   };
 
-  useEffect(() => {
+  const fetchStaff = () => {
     if (!token) return;
-
     fetch(`${url}/chiefEditor/getSubEditors`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -248,7 +279,32 @@ export default function ChiefEditor() {
     })
       .then((res) => res.json())
       .then((data) => setReviewers(data.data || []));
+  };
+
+  useEffect(() => {
+    fetchStaff();
   }, [token]);
+
+  const fetchReviewerRequests = async () => {
+    try {
+      setReviewerRequestsLoading(true);
+      const res = await fetch(`${url}/subEditor/pending-reviewer-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setReviewerRequests(data.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReviewerRequestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token && dashboardTab === "team") {
+      fetchReviewerRequests();
+    }
+  }, [token, dashboardTab]);
 
   useEffect(() => {
     let filtered = papers;
@@ -327,19 +383,28 @@ export default function ChiefEditor() {
         },
       );
 
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update issue status");
+
+      // Optimistic update in journals state
+      setJournals((prev) =>
+        prev.map((j) => ({
+          ...j,
+          issues: j.issues.map((iss) =>
+            iss.id === issueId ? { ...iss, status: newStatus } : iss,
+          ),
+        })),
+      );
 
       toast({
         title: "Issue Status Updated",
-        description: `Issue ${newStatus === "closed" ? "closed" : "reopened"} successfully.`,
+        description: `Issue ${newStatus === "closed" ? "closed" : "opened for submissions"} successfully.`,
       });
-
-      fetchJournals();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       toast({
         title: "Update Failed",
-        description: "Could not update issue status.",
+        description: e.message || "Could not update issue status.",
         variant: "destructive",
       });
     }
@@ -531,6 +596,94 @@ export default function ChiefEditor() {
     }
   };
 
+  // Team tab: create sub-editor without paper assignment
+  const createTeamSubEditor = async () => {
+    if (!newTeamSE.name || !newTeamSE.email || !newTeamSE.password) {
+      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+    try {
+      setCreatingTeamSE(true);
+      const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
+      const res = await fetch(`${url}/auth/create-staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newTeamSE.name,
+          email: newTeamSE.email,
+          password: newTeamSE.password,
+          role: "sub_editor",
+          journal_id: journalId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create associate editor");
+      toast({ title: "Success", description: `${newTeamSE.name} added as Associate Editor` });
+      setNewTeamSE({ name: "", email: "", password: "" });
+      setOpenCreateSE(false);
+      fetchStaff();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingTeamSE(false);
+    }
+  };
+
+  // Team tab: create reviewer without paper assignment
+  const createTeamReviewer = async () => {
+    if (!newTeamRev.name || !newTeamRev.email || !newTeamRev.password) {
+      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+    try {
+      setCreatingTeamRev(true);
+      const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
+      const res = await fetch(`${url}/auth/create-staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newTeamRev.name,
+          email: newTeamRev.email,
+          password: newTeamRev.password,
+          role: "reviewer",
+          journal_id: journalId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
+      toast({ title: "Success", description: `${newTeamRev.name} added as Reviewer` });
+      setNewTeamRev({ name: "", email: "", password: "" });
+      setOpenCreateRev(false);
+      fetchStaff();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingTeamRev(false);
+    }
+  };
+
+  const handleReviewerRequest = async (requestId: string, action: "approved" | "rejected") => {
+    try {
+      setProcessingRequestId(requestId);
+      const res = await fetch(`${url}/subEditor/reviewer-requests/${requestId}/review`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to process request");
+      toast({
+        title: action === "approved" ? "Request Approved" : "Request Rejected",
+        description: `Reviewer request has been ${action}.`,
+      });
+      fetchReviewerRequests();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   const handleIssueClick = (issue: Issue, journalId: string) => {
     setSelectedJournalId(journalId);
     setSelectedIssueId(issue.id);
@@ -601,393 +754,624 @@ export default function ChiefEditor() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="glass-card border-l-4 border-l-blue-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total Papers
+        {/* Top-level dashboard tabs */}
+        <Tabs value={dashboardTab} onValueChange={setDashboardTab}>
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+          </TabsList>
+
+          {/* ===== OVERVIEW TAB ===== */}
+          <TabsContent value="overview" className="space-y-8 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="glass-card border-l-4 border-l-blue-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Total Papers
+                      </p>
+                      <p className="text-3xl font-bold mt-2">{stats.total}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card border-l-4 border-l-amber-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Pending Review
+                      </p>
+                      <p className="text-3xl font-bold mt-2">{stats.pending}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-amber-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card border-l-4 border-l-purple-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Assigned
+                      </p>
+                      <p className="text-3xl font-bold mt-2">{stats.assigned}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                      <Users className="h-6 w-6 text-purple-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card border-l-4 border-l-green-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Reviewed
+                      </p>
+                      <p className="text-3xl font-bold mt-2">{stats.reviewed}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {(selectedJournalId || selectedIssueId) && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">
+                        Viewing:{" "}
+                        {selectedIssue
+                          ? `${selectedJournal?.title} - ${selectedIssue.label || `Vol ${selectedIssue.volume}, Issue ${selectedIssue.issue}`}`
+                          : selectedJournal?.title}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="text-blue-700 hover:text-blue-900"
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>My Journals</CardTitle>
+                <CardDescription>
+                  Journals assigned to you with their issues
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                {journals.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No journals assigned
                   </p>
-                  <p className="text-3xl font-bold mt-2">{stats.total}</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-l-4 border-l-amber-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Pending Review
-                  </p>
-                  <p className="text-3xl font-bold mt-2">{stats.pending}</p>
-                </div>
-                <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-amber-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-l-4 border-l-purple-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Assigned
-                  </p>
-                  <p className="text-3xl font-bold mt-2">{stats.assigned}</p>
-                </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-l-4 border-l-green-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Reviewed
-                  </p>
-                  <p className="text-3xl font-bold mt-2">{stats.reviewed}</p>
-                </div>
-                <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {(selectedJournalId || selectedIssueId) && (
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
-                    Viewing:{" "}
-                    {selectedIssue
-                      ? `${selectedJournal?.title} - ${selectedIssue.label || `Vol ${selectedIssue.volume}, Issue ${selectedIssue.issue}`}`
-                      : selectedJournal?.title}
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="text-blue-700 hover:text-blue-900"
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>My Journals</CardTitle>
-            <CardDescription>
-              Journals assigned to you with their issues
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {journals.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No journals assigned
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {journals.map((journal) => (
-                  <div
-                    key={journal.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3
-                          className="font-semibold text-lg cursor-pointer hover:text-blue-600"
-                          onClick={() => handleJournalClick(journal.id)}
-                        >
-                          {journal.title}
-                          {journal.acronym && (
-                            <span className="text-sm text-muted-foreground ml-2">
-                              ({journal.acronym})
-                            </span>
-                          )}
-                        </h3>
-                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                          {journal.issn && <span>ISSN: {journal.issn}</span>}
-                          {journal.status && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs capitalize"
+                ) : (
+                  <div className="space-y-4">
+                    {journals.map((journal) => (
+                      <div
+                        key={journal.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h3
+                              className="font-semibold text-lg cursor-pointer hover:text-blue-600"
+                              onClick={() => handleJournalClick(journal.id)}
                             >
-                              {journal.status}
+                              {journal.title}
+                              {journal.acronym && (
+                                <span className="text-sm text-muted-foreground ml-2">
+                                  ({journal.acronym})
+                                </span>
+                              )}
+                            </h3>
+                            <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                              {journal.issn && <span>ISSN: {journal.issn}</span>}
+                              {journal.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize"
+                                >
+                                  {journal.status}
+                                </Badge>
+                              )}
+                              {journal.expiry_at && (
+                                <span>
+                                  Expires:{" "}
+                                  {new Date(journal.expiry_at).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            {journal.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                                {journal.description}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant="outline">
+                            {journal.issues.length} Issues
+                          </Badge>
+                        </div>
+
+                        {journal.issues.length > 0 && (
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {journal.issues.map((issue) => (
+                              <div
+                                key={issue.id}
+                                className="bg-muted/50 p-3 rounded-md text-sm hover:bg-muted transition-colors cursor-pointer group"
+                                onClick={() => handleIssueClick(issue, journal.id)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <p className="font-medium group-hover:text-blue-600">
+                                      {issue.label ||
+                                        `Vol ${issue.volume}, Issue ${issue.issue}`}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                      Year: {issue.year}
+                                    </p>
+                                    <p className="text-muted-foreground text-xs">
+                                      Publishes:{" "}
+                                      {new Date(
+                                        issue.publishedAt,
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {issue.status === "closed" ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-red-100 text-red-800"
+                                      >
+                                        <Lock className="h-3 w-3 mr-1" /> Closed
+                                      </Badge>
+                                    ) : issue.status === "draft" ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-yellow-100 text-yellow-800"
+                                      >
+                                        <FileEdit className="h-3 w-3 mr-1" /> Draft
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-green-100 text-green-800"
+                                      >
+                                        <Unlock className="h-3 w-3 mr-1" /> Open
+                                      </Badge>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleIssueStatus(
+                                          issue.id,
+                                          issue.status || "open",
+                                        );
+                                      }}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      {issue.status === "closed" ? (
+                                        <Unlock className="h-4 w-4" />
+                                      ) : (
+                                        <Lock className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Journal selector dropdown above papers list */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-1">
+                    {/* Journal filter dropdown */}
+                    <div className="w-full sm:w-56">
+                      <Select
+                        value={selectedJournalId ?? "all"}
+                        onValueChange={(val) => {
+                          if (val === "all") {
+                            clearFilters();
+                          } else {
+                            handleJournalClick(val);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Journals" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Journals</SelectItem>
+                          {journals.map((j) => (
+                            <SelectItem key={j.id} value={j.id}>
+                              {j.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedJournalId && selectedJournal && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Filter className="h-3 w-3" />
+                        Journal: {selectedJournal.title}
+                      </Badge>
+                    )}
+
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search papers by title or author..."
+                        className="pl-10"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant={activeTab === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveTab("all")}
+                    >
+                      All Papers
+                    </Button>
+                    <Button
+                      variant={activeTab === "submitted" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveTab("submitted")}
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Pending
+                    </Button>
+                    <Button
+                      variant={
+                        activeTab === "assigned_to_editor" ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => setActiveTab("assigned_to_editor")}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Assigned
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {filteredPapers.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="pt-12 pb-12 text-center">
+                  <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    No papers found
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {searchQuery
+                      ? "No papers match your search criteria"
+                      : selectedIssueId
+                        ? "No papers assigned to this issue yet"
+                        : "There are no papers to display"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPapers.map((paper) => (
+                  <Card
+                    key={paper.id}
+                    className="glass-card hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group"
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="h-10 w-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center group-hover:from-blue-200 group-hover:to-blue-100 transition-colors">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex flex-col gap-1 items-end">
+                          <Badge className={getStatusColor(paper.status)}>
+                            <span className="flex items-center gap-1">
+                              {getStatusIcon(paper.status)}
+                              {paper.status.charAt(0).toUpperCase() +
+                                paper.status.slice(1)}
+                            </span>
+                          </Badge>
+                          {paper.issueId && (
+                            <Badge variant="outline" className="text-xs">
+                              <BookOpen className="h-3 w-3 mr-1" />
+                              Assigned to Issue
                             </Badge>
                           )}
-                          {journal.expiry_at && (
-                            <span>
-                              Expires:{" "}
-                              {new Date(journal.expiry_at).toLocaleDateString()}
-                            </span>
-                          )}
                         </div>
-                        {journal.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                            {journal.description}
+                      </div>
+                      <CardTitle className="line-clamp-2 mt-4 group-hover:text-blue-600 transition-colors">
+                        {paper.title}
+                      </CardTitle>
+                      {paper.authors && (
+                        <CardDescription className="line-clamp-1">
+                          {paper.authors.join(", ")}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="pb-3">
+                      <div className="text-sm text-muted-foreground">
+                        {paper.submittedDate && (
+                          <p>
+                            Submitted:{" "}
+                            {new Date(paper.submittedDate).toLocaleDateString()}
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline">
-                        {journal.issues.length} Issues
-                      </Badge>
-                    </div>
+                    </CardContent>
+                    <CardFooter className="pt-0 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 group-hover:border-blue-300 group-hover:text-blue-700 transition-colors"
+                        onClick={() => {
+                          setSelectedPaper(paper);
+                          setOpenDialog(true);
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Assign Editor
+                      </Button>
 
-                    {journal.issues.length > 0 && (
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {journal.issues.map((issue) => (
-                          <div
-                            key={issue.id}
-                            className="bg-muted/50 p-3 rounded-md text-sm hover:bg-muted transition-colors cursor-pointer group"
-                            onClick={() => handleIssueClick(issue, journal.id)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <p className="font-medium group-hover:text-blue-600">
-                                  {issue.label ||
-                                    `Vol ${issue.volume}, Issue ${issue.issue}`}
-                                </p>
-                                <p className="text-muted-foreground">
-                                  Year: {issue.year}
-                                </p>
-                                <p className="text-muted-foreground text-xs">
-                                  Publishes:{" "}
-                                  {new Date(
-                                    issue.publishedAt,
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {issue.status === "closed" ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-red-100 text-red-800"
-                                  >
-                                    <Lock className="h-3 w-3 mr-1" /> Closed
-                                  </Badge>
-                                ) : issue.status === "draft" ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-yellow-100 text-yellow-800"
-                                  >
-                                    <FileEdit className="h-3 w-3 mr-1" /> Draft
-                                  </Badge>
-                                ) : (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-green-100 text-green-800"
-                                  >
-                                    <Unlock className="h-3 w-3 mr-1" /> Open
-                                  </Badge>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleIssueStatus(
-                                      issue.id,
-                                      issue.status || "open",
-                                    );
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  {issue.status === "closed" ? (
-                                    <Unlock className="h-4 w-4" />
-                                  ) : (
-                                    <Lock className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 group-hover:border-purple-300 group-hover:text-purple-700 transition-colors"
+                        onClick={() => {
+                          setSelectedPaper(paper);
+                          setSelectedReviewerId("");
+                          setNewReviewer({ name: "", email: "", password: "" });
+                          setOpenReviewerDialog(true);
+                        }}
+                      >
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Assign Reviewer
+                      </Button>
+
+                      {!paper.issueId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedPaper(paper);
+                            setOpenIssueDialog(true);
+                          }}
+                        >
+                          <BookOpen className="h-4 w-4 mr-1" />
+                          Assign Issue
+                        </Button>
+                      )}
+                    </CardFooter>
+                  </Card>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </TabsContent>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search papers by title or author..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant={activeTab === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveTab("all")}
-                >
-                  All Papers
-                </Button>
-                <Button
-                  variant={activeTab === "submitted" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveTab("submitted")}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Pending
-                </Button>
-                <Button
-                  variant={
-                    activeTab === "assigned_to_editor" ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => setActiveTab("assigned_to_editor")}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Assigned
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {filteredPapers.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="pt-12 pb-12 text-center">
-              <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                No papers found
-              </h3>
-              <p className="text-muted-foreground">
-                {searchQuery
-                  ? "No papers match your search criteria"
-                  : selectedIssueId
-                    ? "No papers assigned to this issue yet"
-                    : "There are no papers to display"}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPapers.map((paper) => (
-              <Card
-                key={paper.id}
-                className="glass-card hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="h-10 w-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center group-hover:from-blue-200 group-hover:to-blue-100 transition-colors">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex flex-col gap-1 items-end">
-                      <Badge className={getStatusColor(paper.status)}>
-                        <span className="flex items-center gap-1">
-                          {getStatusIcon(paper.status)}
-                          {paper.status.charAt(0).toUpperCase() +
-                            paper.status.slice(1)}
-                        </span>
-                      </Badge>
-                      {paper.issueId && (
-                        <Badge variant="outline" className="text-xs">
-                          <BookOpen className="h-3 w-3 mr-1" />
-                          Assigned to Issue
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <CardTitle className="line-clamp-2 mt-4 group-hover:text-blue-600 transition-colors">
-                    {paper.title}
-                  </CardTitle>
-                  {paper.authors && (
-                    <CardDescription className="line-clamp-1">
-                      {paper.authors.join(", ")}
-                    </CardDescription>
+          {/* ===== TEAM TAB ===== */}
+          <TabsContent value="team" className="space-y-8 mt-6">
+            <Tabs value={teamTab} onValueChange={setTeamTab}>
+              <TabsList>
+                <TabsTrigger value="sub_editors">Associate Editors</TabsTrigger>
+                <TabsTrigger value="reviewers">Reviewers</TabsTrigger>
+                <TabsTrigger value="reviewer_requests">
+                  Pending Reviewer Requests
+                  {reviewerRequests.length > 0 && (
+                    <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                      {reviewerRequests.length}
+                    </Badge>
                   )}
-                </CardHeader>
-                <CardContent className="pb-3">
-                  <div className="text-sm text-muted-foreground">
-                    {paper.submittedDate && (
-                      <p>
-                        Submitted:{" "}
-                        {new Date(paper.submittedDate).toLocaleDateString()}
-                      </p>
-                    )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Associate Editors sub-tab */}
+              <TabsContent value="sub_editors" className="mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Associate Editors</h2>
+                  <Button onClick={() => setOpenCreateSE(true)} size="sm">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add New Associate Editor
+                  </Button>
+                </div>
+
+                {subEditors.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="pt-12 pb-12 text-center">
+                      <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No Associate Editors</h3>
+                      <p className="text-muted-foreground">Add associate editors to get started.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {subEditors.map((se) => (
+                      <Card key={se.id} className="glass-card">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-bold text-blue-800">
+                                {se.username.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{se.username}</p>
+                              <p className="text-xs text-muted-foreground truncate">{se.email}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                </CardContent>
-                <CardFooter className="pt-0 flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 group-hover:border-blue-300 group-hover:text-blue-700 transition-colors"
-                    onClick={() => {
-                      setSelectedPaper(paper);
-                      setOpenDialog(true);
-                    }}
-                  >
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Assign Editor
+                )}
+              </TabsContent>
+
+              {/* Reviewers sub-tab */}
+              <TabsContent value="reviewers" className="mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Reviewers</h2>
+                  <Button onClick={() => setOpenCreateRev(true)} size="sm">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add New Reviewer
                   </Button>
+                </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 group-hover:border-purple-300 group-hover:text-purple-700 transition-colors"
-                    onClick={() => {
-                      setSelectedPaper(paper);
-                      setSelectedReviewerId("");
-                      setNewReviewer({ name: "", email: "", password: "" });
-                      setOpenReviewerDialog(true);
-                    }}
-                  >
-                    <UserCheck className="h-4 w-4 mr-1" />
-                    Assign Reviewer
+                {reviewers.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="pt-12 pb-12 text-center">
+                      <UserCheck className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No Reviewers</h3>
+                      <p className="text-muted-foreground">Add reviewers to get started.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {reviewers.map((r) => (
+                      <Card key={r.id} className="glass-card">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-bold text-purple-800">
+                                {r.username.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{r.username}</p>
+                              <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Pending Reviewer Requests sub-tab */}
+              <TabsContent value="reviewer_requests" className="mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Pending Reviewer Requests</h2>
+                  <Button variant="outline" size="sm" onClick={fetchReviewerRequests} disabled={reviewerRequestsLoading}>
+                    {reviewerRequestsLoading ? "Refreshing..." : "Refresh"}
                   </Button>
+                </div>
 
-                  {!paper.issueId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => {
-                        setSelectedPaper(paper);
-                        setOpenIssueDialog(true);
-                      }}
-                    >
-                      <BookOpen className="h-4 w-4 mr-1" />
-                      Assign Issue
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+                {reviewerRequestsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground animate-pulse" />
+                  </div>
+                ) : reviewerRequests.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="pt-12 pb-12 text-center">
+                      <CheckCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No Pending Requests</h3>
+                      <p className="text-muted-foreground">All reviewer requests have been processed.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {reviewerRequests.map((req) => (
+                      <Card key={req.id} className="glass-card">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base line-clamp-2">{req.paper_title}</CardTitle>
+                          <CardDescription className="text-xs">
+                            Requested by: {req.sub_editor_name}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pb-3">
+                          <div className="bg-muted/50 rounded-md p-3 space-y-1">
+                            <p className="text-sm font-medium">Suggested Reviewer</p>
+                            <p className="text-sm">{req.suggested_name}</p>
+                            <p className="text-xs text-muted-foreground">{req.suggested_email}</p>
+                          </div>
+                          {req.keywords && req.keywords.length > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                                <Tag className="h-3 w-3" />
+                                Keywords
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {req.keywords.map((kw, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">
+                                    {kw}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                        <CardFooter className="gap-2 border-t pt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-green-300 text-green-700 hover:bg-green-50"
+                            disabled={processingRequestId === req.id}
+                            onClick={() => handleReviewerRequest(req.id, "approved")}
+                          >
+                            <ThumbsUp className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
+                            disabled={processingRequestId === req.id}
+                            onClick={() => handleReviewerRequest(req.id, "rejected")}
+                          >
+                            <ThumbsDown className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        </Tabs>
 
+        {/* ===== DIALOGS ===== */}
+
+        {/* Assign Sub-Editor to paper dialog */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -1177,6 +1561,7 @@ export default function ChiefEditor() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
         <Dialog open={openReviewerDialog} onOpenChange={setOpenReviewerDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -1276,6 +1661,114 @@ export default function ChiefEditor() {
             <DialogFooter className="sm:justify-between">
               <div className="text-xs text-muted-foreground">{reviewers.length} available reviewers</div>
               <Button variant="ghost" onClick={() => setOpenReviewerDialog(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Team tab: Create Associate Editor dialog (no paper required) */}
+        <Dialog open={openCreateSE} onOpenChange={setOpenCreateSE}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Add New Associate Editor
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Full Name"
+                value={newTeamSE.name}
+                onChange={(e) => setNewTeamSE((p) => ({ ...p, name: e.target.value }))}
+              />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={newTeamSE.email}
+                onChange={(e) => setNewTeamSE((p) => ({ ...p, email: e.target.value }))}
+              />
+              <div className="relative">
+                <Input
+                  type={showTeamSEPw ? "text" : "password"}
+                  placeholder="Temporary password (min. 6 chars)"
+                  value={newTeamSE.password}
+                  onChange={(e) => setNewTeamSE((p) => ({ ...p, password: e.target.value }))}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTeamSEPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showTeamSEPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setOpenCreateSE(false); setNewTeamSE({ name: "", email: "", password: "" }); }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={createTeamSubEditor}
+                disabled={creatingTeamSE || !newTeamSE.name || !newTeamSE.email || !newTeamSE.password}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {creatingTeamSE ? "Creating..." : "Create Associate Editor"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Team tab: Create Reviewer dialog (no paper required) */}
+        <Dialog open={openCreateRev} onOpenChange={setOpenCreateRev}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Add New Reviewer
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Full Name"
+                value={newTeamRev.name}
+                onChange={(e) => setNewTeamRev((p) => ({ ...p, name: e.target.value }))}
+              />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={newTeamRev.email}
+                onChange={(e) => setNewTeamRev((p) => ({ ...p, email: e.target.value }))}
+              />
+              <div className="relative">
+                <Input
+                  type={showTeamRevPw ? "text" : "password"}
+                  placeholder="Temporary password (min. 6 chars)"
+                  value={newTeamRev.password}
+                  onChange={(e) => setNewTeamRev((p) => ({ ...p, password: e.target.value }))}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTeamRevPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showTeamRevPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setOpenCreateRev(false); setNewTeamRev({ name: "", email: "", password: "" }); }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={createTeamReviewer}
+                disabled={creatingTeamRev || !newTeamRev.name || !newTeamRev.email || !newTeamRev.password}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {creatingTeamRev ? "Creating..." : "Create Reviewer"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

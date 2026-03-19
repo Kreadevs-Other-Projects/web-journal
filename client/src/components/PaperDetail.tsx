@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { url } from "@/url";
 import Navbar from "./navbar";
+import DOMPurify from "dompurify";
 import { PageTransition } from "@/components/AnimationWrappers";
 
 // ---- Types ----
@@ -384,7 +385,14 @@ export default function JournalDetail() {
                 <h2 className="text-xl font-semibold text-foreground">Open Access Policy</h2>
               </div>
               {journal.oa_policy ? (
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.oa_policy}</p>
+                journal.oa_policy.trim().startsWith("<") ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.oa_policy) }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.oa_policy}</p>
+                )
               ) : (
                 <p className="text-muted-foreground italic">No OA policy published yet.</p>
               )}
@@ -399,7 +407,14 @@ export default function JournalDetail() {
                 <h2 className="text-xl font-semibold text-foreground">Peer Review Policy</h2>
               </div>
               {journal.peer_review_policy ? (
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.peer_review_policy}</p>
+                journal.peer_review_policy.trim().startsWith("<") ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.peer_review_policy) }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.peer_review_policy}</p>
+                )
               ) : (
                 <p className="text-muted-foreground italic">No peer review policy published yet.</p>
               )}
@@ -421,7 +436,14 @@ export default function JournalDetail() {
                 </Button>
               </div>
               {journal.author_guidelines ? (
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.author_guidelines}</p>
+                journal.author_guidelines.trim().startsWith("<") ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.author_guidelines) }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.author_guidelines}</p>
+                )
               ) : (
                 <p className="text-muted-foreground italic">No author guidelines published yet.</p>
               )}

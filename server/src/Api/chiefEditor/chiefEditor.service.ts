@@ -156,5 +156,13 @@ export const updateIssueStatusService = async (
     throw new Error("Issue not found");
   }
 
-  return await repo.updateIssueStatusRepo(issueId, status);
+  try {
+    return await repo.updateIssueStatusRepo(issueId, status);
+  } catch (err: any) {
+    // Unique constraint: one_open_issue_per_journal
+    if (err.code === "23505" || err.message?.includes("one_open_issue_per_journal")) {
+      throw new Error("Another issue is already open. Close it first before opening a new one.");
+    }
+    throw err;
+  }
 };

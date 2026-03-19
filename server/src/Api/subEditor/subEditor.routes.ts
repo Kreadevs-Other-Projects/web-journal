@@ -6,6 +6,9 @@ import {
   fetchReviewer,
   assignReviewer,
   reviewerInvite,
+  suggestReviewer,
+  getPendingReviewerRequests,
+  reviewReviewerRequest,
 } from "./subEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -58,6 +61,28 @@ router.post(
   authMiddleware,
   authorize("sub_editor"),
   reviewerInvite,
+);
+
+// Reviewer requests (sub_editor → chief_editor approval)
+router.post(
+  "/suggestReviewer/:paperId",
+  authMiddleware,
+  authorize("sub_editor"),
+  suggestReviewer,
+);
+
+router.get(
+  "/pending-reviewer-requests",
+  authMiddleware,
+  authorize("chief_editor"),
+  getPendingReviewerRequests,
+);
+
+router.put(
+  "/reviewer-requests/:requestId/review",
+  authMiddleware,
+  authorize("chief_editor"),
+  reviewReviewerRequest,
 );
 
 export default router;

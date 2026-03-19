@@ -116,6 +116,16 @@ export default function SubEditorDashboard() {
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
     useState(false);
   const [openPaperStats, setOpenPaperStats] = useState(false);
+  const [openSuggestReviewer, setOpenSuggestReviewer] = useState(false);
+  const [suggestForm, setSuggestForm] = useState({
+    suggested_name: "",
+    suggested_email: "",
+    keywordInput: "",
+    keywords: [] as string[],
+    degreeInput: "",
+    degrees: [] as string[],
+  });
+  const [suggestLoading, setSuggestLoading] = useState(false);
 
   const [stats, setStats] = useState({
     total: 0,
@@ -363,6 +373,36 @@ export default function SubEditorDashboard() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setCreatingReviewer(false);
+    }
+  };
+
+  const suggestReviewer = async () => {
+    if (!selectedPaper) return;
+    if (!suggestForm.suggested_name || !suggestForm.suggested_email) {
+      toast({ title: "Missing fields", description: "Name and email are required.", variant: "destructive" });
+      return;
+    }
+    try {
+      setSuggestLoading(true);
+      const res = await fetch(`${url}/subEditor/suggestReviewer/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          suggested_name: suggestForm.suggested_name,
+          suggested_email: suggestForm.suggested_email,
+          keywords: suggestForm.keywords,
+          degrees: suggestForm.degrees,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to suggest reviewer");
+      toast({ title: "Suggestion Sent", description: "Your reviewer suggestion has been sent to the Chief Editor for approval." });
+      setSuggestForm({ suggested_name: "", suggested_email: "", keywordInput: "", keywords: [], degreeInput: "", degrees: [] });
+      setOpenSuggestReviewer(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSuggestLoading(false);
     }
   };
 
@@ -694,6 +734,15 @@ export default function SubEditorDashboard() {
                     >
                       <Users className="h-4 w-4 mr-2" />
                       Assign New Reviewer
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start hover:bg-white/10"
+                      onClick={() => setOpenSuggestReviewer(true)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Suggest Reviewer (CE Approval)
                     </Button>
 
                     <Button
@@ -1153,6 +1202,101 @@ export default function SubEditorDashboard() {
             >
               <UserCheck className="h-4 w-4 mr-2" />
               {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openSuggestReviewer} onOpenChange={setOpenSuggestReviewer}>
+        <DialogContent className="sm:max-w-md bg-gray-900 border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <MessageSquare className="h-5 w-5" />
+              Suggest Reviewer
+            </DialogTitle>
+            <DialogDescription>
+              Suggest a reviewer for Chief Editor approval. They will be notified and can approve or reject.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-white">Full Name <span className="text-red-400">*</span></Label>
+              <Input
+                placeholder="Dr. Jane Smith"
+                value={suggestForm.suggested_name}
+                onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_name: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-white">Email <span className="text-red-400">*</span></Label>
+              <Input
+                type="email"
+                placeholder="reviewer@university.edu"
+                value={suggestForm.suggested_email}
+                onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_email: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-white">Keywords (press Enter to add)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. machine learning"
+                  value={suggestForm.keywordInput}
+                  onChange={(e) => setSuggestForm((p) => ({ ...p, keywordInput: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && suggestForm.keywordInput.trim()) {
+                      e.preventDefault();
+                      setSuggestForm((p) => ({ ...p, keywords: [...p.keywords, p.keywordInput.trim()], keywordInput: "" }));
+                    }
+                  }}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                />
+              </div>
+              {suggestForm.keywords.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {suggestForm.keywords.map((kw, i) => (
+                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => setSuggestForm((p) => ({ ...p, keywords: p.keywords.filter((_, idx) => idx !== i) }))}>
+                      {kw} ×
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-white">Degrees (press Enter to add)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. PhD Computer Science"
+                  value={suggestForm.degreeInput}
+                  onChange={(e) => setSuggestForm((p) => ({ ...p, degreeInput: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && suggestForm.degreeInput.trim()) {
+                      e.preventDefault();
+                      setSuggestForm((p) => ({ ...p, degrees: [...p.degrees, p.degreeInput.trim()], degreeInput: "" }));
+                    }
+                  }}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                />
+              </div>
+              {suggestForm.degrees.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {suggestForm.degrees.map((deg, i) => (
+                    <Badge key={i} variant="outline" className="cursor-pointer" onClick={() => setSuggestForm((p) => ({ ...p, degrees: p.degrees.filter((_, idx) => idx !== i) }))}>
+                      {deg} ×
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+              onClick={suggestReviewer}
+              disabled={suggestLoading || !suggestForm.suggested_name || !suggestForm.suggested_email}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {suggestLoading ? "Sending..." : "Send Suggestion to Chief Editor"}
             </Button>
           </div>
         </DialogContent>

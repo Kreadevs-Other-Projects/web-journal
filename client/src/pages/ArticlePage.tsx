@@ -7,9 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Download, Share2, Calendar, BookOpen, Tag, Hash } from "lucide-react";
+import { Download, Share2, Calendar, BookOpen, Tag, Hash, ChevronDown, ChevronUp } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+
+interface AuthorDetail {
+  name: string;
+  affiliation?: string;
+  email?: string;
+  orcid?: string;
+}
 
 interface ArticleData {
   id: string;
@@ -17,6 +24,7 @@ interface ArticleData {
   abstract: string;
   keywords: string[];
   author_names: string[];
+  author_details?: AuthorDetail[];
   corresponding_authors?: string[];
   paper_references?: { text: string; link?: string }[];
   submitted_at: string;
@@ -37,6 +45,13 @@ interface ArticleData {
   pdf_url?: string;
   xml_url?: string;
   status: string;
+  // Additional information fields
+  article_type?: string;
+  conflict_of_interest?: string;
+  funding_info?: string;
+  data_availability?: string;
+  ethical_approval?: string;
+  author_contributions?: string;
 }
 
 function formatDate(d?: string) {
@@ -55,6 +70,7 @@ export default function ArticlePage() {
   const [loading, setLoading] = useState(true);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [htmlLoading, setHtmlLoading] = useState(false);
+  const [showArticleInfo, setShowArticleInfo] = useState(false);
 
   useEffect(() => {
     fetch(`${url}/browse/paper/${paperId}`)
@@ -115,9 +131,16 @@ export default function ArticlePage() {
     );
   }
 
-  const authors = article.author_names?.length
-    ? article.author_names.join(", ")
-    : article.author_username || "Unknown";
+  // Build author display string with affiliations if structured data available
+  const authorsDisplay = (() => {
+    if (article.author_details && article.author_details.length > 0) {
+      return article.author_details
+        .map((a) => (a.affiliation ? `${a.name} (${a.affiliation})` : a.name))
+        .join(", ");
+    }
+    if (article.author_names?.length) return article.author_names.join(", ");
+    return article.author_username || "Unknown";
+  })();
 
   const volumeIssue = article.issue_label
     || (article.volume && article.issue
@@ -125,6 +148,16 @@ export default function ArticlePage() {
       : null);
 
   const publishedDate = article.publication_date || article.published_at;
+
+  // Collect non-empty additional info fields
+  const additionalInfoFields: { label: string; value: string }[] = [
+    article.article_type ? { label: "Article Type", value: article.article_type } : null,
+    article.conflict_of_interest ? { label: "Conflict of Interest", value: article.conflict_of_interest } : null,
+    article.funding_info ? { label: "Funding Information", value: article.funding_info } : null,
+    article.data_availability ? { label: "Data Availability", value: article.data_availability } : null,
+    article.ethical_approval ? { label: "Ethical Approval", value: article.ethical_approval } : null,
+    article.author_contributions ? { label: "Author Contributions", value: article.author_contributions } : null,
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,7 +182,9 @@ export default function ArticlePage() {
                 {volumeIssue && (
                   <span className="text-sm text-muted-foreground">· {volumeIssue}</span>
                 )}
-                <Badge variant="secondary" className="text-xs">Research Article</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {article.article_type || "Research Article"}
+                </Badge>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
@@ -157,7 +192,7 @@ export default function ArticlePage() {
               </h1>
 
               <div className="text-base text-muted-foreground">
-                <span className="font-medium text-foreground">{authors}</span>
+                <span className="font-medium text-foreground">{authorsDisplay}</span>
               </div>
 
               {article.corresponding_authors?.length ? (
@@ -343,6 +378,37 @@ export default function ArticlePage() {
                       </li>
                     ))}
                   </ol>
+                </section>
+              </>
+            )}
+
+            {/* ARTICLE INFORMATION (collapsible) */}
+            {additionalInfoFields.length > 0 && (
+              <>
+                <Separator />
+                <section>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between py-2 text-xl font-semibold text-foreground hover:text-primary transition-colors"
+                    onClick={() => setShowArticleInfo((v) => !v)}
+                  >
+                    <span>Article Information</span>
+                    {showArticleInfo ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {showArticleInfo && (
+                    <div className="mt-4 space-y-4">
+                      {additionalInfoFields.map((field) => (
+                        <div key={field.label}>
+                          <h3 className="text-sm font-semibold text-foreground mb-1">{field.label}</h3>
+                          <p className="text-sm text-muted-foreground whitespace-pre-line">{field.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               </>
             )}

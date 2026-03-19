@@ -4,47 +4,51 @@ export const createPaper = async (data: {
   title: string;
   abstract?: string;
   category?: string;
+  article_type?: string;
   keywords: string[];
   journal_id: string;
   author_id: string;
   issue_id?: string;
   author_names: string[];
   corresponding_authors?: string[];
+  author_details?: object[];
+  corresponding_author_details?: object[];
   paper_references?: { text: string; link?: string }[];
   manuscript_url?: string;
+  conflict_of_interest?: string;
+  funding_info?: string;
+  data_availability?: string;
+  ethical_approval?: string;
+  author_contributions?: string;
 }) => {
-  const {
-    title,
-    abstract,
-    category,
-    keywords,
-    journal_id,
-    author_id,
-    issue_id,
-    author_names,
-    corresponding_authors,
-    paper_references,
-    manuscript_url,
-  } = data;
-
   const result = await pool.query(
     `INSERT INTO papers
-      (title, abstract, category, keywords, journal_id, author_id, issue_id,
-       author_names, corresponding_authors, paper_references, manuscript_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      (title, abstract, category, article_type, keywords, journal_id, author_id, issue_id,
+       author_names, corresponding_authors, author_details, corresponding_author_details,
+       paper_references, manuscript_url, conflict_of_interest, funding_info,
+       data_availability, ethical_approval, author_contributions)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
      RETURNING *`,
     [
-      title,
-      abstract || "",
-      category || null,
-      keywords,
-      journal_id,
-      author_id,
-      issue_id || null,
-      author_names,
-      corresponding_authors || [],
-      JSON.stringify(paper_references || []),
-      manuscript_url || null,
+      data.title,
+      data.abstract || "",
+      data.category || null,
+      data.article_type || null,
+      data.keywords,
+      data.journal_id,
+      data.author_id,
+      data.issue_id || null,
+      data.author_names,
+      data.corresponding_authors || [],
+      JSON.stringify(data.author_details || []),
+      JSON.stringify(data.corresponding_author_details || []),
+      JSON.stringify(data.paper_references || []),
+      data.manuscript_url || null,
+      data.conflict_of_interest || null,
+      data.funding_info || null,
+      data.data_availability || null,
+      data.ethical_approval || null,
+      data.author_contributions || null,
     ],
   );
 
@@ -177,38 +181,35 @@ export const assignPaperToIssue = async (
 export const getPaperTracking = async (paperId: string, authorId: string) => {
   const paperRes = await pool.query(
     `SELECT p.id, p.title, p.status, p.submitted_at, p.accepted_at, p.published_at,
-            j.title as journal_title
+            p.updated_at, p.abstract, p.category, p.article_type, p.keywords,
+            p.author_names, p.corresponding_authors, p.author_details, p.corresponding_author_details,
+            j.title as journal_title,
+            ji.label as issue_label, ji.volume as issue_volume,
+            ji.issue as issue_number, ji.year as issue_year
      FROM papers p
      JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
      WHERE p.id = $1 AND p.author_id = $2`,
     [paperId, authorId],
   );
   if (!paperRes.rows.length) return null;
 
+  // Status log — omit internal editor identity for blind review
   const logRes = await pool.query(
-    `SELECT psl.status, psl.changed_at, psl.note,
-            u.username as changed_by_name, u.role as changed_by_role
+    `SELECT psl.status, psl.changed_at
      FROM paper_status_log psl
-     LEFT JOIN users u ON u.id = psl.changed_by
      WHERE psl.paper_id = $1
      ORDER BY psl.changed_at ASC`,
     [paperId],
   );
 
-  const assignRes = await pool.query(
-    `SELECT ea.assigned_at, u.username as sub_editor_name
-     FROM editor_assignments ea
-     JOIN users u ON u.id = ea.sub_editor_id
-     WHERE ea.paper_id = $1
-     ORDER BY ea.assigned_at DESC LIMIT 1`,
-    [paperId],
-  );
-
+  // Reviews — anonymised (no reviewer name/email)
   const reviewRes = await pool.query(
     `SELECT r.decision, r.comments, ra.submitted_at
      FROM reviews r
      JOIN review_assignments ra ON ra.id = r.review_assignment_id
-     WHERE ra.paper_id = $1 AND ra.status = 'submitted'`,
+     WHERE ra.paper_id = $1 AND ra.status = 'submitted'
+     ORDER BY ra.submitted_at ASC`,
     [paperId],
   );
 
@@ -229,7 +230,6 @@ export const getPaperTracking = async (paperId: string, authorId: string) => {
   return {
     paper: paperRes.rows[0],
     status_log: logRes.rows,
-    current_assignment: assignRes.rows[0] || null,
     reviews: reviewRes.rows,
     publication: pubRes.rows[0] || null,
     latest_version_number: versionRes.rows[0]?.version_number || 1,

@@ -6,6 +6,11 @@ import {
   getJournalIssues,
   updateJournalIssue,
   deleteJournalIssue,
+  requestNewIssue,
+  getMyIssues,
+  getMyIssueRequests,
+  getPendingIssueRequests,
+  reviewIssueRequest,
 } from "./journalIssue.controller";
 import {
   createJournalIssueSchema,
@@ -43,6 +48,42 @@ router.delete(
   authMiddleware,
   authorize("owner", "publisher", "journal_manager"),
   deleteJournalIssue,
+);
+
+// Issue requests (Journal Manager ↔ Publisher)
+router.get(
+  "/my-issues",
+  authMiddleware,
+  authorize("journal_manager"),
+  getMyIssues,
+);
+
+router.post(
+  "/request",
+  authMiddleware,
+  authorize("journal_manager"),
+  requestNewIssue,
+);
+
+router.get(
+  "/:journalId/requests",
+  authMiddleware,
+  authorize("journal_manager"),
+  getMyIssueRequests,
+);
+
+router.get(
+  "/pending-requests",
+  authMiddleware,
+  authorize("publisher", "owner"),
+  getPendingIssueRequests,
+);
+
+router.put(
+  "/requests/:requestId/review",
+  authMiddleware,
+  authorize("publisher", "owner"),
+  reviewIssueRequest,
 );
 
 export default router;

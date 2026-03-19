@@ -23,6 +23,9 @@ import {
   AlertCircle,
   Plus,
   Layers,
+  Bell,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface User {
   id: string;
@@ -120,6 +124,10 @@ export default function PublisherDashboard() {
   const [selectedIssue, setSelectedIssue] = useState<JournalIssue | null>(null);
   const [loading, setLoading] = useState(true);
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [pendingRequestsOpen, setPendingRequestsOpen] = useState(false);
+  const [issueRequests, setIssueRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
   const [issueForm, setIssueForm] = useState({
     label: "",
     volume: "",
@@ -222,6 +230,42 @@ export default function PublisherDashboard() {
       toast({ variant: "destructive", title: "Error", description: err.message });
     } finally {
       setCreatingIssue(false);
+    }
+  };
+
+  const fetchPendingIssueRequests = async () => {
+    try {
+      setRequestsLoading(true);
+      const res = await fetch(`${url}/journal-issue/pending-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setIssueRequests(data.requests || []);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to fetch requests" });
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const reviewIssueRequest = async (requestId: string, status: "approved" | "rejected") => {
+    try {
+      setReviewingRequest(requestId);
+      const res = await fetch(`${url}/journal-issue/requests/${requestId}/review`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: status === "approved" ? "Request Approved" : "Request Rejected", description: data.message || "Done." });
+      setIssueRequests((prev) => prev.filter((r) => r.id !== requestId));
+      if (status === "approved") fetchJournals();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setReviewingRequest(null);
     }
   };
 
@@ -348,6 +392,14 @@ export default function PublisherDashboard() {
             </div>
             <Button onClick={fetchJournals} variant="outline" size="sm">
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 relative"
+              onClick={() => { fetchPendingIssueRequests(); setPendingRequestsOpen(true); }}
+            >
+              <Bell className="h-4 w-4" /> Issue Requests
             </Button>
             <Button
               onClick={() => navigate("/publisher/create-journal")}
@@ -782,6 +834,72 @@ export default function PublisherDashboard() {
         </DialogContent>
       </Dialog>
       </div>
+
+      <Dialog open={pendingRequestsOpen} onOpenChange={setPendingRequestsOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Pending Issue Requests
+            </DialogTitle>
+            <DialogDescription>
+              Review and approve or reject new issue requests from journal managers.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-2">
+            {requestsLoading ? (
+              <div className="py-8 text-center text-gray-400">Loading...</div>
+            ) : issueRequests.length === 0 ? (
+              <div className="py-8 text-center text-gray-400">
+                <Bell className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p>No pending issue requests.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {issueRequests.map((req) => (
+                  <Card key={req.id} className="glass-card">
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white truncate">{req.label}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {req.journal_title || "Journal"} • Vol {req.volume || "—"}, Issue {req.issue_no || "—"}, {req.year || "—"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Requested by: {req.requested_by_name || req.requested_by_email || "Journal Manager"}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {new Date(req.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 h-8 px-2"
+                            disabled={reviewingRequest === req.id}
+                            onClick={() => reviewIssueRequest(req.id, "approved")}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 px-2"
+                            disabled={reviewingRequest === req.id}
+                            onClick={() => reviewIssueRequest(req.id, "rejected")}
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

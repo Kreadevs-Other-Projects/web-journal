@@ -76,3 +76,36 @@ export const reviewerInvite = async (req: Request, res: Response) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+export const suggestReviewer = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const result = await service.suggestReviewerService(req.user!.id, paperId, req.body);
+    res.status(201).json({ success: true, request: result });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getPendingReviewerRequests = async (req: AuthUser, res: Response) => {
+  try {
+    const requests = await service.getPendingReviewerRequestsService(req.user!.id);
+    res.json({ success: true, requests });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const reviewReviewerRequest = async (req: AuthUser, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const { action } = req.body;
+    if (!["approved", "rejected"].includes(action)) {
+      return res.status(400).json({ success: false, message: "Invalid action" });
+    }
+    const result = await service.reviewReviewerRequestService(req.user!, requestId, action);
+    res.json({ success: true, request: result });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};

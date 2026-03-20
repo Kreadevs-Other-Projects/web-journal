@@ -331,3 +331,40 @@ export const getPaperByIdRepo = async (paperId: string) => {
   ]);
   return result.rows[0];
 };
+
+export const getJournalDetailsRepo = async (journalId: string, chiefEditorId: string) => {
+  const journalRes = await pool.query(
+    `SELECT * FROM journals WHERE id = $1 AND chief_editor_id = $2`,
+    [journalId, chiefEditorId],
+  );
+  if (!journalRes.rows.length) return null;
+
+  const issuesRes = await pool.query(
+    `SELECT
+      ji.*,
+      COUNT(p.id)::int AS paper_count
+    FROM journal_issues ji
+    LEFT JOIN papers p ON p.issue_id = ji.id
+    WHERE ji.journal_id = $1
+    GROUP BY ji.id
+    ORDER BY ji.created_at DESC`,
+    [journalId],
+  );
+
+  const unassignedRes = await pool.query(
+    `SELECT
+      p.id, p.title, p.status, p.submitted_at, p.updated_at,
+      u.username AS author_name
+    FROM papers p
+    LEFT JOIN users u ON u.id = p.author_id
+    WHERE p.journal_id = $1 AND p.issue_id IS NULL
+    ORDER BY p.submitted_at DESC`,
+    [journalId],
+  );
+
+  return {
+    journal: journalRes.rows[0],
+    issues: issuesRes.rows,
+    unassigned_papers: unassignedRes.rows,
+  };
+};

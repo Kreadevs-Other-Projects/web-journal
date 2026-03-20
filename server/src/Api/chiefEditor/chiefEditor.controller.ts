@@ -173,6 +173,16 @@ export const assignPaperToIssue = async (req: Request, res: Response) => {
   }
 };
 
+export const getJournalDetails = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const data = await service.getJournalDetailsService(journalId, req.user!.id);
+    res.json({ success: true, data });
+  } catch (e: any) {
+    res.status(404).json({ success: false, message: e.message });
+  }
+};
+
 export const updateIssueStatus = async (req: Request, res: Response) => {
   try {
     const { issueId } = req.params;

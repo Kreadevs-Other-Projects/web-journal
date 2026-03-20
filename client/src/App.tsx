@@ -24,6 +24,10 @@ import NotFound from "./pages/NotFound";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
 import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
+import CEJournals from "./pages/chiefEditor/CEJournals.tsx";
+import CEJournalDetail from "./pages/chiefEditor/CEJournalDetail.tsx";
+import CEPapers from "./pages/chiefEditor/CEPapers.tsx";
+import CETeam from "./pages/chiefEditor/CETeam.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
@@ -124,6 +128,22 @@ const App = () => (
                     <Route
                       path="/chief-editor/accepted"
                       element={<ReviewedPapers />}
+                    />
+                    <Route
+                      path="/chief-editor/journals"
+                      element={<CEJournals />}
+                    />
+                    <Route
+                      path="/chief-editor/journals/:journalId"
+                      element={<CEJournalDetail />}
+                    />
+                    <Route
+                      path="/chief-editor/papers"
+                      element={<CEPapers />}
+                    />
+                    <Route
+                      path="/chief-editor/team"
+                      element={<CETeam />}
                     />
                   </Route>
                   <Route

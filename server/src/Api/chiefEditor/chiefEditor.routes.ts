@@ -14,6 +14,7 @@ import {
   getPapersByIssue,
   assignPaperToIssue,
   updateIssueStatus,
+  getJournalDetails,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -103,6 +104,13 @@ router.post(
   authMiddleware,
   authorize("chief_editor"),
   SubEditorInvite,
+);
+
+router.get(
+  "/journals/:journalId/details",
+  authMiddleware,
+  authorize("chief_editor"),
+  getJournalDetails,
 );
 
 router.get("/getPapersByIssue/:issueId", getPapersByIssue);

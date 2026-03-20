@@ -150,6 +150,12 @@ export const assignPaperToIssueService = async (
   return await repo.assignPaperToIssueRepo(paperId, issueId);
 };
 
+export const getJournalDetailsService = async (journalId: string, chiefEditorId: string) => {
+  const data = await repo.getJournalDetailsRepo(journalId, chiefEditorId);
+  if (!data) throw new Error("Journal not found or access denied");
+  return data;
+};
+
 export const updateIssueStatusService = async (
   issueId: string,
   status: "open" | "closed",

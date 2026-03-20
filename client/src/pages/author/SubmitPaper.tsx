@@ -33,6 +33,7 @@ import { UserRole } from "@/lib/roles";
 interface Journal {
   id: string;
   title: string;
+  available_slots?: number | null;
 }
 
 interface Reference {
@@ -441,6 +442,11 @@ export default function SubmitPaper() {
                       journals.map((j) => (
                         <SelectItem key={j.id} value={j.id}>
                           {j.title}
+                          {j.available_slots != null && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              ({j.available_slots} slot{j.available_slots !== 1 ? "s" : ""} left)
+                            </span>
+                          )}
                         </SelectItem>
                       ))
                     )}

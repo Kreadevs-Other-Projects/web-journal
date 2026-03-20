@@ -14,6 +14,33 @@ import {
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
+
+const MAX_PAPERS_PER_ISSUE = 99;
+
+const autoAssignToIssue = async (paperId: string, journalId: string): Promise<void> => {
+  // Find first open issue with < 99 papers
+  const issueRes = await pool.query(
+    `SELECT ji.id, COUNT(p.id)::int AS paper_count
+     FROM journal_issues ji
+     LEFT JOIN papers p ON p.issue_id = ji.id
+     WHERE ji.journal_id = $1 AND ji.status = 'open'
+     GROUP BY ji.id
+     HAVING COUNT(p.id) < $2
+     ORDER BY ji.created_at ASC
+     LIMIT 1`,
+    [journalId, MAX_PAPERS_PER_ISSUE],
+  );
+
+  if (!issueRes.rows.length) return; // no open issue with space — leave unassigned
+
+  const issue = issueRes.rows[0];
+  await pool.query(`UPDATE papers SET issue_id = $1, updated_at = NOW() WHERE id = $2`, [issue.id, paperId]);
+
+  const newCount = issue.paper_count + 1;
+  if (newCount >= MAX_PAPERS_PER_ISSUE) {
+    await pool.query(`UPDATE journal_issues SET status = 'closed', updated_at = NOW() WHERE id = $1`, [issue.id]);
+  }
+};
 export const createPaperService = async (
   data: any,
   authorEmail?: string,
@@ -43,6 +70,11 @@ export const createPaperService = async (
         // non-fatal — paper is still saved, just no inline view
       }
     }
+  }
+
+  // Auto-assign to first open issue with available slots
+  if (data.journal_id) {
+    await autoAssignToIssue(paper.id, data.journal_id).catch(() => {});
   }
 
   await insertStatusLog({
@@ -133,13 +165,112 @@ export const updatePaperStatusService = async (
   return updatePaperStatus(paper_id, status);
 };
 
-export const extractMetadataService = async (filePath: string): Promise<{
+const parseMetadataFromText = (lines: string[]): {
+  title: string;
+  abstract: string;
+  keywords: string[];
+  authors: string[];
+  references: string[];
+} => {
+  const nonEmpty = lines.map(l => l.trim()).filter(l => l.length > 1);
+
+  // Title: first non-empty line that looks like a title (no trailing period, < 200 chars, not all-caps institution)
+  let title = "";
+  for (const line of nonEmpty.slice(0, 20)) {
+    if (line.length < 5 || line.length > 200) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+    if (/^\d{4}$/.test(line.trim())) continue; // bare year
+    title = line;
+    break;
+  }
+
+  // Abstract
+  let abstract = "";
+  const absIdx = nonEmpty.findIndex(l => /^abstract\s*[:\-–]?/i.test(l));
+  if (absIdx >= 0) {
+    const inline = nonEmpty[absIdx].replace(/^abstract\s*[:\-–]?\s*/i, "").trim();
+    if (inline.length > 20) {
+      abstract = inline;
+    } else {
+      const chunks: string[] = [];
+      for (let i = absIdx + 1; i < nonEmpty.length; i++) {
+        if (/^(introduction|keywords?|key\s+words?|index\s+terms?|1\.?\s)/i.test(nonEmpty[i])) break;
+        chunks.push(nonEmpty[i]);
+        if (chunks.join(" ").length > 800) break;
+      }
+      abstract = chunks.join(" ");
+    }
+  }
+
+  // Keywords
+  let keywords: string[] = [];
+  const kwIdx = nonEmpty.findIndex(l => /^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?/i.test(l));
+  if (kwIdx >= 0) {
+    const inline = nonEmpty[kwIdx].replace(/^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?\s*/i, "").trim();
+    const src = inline.length > 3 ? inline : (nonEmpty[kwIdx + 1] || "");
+    keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+  }
+
+  // Authors: lines between title and abstract containing @ or short enough to be names
+  let authors: string[] = [];
+  const titleLineIdx = nonEmpty.findIndex(l => l === title);
+  const absSearchIdx = absIdx >= 0 ? absIdx : nonEmpty.findIndex(l => /^abstract\b/i.test(l));
+  if (titleLineIdx >= 0 && absSearchIdx > titleLineIdx + 1) {
+    const between = nonEmpty.slice(titleLineIdx + 1, absSearchIdx);
+    // prefer lines with @ (author + email) or short name-like lines
+    const candidates = between.filter(l =>
+      (l.includes("@") || (l.length > 2 && l.length < 100 && !/^\d/.test(l) && !/^(abstract|introduction|keywords?)/i.test(l)))
+    );
+    authors = candidates
+      .map(l => l.replace(/\s*\d+\s*$/, "").replace(/\s*[,;]\s*$/, "").trim())
+      .filter(l => l.length > 1)
+      .slice(0, 5);
+  }
+
+  // References: section near end starting with "References" or "Bibliography"
+  let references: string[] = [];
+  const refIdx = nonEmpty.findIndex(l => /^(references?|bibliography)\s*$/i.test(l));
+  if (refIdx >= 0) {
+    const refLines = nonEmpty.slice(refIdx + 1);
+    const entries: string[] = [];
+    let current = "";
+    for (const l of refLines) {
+      if (/^(\[\d+\]|\d+[\.\)])\s/.test(l)) {
+        if (current) entries.push(current.trim());
+        current = l;
+      } else if (current) {
+        current += " " + l;
+      }
+      if (entries.length >= 5) break;
+    }
+    if (current && entries.length < 5) entries.push(current.trim());
+    references = entries.slice(0, 5);
+    // fallback: just take first 5 non-empty lines after heading
+    if (references.length === 0) {
+      references = refLines.filter(l => l.length > 10).slice(0, 5);
+    }
+  }
+
+  return { title, abstract, keywords, authors, references };
+};
+
+export const extractMetadataService = async (filePath: string, ext: string): Promise<{
   title: string;
   abstract: string;
   keywords: string[];
   authors: string[];
   references: string[];
 }> => {
+  if (ext === "pdf") {
+    const pdfParse = (await import("pdf-parse")).default;
+    const fs = (await import("fs")).default;
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(dataBuffer);
+    const lines = pdfData.text.split(/\r?\n/);
+    return parseMetadataFromText(lines);
+  }
+
+  // .docx path (existing logic)
   const mammoth = (await import("mammoth")).default;
   const result = await mammoth.convertToHtml({ path: filePath });
   const html = result.value;

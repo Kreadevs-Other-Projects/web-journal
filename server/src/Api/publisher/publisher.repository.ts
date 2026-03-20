@@ -54,7 +54,7 @@ export const getPublisherJournals = async (publisherId: string) => {
       -- journal issues array
       COALESCE(
         json_agg(
-          DISTINCT jsonb_build_object(
+          jsonb_build_object(
             'id', ji.id,
             'year', ji.year,
             'volume', ji.volume,
@@ -62,8 +62,9 @@ export const getPublisherJournals = async (publisherId: string) => {
             'label', ji.label,
             'issueStatus', ji.status,
             'published_at', ji.published_at,
-            'updated_at', ji.updated_at
-          )
+            'updated_at', ji.updated_at,
+            'paper_count', COALESCE(ipc.cnt, 0)
+          ) ORDER BY ji.created_at DESC
         ) FILTER (WHERE ji.id IS NOT NULL),
         '[]'
       ) AS issues
@@ -72,6 +73,9 @@ export const getPublisherJournals = async (publisherId: string) => {
     JOIN users ce ON ce.id = j.chief_editor_id
     JOIN users o ON o.id = j.owner_id
     LEFT JOIN journal_issues ji ON ji.journal_id = j.id
+    LEFT JOIN (
+      SELECT issue_id, COUNT(*)::int AS cnt FROM papers GROUP BY issue_id
+    ) ipc ON ipc.issue_id = ji.id
 
     WHERE j.owner_id = $1
 

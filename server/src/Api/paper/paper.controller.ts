@@ -124,13 +124,13 @@ export const extractMetadata = async (req: AuthUser, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "No file uploaded" });
   }
-  const ext = req.file.originalname.split(".").pop()?.toLowerCase();
-  if (ext !== "docx") {
+  const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
+  if (!["docx", "pdf"].includes(ext)) {
     fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ success: false, message: "Only .docx files support metadata extraction" });
+    return res.status(400).json({ success: false, message: "Only .docx and .pdf files support metadata extraction" });
   }
   try {
-    const metadata = await extractMetadataService(req.file.path);
+    const metadata = await extractMetadataService(req.file.path, ext);
     fs.unlink(req.file.path, () => {});
     res.json({ success: true, ...metadata });
   } catch {

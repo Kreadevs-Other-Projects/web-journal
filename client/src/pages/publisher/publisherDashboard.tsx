@@ -62,6 +62,7 @@ interface JournalIssue {
   created_at: string;
   published_at: string;
   updated_at: string | null;
+  paper_count?: number;
 }
 
 interface Journal {
@@ -713,15 +714,23 @@ export default function PublisherDashboard() {
                               {issue.year}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-400">
+                          <div className="text-right min-w-[120px]">
+                            <p className="text-sm text-muted-foreground">
                               {issue.issueStatus}
                             </p>
-                            <p className="text-black">
-                              {new Date(
-                                issue.published_at,
-                              ).toLocaleDateString()}
-                            </p>
+                            {issue.paper_count != null && (
+                              <div className="mt-1">
+                                <p className="text-xs text-muted-foreground mb-0.5">
+                                  {issue.paper_count}/99 papers
+                                </p>
+                                <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-primary transition-all"
+                                    style={{ width: `${Math.min((issue.paper_count / 99) * 100, 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

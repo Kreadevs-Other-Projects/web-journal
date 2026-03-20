@@ -86,13 +86,10 @@ export const roleConfig: Record<
     route: "/chief-editor",
     navigation: [
       { label: "Dashboard", path: "/chief-editor", icon: Home },
-      // {
-      //   label: "Papers",
-      //   path: "/chief-editor/papers",
-      //   icon: FileText,
-      // },
-      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: Users },
-      // { label: "Analytics", path: "/chief-editor/analytics", icon: BarChart3 },
+      { label: "My Journals", path: "/chief-editor/journals", icon: BookOpen },
+      { label: "Papers", path: "/chief-editor/papers", icon: FileText },
+      { label: "Team", path: "/chief-editor/team", icon: Users },
+      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: UserCheck },
     ],
   },
 

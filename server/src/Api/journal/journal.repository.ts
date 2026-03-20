@@ -78,22 +78,36 @@ export const delteJournalById = async (id: string) => {
 
 export const findEditorialBoard = async (journalId: string) => {
   const result = await pool.query(
-    `SELECT
+    `SELECT DISTINCT ON (u.id)
       u.id,
       u.username AS name,
       up.profile_pic_url,
       up.degrees,
       up.keywords,
-      ur.role
-    FROM user_roles ur
-    JOIN users u ON u.id = ur.user_id
+      src.role
+    FROM (
+      -- Source 1: explicitly assigned via user_roles
+      SELECT user_id, role
+      FROM user_roles
+      WHERE journal_id = $1
+        AND is_active = true
+        AND role IN ('chief_editor', 'sub_editor')
+
+      UNION
+
+      -- Source 2: sub editors assigned to papers in this journal via editor_assignments
+      SELECT ea.sub_editor_id AS user_id, 'sub_editor' AS role
+      FROM editor_assignments ea
+      JOIN papers p ON p.id = ea.paper_id
+      WHERE p.journal_id = $1
+    ) src
+    JOIN users u ON u.id = src.user_id
     LEFT JOIN user_profiles up ON up.user_id = u.id
-    WHERE ur.journal_id = $1
-      AND ur.is_active = true
-      AND ur.role IN ('chief_editor', 'sub_editor')
-    ORDER BY (ur.role = 'chief_editor') DESC, u.username ASC`,
+    ORDER BY u.id, (src.role = 'chief_editor') DESC`,
     [journalId],
   );
+
+  console.log("Editorial board sub editors:", result.rows.filter((r) => r.role === "sub_editor"));
 
   const chief_editors = result.rows.filter((r) => r.role === "chief_editor");
   const associate_editors = result.rows.filter((r) => r.role === "sub_editor");

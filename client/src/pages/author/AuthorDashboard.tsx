@@ -5,7 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-import { Plus, FileText, ExternalLink, MapPin, Upload, AlertTriangle, BookOpen, Calendar } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  ExternalLink,
+  MapPin,
+  Upload,
+  AlertTriangle,
+  BookOpen,
+  Calendar,
+} from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -123,7 +132,10 @@ export default function AuthorDashboard() {
                 ) : (
                   <ul className="divide-y">
                     {recentSubmissions.map((paper) => (
-                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1.5">
+                      <li
+                        key={paper.id}
+                        className="px-4 py-3 flex flex-col gap-1.5"
+                      >
                         <span className="font-medium text-sm leading-snug">
                           {paper.title}
                         </span>
@@ -149,13 +161,16 @@ export default function AuthorDashboard() {
                           <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded px-3 py-2 mt-1">
                             <span className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-medium">
                               <AlertTriangle className="h-3.5 w-3.5" />
-                              Revision requested — please upload a revised version
+                              Revision requested — please upload a revised
+                              version
                             </span>
                             <Button
                               size="sm"
                               variant="outline"
                               className="h-7 text-xs border-orange-500/40 text-orange-600 hover:bg-orange-500/10"
-                              onClick={() => navigate(`/author/version?paperId=${paper.id}`)}
+                              onClick={() =>
+                                navigate(`/author/version?paperId=${paper.id}`)
+                              }
                             >
                               <Upload className="h-3 w-3 mr-1" />
                               Upload Revision
@@ -180,7 +195,9 @@ export default function AuthorDashboard() {
             <div className="border rounded-lg flex flex-col">
               <div className="px-4 py-3 border-b">
                 <h2 className="font-semibold">Publisher</h2>
-                <p className="text-xs text-muted-foreground">Published Articles</p>
+                <p className="text-xs text-muted-foreground">
+                  Published Articles
+                </p>
               </div>
               <div className="overflow-y-auto flex-1 max-h-[60vh]">
                 {loading ? (
@@ -195,7 +212,10 @@ export default function AuthorDashboard() {
                 ) : (
                   <ul className="divide-y">
                     {publishedArticles.map((paper) => (
-                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1.5">
+                      <li
+                        key={paper.id}
+                        className="px-4 py-3 flex flex-col gap-1.5"
+                      >
                         <span className="font-medium text-sm leading-snug">
                           {paper.title}
                         </span>
@@ -207,7 +227,8 @@ export default function AuthorDashboard() {
                         )}
                         {(paper.author_names?.length || paper.authors) && (
                           <span className="text-xs text-muted-foreground">
-                            {Array.isArray(paper.author_names) && paper.author_names.length > 0
+                            {Array.isArray(paper.author_names) &&
+                            paper.author_names.length > 0
                               ? paper.author_names.join(", ")
                               : paper.authors}
                           </span>
@@ -218,13 +239,13 @@ export default function AuthorDashboard() {
                             Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
-                        <Link
+                        {/* <Link
                           to={`/articles/${paper.id}`}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
                         >
                           <ExternalLink className="h-3 w-3" />
                           View Published
-                        </Link>
+                        </Link> */}
                       </li>
                     ))}
                   </ul>

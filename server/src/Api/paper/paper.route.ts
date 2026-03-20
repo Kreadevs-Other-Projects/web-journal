@@ -12,6 +12,7 @@ import {
   getPaperTrackingController,
   getMetadataCheck,
 } from "./paper.controller";
+import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import { createPaperSchema, updatePaperSchema } from "./paper.schema";
 import { manuscriptUpload } from "../../middlewares/upload.middleware";
@@ -74,6 +75,13 @@ router.get(
   authMiddleware,
   authorize("publisher", "chief_editor", "journal_manager"),
   getMetadataCheck,
+);
+
+router.get(
+  "/:paperId/suggest-doi",
+  authMiddleware,
+  authorize("publisher"),
+  suggestDoi,
 );
 
 export default router;

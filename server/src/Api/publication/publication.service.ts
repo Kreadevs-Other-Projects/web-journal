@@ -2,6 +2,43 @@ import { pool } from "../../configs/db";
 import { getPaperForPublish, publishPaper } from "./publication.repository";
 import { generateFormatsService } from "./formats.service";
 
+function generateDOI(
+  journalAcronym: string,
+  year: number,
+  articleIndex: number,
+): string {
+  const prefix = process.env.DOI_PREFIX || "10.12345";
+  const acronym = journalAcronym.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const index = String(articleIndex).padStart(3, "0");
+  return `${prefix}/${acronym}.${year}.${index}`;
+}
+
+export const suggestDoiService = async (paperId: string): Promise<string> => {
+  const paperRes = await pool.query(
+    `SELECT p.journal_id, j.acronym
+     FROM papers p
+     JOIN journals j ON j.id = p.journal_id
+     WHERE p.id = $1`,
+    [paperId],
+  );
+
+  if (!paperRes.rows.length) throw new Error("Paper not found");
+
+  const { journal_id, acronym } = paperRes.rows[0];
+
+  const countRes = await pool.query(
+    `SELECT COUNT(*)::int AS cnt
+     FROM publications
+     WHERE issue_id IN (SELECT id FROM journal_issues WHERE journal_id = $1)`,
+    [journal_id],
+  );
+
+  const nextIndex = (countRes.rows[0].cnt as number) + 1;
+  const year = new Date().getFullYear();
+
+  return generateDOI(acronym || "jnl", year, nextIndex);
+};
+
 export const getSubmittedReviews = async () => {
   return getPaperForPublish();
 };
@@ -12,10 +49,6 @@ export const setPaperPublished = async (
   issueId: string,
   doi: string,
 ) => {
-  if (!doi || !doi.trim()) {
-    throw new Error("DOI is required before publication");
-  }
-
   const paperRes = await pool.query(`SELECT status FROM papers WHERE id = $1`, [
     paperId,
   ]);

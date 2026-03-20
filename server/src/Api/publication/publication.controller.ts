@@ -1,6 +1,10 @@
 import { Response } from "express";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { getSubmittedReviews, setPaperPublished } from "./publication.service";
+import {
+  getSubmittedReviews,
+  setPaperPublished,
+  suggestDoiService,
+} from "./publication.service";
 
 export const getSubmittedReviewsService = async (
   req: AuthUser,
@@ -17,31 +21,15 @@ export const getSubmittedReviewsService = async (
 export const publishPaper = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { issueId, doi } = req.body;
+    const { issueId, doi, year_label } = req.body;
     const user = req.user!;
 
-    if (user.role !== "journal_manager") {
-      return res.status(403).json({
-        success: false,
-        message: "Only Journal Manager can publish paper",
-      });
-    }
-
-    if (!issueId) {
-      return res.status(400).json({
-        success: false,
-        message: "Issue ID is required",
-      });
-    }
-
-    if (!doi || !doi.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "DOI is required before publication",
-      });
-    }
-
-    const published = await setPaperPublished(paperId, user.id, issueId, doi);
+    const published = await setPaperPublished(
+      paperId,
+      user.id,
+      issueId,
+      doi.trim(),
+    );
 
     return res.json({
       success: true,
@@ -53,5 +41,21 @@ export const publishPaper = async (req: AuthUser, res: Response) => {
       success: false,
       message: error.message || "Failed to publish paper",
     });
+  }
+};
+
+export const suggestDoi = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const doi = await suggestDoiService(paperId);
+    console.log("Generated DOI:", doi);
+    return res.json({ success: true, doi });
+  } catch (error: any) {
+    return res
+      .status(404)
+      .json({
+        success: false,
+        message: error.message || "Could not generate DOI",
+      });
   }
 };

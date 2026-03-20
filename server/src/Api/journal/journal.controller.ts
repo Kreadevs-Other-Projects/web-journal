@@ -71,6 +71,7 @@ export const getJournals = async (req: Request, res: Response) => {
 
 export const getJournal = async (req: Request, res: Response) => {
   const journal = await getJournalService(req.params.id);
+  console.log("Journal logo_url:", journal?.logo_url);
 
   return res.status(200).json({
     success: true,
@@ -136,7 +137,8 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const journal = await publisherCreateJournalService(req.user.id, req.body);
+    const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const journal = await publisherCreateJournalService(req.user.id, { ...req.body, logo_url });
 
     return res.status(201).json({
       success: true,

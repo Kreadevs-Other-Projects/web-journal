@@ -527,15 +527,15 @@ export default function SubEditorDashboard() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "under_review":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
       case "pending_revision":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
       case "resubmitted":
-        return "bg-green-500/10 text-green-400 border-green-500/20";
+        return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
       case "reviewed":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+        return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20";
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -585,7 +585,7 @@ export default function SubEditorDashboard() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-foreground">
                     Paper Review
                   </h1>
                   <p className="text-sm text-muted-foreground">
@@ -606,8 +606,8 @@ export default function SubEditorDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <Card className="glass-card border-0 bg-gradient-to-br from-gray-900/50 to-gray-800/30">
-                  <CardHeader className="border-b border-white/10">
+                <Card className="glass-card border-0">
+                  <CardHeader className="border-b border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
@@ -648,11 +648,11 @@ export default function SubEditorDashboard() {
                           if (v) setSelectedVersion(v);
                         }}
                       >
-                        <SelectTrigger className="w-[180px] bg-white/5 border-white/10">
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select version" />
                         </SelectTrigger>
 
-                        <SelectContent className="bg-gray-900 border-white/10 text-white">
+                        <SelectContent>
                           {selectedPaper?.versions.map((v) => (
                             <SelectItem key={v.id} value={v.id}>
                               Version {v.version_number}
@@ -695,7 +695,7 @@ export default function SubEditorDashboard() {
                           const ext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
                           if (ext === "pdf") {
                             return (
-                              <div className="rounded-lg overflow-hidden border border-white/10">
+                              <div className="rounded-lg overflow-hidden border border-border">
                                 <iframe
                                   src={`${url}${selectedVersion?.file_url}`}
                                   className="w-full h-[600px]"
@@ -707,7 +707,7 @@ export default function SubEditorDashboard() {
                           if (ext === "docx") {
                             if (docxLoading) {
                               return (
-                                <div className="rounded-lg border border-white/10 p-8 text-center text-muted-foreground">
+                                <div className="rounded-lg border border-border p-8 text-center text-muted-foreground">
                                   Converting document…
                                 </div>
                               );
@@ -715,13 +715,13 @@ export default function SubEditorDashboard() {
                             if (docxHtml) {
                               return (
                                 <div
-                                  className="rounded-lg border border-white/10 p-6 bg-white text-black overflow-y-auto max-h-[600px] prose prose-sm max-w-none"
+                                  className="rounded-lg border border-border p-6 bg-white text-black overflow-y-auto max-h-[600px] prose prose-sm max-w-none"
                                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docxHtml) }}
                                 />
                               );
                             }
                             return (
-                              <div className="rounded-lg border border-white/10 p-8 text-center space-y-3">
+                              <div className="rounded-lg border border-border p-8 text-center space-y-3">
                                 <p className="text-muted-foreground">Could not render document preview.</p>
                                 <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
                                   <Download className="h-4 w-4 mr-2" /> Download DOCX
@@ -730,7 +730,7 @@ export default function SubEditorDashboard() {
                             );
                           }
                           return (
-                            <div className="rounded-lg border border-white/10 p-8 text-center space-y-3">
+                            <div className="rounded-lg border border-border p-8 text-center space-y-3">
                               <p className="text-muted-foreground">Preview not available for this file type.</p>
                               <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
                                 <Download className="h-4 w-4 mr-2" /> Download File
@@ -741,7 +741,7 @@ export default function SubEditorDashboard() {
                       </TabsContent>
 
                       <TabsContent value="abstract" className="mt-4">
-                        <div className="rounded-lg border border-white/10 p-4 bg-white/5">
+                        <div className="rounded-lg border border-border p-4 bg-muted/50">
                           <p className="text-sm leading-relaxed">
                             {selectedPaper.abstract ||
                               "No abstract available for this paper."}
@@ -788,13 +788,13 @@ export default function SubEditorDashboard() {
                         New Status
                       </Label>
                       <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="bg-white/5 border-white/10">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select new status" />
                         </SelectTrigger>
-                        <SelectContent className="bg-gray-900 border-white/10">
+                        <SelectContent>
                           <SelectItem
                             value="under_review"
-                            className="hover:bg-white/10"
+                            className="hover:bg-muted"
                           >
                             <span className="flex items-center gap-2">
                               <Clock className="h-4 w-4" />
@@ -803,7 +803,7 @@ export default function SubEditorDashboard() {
                           </SelectItem>
                           <SelectItem
                             value="pending_revision"
-                            className="hover:bg-white/10"
+                            className="hover:bg-muted"
                           >
                             <span className="flex items-center gap-2">
                               <AlertCircle className="h-4 w-4" />
@@ -812,7 +812,7 @@ export default function SubEditorDashboard() {
                           </SelectItem>
                           <SelectItem
                             value="resubmitted"
-                            className="hover:bg-white/10"
+                            className="hover:bg-muted"
                           >
                             <span className="flex items-center gap-2">
                               <CheckCircle className="h-4 w-4" />
@@ -963,8 +963,8 @@ export default function SubEditorDashboard() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-white">
-                    Sub-Editor Dashboard
+                  <h1 className="text-3xl font-bold text-foreground">
+                    Associate Editor Dashboard
                   </h1>
                   <p className="text-muted-foreground">
                     Manage assigned papers and review progress
@@ -1074,7 +1074,7 @@ export default function SubEditorDashboard() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Search papers by title, author, or abstract..."
-                      className="pl-10 bg-white/5 border-white/10"
+                      className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -1126,7 +1126,7 @@ export default function SubEditorDashboard() {
               <Card className="glass-card border-0">
                 <CardContent className="py-12 text-center">
                   <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-                  <h3 className="text-lg font-semibold text-white mb-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
                     No papers found
                   </h3>
                   <p className="text-muted-foreground">
@@ -1166,7 +1166,7 @@ export default function SubEditorDashboard() {
                           </div>
                         </div>
 
-                        <h3 className="font-semibold text-lg text-white group-hover:text-blue-400 transition-colors line-clamp-2 mb-2">
+                        <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
                           {paper.title}
                         </h3>
 
@@ -1193,7 +1193,7 @@ export default function SubEditorDashboard() {
                           </div>
 
                           {paper.authors && (
-                            <div className="pt-2 border-t border-white/10">
+                            <div className="pt-2 border-t border-border">
                               <p className="text-xs text-muted-foreground truncate">
                                 Authors: {paper.authors.join(", ")}
                               </p>
@@ -1211,9 +1211,9 @@ export default function SubEditorDashboard() {
       </AnimatePresence>
 
       <Dialog open={openReviewersDialog} onOpenChange={setOpenReviewersDialog}>
-        <DialogContent className="sm:max-w-md bg-gray-900 border-white/10">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Assigned Reviewers
             </DialogTitle>
@@ -1233,7 +1233,7 @@ export default function SubEditorDashboard() {
                 {reviewers.map((reviewer) => (
                   <Card
                     key={reviewer.id}
-                    className="bg-white/5 border-white/10"
+                    className="bg-muted/50 border-border"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
@@ -1243,7 +1243,7 @@ export default function SubEditorDashboard() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white truncate">
+                          <p className="font-medium truncate">
                             {reviewer.username}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
@@ -1285,9 +1285,9 @@ export default function SubEditorDashboard() {
         open={openAssignReviewerDialog}
         onOpenChange={setOpenAssignReviewerDialog}
       >
-        <DialogContent className="sm:max-w-md bg-gray-900 border-white/10">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2">
               <UserCheck className="h-5 w-5" />
               Assign Reviewer
             </DialogTitle>
@@ -1298,22 +1298,22 @@ export default function SubEditorDashboard() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-white">Select Reviewer</Label>
+              <Label className="">Select Reviewer</Label>
               <Select
                 value={selectedReviewerId}
                 onValueChange={setSelectedReviewerId}
               >
-                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectTrigger>
                   <SelectValue placeholder="Choose a reviewer" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-white/10">
+                <SelectContent>
                   {allReviewers.map((reviewer) => (
                     <SelectItem
                       key={reviewer.id}
                       value={reviewer.id}
-                      className="hover:bg-white/10"
+                      className="hover:bg-muted"
                     >
-                      <div className="flex items-center gap-3 text-black">
+                      <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-xs">
                             {reviewer.username.charAt(0).toUpperCase()}
@@ -1352,21 +1352,21 @@ export default function SubEditorDashboard() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm text-white font-medium">
+                <Label className="text-sm font-medium">
                   Create New Reviewer
                 </Label>
                 <Input
                   placeholder="Full Name"
                   value={newReviewer.name}
                   onChange={(e) => setNewReviewer((p) => ({ ...p, name: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                  className="placeholder:text-muted-foreground"
                 />
                 <Input
                   type="email"
                   placeholder="Email address"
                   value={newReviewer.email}
                   onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                  className="placeholder:text-muted-foreground"
                 />
                 <div className="relative">
                   <Input
@@ -1374,12 +1374,12 @@ export default function SubEditorDashboard() {
                     placeholder="Temporary password (min. 6 chars)"
                     value={newReviewer.password}
                     onChange={(e) => setNewReviewer((p) => ({ ...p, password: e.target.value }))}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 pr-10"
+                    className="placeholder:text-muted-foreground pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowRevPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     tabIndex={-1}
                   >
                     {showRevPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1401,9 +1401,9 @@ export default function SubEditorDashboard() {
       </Dialog>
 
       <Dialog open={openDecisionDialog} onOpenChange={setOpenDecisionDialog}>
-        <DialogContent className="sm:max-w-lg bg-gray-900 border-white/10">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2">
               {decisionAction === "approve" && <><CheckCircle className="h-5 w-5 text-green-400" /> Approve & Forward to Chief Editor</>}
               {decisionAction === "revision" && <><AlertCircle className="h-5 w-5 text-amber-400" /> Request Revision from Author</>}
               {decisionAction === "reject" && <><Send className="h-5 w-5 text-red-400" /> Reject Paper</>}
@@ -1421,24 +1421,24 @@ export default function SubEditorDashboard() {
             <div className="space-y-2 max-h-40 overflow-y-auto">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Reviewer Feedback</p>
               {paperReviews.map((r, i) => (
-                <div key={r.assignment_id} className="bg-white/5 rounded-lg p-3 text-sm">
+                <div key={r.assignment_id} className="bg-muted rounded-lg p-3 text-sm">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-muted-foreground">Reviewer {i + 1}</span>
                     <Badge variant="outline" className="text-xs">{r.decision}</Badge>
                   </div>
-                  <p className="text-gray-300 text-xs line-clamp-2">{r.comments}</p>
+                  <p className="text-xs line-clamp-2">{r.comments}</p>
                 </div>
               ))}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label className="text-white">
+            <Label className="">
               Notes {decisionAction !== "approve" && <span className="text-red-400">*</span>}
               <span className="text-muted-foreground text-xs ml-1">(optional for approval)</span>
             </Label>
             <textarea
-              className="w-full rounded-md bg-white/5 border border-white/10 text-white p-3 text-sm resize-none focus:outline-none focus:border-white/30"
+              className="w-full rounded-md bg-background border border-border text-foreground p-3 text-sm resize-none focus:outline-none focus:border-primary"
               rows={3}
               placeholder={decisionAction === "revision" ? "Describe what needs to be revised..." : decisionAction === "reject" ? "Provide reason for rejection..." : "Additional notes for Chief Editor..."}
               value={decisionNote}
@@ -1462,9 +1462,9 @@ export default function SubEditorDashboard() {
       </Dialog>
 
       <Dialog open={openSuggestReviewer} onOpenChange={setOpenSuggestReviewer}>
-        <DialogContent className="sm:max-w-md bg-gray-900 border-white/10">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Suggest Reviewer
             </DialogTitle>
@@ -1474,26 +1474,26 @@ export default function SubEditorDashboard() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-white">Full Name <span className="text-red-400">*</span></Label>
+              <Label className="">Full Name <span className="text-red-400">*</span></Label>
               <Input
                 placeholder="Dr. Jane Smith"
                 value={suggestForm.suggested_name}
                 onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_name: e.target.value }))}
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                className="placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-white">Email <span className="text-red-400">*</span></Label>
+              <Label className="">Email <span className="text-red-400">*</span></Label>
               <Input
                 type="email"
                 placeholder="reviewer@university.edu"
                 value={suggestForm.suggested_email}
                 onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_email: e.target.value }))}
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                className="placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-white">Keywords (press Enter to add)</Label>
+              <Label className="">Keywords (press Enter to add)</Label>
               <div className="flex gap-2">
                 <Input
                   placeholder="e.g. machine learning"
@@ -1505,7 +1505,7 @@ export default function SubEditorDashboard() {
                       setSuggestForm((p) => ({ ...p, keywords: [...p.keywords, p.keywordInput.trim()], keywordInput: "" }));
                     }
                   }}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               {suggestForm.keywords.length > 0 && (
@@ -1519,7 +1519,7 @@ export default function SubEditorDashboard() {
               )}
             </div>
             <div className="space-y-1">
-              <Label className="text-white">Degrees (press Enter to add)</Label>
+              <Label className="">Degrees (press Enter to add)</Label>
               <div className="flex gap-2">
                 <Input
                   placeholder="e.g. PhD Computer Science"
@@ -1531,7 +1531,7 @@ export default function SubEditorDashboard() {
                       setSuggestForm((p) => ({ ...p, degrees: [...p.degrees, p.degreeInput.trim()], degreeInput: "" }));
                     }
                   }}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               {suggestForm.degrees.length > 0 && (

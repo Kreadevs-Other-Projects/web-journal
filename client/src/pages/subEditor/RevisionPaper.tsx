@@ -64,6 +64,7 @@ interface SubmittedReview {
 
   reviewAssignmentId: string;
   reviewerId: string;
+  reviewerName?: string;
   reviewAssignmentStatus: string;
   submittedAt: string;
 
@@ -215,30 +216,30 @@ export default function RevisionPaper() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "under_review":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+        return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
       case "pending_revision":
-        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+        return "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
       case "resubmitted":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+        return "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
       default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
   const getAssignmentStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+        return "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30";
       case "accepted":
-        return "bg-green-500/20 text-green-400 border-green-500/30";
+        return "bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30";
       case "rejected":
-        return "bg-red-500/20 text-red-400 border-red-500/30";
+        return "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30";
       case "completed":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+        return "bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30";
       case "reassigned":
-        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+        return "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30";
       default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -275,14 +276,14 @@ export default function RevisionPaper() {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-              Sub Editor Dashboard
+            <h1 className="text-3xl font-bold text-foreground">
+              Associate Editor Dashboard
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               Manage and oversee submitted paper reviews
             </p>
           </div>
-          <div className="flex text-white items-center gap-2 px-4 py-2 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
             <Shield className="h-5 w-5 text-blue-400" />
             <span className="text-sm font-medium">
               {reviews.length} Paper{reviews.length !== 1 ? "s" : ""} Assigned
@@ -295,7 +296,7 @@ export default function RevisionPaper() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Under Review</p>
+                  <p className="text-sm text-muted-foreground">Under Review</p>
                   <p className="text-2xl font-bold mt-1">
                     {
                       reviews.filter((r) => r.paperStatus === "under_review")
@@ -314,7 +315,7 @@ export default function RevisionPaper() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Pending Revision</p>
+                  <p className="text-sm text-muted-foreground">Pending Revision</p>
                   <p className="text-2xl font-bold mt-1">
                     {
                       reviews.filter(
@@ -334,7 +335,7 @@ export default function RevisionPaper() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Resubmitted</p>
+                  <p className="text-sm text-muted-foreground">Resubmitted</p>
                   <p className="text-2xl font-bold mt-1">
                     {
                       reviews.filter((r) => r.paperStatus === "resubmitted")
@@ -350,19 +351,19 @@ export default function RevisionPaper() {
           </Card>
         </div>
 
-        <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+        <Card className="border-border">
           <CardContent className="pt-6">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Filter className="h-5 w-5 text-gray-400" />
-                  <h3 className="text-lg font-semibold text-gray-300">
+                  <Filter className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold text-foreground">
                     Filter by Assignment Status
                   </h3>
                 </div>
                 <Badge
                   variant="outline"
-                  className="text-gray-400 border-white/20"
+                  className="text-muted-foreground"
                 >
                   Showing {filteredReviews.length} of {reviews.length} papers
                 </Badge>
@@ -374,7 +375,7 @@ export default function RevisionPaper() {
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-5 w-full bg-white/5 border border-white/10 p-1">
+                <TabsList className="grid grid-cols-5 w-full p-1">
                   <TabsTrigger
                     value="all"
                     className="data-[state=active]:bg-white/10"
@@ -435,14 +436,14 @@ export default function RevisionPaper() {
                 <div className="mt-6">
                   {filteredReviews.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
-                      <div className="inline-flex p-4 rounded-full bg-white/5 border border-white/10">
-                        <AlertCircle className="h-12 w-12 text-gray-400" />
+                      <div className="inline-flex p-4 rounded-full bg-muted border border-border">
+                        <AlertCircle className="h-12 w-12 text-muted-foreground" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-gray-300">
+                        <h3 className="text-xl font-bold text-foreground">
                           No Papers Found
                         </h3>
-                        <p className="text-gray-400 mt-2">
+                        <p className="text-muted-foreground mt-2">
                           No papers with "{activeTab}" assignment status
                         </p>
                       </div>
@@ -452,7 +453,7 @@ export default function RevisionPaper() {
                       {filteredReviews.map((r) => (
                         <Card
                           key={r.reviewAssignmentId}
-                          className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
+                          className="border-border hover:border-primary/40 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
                         >
                           <CardHeader className="pb-4">
                             <div className="flex justify-between items-start">
@@ -475,13 +476,13 @@ export default function RevisionPaper() {
                                   >
                                     {r.editorAssignmentStatus}
                                   </span>
-                                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
                                     {formatDate(r.versionCreatedAt)}
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-sm px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+                              <span className="text-sm px-3 py-1 rounded-lg bg-muted border border-border">
                                 v{r.versionNumber}
                               </span>
                             </div>
@@ -491,19 +492,13 @@ export default function RevisionPaper() {
                             <div className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                                     <PenTool className="h-4 w-4" />
                                     Paper Details
                                   </p>
                                   <div className="text-sm space-y-1">
-                                    <p className="text-gray-400">
-                                      ID:{" "}
-                                      <span className="text-gray-300 font-mono">
-                                        {r.paperId.slice(0, 8)}...
-                                      </span>
-                                    </p>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-400">
+                                      <span className="text-muted-foreground">
                                         Status:
                                       </span>
                                       <span
@@ -516,48 +511,44 @@ export default function RevisionPaper() {
                                 </div>
 
                                 <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                                     <User className="h-4 w-4" />
                                     Review Details
                                   </p>
                                   <div className="text-sm space-y-1">
-                                    <p className="text-gray-400">
+                                    <p className="text-muted-foreground">
                                       Decision:{" "}
-                                      <span className="text-gray-300 font-semibold capitalize">
+                                      <span className="text-foreground font-semibold capitalize">
                                         {r.decision || "Pending"}
                                       </span>
                                     </p>
-                                    <p className="text-gray-400">
+                                    <p className="text-muted-foreground">
                                       Reviewer:{" "}
-                                      <span className="text-gray-300">
-                                        {r.reviewerId
-                                          ? r.reviewerId.slice(0, 8) + "..."
-                                          : "Not assigned"}
+                                      <span className="text-foreground">
+                                        {r.reviewerName || (r.reviewerId ? "Assigned" : "Not assigned")}
                                       </span>
                                     </p>
                                   </div>
                                 </div>
                               </div>
 
-                              {r.comments && (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-gray-300">
-                                    Review Comments
+                              <div className="space-y-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                  Review Comments
+                                </p>
+                                <div className="text-sm bg-muted rounded-lg p-3 border border-border">
+                                  <p className={r.comments ? "line-clamp-2" : "text-muted-foreground italic"}>
+                                    {r.comments || "No comments provided"}
                                   </p>
-                                  <div className="text-sm bg-black/20 rounded-lg p-3 border border-white/5">
-                                    <p className="text-gray-300 line-clamp-2">
-                                      {r.comments}
-                                    </p>
-                                  </div>
                                 </div>
-                              )}
+                              </div>
 
                               <div className="flex items-center justify-between pt-2">
                                 {r.fileUrl && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="gap-2 border-white/20 hover:border-blue-500/50 hover:bg-blue-500/10"
+                                    className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
                                     onClick={() => setViewPdf(r)}
                                   >
                                     <Eye className="h-4 w-4" /> View Paper
@@ -568,7 +559,7 @@ export default function RevisionPaper() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="gap-2 border-white/20 hover:border-emerald-500/50 hover:bg-emerald-500/10"
+                                    className="gap-2 hover:border-emerald-500/50 hover:bg-emerald-500/10"
                                     onClick={() => {
                                       setSelectedSignature(
                                         `${url}${r.signatureUrl}`,
@@ -583,7 +574,7 @@ export default function RevisionPaper() {
                               </div>
                             </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-white/10">
+                            <div className="flex gap-3 pt-4 border-t border-border">
                               <Button
                                 size="sm"
                                 variant="default"
@@ -601,7 +592,7 @@ export default function RevisionPaper() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="flex-1 gap-2 border-white/20 hover:border-purple-500/50 hover:bg-purple-500/10"
+                                className="flex-1 gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
                                 onClick={() => fetchReviewers(r.paperId)}
                               >
                                 <Users className="h-4 w-4" />
@@ -627,27 +618,21 @@ export default function RevisionPaper() {
             />
 
             <div className="relative h-screen w-screen flex items-center justify-center p-4">
-              <div className="bg-gray-900 w-full max-w-6xl h-[90vh] rounded-xl border border-white/20 shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-white/10">
+              <div className="bg-background w-full max-w-6xl h-[90vh] rounded-xl border border-border shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 bg-muted border-b border-border">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
                       <FileText className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-100 line-clamp-1">
+                      <h3 className="font-semibold text-foreground line-clamp-1">
                         {viewPdf.title || "Document Viewer"}
                       </h3>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Version {viewPdf.versionNumber}
                         </span>
-                        {viewPdf.paperId && (
-                          <span className="text-xs text-gray-400 flex items-center gap-1">
-                            <Hash className="h-3 w-3" />
-                            {viewPdf.paperId.slice(0, 8)}...
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -656,7 +641,7 @@ export default function RevisionPaper() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-2 border-white/20 hover:border-blue-500/50 hover:bg-blue-500/10"
+                      className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
                       onClick={() =>
                         window.open(`${url}${viewPdf.fileUrl}`, "_blank")
                       }
@@ -668,7 +653,7 @@ export default function RevisionPaper() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-2 border-white/20 hover:border-white/40 hover:bg-white/5"
+                      className="gap-2"
                       onClick={() => {
                         navigator.clipboard.writeText(
                           `${url}${viewPdf.fileUrl}`,
@@ -706,7 +691,7 @@ export default function RevisionPaper() {
                     }
                     if (ext === "tex" || ext === "latex") {
                       return (
-                        <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-300">
+                        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
                           <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
                           <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
                             <Download className="h-4 w-4" />
@@ -717,7 +702,7 @@ export default function RevisionPaper() {
                     }
                     if (viewerHtmlLoading) {
                       return (
-                        <div className="flex items-center justify-center h-full gap-2 text-gray-300 text-sm">
+                        <div className="flex items-center justify-center h-full gap-2 text-muted-foreground text-sm">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
                           Loading document…
                         </div>
@@ -732,7 +717,7 @@ export default function RevisionPaper() {
                       );
                     }
                     return (
-                      <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-300">
+                      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
                         <p className="text-sm">Document preview not available.</p>
                         <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
                           <Download className="h-4 w-4" />
@@ -743,14 +728,14 @@ export default function RevisionPaper() {
                   })()}
                 </div>
 
-                <div className="p-3 bg-gray-800 border-t border-white/10">
-                  <div className="flex items-center justify-between text-sm text-gray-400">
+                <div className="p-3 bg-muted border-t border-border">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Eye className="h-4 w-4" />
                         <span>Document Viewer</span>
                       </div>
-                      <div className="h-4 w-px bg-white/10" />
+                      <div className="h-4 w-px bg-border" />
                       <div className="hidden md:flex items-center gap-2">
                         <Info className="h-4 w-4" />
                         <span>Use Ctrl + scroll to zoom</span>
@@ -762,12 +747,12 @@ export default function RevisionPaper() {
                         href={`${url}${viewPdf.fileUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-blue-400 transition-colors flex items-center gap-1"
+                        className="hover:text-primary transition-colors flex items-center gap-1"
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span>Open in new tab</span>
                       </a>
-                      <div className="h-4 w-px bg-white/10" />
+                      <div className="h-4 w-px bg-border" />
                       <div className="flex items-center gap-1">
                         <Shield className="h-4 w-4" />
                         <span>Secure Document Viewer</span>
@@ -781,9 +766,9 @@ export default function RevisionPaper() {
         )}
 
         <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
-          <DialogContent className="max-w-md bg-gray-900 border-white/10">
+          <DialogContent className="max-w-md">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-white">
+              <DialogTitle>
                 Reviewer Digital Signature
               </DialogTitle>
 
@@ -801,11 +786,11 @@ export default function RevisionPaper() {
             </div>
 
             {selectedSignature && (
-              <div className="flex justify-center mt-4 bg-white/10 p-4 rounded-lg border border-white/10">
+              <div className="flex justify-center mt-4 bg-muted p-4 rounded-lg border border-border">
                 <img
                   src={selectedSignature}
                   alt="Reviewer Signature"
-                  className="max-h-80 w-full object-contain rounded-lg border border-white/10"
+                  className="max-h-80 w-full object-contain rounded-lg border border-border"
                 />
               </div>
             )}
@@ -817,22 +802,22 @@ export default function RevisionPaper() {
             open={!!selectedPaper}
             onOpenChange={() => setSelectedPaper(null)}
           >
-            <DialogContent className="bg-gray-900 border-white/20">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle className="text-xl text-white font-bold flex items-center gap-2">
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
                   <Edit className="h-5 w-5" />
                   Update Paper Status
                 </DialogTitle>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Update status for:{" "}
-                  <span className="text-gray-300 font-medium">
+                  <span className="font-medium">
                     {selectedPaper.title}
                   </span>
                 </p>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Current Status</Label>
+                  <Label>Current Status</Label>
                   <div
                     className={`px-3 py-2 rounded border ${getStatusColor(selectedPaper.paperStatus)} text-sm`}
                   >
@@ -840,9 +825,9 @@ export default function RevisionPaper() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Assignment Status</Label>
+                  <Label>Assignment Status</Label>
                   <select
-                    className="w-full bg-black/30 border-white/20 rounded-lg px-3 py-2 text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     value={assignmentStatus}
                     onChange={(e) => setAssignmentStatus(e.target.value)}
                   >
@@ -860,7 +845,6 @@ export default function RevisionPaper() {
                 <Button
                   variant="outline"
                   onClick={() => setSelectedPaper(null)}
-                  className="border-white/20 hover:border-white/40"
                 >
                   Cancel
                 </Button>
@@ -884,9 +868,9 @@ export default function RevisionPaper() {
         )}
 
         <Dialog open={openReviewers} onOpenChange={setOpenReviewers}>
-          <DialogContent className="bg-gray-900 border-white/20 max-w-md">
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-xl text-white font-bold flex items-center gap-2">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Assigned Reviewers
               </DialogTitle>
@@ -894,10 +878,10 @@ export default function RevisionPaper() {
             <div className="space-y-3 py-4">
               {reviewers.length === 0 ? (
                 <div className="text-center py-8 space-y-3">
-                  <div className="inline-flex p-3 rounded-full bg-white/5">
-                    <AlertCircle className="h-8 w-8 text-gray-400" />
+                  <div className="inline-flex p-3 rounded-full bg-muted">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-gray-400">
+                  <p className="text-muted-foreground">
                     No reviewers assigned to this paper
                   </p>
                 </div>
@@ -905,19 +889,16 @@ export default function RevisionPaper() {
                 reviewers.map((r) => (
                   <div
                     key={r.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10 hover:border-white/20 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border hover:border-border/60 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-300 truncate">
+                      <p className="font-medium truncate">
                         {r.username}
                       </p>
-                      <p className="text-sm text-gray-400 truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {r.email}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded bg-white/10 text-gray-300 font-mono">
-                      {r.id.slice(0, 6)}...
-                    </span>
                   </div>
                 ))
               )}

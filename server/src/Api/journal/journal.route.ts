@@ -58,6 +58,20 @@ router.post(
   "/publisherCreate",
   authMiddleware,
   authorize("publisher"),
+  logoUpload.single("logo"),
+  // Parse nested JSON fields sent as strings in FormData
+  (req, _res, next) => {
+    for (const key of ["chief_editor", "journal_manager"]) {
+      if (typeof req.body[key] === "string") {
+        try { req.body[key] = JSON.parse(req.body[key]); } catch {}
+      }
+    }
+    if (req.body.publication_fee !== undefined) {
+      const n = Number(req.body.publication_fee);
+      req.body.publication_fee = isNaN(n) ? null : n;
+    }
+    next();
+  },
   validate(publisherCreateJournalSchema),
   publisherCreateJournal,
 );

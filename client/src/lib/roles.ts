@@ -109,7 +109,7 @@ export const roleConfig: Record<
 
   sub_editor: {
     icon: Users,
-    label: "Sub Editor",
+    label: "Associate Editor",
     color: "text-destructive",
     description: "Manage paper editions",
     route: "/sub-editor",

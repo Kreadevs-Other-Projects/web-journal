@@ -44,7 +44,7 @@ router.post("/switch-role", validate(switchRoleSchema), asyncHandler(switchRole)
 router.post(
   "/create-staff",
   authMiddleware,
-  authorize("chief_editor", "publisher", "journal_manager"),
+  authorize("chief_editor", "publisher", "journal_manager", "sub_editor"),
   validate(createStaffSchema),
   asyncHandler(createStaff),
 );

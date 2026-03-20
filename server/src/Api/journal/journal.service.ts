@@ -62,6 +62,7 @@ export type PublisherJournalData = {
   aims_and_scope?: string | null;
   publication_fee?: number | null;
   currency?: string | null;
+  logo_url?: string | null;
 };
 
 

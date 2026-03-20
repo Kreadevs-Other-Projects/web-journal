@@ -155,48 +155,30 @@ export default function CreateJournal() {
     if (!validateStep()) return;
     try {
       setSubmitting(true);
-      const payload = {
-        title: journal.title,
-        issn: journal.issn || undefined,
-        doi: journal.doi || null,
-        publisher_name: journal.publisher_name,
-        type: journal.type,
-        peer_review_policy: journal.peer_review_policy,
-        oa_policy: journal.oa_policy,
-        author_guidelines: journal.author_guidelines,
-        aims_and_scope: journal.aims_and_scope || null,
-        chief_editor: chiefEditor,
-        journal_manager: journalManager,
-      };
+      const formData = new FormData();
+      if (logo) formData.append("logo", logo);
+      formData.append("title", journal.title);
+      if (journal.issn) formData.append("issn", journal.issn);
+      if (journal.doi) formData.append("doi", journal.doi);
+      formData.append("publisher_name", journal.publisher_name);
+      formData.append("type", journal.type);
+      formData.append("peer_review_policy", journal.peer_review_policy);
+      formData.append("oa_policy", journal.oa_policy);
+      formData.append("author_guidelines", journal.author_guidelines);
+      if (journal.aims_and_scope) formData.append("aims_and_scope", journal.aims_and_scope);
+      formData.append("chief_editor", JSON.stringify(chiefEditor));
+      formData.append("journal_manager", JSON.stringify(journalManager));
 
       const res = await fetch(`${url}/journal/publisherCreate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || "Failed to create journal");
-      }
-
-      // Upload logo if selected
-      if (logo && data.journal?.id) {
-        try {
-          const logoForm = new FormData();
-          logoForm.append("logo", logo);
-          await fetch(`${url}/journal/${data.journal.id}/logo`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: logoForm,
-          });
-        } catch {
-          // non-fatal
-        }
       }
 
       toast({

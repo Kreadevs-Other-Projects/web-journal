@@ -50,24 +50,40 @@ interface Journal {
   papers: Paper[];
 }
 
-function JournalLogo({ logoUrl, title, className }: { logoUrl?: string; title: string; className?: string }) {
+function JournalLogo({
+  logoUrl,
+  title,
+  className,
+}: {
+  logoUrl?: string;
+  title: string;
+  className?: string;
+}) {
   const initials = title
     .split(" ")
-    .filter((w) => !["of", "the", "and", "for", "in", "a", "an"].includes(w.toLowerCase()))
+    .filter(
+      (w) =>
+        !["of", "the", "and", "for", "in", "a", "an"].includes(w.toLowerCase()),
+    )
     .slice(0, 3)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
   if (logoUrl) {
     return (
       <img
-        src={`${url}${logoUrl}`}
+        src={`${url}/uploads/${logoUrl}`}
         alt={title}
         className={cn("object-cover rounded-lg", className)}
       />
     );
   }
   return (
-    <div className={cn("rounded-lg bg-gradient-primary/10 flex items-center justify-center font-bold text-primary text-sm", className)}>
+    <div
+      className={cn(
+        "rounded-lg bg-gradient-primary/10 flex items-center justify-center font-bold text-primary text-sm",
+        className,
+      )}
+    >
       {initials}
     </div>
   );
@@ -412,7 +428,11 @@ export default function BrowsePage() {
                       className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col"
                     >
                       <div className="flex items-start gap-4 mb-4">
-                        <JournalLogo logoUrl={journal.logo_url} title={journal.journal_title} className="h-12 w-12 shrink-0" />
+                        <JournalLogo
+                          logoUrl={journal.logo_url}
+                          title={journal.journal_title}
+                          className="h-12 w-12 shrink-0"
+                        />
                         <div className="flex-1">
                           <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {journal.journal_title}
@@ -455,7 +475,11 @@ export default function BrowsePage() {
                       onClick={() => handleJournalClick(journal)}
                       className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow flex items-center gap-6"
                     >
-                      <JournalLogo logoUrl={journal.logo_url} title={journal.journal_title} className="h-16 w-16 shrink-0" />
+                      <JournalLogo
+                        logoUrl={journal.logo_url}
+                        title={journal.journal_title}
+                        className="h-16 w-16 shrink-0"
+                      />
 
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                         <div className="md:col-span-2">

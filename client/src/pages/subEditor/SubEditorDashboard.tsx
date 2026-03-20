@@ -116,6 +116,12 @@ export default function SubEditorDashboard() {
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState(false);
 
+  const [openDecisionDialog, setOpenDecisionDialog] = useState(false);
+  const [decisionNote, setDecisionNote] = useState("");
+  const [decisionAction, setDecisionAction] = useState<"approve" | "revision" | "reject" | null>(null);
+  const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [paperReviews, setPaperReviews] = useState<any[]>([]);
+
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
     useState(false);
@@ -136,6 +142,7 @@ export default function SubEditorDashboard() {
     underReview: 0,
     pendingRevision: 0,
     completed: 0,
+    needsDecision: 0,
   });
 
   const fetchPapers = async () => {
@@ -158,12 +165,16 @@ export default function SubEditorDashboard() {
       const completed = data.papers.filter(
         (p) => p.status === "resubmitted" || p.status === "completed",
       ).length;
+      const needsDecision = data.papers.filter(
+        (p) => p.status === "reviewed",
+      ).length;
 
       setStats({
         total: data.papers.length,
         underReview,
         pendingRevision,
         completed,
+        needsDecision,
       });
     } catch (err) {
       console.error(err);
@@ -357,6 +368,45 @@ export default function SubEditorDashboard() {
     }
   }, []);
 
+  const fetchPaperReviews = async (paperId: string) => {
+    try {
+      const res = await fetch(`${url}/subEditor/getReviewsForPaper/${paperId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPaperReviews(data.reviews || []);
+    } catch {
+      setPaperReviews([]);
+    }
+  };
+
+  const submitDecision = async () => {
+    if (!selectedPaper || !decisionAction) return;
+    try {
+      setSubmittingDecision(true);
+      const res = await fetch(`${url}/subEditor/decision/${selectedPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: decisionAction, note: decisionNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to submit decision");
+      toast({
+        title: "Decision Submitted",
+        description: decisionAction === "approve" ? "Paper forwarded to Chief Editor." : decisionAction === "revision" ? "Revision requested from author." : "Paper rejected.",
+      });
+      setOpenDecisionDialog(false);
+      setDecisionNote("");
+      setDecisionAction(null);
+      setSelectedPaper(null);
+      fetchPapers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmittingDecision(false);
+    }
+  };
+
   const createAndAssignReviewer = async () => {
     if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
       return;
@@ -464,6 +514,7 @@ export default function SubEditorDashboard() {
         under_review: "under_review",
         pending_revision: "pending_revision",
         completed: "resubmitted",
+        reviewed: "reviewed",
       };
       filtered = filtered.filter(
         (paper) => paper.status === statusMap[activeTab],
@@ -481,6 +532,8 @@ export default function SubEditorDashboard() {
         return "bg-amber-500/10 text-amber-400 border-amber-500/20";
       case "resubmitted":
         return "bg-green-500/10 text-green-400 border-green-500/20";
+      case "reviewed":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
       default:
         return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
@@ -494,6 +547,8 @@ export default function SubEditorDashboard() {
         return <AlertCircle className="h-4 w-4" />;
       case "resubmitted":
         return <CheckCircle className="h-4 w-4" />;
+      case "reviewed":
+        return <AlertCircle className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
     }
@@ -833,6 +888,45 @@ export default function SubEditorDashboard() {
                   </CardContent>
                 </Card>
 
+                {selectedPaper.status === "reviewed" && (
+                  <Card className="glass-card border-0 bg-gradient-to-br from-orange-900/20 to-orange-800/10">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-orange-400">
+                        <AlertCircle className="h-5 w-5" />
+                        Needs Your Decision
+                      </CardTitle>
+                      <CardDescription>
+                        Review has been submitted. Make your decision.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                        onClick={() => { setDecisionAction("approve"); fetchPaperReviews(selectedPaper.id); setOpenDecisionDialog(true); }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Approve & Forward to Chief Editor
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full hover:bg-amber-500/10 hover:border-amber-500/50"
+                        onClick={() => { setDecisionAction("revision"); setOpenDecisionDialog(true); }}
+                      >
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        Request Revision from Author
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full hover:bg-red-500/10 hover:border-red-500/50 text-red-400"
+                        onClick={() => { setDecisionAction("reject"); setOpenDecisionDialog(true); }}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Reject Paper
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card className="glass-card border-0 bg-gradient-to-br from-gray-900/30 to-gray-800/20">
                   <CardHeader>
                     <CardTitle className="text-sm">Paper Information</CardTitle>
@@ -953,6 +1047,24 @@ export default function SubEditorDashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              {stats.needsDecision > 0 && (
+                <Card className="glass-card border-0 bg-gradient-to-br from-orange-900/30 to-orange-800/20 col-span-full md:col-span-2 lg:col-span-1">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Needs Decision
+                        </p>
+                        <p className="text-2xl font-bold mt-2 text-orange-400">{stats.needsDecision}</p>
+                      </div>
+                      <div className="h-12 w-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-orange-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <Card className="glass-card border-0">
@@ -995,6 +1107,15 @@ export default function SubEditorDashboard() {
                     >
                       <AlertCircle className="h-4 w-4 mr-2" />
                       Pending Revision
+                    </Button>
+                    <Button
+                      variant={activeTab === "reviewed" ? "default" : "outline"}
+                      size="sm"
+                      className={activeTab !== "reviewed" && stats.needsDecision > 0 ? "border-orange-500/50 text-orange-400" : ""}
+                      onClick={() => setActiveTab("reviewed")}
+                    >
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Needs Decision {stats.needsDecision > 0 && `(${stats.needsDecision})`}
                     </Button>
                   </div>
                 </div>
@@ -1274,6 +1395,67 @@ export default function SubEditorDashboard() {
             >
               <UserCheck className="h-4 w-4 mr-2" />
               {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openDecisionDialog} onOpenChange={setOpenDecisionDialog}>
+        <DialogContent className="sm:max-w-lg bg-gray-900 border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              {decisionAction === "approve" && <><CheckCircle className="h-5 w-5 text-green-400" /> Approve & Forward to Chief Editor</>}
+              {decisionAction === "revision" && <><AlertCircle className="h-5 w-5 text-amber-400" /> Request Revision from Author</>}
+              {decisionAction === "reject" && <><Send className="h-5 w-5 text-red-400" /> Reject Paper</>}
+            </DialogTitle>
+            <DialogDescription>
+              {decisionAction === "approve"
+                ? "The paper will be forwarded to the Chief Editor for final approval."
+                : decisionAction === "revision"
+                ? "The author will be notified to upload a revised version."
+                : "The author will be notified that their paper was not accepted."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {decisionAction === "approve" && paperReviews.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Reviewer Feedback</p>
+              {paperReviews.map((r, i) => (
+                <div key={r.assignment_id} className="bg-white/5 rounded-lg p-3 text-sm">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">Reviewer {i + 1}</span>
+                    <Badge variant="outline" className="text-xs">{r.decision}</Badge>
+                  </div>
+                  <p className="text-gray-300 text-xs line-clamp-2">{r.comments}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label className="text-white">
+              Notes {decisionAction !== "approve" && <span className="text-red-400">*</span>}
+              <span className="text-muted-foreground text-xs ml-1">(optional for approval)</span>
+            </Label>
+            <textarea
+              className="w-full rounded-md bg-white/5 border border-white/10 text-white p-3 text-sm resize-none focus:outline-none focus:border-white/30"
+              rows={3}
+              placeholder={decisionAction === "revision" ? "Describe what needs to be revised..." : decisionAction === "reject" ? "Provide reason for rejection..." : "Additional notes for Chief Editor..."}
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => { setOpenDecisionDialog(false); setDecisionNote(""); setDecisionAction(null); }}>
+              Cancel
+            </Button>
+            <Button
+              className={`flex-1 ${decisionAction === "approve" ? "bg-green-600 hover:bg-green-700" : decisionAction === "revision" ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"}`}
+              onClick={submitDecision}
+              disabled={submittingDecision}
+            >
+              {submittingDecision ? "Submitting..." : "Confirm Decision"}
             </Button>
           </div>
         </DialogContent>

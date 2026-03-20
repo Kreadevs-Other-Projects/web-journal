@@ -7,7 +7,8 @@ export const getBrowseDataService = async (filters: any) => {
   const grouped: any = {};
 
   rows.forEach((row) => {
-    const issueKey = row.issue_id;
+    // Group by issue if present, otherwise by journal (for journals with no issues yet)
+    const issueKey = row.issue_id || `journal-${row.journal_id}`;
 
     if (!grouped[issueKey]) {
       grouped[issueKey] = {
@@ -16,18 +17,23 @@ export const getBrowseDataService = async (filters: any) => {
         issn: row.issn,
         aims_and_scope: row.aims_and_scope,
         logo_url: row.logo_url,
-        issue: `Vol ${row.volume} Issue ${row.issue} (${row.year})`,
+        issue: row.issue_id
+          ? `Vol ${row.volume} Issue ${row.issue} (${row.year})`
+          : "No issues published yet",
         published_at: row.published_at,
         papers: [],
       };
     }
 
-    grouped[issueKey].papers.push({
-      id: row.paper_id,
-      title: row.paper_title,
-      abstract: row.abstract,
-      pdf_url: row.file_url,
-    });
+    // Only push if there's an actual paper (LEFT JOIN can produce null paper rows)
+    if (row.paper_id) {
+      grouped[issueKey].papers.push({
+        id: row.paper_id,
+        title: row.paper_title,
+        abstract: row.abstract,
+        pdf_url: row.file_url,
+      });
+    }
   });
 
   return Object.values(grouped);

@@ -126,9 +126,14 @@ export const getAllPapers = async () => {
 };
 
 export const getPapersByAuthor = async (author_id: string) => {
-  const result = await pool.query(`SELECT * FROM papers WHERE author_id = $1`, [
-    author_id,
-  ]);
+  const result = await pool.query(
+    `SELECT p.*, j.title AS journal_title
+     FROM papers p
+     LEFT JOIN journals j ON j.id = p.journal_id
+     WHERE p.author_id = $1
+     ORDER BY p.created_at DESC`,
+    [author_id],
+  );
   return result.rows;
 };
 

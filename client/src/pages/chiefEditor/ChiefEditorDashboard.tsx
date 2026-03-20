@@ -141,7 +141,14 @@ export default function ChiefEditor() {
     pending: 0,
     assigned: 0,
     reviewed: 0,
+    needsDecision: 0,
   });
+
+  // CE final decision state
+  const [ceDecisionPaper, setCeDecisionPaper] = useState<Paper | null>(null);
+  const [ceDecisionAction, setCeDecisionAction] = useState<"accepted" | "rejected" | "revision" | "">("");
+  const [ceDecisionNote, setCeDecisionNote] = useState("");
+  const [submittingCeDecision, setSubmittingCeDecision] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Top-level dashboard tab: overview | team
@@ -202,12 +209,14 @@ export default function ChiefEditor() {
       const pending = papersData.filter((p) => p.status === "submitted").length;
       const assigned = papersData.filter((p) => p.status === "assigned").length;
       const reviewed = papersData.filter((p) => p.status === "reviewed").length;
+      const needsDecision = papersData.filter((p) => p.status === "sub_editor_approved").length;
 
       setStats({
         total: papersData.length,
         pending,
         assigned,
         reviewed,
+        needsDecision,
       });
     } catch (e) {
       console.error(e);
@@ -684,6 +693,29 @@ export default function ChiefEditor() {
     }
   };
 
+  const submitCeDecision = async () => {
+    if (!ceDecisionPaper || !ceDecisionAction) return;
+    try {
+      setSubmittingCeDecision(true);
+      const res = await fetch(`${url}/chiefEditor/decide/${ceDecisionPaper.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision: ceDecisionAction, decision_note: ceDecisionNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to submit decision");
+      toast({ title: "Decision Submitted", description: `Paper has been ${ceDecisionAction}.` });
+      setCeDecisionPaper(null);
+      setCeDecisionAction("");
+      setCeDecisionNote("");
+      fetchPapers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmittingCeDecision(false);
+    }
+  };
+
   const handleIssueClick = (issue: Issue, journalId: string) => {
     setSelectedJournalId(journalId);
     setSelectedIssueId(issue.id);
@@ -707,9 +739,16 @@ export default function ChiefEditor() {
       case "submitted":
         return <Clock className="h-4 w-4 text-amber-500" />;
       case "assigned":
+      case "assigned_to_sub_editor":
         return <Users className="h-4 w-4 text-blue-500" />;
       case "reviewed":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "sub_editor_approved":
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case "accepted":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "rejected":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
         return <FileEdit className="h-4 w-4 text-gray-500" />;
     }
@@ -720,9 +759,16 @@ export default function ChiefEditor() {
       case "submitted":
         return "bg-amber-100 text-amber-800 hover:bg-amber-100";
       case "assigned":
+      case "assigned_to_sub_editor":
         return "bg-blue-100 text-blue-800 hover:bg-blue-100";
       case "reviewed":
         return "bg-green-100 text-green-800 hover:bg-green-100";
+      case "sub_editor_approved":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-100";
+      case "accepted":
+        return "bg-green-100 text-green-800 hover:bg-green-100";
+      case "rejected":
+        return "bg-red-100 text-red-800 hover:bg-red-100";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100";
     }
@@ -827,6 +873,24 @@ export default function ChiefEditor() {
                   </div>
                 </CardContent>
               </Card>
+
+              {stats.needsDecision > 0 && (
+                <Card className="glass-card border-l-4 border-l-orange-500 cursor-pointer" onClick={() => setActiveTab("sub_editor_approved")}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Needs Decision
+                        </p>
+                        <p className="text-3xl font-bold mt-2 text-orange-600">{stats.needsDecision}</p>
+                      </div>
+                      <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-orange-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {(selectedJournalId || selectedIssueId) && (
@@ -1069,6 +1133,20 @@ export default function ChiefEditor() {
                       <Users className="h-4 w-4 mr-2" />
                       Assigned
                     </Button>
+                    <Button
+                      variant={activeTab === "sub_editor_approved" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveTab("sub_editor_approved")}
+                      className={activeTab !== "sub_editor_approved" && stats.needsDecision > 0 ? "border-orange-400 text-orange-600" : ""}
+                    >
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Needs Decision
+                      {stats.needsDecision > 0 && (
+                        <Badge variant="destructive" className="ml-1.5 h-4 px-1 text-xs">
+                          {stats.needsDecision}
+                        </Badge>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -1138,47 +1216,84 @@ export default function ChiefEditor() {
                       </div>
                     </CardContent>
                     <CardFooter className="pt-0 flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 group-hover:border-blue-300 group-hover:text-blue-700 transition-colors"
-                        onClick={() => {
-                          setSelectedPaper(paper);
-                          setOpenDialog(true);
-                        }}
-                      >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Assign Editor
-                      </Button>
+                      {paper.status === "sub_editor_approved" ? (
+                        <>
+                          <div className="w-full text-xs font-medium text-orange-600 mb-1 flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            Sub-editor approved — your final decision required
+                          </div>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("accepted"); }}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-amber-400 text-amber-700 hover:bg-amber-50"
+                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("revision"); }}
+                          >
+                            <FileEdit className="h-4 w-4 mr-1" />
+                            Revision
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-red-400 text-red-700 hover:bg-red-50"
+                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("rejected"); }}
+                          >
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 group-hover:border-blue-300 group-hover:text-blue-700 transition-colors"
+                            onClick={() => {
+                              setSelectedPaper(paper);
+                              setOpenDialog(true);
+                            }}
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Assign Editor
+                          </Button>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 group-hover:border-purple-300 group-hover:text-purple-700 transition-colors"
-                        onClick={() => {
-                          setSelectedPaper(paper);
-                          setSelectedReviewerId("");
-                          setNewReviewer({ name: "", email: "", password: "" });
-                          setOpenReviewerDialog(true);
-                        }}
-                      >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Assign Reviewer
-                      </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 group-hover:border-purple-300 group-hover:text-purple-700 transition-colors"
+                            onClick={() => {
+                              setSelectedPaper(paper);
+                              setSelectedReviewerId("");
+                              setNewReviewer({ name: "", email: "", password: "" });
+                              setOpenReviewerDialog(true);
+                            }}
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Assign Reviewer
+                          </Button>
 
-                      {!paper.issueId && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => {
-                            setSelectedPaper(paper);
-                            setOpenIssueDialog(true);
-                          }}
-                        >
-                          <BookOpen className="h-4 w-4 mr-1" />
-                          Assign Issue
-                        </Button>
+                          {!paper.issueId && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedPaper(paper);
+                                setOpenIssueDialog(true);
+                              }}
+                            >
+                              <BookOpen className="h-4 w-4 mr-1" />
+                              Assign Issue
+                            </Button>
+                          )}
+                        </>
                       )}
                     </CardFooter>
                   </Card>
@@ -1768,6 +1883,43 @@ export default function ChiefEditor() {
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 {creatingTeamRev ? "Creating..." : "Create Reviewer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* CE Final Decision Dialog */}
+        <Dialog open={!!ceDecisionPaper} onOpenChange={(open) => { if (!open) { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                Final Decision — {ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Request Revision"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground line-clamp-2">{ceDecisionPaper?.title}</p>
+              <div className="space-y-2">
+                <Label htmlFor="ce-note">Decision Note (optional)</Label>
+                <textarea
+                  id="ce-note"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Add a note for the author or editorial record..."
+                  value={ceDecisionNote}
+                  onChange={(e) => setCeDecisionNote(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitCeDecision}
+                disabled={submittingCeDecision}
+                className={ceDecisionAction === "accepted" ? "bg-green-600 hover:bg-green-700 text-white" : ceDecisionAction === "rejected" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+              >
+                {submittingCeDecision ? "Submitting..." : `Confirm ${ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Revision"}`}
               </Button>
             </DialogFooter>
           </DialogContent>

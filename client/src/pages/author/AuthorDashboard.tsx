@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-import { Plus, FileText, ExternalLink, MapPin } from "lucide-react";
+import { Plus, FileText, ExternalLink, MapPin, Upload, AlertTriangle, BookOpen, Calendar } from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -14,7 +14,10 @@ interface Paper {
   title: string;
   status: string;
   authors?: string;
+  author_names?: string[];
   updated_at: string;
+  submitted_at?: string;
+  journal_title?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -26,6 +29,10 @@ const STATUS_CONFIG: Record<
 > = {
   submitted: { label: "Submitted", variant: "secondary" },
   under_review: { label: "Under Review", variant: "default" },
+  resubmitted: { label: "Under Review (Resubmission)", variant: "default" },
+  pending_revision: { label: "Revision Requested", variant: "outline" },
+  reviewed: { label: "Reviewed", variant: "secondary" },
+  sub_editor_approved: { label: "Approved by Editor", variant: "default" },
   accepted: { label: "Accepted", variant: "default" },
   rejected: { label: "Rejected", variant: "destructive" },
   published: { label: "Published", variant: "default" },
@@ -116,16 +123,45 @@ export default function AuthorDashboard() {
                 ) : (
                   <ul className="divide-y">
                     {recentSubmissions.map((paper) => (
-                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1">
+                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1.5">
                         <span className="font-medium text-sm leading-snug">
                           {paper.title}
                         </span>
+                        {paper.journal_title && (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <BookOpen className="h-3 w-3" />
+                            {paper.journal_title}
+                          </span>
+                        )}
+                        {paper.submitted_at && (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            Submitted: {formatDate(paper.submitted_at)}
+                          </span>
+                        )}
                         <div className="flex items-center justify-between">
                           <StatusBadge status={paper.status} />
                           <span className="text-xs text-muted-foreground">
-                            {formatDate(paper.updated_at)}
+                            Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
+                        {paper.status === "pending_revision" && (
+                          <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded px-3 py-2 mt-1">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-medium">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Revision requested — please upload a revised version
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-orange-500/40 text-orange-600 hover:bg-orange-500/10"
+                              onClick={() => navigate(`/author/version?paperId=${paper.id}`)}
+                            >
+                              <Upload className="h-3 w-3 mr-1" />
+                              Upload Revision
+                            </Button>
+                          </div>
+                        )}
                         <Link
                           to={`/author/track/${paper.id}`}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
@@ -159,19 +195,27 @@ export default function AuthorDashboard() {
                 ) : (
                   <ul className="divide-y">
                     {publishedArticles.map((paper) => (
-                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1">
+                      <li key={paper.id} className="px-4 py-3 flex flex-col gap-1.5">
                         <span className="font-medium text-sm leading-snug">
                           {paper.title}
                         </span>
-                        {paper.authors && (
+                        {paper.journal_title && (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <BookOpen className="h-3 w-3" />
+                            {paper.journal_title}
+                          </span>
+                        )}
+                        {(paper.author_names?.length || paper.authors) && (
                           <span className="text-xs text-muted-foreground">
-                            {paper.authors}
+                            {Array.isArray(paper.author_names) && paper.author_names.length > 0
+                              ? paper.author_names.join(", ")
+                              : paper.authors}
                           </span>
                         )}
                         <div className="flex items-center justify-between">
                           <StatusBadge status={paper.status} />
                           <span className="text-xs text-muted-foreground">
-                            {formatDate(paper.updated_at)}
+                            Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
                         <Link

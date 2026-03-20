@@ -29,7 +29,8 @@ export const getSubEditorPapers = async (subEditorId: string) => {
         'assigned_to_sub_editor',
         'under_review',
         'pending_revision',
-        'resubmitted'
+        'resubmitted',
+        'reviewed'
       )
     GROUP BY p.id
     ORDER BY p.created_at DESC
@@ -118,6 +119,38 @@ export const getAssignedReviewers = async (paperId: string) => {
   return result.rows;
 };
 
+
+export const getReviewsForPaper = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT ra.id as assignment_id, ra.status as assignment_status,
+            r.decision, r.comments, r.signed_at,
+            ra.submitted_at
+     FROM review_assignments ra
+     LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+     WHERE ra.paper_id = $1 AND ra.status = 'submitted'
+     ORDER BY ra.submitted_at DESC`,
+    [paperId],
+  );
+  return result.rows;
+};
+
+export const subEditorDecision = async (
+  paperId: string,
+  action: "approve" | "revision" | "reject",
+  note?: string,
+) => {
+  const statusMap = {
+    approve: "sub_editor_approved",
+    revision: "pending_revision",
+    reject: "rejected",
+  };
+  const newStatus = statusMap[action];
+  const result = await pool.query(
+    `UPDATE papers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [newStatus, paperId],
+  );
+  return result.rows[0];
+};
 
 // ---- Reviewer Requests ----
 

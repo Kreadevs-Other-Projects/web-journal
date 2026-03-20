@@ -58,14 +58,8 @@ interface Paper {
   submittedDate?: string;
   dueDate?: string;
   priority?: "high" | "medium" | "low";
-}
-
-interface CompletedReview {
-  paper_id: string;
-  paper_version_id: string;
-  title: string;
-  decision: string;
-  completedDate: string;
+  review_decision?: string;
+  comments?: string;
 }
 
 export default function ReviewerDashboard() {
@@ -73,9 +67,7 @@ export default function ReviewerDashboard() {
   const { toast } = useToast();
 
   const [papers, setPapers] = useState<Paper[]>([]);
-  const [completedReviews, setCompletedReviews] = useState<CompletedReview[]>(
-    [],
-  );
+  const [completedReviews, setCompletedReviews] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
@@ -123,24 +115,18 @@ export default function ReviewerDashboard() {
         priority: paper.priority || "medium",
       }));
 
-      const completed: CompletedReview[] = allPapers
+      const completed: Paper[] = allPapers
         .filter((paper) =>
           ["submitted", "accepted", "rejected"].includes(
             paper.assignment_status,
           ),
         )
         .map((paper) => ({
-          paper_id: paper.paper_id,
-          paper_version_id: paper.paper_version_id,
-          title: paper.title,
-          decision: paper.assignment_status as
-            | "submitted"
-            | "accepted"
-            | "rejected",
-          completedDate:
-            paper.review_submitted_at ||
-            paper.updated_at ||
-            new Date().toISOString().split("T")[0],
+          ...paper,
+          abstract: paper.abstract || "Abstract not available",
+          category: paper.category || "Uncategorized",
+          version: paper.version_number ? `v${paper.version_number}` : "v1",
+          priority: paper.priority || "medium",
         }));
 
       setPapers(formattedPending);
@@ -460,161 +446,226 @@ export default function ReviewerDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="glass-card">
-                <CardHeader className="border-b border-border/50">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Edit3 className="h-5 w-5 text-primary" />
-                    Submit Review
-                  </CardTitle>
-                  <CardDescription>
-                    Evaluate the paper based on the criteria below
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className="h-[600px]">
-                    <div className="p-6 space-y-6">
+              {selectedPaper.assignment_status === "submitted" ? (
+                <Card className="glass-card">
+                  <CardHeader className="border-b border-border/50">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                      Review Submitted
+                    </CardTitle>
+                    <CardDescription>
+                      You have already submitted a review for this paper.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <Badge className="bg-success/10 text-success border-success/20 text-sm px-3 py-1">
+                      Review Submitted
+                    </Badge>
+
+                    {selectedPaper.review_decision && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Abstract</Label>
-                        <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
-                          {selectedPaper.abstract}
+                        <Label className="text-sm font-medium">Your Decision</Label>
+                        <div
+                          className={cn(
+                            "flex items-center gap-3 p-4 rounded-lg border-2",
+                            selectedPaper.review_decision === "accepted"
+                              ? "border-success/50 bg-success/10"
+                              : selectedPaper.review_decision?.includes("revision")
+                                ? "border-warning/50 bg-warning/10"
+                                : "border-destructive/50 bg-destructive/10",
+                          )}
+                        >
+                          {selectedPaper.review_decision === "accepted" ? (
+                            <CheckCircle2 className="h-5 w-5 text-success" />
+                          ) : selectedPaper.review_decision?.includes("revision") ? (
+                            <AlertTriangle className="h-5 w-5 text-warning" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-destructive" />
+                          )}
+                          <span className="font-medium capitalize">
+                            {selectedPaper.review_decision.replace("_", " ")}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPaper.comments && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Comments Submitted</Label>
+                        <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg whitespace-pre-wrap">
+                          {selectedPaper.comments}
                         </p>
                       </div>
+                    )}
 
-                      <div className="space-y-2">
-                        <Label htmlFor="comments">Comments for Authors *</Label>
-                        <Textarea
-                          id="comments"
-                          value={comments}
-                          onChange={(e) => setComments(e.target.value)}
-                          placeholder="Provide detailed feedback for the authors..."
-                          className="min-h-[150px] input-glow"
-                          required
-                        />
-                      </div>
+                    {selectedPaper.review_submitted_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Submitted on{" "}
+                        {new Date(selectedPaper.review_submitted_at).toLocaleDateString(
+                          "en-GB",
+                          { day: "2-digit", month: "short", year: "numeric" },
+                        )}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="glass-card">
+                  <CardHeader className="border-b border-border/50">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Edit3 className="h-5 w-5 text-primary" />
+                      Submit Review
+                    </CardTitle>
+                    <CardDescription>
+                      Evaluate the paper based on the criteria below
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[600px]">
+                      <div className="p-6 space-y-6">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Abstract</Label>
+                          <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
+                            {selectedPaper.abstract}
+                          </p>
+                        </div>
 
-                      <div className="space-y-3">
-                        <Label>Your Decision *</Label>
-                        <RadioGroup
-                          value={decision}
-                          onValueChange={setDecision}
+                        <div className="space-y-2">
+                          <Label htmlFor="comments">Comments for Authors *</Label>
+                          <Textarea
+                            id="comments"
+                            value={comments}
+                            onChange={(e) => setComments(e.target.value)}
+                            placeholder="Provide detailed feedback for the authors..."
+                            className="min-h-[150px] input-glow"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label>Your Decision *</Label>
+                          <RadioGroup
+                            value={decision}
+                            onValueChange={setDecision}
+                          >
+                            <motion.div
+                              whileHover={{ scale: 1.01 }}
+                              className={cn(
+                                "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                                decision === "accepted"
+                                  ? "border-success bg-success/10"
+                                  : "border-border hover:border-success/50",
+                              )}
+                              onClick={() => setDecision("accepted")}
+                            >
+                              <RadioGroupItem value="accepted" id="accept" />
+                              <CheckCircle2 className="h-5 w-5 text-success" />
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor="accept"
+                                  className="cursor-pointer font-medium"
+                                >
+                                  Accept
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Paper is ready for publication
+                                </p>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              whileHover={{ scale: 1.01 }}
+                              className={cn(
+                                "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                                decision === "minor_revision"
+                                  ? "border-info bg-info/10"
+                                  : "border-border hover:border-info/50",
+                              )}
+                              onClick={() => setDecision("minor_revision")}
+                            >
+                              <RadioGroupItem value="minor_revision" id="minor" />
+                              <Edit3 className="h-5 w-5 text-info" />
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor="minor"
+                                  className="cursor-pointer font-medium"
+                                >
+                                  Minor Revision
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Small changes needed
+                                </p>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              whileHover={{ scale: 1.01 }}
+                              className={cn(
+                                "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                                decision === "major_revision"
+                                  ? "border-warning bg-warning/10"
+                                  : "border-border hover:border-warning/50",
+                              )}
+                              onClick={() => setDecision("major_revision")}
+                            >
+                              <RadioGroupItem value="major_revision" id="major" />
+                              <AlertTriangle className="h-5 w-5 text-warning" />
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor="major"
+                                  className="cursor-pointer font-medium"
+                                >
+                                  Major Revision
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Significant changes required
+                                </p>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              whileHover={{ scale: 1.01 }}
+                              className={cn(
+                                "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                                decision === "rejected"
+                                  ? "border-destructive bg-destructive/10"
+                                  : "border-border hover:border-destructive/50",
+                              )}
+                              onClick={() => setDecision("rejected")}
+                            >
+                              <RadioGroupItem value="rejected" id="reject" />
+                              <XCircle className="h-5 w-5 text-destructive" />
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor="reject"
+                                  className="cursor-pointer font-medium"
+                                >
+                                  Reject
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Paper does not meet standards
+                                </p>
+                              </div>
+                            </motion.div>
+                          </RadioGroup>
+                        </div>
+
+                        <Button
+                          onClick={submitReview}
+                          disabled={!decision || !comments.trim()}
+                          className="w-full btn-physics"
+                          size="lg"
                         >
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "accepted"
-                                ? "border-success bg-success/10"
-                                : "border-border hover:border-success/50",
-                            )}
-                            onClick={() => setDecision("accepted")}
-                          >
-                            <RadioGroupItem value="accepted" id="accept" />
-                            <CheckCircle2 className="h-5 w-5 text-success" />
-                            <div className="flex-1">
-                              <Label
-                                htmlFor="accept"
-                                className="cursor-pointer font-medium"
-                              >
-                                Accept
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                Paper is ready for publication
-                              </p>
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "minor_revision"
-                                ? "border-info bg-info/10"
-                                : "border-border hover:border-info/50",
-                            )}
-                            onClick={() => setDecision("minor_revision")}
-                          >
-                            <RadioGroupItem value="minor_revision" id="minor" />
-                            <Edit3 className="h-5 w-5 text-info" />
-                            <div className="flex-1">
-                              <Label
-                                htmlFor="minor"
-                                className="cursor-pointer font-medium"
-                              >
-                                Minor Revision
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                Small changes needed
-                              </p>
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "major_revision"
-                                ? "border-warning bg-warning/10"
-                                : "border-border hover:border-warning/50",
-                            )}
-                            onClick={() => setDecision("major_revision")}
-                          >
-                            <RadioGroupItem value="major_revision" id="major" />
-                            <AlertTriangle className="h-5 w-5 text-warning" />
-                            <div className="flex-1">
-                              <Label
-                                htmlFor="major"
-                                className="cursor-pointer font-medium"
-                              >
-                                Major Revision
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                Significant changes required
-                              </p>
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === "rejected"
-                                ? "border-destructive bg-destructive/10"
-                                : "border-border hover:border-destructive/50",
-                            )}
-                            onClick={() => setDecision("rejected")}
-                          >
-                            <RadioGroupItem value="rejected" id="reject" />
-                            <XCircle className="h-5 w-5 text-destructive" />
-                            <div className="flex-1">
-                              <Label
-                                htmlFor="reject"
-                                className="cursor-pointer font-medium"
-                              >
-                                Reject
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                Paper does not meet standards
-                              </p>
-                            </div>
-                          </motion.div>
-                        </RadioGroup>
+                          <Send className="h-4 w-4 mr-2" />
+                          Submit Review
+                          {(decision === "accepted" || decision === "rejected") &&
+                            " (Requires Signature)"}
+                        </Button>
                       </div>
-
-                      <Button
-                        onClick={submitReview}
-                        disabled={!decision || !comments.trim()}
-                        className="w-full btn-physics"
-                        size="lg"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Submit Review
-                        {(decision === "accepted" || decision === "rejected") &&
-                          " (Requires Signature)"}
-                      </Button>
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </motion.div>
         ) : (
@@ -829,29 +880,36 @@ export default function ReviewerDashboard() {
                           <div>
                             <div className="flex items-center gap-2 mb-2">
                               <Badge variant="outline">{review.paper_id}</Badge>
+                              <Badge className="bg-success/10 text-success border-success/20">
+                                Review Submitted
+                              </Badge>
                             </div>
                             <h3 className="font-serif-outfit text-lg font-semibold">
                               {review.title}
                             </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Completed:{" "}
-                              {new Date(
-                                review.completedDate,
-                              ).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Badge
-                            className={cn(
-                              review.decision === "accepted" ||
-                                review.decision === "accept"
-                                ? "bg-success/10 text-success"
-                                : review.decision.includes("revision")
-                                  ? "bg-warning/10 text-warning"
-                                  : "bg-destructive/10 text-destructive",
+                            {review.review_submitted_at && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Submitted:{" "}
+                                {new Date(review.review_submitted_at).toLocaleDateString()}
+                              </p>
                             )}
+                            {review.review_decision && (
+                              <p className="text-sm mt-1">
+                                Decision:{" "}
+                                <span className="font-medium capitalize">
+                                  {review.review_decision.replace("_", " ")}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedPaper(review)}
                           >
-                            {review.decision}
-                          </Badge>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Submission
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

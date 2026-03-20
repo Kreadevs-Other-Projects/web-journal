@@ -54,7 +54,7 @@ export const getBrowseDataRepo = async (filters: any) => {
   const { search, year, journalId } = filters;
 
   let query = `
-  SELECT 
+  SELECT
     j.id as journal_id,
     j.title as journal_title,
     j.issn,
@@ -71,9 +71,9 @@ export const getBrowseDataRepo = async (filters: any) => {
     pv.file_url,
     pv.version_number
   FROM journals j
-  JOIN journal_issues ji 
+  LEFT JOIN journal_issues ji
       ON ji.journal_id = j.id
-  JOIN papers p 
+  LEFT JOIN papers p
       ON p.issue_id = ji.id
       AND p.status = 'published'
   LEFT JOIN LATERAL (

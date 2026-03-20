@@ -77,6 +77,30 @@ export const reviewerInvite = async (req: Request, res: Response) => {
   }
 };
 
+export const getReviewsForPaper = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const reviews = await service.getReviewsForPaperService(paperId);
+    res.json({ success: true, reviews });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const subEditorDecision = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { action, note } = req.body;
+    if (!["approve", "revision", "reject"].includes(action)) {
+      return res.status(400).json({ success: false, message: "Invalid action. Must be approve, revision, or reject" });
+    }
+    const paper = await service.subEditorDecisionService(paperId, action, note);
+    res.json({ success: true, paper });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
 export const suggestReviewer = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;

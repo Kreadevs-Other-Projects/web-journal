@@ -68,10 +68,17 @@ export const makeEditorDecision = async (
     paperId,
     editorId,
     decision,
-    note,
+    note || "",
   );
 
-  const updatedPaper = await repo.updatePaperStatus(paperId, decision);
+  // Map decision values to valid paper_status enum values
+  const statusMap: Record<string, string> = {
+    revision: "pending_revision",
+    accepted: "accepted",
+    rejected: "rejected",
+  };
+  const paperStatus = statusMap[decision] ?? decision;
+  const updatedPaper = await repo.updatePaperStatus(paperId, paperStatus);
 
   return {
     decision: decisionRow,

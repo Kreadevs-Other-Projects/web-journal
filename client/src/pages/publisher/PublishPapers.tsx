@@ -11,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
-  Mail,
   CheckCircle,
   Clock,
   AlertCircle,
   Loader2,
-  DollarSign,
+  User,
+  Eye,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -28,62 +29,59 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface Paper {
-  id: string;
+interface Review {
+  paperId: string;
+  reviewId: string;
   title: string;
-  JournalId: string;
-  journal_name: string;
-  label: string;
-  author_id: string;
-  authors?: string;
-  author_email?: string;
-  created_at: string;
-  paper_status: string;
-  payment_status: string;
-  abstract?: string;
+  journalId: string;
+  issueId: string;
+  comments: string;
+  decision: string;
+  fileUrl: string;
+  versionNumber: number;
+  versionCreatedAt: string;
+  paperStatus: string;
+  reviewerId: string;
+  reviewerName?: string;
+  submittedAt: string;
 }
+
+type StatusFilter = "accepted" | "published";
 
 export default function PublisherPapersDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
 
-  const [papers, setPapers] = useState<Paper[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("accepted");
 
-  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  // PAYMENT_DISABLED: const [emailModalOpen, setEmailModalOpen] = useState(false);
-  // PAYMENT_DISABLED: const [sendingEmail, setSendingEmail] = useState(false);
-  // PAYMENT_DISABLED: const [paymentAmount, setPaymentAmount] = useState("");
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [openPublish, setOpenPublish] = useState(false);
+  const [doi, setDoi] = useState("");
+  const [yearLabel, setYearLabel] = useState("");
+  const [publishing, setPublishing] = useState(false);
 
-  const statusMap: Record<string, string[]> = {
-    all: ["pending", "paid", "submitted", "accepted"],
-    pending: ["pending", "submitted", "accepted"],
-    paid: ["paid"],
-  };
-
-  const fetchPapers = async () => {
+  const fetchReviews = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${url}/papers/getAllPapers`, {
+      const res = await fetch(`${url}/publication/getSubmittedReviews`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) throw new Error("Failed to fetch papers");
-
       const data = await res.json();
-
-      console.log(data);
-
-      setPapers(
-        Array.isArray(data?.papers)
-          ? data.papers
-          : data?.papers
-            ? [data.papers]
-            : [],
-      );
+      if (data.success) {
+        const normalized = data.data.map((r: any) => ({
+          ...r,
+          issueId: r.issueid,
+          journalId: r.journalid,
+        }));
+        setReviews(normalized);
+      } else {
+        throw new Error("Failed to fetch papers");
+      }
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -95,159 +93,80 @@ export default function PublisherPapersDashboard() {
     }
   };
 
-  /* PAYMENT_DISABLED: Payment step hidden per client instruction
-  const sendPaymentRequest = async () => {
-    if (!selectedPaper || !paymentAmount.trim()) {
+  const handleOpenPublish = (review: Review) => {
+    setSelectedReview(review);
+    setDoi("");
+    setYearLabel("");
+    setOpenPublish(true);
+  };
+
+  const publishPaper = async () => {
+    if (!selectedReview) return;
+    if (!doi.trim()) {
+      toast({ title: "DOI required", description: "Please enter a DOI before publishing.", variant: "destructive" });
       return;
     }
 
     try {
-      setSendingEmail(true);
-
-      const payload = {
-        paperId: selectedPaper.id,
-        title: selectedPaper.title,
-        authorId: selectedPaper.author_id,
-        pages: 1,
-        pricePerPage: parseFloat(paymentAmount),
-        username: selectedPaper.authors,
-        journal_name: selectedPaper.journal_name,
-        label: selectedPaper.label,
-        author_email: selectedPaper.author_email,
-      };
-
-      const res = await fetch(`${url}/publisher/sendEmail`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to send payment");
-      }
-
-      toast({
-        title: "Payment Sent",
-        description: `Payment request sent to ${selectedPaper.authors}`,
-      });
-
-      setEmailModalOpen(false);
-      setPaymentAmount("");
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to send payment",
-      });
-    } finally {
-      setSendingEmail(false);
-    }
-  };
-
-  const approvePaperPayment = async (paperId: string) => {
-    try {
-      setLoading(true);
-
-      const response = await fetch(`${url}/publisher/approve/${paperId}`, {
+      setPublishing(true);
+      const res = await fetch(`${url}/publication/publishPaper/${selectedReview.paperId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          year_label: yearLabel,
+          issueId: selectedReview.issueId,
+          doi: doi.trim(),
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to publish paper");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to approve payment");
-      }
-
-      toast({
-        title: "Success",
-        description: "Paper marked as paid successfully",
-      });
-
-      setPapers((prev) =>
-        prev.map((paper) =>
-          paper.id === paperId ? { ...paper, status: "paid" } : paper,
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.paperId === selectedReview.paperId ? { ...r, paperStatus: "published" } : r,
         ),
       );
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to approve payment",
-      });
+      toast({ title: "Paper Published", description: `"${selectedReview.title}" published successfully` });
+      setOpenPublish(false);
+      setSelectedReview(null);
+    } catch (err: any) {
+      toast({ title: "Publish failed", description: err.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setPublishing(false);
     }
   };
-  */
 
   useEffect(() => {
-    if (user && token) fetchPapers();
+    if (user && token) fetchReviews();
   }, [user, token]);
+
+  const filteredReviews = reviews.filter((r) => r.paperStatus === statusFilter);
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case "paid":
-        return (
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" /> Paid
-          </Badge>
-        );
-      case "pending":
-      case "submitted":
-        return (
-          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {status}
-          </Badge>
-        );
+      case "published":
+        return <Badge className="bg-green-500/20 text-green-600 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" />Published</Badge>;
       case "accepted":
-        return (
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" /> Accepted
-          </Badge>
-        );
-
+        return <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30"><CheckCircle className="h-3 w-3 mr-1" />Accepted</Badge>;
       default:
-        return (
-          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" /> {status}
-          </Badge>
-        );
+        return <Badge className="bg-muted text-muted-foreground"><AlertCircle className="h-3 w-3 mr-1" />{status}</Badge>;
     }
   };
-
-  const filteredPapers = papers.filter((paper) =>
-    statusMap[tab].includes(paper.paper_status.toLowerCase()),
-  );
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-white">
-            Publisher Papers Dashboard
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Publish Papers</h1>
+            <p className="text-muted-foreground mt-1">Review accepted papers and publish them</p>
+          </div>
           <div className="flex items-center gap-4">
-            <Button onClick={fetchPapers} variant="outline" size="sm">
-              Refresh
-            </Button>
-            <Tabs
-              value={tab}
-              onValueChange={setTab}
-              className="bg-background rounded-lg p-1"
-            >
+            <Button onClick={fetchReviews} variant="outline" size="sm">Refresh</Button>
+            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
               <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="pending">Pending</TabsTrigger>
-                <TabsTrigger value="paid">Paid</TabsTrigger>
+                <TabsTrigger value="accepted">Accepted</TabsTrigger>
+                <TabsTrigger value="published">Published</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -257,136 +176,134 @@ export default function PublisherPapersDashboard() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-12 w-12 text-primary animate-spin" />
           </div>
-        ) : filteredPapers.length === 0 ? (
-          <Card className="glass-card text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-gray-400 text-lg">No papers found</p>
+        ) : filteredReviews.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-lg">
+                {statusFilter === "accepted" ? "No accepted papers awaiting publication" : "No published papers yet"}
+              </p>
+            </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPapers.map((paper) => (
-              <Card
-                key={paper.id}
-                className="glass-card border border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer"
-              >
-                <CardHeader>
-                  <CardTitle className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <span className="text-lg text-white">
-                          {paper.title}
-                        </span>
-                      </div>
-                      {paper.authors && (
-                        <p className="text-sm font-normal text-muted-foreground mt-1">
-                          {paper.authors}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 items-end">
-                      {getStatusBadge(paper.paper_status)}
-                      {getStatusBadge(paper.payment_status)}
-                    </div>
-                  </CardTitle>
+            {filteredReviews.map((review) => (
+              <Card key={`${review.paperId}-${review.reviewId}`} className="border hover:border-blue-500/50 hover:shadow-md transition-all duration-300">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-base font-semibold line-clamp-2 text-foreground">
+                      {review.title}
+                    </CardTitle>
+                    {getStatusBadge(review.paperStatus)}
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Submitted: {new Date(paper.created_at).toLocaleDateString()}
-                  </p>
-                  {paper.abstract && (
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      Abstract: {paper.abstract}
-                    </p>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5" />
+                    <span>Reviewer: {review.reviewerName || review.reviewerId.slice(0, 12) + "..."}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Version {review.versionNumber}</span>
+                  </div>
+                  {review.decision && (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      <span>Decision: <span className="capitalize font-medium text-foreground">{review.decision}</span></span>
+                    </div>
                   )}
                 </CardContent>
-                {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
-                {/* <CardFooter className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={() => {
-                      setSelectedPaper(paper);
-                      setEmailModalOpen(true);
-                    }}
-                  >
-                    <DollarSign className="h-4 w-4" />
-                    Send Payment Request
-                  </Button>
-
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={() => approvePaperPayment(paper.id)}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Approve
-                  </Button>
-                </CardFooter> */}
+                <CardFooter className="border-t pt-4 flex gap-2">
+                  {review.paperStatus !== "published" ? (
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleOpenPublish(review)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Publish
+                    </Button>
+                  ) : (
+                    <Badge variant="default" className="flex-1 justify-center py-2 cursor-default">
+                      ✓ Published
+                    </Badge>
+                  )}
+                </CardFooter>
               </Card>
             ))}
           </div>
         )}
 
-        {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
-        {/* <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        {/* Publish Dialog */}
+        <Dialog open={openPublish} onOpenChange={setOpenPublish}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Send Payment Request</DialogTitle>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-bold">Publish Paper</DialogTitle>
+                  <p className="text-sm text-muted-foreground">Complete the publishing process</p>
+                </div>
+              </div>
             </DialogHeader>
 
-            {selectedPaper && (
-              <div className="space-y-4">
-                <p>
-                  To:{" "}
-                  <span className="font-medium">
-                    {selectedPaper.author_email}
-                  </span>
-                </p>
-
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="paymentAmount"
-                    className="text-sm font-medium"
-                  >
-                    Amount (USD)
-                  </label>
-                  <input
-                    id="paymentAmount"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="Enter payment amount"
-                    className="w-full p-3 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 p-4 rounded-lg border">
+                <p className="text-sm font-medium text-foreground line-clamp-2">{selectedReview?.title}</p>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                  <span>v{selectedReview?.versionNumber}</span>
+                  <span>•</span>
+                  <span>Reviewer: {selectedReview?.reviewerName || selectedReview?.reviewerId?.slice(0, 8) + "..."}</span>
                 </div>
-
-                <DialogFooter className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEmailModalOpen(false);
-                      setPaymentAmount("");
-                    }}
-                    disabled={sendingEmail}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={sendPaymentRequest}
-                    disabled={sendingEmail || !paymentAmount.trim()}
-                  >
-                    {sendingEmail ? "Sending..." : "Send Payment"}
-                  </Button>
-                </DialogFooter>
               </div>
-            )}
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">DOI <span className="text-destructive">*</span></label>
+                <Input
+                  placeholder="e.g., 10.12345/journal-name.2026.01"
+                  value={doi}
+                  onChange={(e) => setDoi(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Format: 10.XXXXX/journal-acronym.year.index</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Year Label <span className="text-muted-foreground">(optional)</span></label>
+                <Input
+                  placeholder="e.g., 2026-Vol1"
+                  value={yearLabel}
+                  onChange={(e) => setYearLabel(e.target.value)}
+                />
+              </div>
+
+              {selectedReview?.issueId && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Will be assigned to issue: {selectedReview.issueId.slice(0, 8)}…</span>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOpenPublish(false)} className="flex-1">
+                <X className="h-4 w-4 mr-2" />Cancel
+              </Button>
+              <Button
+                onClick={publishPaper}
+                disabled={publishing || !doi.trim()}
+                className="flex-1"
+              >
+                {publishing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Publishing...</>
+                ) : (
+                  <><CheckCircle className="h-4 w-4 mr-2" />Confirm Publish</>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
-        </Dialog> */}
+        </Dialog>
       </div>
     </DashboardLayout>
   );

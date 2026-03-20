@@ -20,6 +20,7 @@ export const getPaperForPublish = async () => {
 
       ra.id AS "reviewAssignmentId",
       ra.reviewer_id AS "reviewerId",
+      ru.username AS "reviewerName",
       ra.status AS "reviewAssignmentStatus",
       ra.submitted_at AS "submittedAt",
 
@@ -40,6 +41,7 @@ export const getPaperForPublish = async () => {
       AND ra.status = 'submitted'
 
     LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+    LEFT JOIN users ru ON ru.id = ra.reviewer_id
 
     WHERE p.status IN ('accepted', 'published')
 

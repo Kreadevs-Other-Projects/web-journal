@@ -374,18 +374,18 @@ export default function PublisherDashboard() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-3xl font-bold text-foreground">
               Publisher Dashboard
             </h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Manage journals and process approvals
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="glass-card px-4 py-2 rounded-lg align-item-center">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Total Journals:{" "}
-                <span className="text-xl font-bold text-white">
+                <span className="text-xl font-bold text-foreground">
                   {journals.length}
                 </span>
               </p>
@@ -417,7 +417,7 @@ export default function PublisherDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Draft</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold text-foreground">
                     {journals.filter((j) => j.status === "draft").length}
                   </p>
                 </div>
@@ -429,8 +429,8 @@ export default function PublisherDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Active</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-sm text-muted-foreground">Active</p>
+                  <p className="text-2xl font-bold text-foreground">
                     {journals.filter((j) => j.status === "active").length}
                   </p>
                 </div>
@@ -442,8 +442,8 @@ export default function PublisherDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Total Issues</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-sm text-muted-foreground">Total Issues</p>
+                  <p className="text-2xl font-bold text-foreground">
                     {journals.reduce(
                       (acc, journal) => acc + journal.issues.length,
                       0,
@@ -458,7 +458,7 @@ export default function PublisherDashboard() {
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Journals</h2>
+            <h2 className="text-xl font-semibold text-foreground">Journals</h2>
             <Tabs value={tab} onValueChange={setTab} className="w-[300px]">
               <TabsList className="glass-card">
                 <TabsTrigger value="all">All</TabsTrigger>
@@ -473,10 +473,10 @@ export default function PublisherDashboard() {
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="glass-card animate-pulse">
                   <CardHeader>
-                    <div className="h-6 bg-gray-700 rounded w-3/4"></div>
+                    <div className="h-6 bg-muted rounded w-3/4"></div>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
                   </CardContent>
                 </Card>
               ))}
@@ -485,8 +485,8 @@ export default function PublisherDashboard() {
             <Card className="glass-card">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BookOpen className="h-12 w-12 text-gray-500 mb-4" />
-                <p className="text-gray-400 text-lg">No journals found</p>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-muted-foreground text-lg">No journals found</p>
+                <p className="text-muted-foreground/70 text-sm mt-1">
                   Journals will appear here once submitted
                 </p>
               </CardContent>
@@ -506,7 +506,7 @@ export default function PublisherDashboard() {
                   >
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <CardTitle className="flex items-center gap-2 text-white group-hover:text-blue-400 transition-colors">
+                        <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-blue-500 transition-colors">
                           <BookOpen className="h-5 w-5" />
                           <span className="line-clamp-1">{journal.title}</span>
                         </CardTitle>
@@ -515,14 +515,14 @@ export default function PublisherDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Hash className="h-3 w-3" />
                           <span className="font-mono">{journal.issn}</span>
                         </div>
-                        <p className="text-sm text-gray-300 line-clamp-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {journal.description}
                         </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {new Date(journal.created_at).toLocaleDateString()}
@@ -534,11 +534,11 @@ export default function PublisherDashboard() {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="border-t border-gray-800 pt-4">
+                    <CardFooter className="border-t border-border pt-4">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full text-gray-400 hover:text-white"
+                        className="w-full text-muted-foreground hover:text-foreground"
                       >
                         View Details
                       </Button>

@@ -91,7 +91,8 @@ export default function ArticlePage() {
   // Option B: fetch HTML on-demand for papers without cached html_content
   useEffect(() => {
     if (!article || htmlContent !== null) return;
-    if (!article.file_url || !article.file_url.endsWith(".docx")) return;
+    const ext = article.file_url?.toLowerCase();
+    if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf"))) return;
     setHtmlLoading(true);
     fetch(`${url}/browse/paper/${paperId}/html`)
       .then((r) => r.json())
@@ -326,30 +327,24 @@ export default function ArticlePage() {
                   Loading full text…
                 </div>
               ) : htmlContent ? (
-                <div
-                  className="paper-content"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
-                />
-              ) : article.file_url?.toLowerCase().endsWith(".pdf") ? (
-                <div className="space-y-2">
-                  <iframe
-                    src={`${url}${article.file_url}`}
-                    width="100%"
-                    height="800px"
-                    className="rounded-lg border border-border"
-                    title={article.title}
+                <div className="space-y-4">
+                  <div
+                    className="paper-content"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
                   />
-                  <div className="text-center">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
-                      className="gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Open PDF in new tab
-                    </Button>
-                  </div>
+                  {article.file_url && (
+                    <p className="text-sm text-muted-foreground pt-2 border-t border-border/40">
+                      <a
+                        href={`${url}${article.file_url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download original manuscript
+                      </a>
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-lg border border-border/60 bg-muted/40 p-6 text-center space-y-3">

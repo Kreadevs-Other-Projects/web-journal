@@ -142,12 +142,23 @@ export const reviewIssueRequestService = async (
   const updated = await reviewIssueRequest(request_id, action, user.id);
 
   if (action === "approved") {
+    // Calculate defaults for nullable fields before INSERT
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS cnt FROM journal_issues WHERE journal_id = $1`,
+      [req.journal_id],
+    );
+    const existingCount: number = countRes.rows[0].cnt ?? 0;
+
+    const year: number = req.year ?? new Date().getFullYear();
+    const volume: number = req.volume ?? 1;
+    const issueNo: number = req.issue_no ?? existingCount + 1;
+
     // Create the actual issue
     await createJournalIssue(req.journal_id, {
       label: req.label,
-      volume: req.volume,
-      issue: req.issue_no,
-      year: req.year,
+      volume,
+      issue: issueNo,
+      year,
     });
 
     // Notify the journal manager

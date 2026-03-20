@@ -866,39 +866,54 @@ export default function PublisherDashboard() {
             ) : (
               <div className="space-y-3">
                 {issueRequests.map((req) => (
-                  <Card key={req.id} className="glass-card">
-                    <CardContent className="pt-4 pb-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-white truncate">{req.label}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {req.journal_title || "Journal"} • Vol {req.volume || "—"}, Issue {req.issue_no || "—"}, {req.year || "—"}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Requested by: {req.requested_by_name || req.requested_by_email || "Journal Manager"}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            {new Date(req.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                          </p>
+                  <Card key={req.id} className="border border-border">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-foreground text-base">{req.label}</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">{req.journal_title || "Journal"}</p>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 gap-1.5"
+                              disabled={reviewingRequest === req.id}
+                              onClick={() => reviewIssueRequest(req.id, "approved")}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="gap-1.5"
+                              disabled={reviewingRequest === req.id}
+                              onClick={() => reviewIssueRequest(req.id, "rejected")}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                              Reject
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 h-8 px-2"
-                            disabled={reviewingRequest === req.id}
-                            onClick={() => reviewIssueRequest(req.id, "approved")}
-                          >
-                            <ThumbsUp className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-8 px-2"
-                            disabled={reviewingRequest === req.id}
-                            onClick={() => reviewIssueRequest(req.id, "rejected")}
-                          >
-                            <ThumbsDown className="h-3.5 w-3.5" />
-                          </Button>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Volume</p>
+                            <p className="font-medium text-foreground">{req.volume ?? "Not specified"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Issue No.</p>
+                            <p className="font-medium text-foreground">{req.issue_no ?? "Not specified"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Year</p>
+                            <p className="font-medium text-foreground">{req.year ?? new Date().getFullYear()}</p>
+                          </div>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Requested by: <span className="font-medium text-foreground">{req.requested_by_name || "Journal Manager"}</span></span>
+                          <span>{new Date(req.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
                         </div>
                       </div>
                     </CardContent>

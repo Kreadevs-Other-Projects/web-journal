@@ -11,6 +11,7 @@ import {
   getMyIssueRequests,
   getPendingIssueRequests,
   reviewIssueRequest,
+  getManagerPapers,
 } from "./journalIssue.controller";
 import {
   createJournalIssueSchema,
@@ -56,6 +57,13 @@ router.get(
   authMiddleware,
   authorize("journal_manager"),
   getMyIssues,
+);
+
+router.get(
+  "/my-papers",
+  authMiddleware,
+  authorize("journal_manager"),
+  getManagerPapers,
 );
 
 router.post(

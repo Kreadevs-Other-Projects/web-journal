@@ -141,6 +141,31 @@ export const reviewIssueRequest = async (
   return result.rows[0];
 };
 
+export const getPublishedPapersForManager = async (user_id: string) => {
+  const result = await pool.query(
+    `SELECT
+       p.id,
+       p.title,
+       p.status,
+       u.username AS author_name,
+       p.published_at,
+       ji.label AS issue_label,
+       pub.doi
+     FROM papers p
+     JOIN users u ON u.id = p.author_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
+     WHERE p.journal_id IN (
+       SELECT journal_id FROM user_roles
+       WHERE user_id = $1 AND role = 'journal_manager' AND is_active = true
+     )
+     AND p.status = 'published'
+     ORDER BY p.published_at DESC`,
+    [user_id],
+  );
+  return result.rows;
+};
+
 export const getJournalIssuesByManagerJournals = async (user_id: string) => {
   const result = await pool.query(
     `SELECT ji.*, j.title as journal_title,

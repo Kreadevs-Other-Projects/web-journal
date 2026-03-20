@@ -11,6 +11,7 @@ import {
   getMyIssueRequestsService,
   getPendingIssueRequestsService,
   reviewIssueRequestService,
+  getManagerPapersService,
 } from "./journalIssue.service";
 
 export const addJournalIssue = async (req: AuthUser, res: Response) => {
@@ -104,6 +105,15 @@ export const getPendingIssueRequests = async (req: AuthUser, res: Response) => {
   try {
     const requests = await getPendingIssueRequestsService(req.user!.id);
     res.json({ success: true, requests });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getManagerPapers = async (req: AuthUser, res: Response) => {
+  try {
+    const papers = await getManagerPapersService(req.user!.id);
+    res.json({ success: true, papers });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
   }

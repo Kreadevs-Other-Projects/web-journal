@@ -55,7 +55,8 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
 
   // Option B: on-demand conversion for existing papers
   const filename = path.basename(version.file_url);
-  const filePath = path.join(process.cwd(), "uploads", filename);
+  // Use __dirname-relative path so it works regardless of cwd at startup
+  const filePath = path.resolve(__dirname, "../../../uploads", filename);
 
   try {
     const mammoth = (await import("mammoth")).default;

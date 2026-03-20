@@ -65,16 +65,6 @@ export const roleConfig: Record<
     route: "/publisher-manager",
     navigation: [
       { label: "Dashboard", path: "/publisher-manager", icon: Home },
-      {
-        label: "Publish Paper",
-        path: "/publisher/publish-paper",
-        icon: FileText,
-      },
-      // {
-      //   label: "Analytics",
-      //   path: "/publisher-manager/analytics",
-      //   icon: BarChart3,
-      // },
     ],
   },
 

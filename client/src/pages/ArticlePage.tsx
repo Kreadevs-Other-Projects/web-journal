@@ -76,6 +76,7 @@ export default function ArticlePage() {
     fetch(`${url}/browse/paper/${paperId}`)
       .then((r) => r.json())
       .then((data) => {
+        console.log("Article data:", data);
         if (data.success) {
           setArticle(data.paper);
           if (data.paper?.html_content) {
@@ -329,6 +330,27 @@ export default function ArticlePage() {
                   className="paper-content"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
                 />
+              ) : article.file_url?.toLowerCase().endsWith(".pdf") ? (
+                <div className="space-y-2">
+                  <iframe
+                    src={`${url}${article.file_url}`}
+                    width="100%"
+                    height="800px"
+                    className="rounded-lg border border-border"
+                    title={article.title}
+                  />
+                  <div className="text-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Open PDF in new tab
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <div className="rounded-lg border border-border/60 bg-muted/40 p-6 text-center space-y-3">
                   <p className="text-muted-foreground text-sm">

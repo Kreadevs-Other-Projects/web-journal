@@ -9,6 +9,7 @@ import {
   getPendingIssueRequestsForPublisher,
   reviewIssueRequest,
   getJournalIssuesByManagerJournals,
+  getPublishedPapersForManager,
 } from "./journalIssue.repository";
 import { pool } from "../../configs/db";
 import { transporter } from "../../configs/email";
@@ -115,6 +116,10 @@ export const requestNewIssueService = async (
 
 export const getMyIssuesService = async (user_id: string) => {
   return getJournalIssuesByManagerJournals(user_id);
+};
+
+export const getManagerPapersService = async (user_id: string) => {
+  return getPublishedPapersForManager(user_id);
 };
 
 export const getMyIssueRequestsService = async (journal_id: string) => {

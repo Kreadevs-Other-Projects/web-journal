@@ -66,36 +66,77 @@ interface BoardMember {
 
 function formatDate(d?: string) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function getInitials(name: string) {
   return name
     .split(" ")
-    .filter((w) => !["of", "the", "and", "for", "in", "a", "an"].includes(w.toLowerCase()))
+    .filter(
+      (w) =>
+        !["of", "the", "and", "for", "in", "a", "an"].includes(w.toLowerCase()),
+    )
     .slice(0, 3)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
 
-function JournalLogo({ logoUrl, title, size = "md" }: { logoUrl?: string; title: string; size?: "sm" | "md" | "lg" }) {
+function JournalLogo({
+  logoUrl,
+  title,
+  size = "md",
+}: {
+  logoUrl?: string;
+  title: string;
+  size?: "sm" | "md" | "lg";
+}) {
+  const [imgError, setImgError] = useState(false);
   const sizes = {
     sm: "h-10 w-10 text-xs",
     md: "h-16 w-16 text-base",
     lg: "h-24 w-24 text-xl",
   };
   const initials = getInitials(title);
-  if (logoUrl) {
-    return <img src={`${url}${logoUrl}`} alt={title} className={cn("object-cover rounded-lg", sizes[size])} />;
+
+  const imgSrc = logoUrl
+    ? logoUrl.startsWith("http")
+      ? logoUrl
+      : `${url}/uploads/${logoUrl}`
+    : null;
+
+  if (imgSrc && !imgError) {
+    return (
+      <img
+        src={imgSrc}
+        alt={title}
+        className={cn("object-cover rounded-lg", sizes[size])}
+        onError={() => setImgError(true)}
+      />
+    );
   }
   return (
-    <div className={cn("rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary", sizes[size])}>
+    <div
+      className={cn(
+        "rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary",
+        sizes[size],
+      )}
+    >
       {initials}
     </div>
   );
 }
 
-function MemberAvatar({ name, profilePicUrl }: { name: string; profilePicUrl?: string }) {
+function MemberAvatar({
+  name,
+  profilePicUrl,
+}: {
+  name: string;
+  profilePicUrl?: string;
+}) {
   if (profilePicUrl) {
     return (
       <img
@@ -136,7 +177,10 @@ export default function JournalDetail() {
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState<IssueGroup[]>([]);
   const [issuesLoaded, setIssuesLoaded] = useState(false);
-  const [board, setBoard] = useState<{ chief_editors: BoardMember[]; associate_editors: BoardMember[] } | null>(null);
+  const [board, setBoard] = useState<{
+    chief_editors: BoardMember[];
+    associate_editors: BoardMember[];
+  } | null>(null);
   const [boardLoaded, setBoardLoaded] = useState(false);
 
   const setTab = (key: TabKey) => setSearchParams({ tab: key });
@@ -171,7 +215,11 @@ export default function JournalDetail() {
     fetch(`${url}/journal/${id}/editorial-board`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setBoard({ chief_editors: data.chief_editors || [], associate_editors: data.associate_editors || [] });
+        if (data.success)
+          setBoard({
+            chief_editors: data.chief_editors || [],
+            associate_editors: data.associate_editors || [],
+          });
       })
       .catch(console.error)
       .finally(() => setBoardLoaded(true));
@@ -210,29 +258,54 @@ export default function JournalDetail() {
       <div className="border-b border-border/50 pt-20 pb-0 bg-background">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="py-8 flex flex-col md:flex-row md:items-center gap-6">
-            <JournalLogo logoUrl={journal.logo_url} title={journal.title} size="lg" />
+            <JournalLogo
+              logoUrl={journal.logo_url}
+              title={journal.title}
+              size="lg"
+            />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-xs text-primary font-medium uppercase tracking-wide">Journal</span>
+                <span className="text-xs text-primary font-medium uppercase tracking-wide">
+                  Journal
+                </span>
                 {journal.type && (
                   <Badge variant="secondary" className="text-xs">
-                    {journal.type === "open_access" ? "Open Access" : "Subscription"}
+                    {journal.type === "open_access"
+                      ? "Open Access"
+                      : "Subscription"}
                   </Badge>
                 )}
                 {journal.status && (
-                  <Badge variant={journal.status === "active" ? "default" : "outline"} className="text-xs">
+                  <Badge
+                    variant={
+                      journal.status === "active" ? "default" : "outline"
+                    }
+                    className="text-xs"
+                  >
                     {journal.status}
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">{journal.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+                {journal.title}
+              </h1>
               {journal.publisher_name && (
-                <p className="text-base text-muted-foreground mb-2">{journal.publisher_name}</p>
+                <p className="text-base text-muted-foreground mb-2">
+                  {journal.publisher_name}
+                </p>
               )}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {journal.issn && <span className="font-mono bg-muted px-2 py-0.5 rounded">ISSN: {journal.issn}</span>}
+                {journal.issn && (
+                  <span className="font-mono bg-muted px-2 py-0.5 rounded">
+                    ISSN: {journal.issn}
+                  </span>
+                )}
                 {journal.doi && <span>DOI: {journal.doi}</span>}
-                {journal.acronym && <span className="font-mono bg-muted px-2 py-0.5 rounded">{journal.acronym}</span>}
+                {journal.acronym && (
+                  <span className="font-mono bg-muted px-2 py-0.5 rounded">
+                    {journal.acronym}
+                  </span>
+                )}
               </div>
             </div>
             <div className="shrink-0">
@@ -274,30 +347,46 @@ export default function JournalDetail() {
                 <section>
                   <div className="flex items-center gap-2 mb-4">
                     <BookOpen className="h-5 w-5 text-primary" />
-                    <h2 className="text-xl font-semibold text-foreground">Aims &amp; Scope</h2>
+                    <h2 className="text-xl font-semibold text-foreground">
+                      Aims &amp; Scope
+                    </h2>
                   </div>
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.aims_and_scope}</p>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {journal.aims_and_scope}
+                  </p>
                 </section>
               ) : (
-                <p className="text-muted-foreground italic">No aims and scope published yet.</p>
+                <p className="text-muted-foreground italic">
+                  No aims and scope published yet.
+                </p>
               )}
               <Separator />
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 {journal.issn && (
                   <div className="glass-card p-4">
-                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">ISSN</p>
+                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                      ISSN
+                    </p>
                     <p className="font-mono font-medium">{journal.issn}</p>
                   </div>
                 )}
                 {journal.type && (
                   <div className="glass-card p-4">
-                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">Access Type</p>
-                    <p className="font-medium">{journal.type === "open_access" ? "Open Access" : "Subscription"}</p>
+                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                      Access Type
+                    </p>
+                    <p className="font-medium">
+                      {journal.type === "open_access"
+                        ? "Open Access"
+                        : "Subscription"}
+                    </p>
                   </div>
                 )}
                 {journal.publisher_name && (
                   <div className="glass-card p-4">
-                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">Publisher</p>
+                    <p className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                      Publisher
+                    </p>
                     <p className="font-medium">{journal.publisher_name}</p>
                   </div>
                 )}
@@ -321,22 +410,36 @@ export default function JournalDetail() {
                       Editor-in-Chief ({board?.chief_editors.length ?? 0})
                     </h2>
                     {board?.chief_editors.length === 0 ? (
-                      <p className="text-muted-foreground italic">No chief editor assigned yet.</p>
+                      <p className="text-muted-foreground italic">
+                        No chief editor assigned yet.
+                      </p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {board?.chief_editors.map((member) => (
-                          <div key={member.id} className="glass-card p-6 text-center">
-                            <MemberAvatar name={member.name} profilePicUrl={member.profile_pic_url} />
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">{member.name}</h3>
+                          <div
+                            key={member.id}
+                            className="glass-card p-6 text-center"
+                          >
+                            <MemberAvatar
+                              name={member.name}
+                              profilePicUrl={member.profile_pic_url}
+                            />
+                            <h3 className="font-semibold text-foreground mt-3 mb-1">
+                              {member.name}
+                            </h3>
                             {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">{member.degrees.join(", ")}</p>
+                              <p className="text-sm text-muted-foreground mb-1">
+                                {member.degrees.join(", ")}
+                              </p>
                             ) : null}
                             {member.keywords?.length ? (
                               <p className="text-xs text-muted-foreground">
                                 Interests: {member.keywords.join("; ")}
                               </p>
                             ) : null}
-                            <Badge variant="outline" className="mt-2 text-xs">Editor-in-Chief</Badge>
+                            <Badge variant="outline" className="mt-2 text-xs">
+                              Editor-in-Chief
+                            </Badge>
                           </div>
                         ))}
                       </div>
@@ -351,22 +454,36 @@ export default function JournalDetail() {
                       Associate Editors ({board?.associate_editors.length ?? 0})
                     </h2>
                     {board?.associate_editors.length === 0 ? (
-                      <p className="text-muted-foreground italic">No associate editors assigned yet.</p>
+                      <p className="text-muted-foreground italic">
+                        No associate editors assigned yet.
+                      </p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {board?.associate_editors.map((member) => (
-                          <div key={member.id} className="glass-card p-6 text-center">
-                            <MemberAvatar name={member.name} profilePicUrl={member.profile_pic_url} />
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">{member.name}</h3>
+                          <div
+                            key={member.id}
+                            className="glass-card p-6 text-center"
+                          >
+                            <MemberAvatar
+                              name={member.name}
+                              profilePicUrl={member.profile_pic_url}
+                            />
+                            <h3 className="font-semibold text-foreground mt-3 mb-1">
+                              {member.name}
+                            </h3>
                             {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">{member.degrees.join(", ")}</p>
+                              <p className="text-sm text-muted-foreground mb-1">
+                                {member.degrees.join(", ")}
+                              </p>
                             ) : null}
                             {member.keywords?.length ? (
                               <p className="text-xs text-muted-foreground">
                                 Interests: {member.keywords.join("; ")}
                               </p>
                             ) : null}
-                            <Badge variant="outline" className="mt-2 text-xs">Associate Editor</Badge>
+                            <Badge variant="outline" className="mt-2 text-xs">
+                              Associate Editor
+                            </Badge>
                           </div>
                         ))}
                       </div>
@@ -382,19 +499,27 @@ export default function JournalDetail() {
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 mb-6">
                 <ScrollText className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">Open Access Policy</h2>
+                <h2 className="text-xl font-semibold text-foreground">
+                  Open Access Policy
+                </h2>
               </div>
               {journal.oa_policy ? (
                 journal.oa_policy.trim().startsWith("<") ? (
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.oa_policy) }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(journal.oa_policy),
+                    }}
                   />
                 ) : (
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.oa_policy}</p>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {journal.oa_policy}
+                  </p>
                 )
               ) : (
-                <p className="text-muted-foreground italic">No OA policy published yet.</p>
+                <p className="text-muted-foreground italic">
+                  No OA policy published yet.
+                </p>
               )}
             </div>
           )}
@@ -404,19 +529,27 @@ export default function JournalDetail() {
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 mb-6">
                 <Users className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">Peer Review Policy</h2>
+                <h2 className="text-xl font-semibold text-foreground">
+                  Peer Review Policy
+                </h2>
               </div>
               {journal.peer_review_policy ? (
                 journal.peer_review_policy.trim().startsWith("<") ? (
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.peer_review_policy) }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(journal.peer_review_policy),
+                    }}
                   />
                 ) : (
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.peer_review_policy}</p>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {journal.peer_review_policy}
+                  </p>
                 )
               ) : (
-                <p className="text-muted-foreground italic">No peer review policy published yet.</p>
+                <p className="text-muted-foreground italic">
+                  No peer review policy published yet.
+                </p>
               )}
             </div>
           )}
@@ -427,11 +560,18 @@ export default function JournalDetail() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold text-foreground">Author Guidelines</h2>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Author Guidelines
+                  </h2>
                 </div>
-                <Button asChild size="sm" className="bg-gradient-primary hover:opacity-90">
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-gradient-primary hover:opacity-90"
+                >
                   <Link to={`/author/submit?journal=${journal.id}`}>
-                    <Send className="h-3 w-3 mr-2" /> Submit to {journal.acronym || journal.title}
+                    <Send className="h-3 w-3 mr-2" /> Submit to{" "}
+                    {journal.acronym || journal.title}
                   </Link>
                 </Button>
               </div>
@@ -439,13 +579,19 @@ export default function JournalDetail() {
                 journal.author_guidelines.trim().startsWith("<") ? (
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(journal.author_guidelines) }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(journal.author_guidelines),
+                    }}
                   />
                 ) : (
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{journal.author_guidelines}</p>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {journal.author_guidelines}
+                  </p>
                 )
               ) : (
-                <p className="text-muted-foreground italic">No author guidelines published yet.</p>
+                <p className="text-muted-foreground italic">
+                  No author guidelines published yet.
+                </p>
               )}
             </div>
           )}
@@ -461,7 +607,9 @@ export default function JournalDetail() {
               ) : issues.length === 0 ? (
                 <div className="text-center py-16">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-40" />
-                  <p className="text-muted-foreground">No published articles yet.</p>
+                  <p className="text-muted-foreground">
+                    No published articles yet.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-10">
@@ -469,13 +617,23 @@ export default function JournalDetail() {
                     <section key={idx}>
                       <div className="flex items-center gap-3 mb-4">
                         <Calendar className="h-4 w-4 text-primary" />
-                        <h2 className="font-semibold text-foreground">{issue.issue}</h2>
-                        <span className="text-xs text-muted-foreground">{formatDate(issue.published_at)}</span>
-                        <Badge variant="outline" className="text-xs">{issue.papers.length} article{issue.papers.length !== 1 ? "s" : ""}</Badge>
+                        <h2 className="font-semibold text-foreground">
+                          {issue.issue}
+                        </h2>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(issue.published_at)}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {issue.papers.length} article
+                          {issue.papers.length !== 1 ? "s" : ""}
+                        </Badge>
                       </div>
                       <div className="space-y-3">
                         {issue.papers.map((paper) => (
-                          <div key={paper.id} className="glass-card p-5 flex items-start gap-4 group hover:border-primary/30 transition-colors">
+                          <div
+                            key={paper.id}
+                            className="glass-card p-5 flex items-start gap-4 group hover:border-primary/30 transition-colors"
+                          >
                             <FileText className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <Link
@@ -485,7 +643,9 @@ export default function JournalDetail() {
                                 {paper.title}
                               </Link>
                               {paper.abstract && (
-                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{paper.abstract}</p>
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                  {paper.abstract}
+                                </p>
                               )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
@@ -495,11 +655,20 @@ export default function JournalDetail() {
                                 asChild
                                 className="text-primary h-8 px-2"
                               >
-                                <a href={`${url}${paper.pdf_url}`} target="_blank" rel="noopener noreferrer">
+                                <a
+                                  href={`${url}${paper.pdf_url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
                                   <Download className="h-3 w-3 mr-1" /> PDF
                                 </a>
                               </Button>
-                              <Button variant="ghost" size="sm" asChild className="text-primary h-8 px-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                asChild
+                                className="text-primary h-8 px-2"
+                              >
                                 <Link to={`/articles/${paper.id}`}>
                                   <ExternalLink className="h-3 w-3 mr-1" /> View
                                 </Link>

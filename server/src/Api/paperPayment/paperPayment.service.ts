@@ -1,64 +1,197 @@
-import {
-  createPaperPayment,
-  getPaymentByPaperIdRepo,
-  markPaymentPaidRepo,
-} from "./paperPayment.repository";
 import { pool } from "../../configs/db";
+import {
+  createPaperPaymentRepo,
+  getPaymentByPaperIdRepo,
+  updateReceiptRepo,
+  approvePaymentRepo,
+  rejectPaymentRepo,
+  getPendingPaymentsRepo,
+  getAllPaperPaymentsRepo,
+} from "./paperPayment.repository";
+import { insertStatusLog } from "../paper/paper.repository";
+import { updatePaperStatus } from "../paper/paper.repository";
+import {
+  sendInvoiceEmail,
+  sendReceiptNotificationEmail,
+  sendPaymentApprovalEmail,
+} from "../../utils/emails/invoiceEmail";
+import { env } from "../../configs/envs";
 
-export const createPaperPaymentService = async (
-  user: { id: string; role: string },
-  paper_id: string,
-  amount: number,
-) => {
-  if (user.role !== "publisher") {
-    throw new Error("Only authors can create paper payment");
-  }
+const DEFAULT_PAGES = 10;
 
-  const paper = await pool.query(
-    `SELECT id, author_id FROM papers WHERE id=$1`,
-    [paper_id],
+function generateInvoiceNumber(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(100000 + Math.random() * 900000);
+  return `INV-${year}-${rand}`;
+}
+
+function formatDateStr(d: Date): string {
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export const initiatePaperPaymentService = async (
+  paperId: string,
+  authorId: string,
+  authorEmail: string,
+  authorName: string,
+): Promise<any> => {
+  // Fetch paper + journal fee
+  const paperRes = await pool.query(
+    `SELECT p.title, p.journal_id, j.publication_fee, j.currency, j.title AS journal_name, j.publisher_name
+     FROM papers p
+     JOIN journals j ON j.id = p.journal_id
+     WHERE p.id = $1`,
+    [paperId],
   );
+  if (!paperRes.rows.length) throw new Error("Paper not found");
+  const row = paperRes.rows[0];
 
-  if (!paper.rows.length) throw new Error("Paper not found");
+  const pricePerPage = parseFloat(row.publication_fee) || 50;
+  const currency = row.currency || "USD";
+  const pages = DEFAULT_PAGES;
+  const totalAmount = pricePerPage * pages;
+  const invoiceNumber = generateInvoiceNumber();
 
-  // if (paper.rows[0].author_id !== user.id) {
-  //   throw new Error("Forbidden");
-  // }
+  const payment = await createPaperPaymentRepo({
+    paper_id: paperId,
+    author_id: authorId,
+    pages,
+    price_per_page: pricePerPage,
+    total_amount: totalAmount,
+    currency,
+    invoice_number: invoiceNumber,
+  });
 
-  const existing = await getPaymentByPaperIdRepo(paper_id);
-  if (existing) return existing;
+  const now = new Date();
+  const due = new Date(now);
+  due.setDate(due.getDate() + 7);
 
-  return pool
-    .query(
-      `
-      INSERT INTO paper_payments
-      (paper_id, author_id, pages, price_per_page, total_amount)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING *
-    `,
-      [paper_id, user.id, 1, amount, amount],
-    )
-    .then((res) => res.rows[0]);
+  sendInvoiceEmail({
+    authorName,
+    authorEmail,
+    paperTitle: row.title,
+    journalName: row.journal_name,
+    invoiceNumber,
+    invoiceDate: formatDateStr(now),
+    dueDate: formatDateStr(due),
+    pages,
+    pricePerPage,
+    totalAmount,
+    currency,
+    publisherName: row.publisher_name || "Publisher",
+  }).catch(() => {});
+
+  return payment;
 };
 
-export const payPaperPaymentService = async (
-  user: { id: string; role: string },
-  payment_id: string,
-  transaction_ref: string,
-) => {
-  const payment = await pool.query(`SELECT * FROM paper_payments WHERE id=$1`, [
-    payment_id,
-  ]);
+export const uploadReceiptService = async (
+  paperId: string,
+  authorId: string,
+  receiptUrl: string,
+): Promise<any> => {
+  // Verify author owns this paper
+  const paperRes = await pool.query(
+    `SELECT p.author_id, p.title, j.title AS journal_name
+     FROM papers p JOIN journals j ON j.id = p.journal_id
+     WHERE p.id = $1`,
+    [paperId],
+  );
+  if (!paperRes.rows.length) throw new Error("Paper not found");
+  if (paperRes.rows[0].author_id !== authorId) throw new Error("Forbidden");
 
-  if (!payment.rows.length) throw new Error("Payment not found");
+  const payment = await updateReceiptRepo(paperId, receiptUrl);
 
-  const row = payment.rows[0];
+  // Update paper status
+  await updatePaperStatus(paperId, "payment_review");
+  await insertStatusLog({
+    paper_id: paperId,
+    status: "payment_review",
+    changed_by: authorId,
+    note: "Payment receipt uploaded by author",
+  });
 
-  if (row.author_id !== user.id) throw new Error("Forbidden");
-
-  if (row.status === "paid") {
-    throw new Error("Already paid");
+  // Notify publisher (best-effort)
+  const publisherRes = await pool.query(
+    `SELECT u.email FROM users u WHERE u.role = 'publisher' LIMIT 1`,
+  );
+  if (publisherRes.rows.length) {
+    sendReceiptNotificationEmail({
+      publisherEmail: publisherRes.rows[0].email,
+      authorName: authorId,
+      paperTitle: paperRes.rows[0].title,
+      invoiceNumber: payment.invoice_number || "",
+      paperUrl: `${env.CORS_ORIGIN || "http://localhost:5173"}/publisher`,
+    }).catch(() => {});
   }
 
-  return markPaymentPaidRepo(payment_id, transaction_ref);
+  return payment;
+};
+
+export const approveOrRejectPaymentService = async (
+  paperId: string,
+  publisherId: string,
+  approved: boolean,
+  rejectionReason?: string,
+): Promise<any> => {
+  const existing = await getPaymentByPaperIdRepo(paperId);
+  if (!existing) throw new Error("Payment record not found");
+
+  if (approved) {
+    const payment = await approvePaymentRepo(paperId, publisherId);
+    await updatePaperStatus(paperId, "submitted");
+    await insertStatusLog({
+      paper_id: paperId,
+      status: "submitted",
+      changed_by: publisherId,
+      note: "Payment approved — paper entered editorial workflow",
+    });
+    sendPaymentApprovalEmail({
+      authorEmail: existing.author_email,
+      authorName: existing.author_name,
+      paperTitle: existing.paper_title,
+      approved: true,
+    }).catch(() => {});
+    return payment;
+  } else {
+    const payment = await rejectPaymentRepo(paperId, rejectionReason || "Receipt rejected");
+    await updatePaperStatus(paperId, "awaiting_payment");
+    await insertStatusLog({
+      paper_id: paperId,
+      status: "awaiting_payment",
+      changed_by: publisherId,
+      note: `Payment receipt rejected: ${rejectionReason}`,
+    });
+    sendPaymentApprovalEmail({
+      authorEmail: existing.author_email,
+      authorName: existing.author_name,
+      paperTitle: existing.paper_title,
+      approved: false,
+      rejectionReason,
+    }).catch(() => {});
+    return payment;
+  }
+};
+
+export const getPaymentByPaperService = async (
+  paperId: string,
+  userId: string,
+  userRole: string,
+): Promise<any> => {
+  const payment = await getPaymentByPaperIdRepo(paperId);
+  if (!payment) throw new Error("Payment not found");
+
+  // author can only see own paper's payment
+  if (userRole === "author" && payment.author_id !== userId) {
+    throw new Error("Forbidden");
+  }
+
+  return payment;
+};
+
+export const getPendingPaymentsService = async () => {
+  return getPendingPaymentsRepo();
+};
+
+export const getAllPaperPaymentsService = async () => {
+  return getAllPaperPaymentsRepo();
 };

@@ -36,6 +36,8 @@ const STATUS_CONFIG: Record<
     variant: "default" | "secondary" | "destructive" | "outline";
   }
 > = {
+  awaiting_payment: { label: "Payment Pending", variant: "outline" },
+  payment_review: { label: "Receipt Under Review", variant: "secondary" },
   submitted: { label: "Submitted", variant: "secondary" },
   under_review: { label: "Under Review", variant: "default" },
   resubmitted: { label: "Under Review (Resubmission)", variant: "default" },
@@ -157,6 +159,24 @@ export default function AuthorDashboard() {
                             Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
+                        {paper.status === "awaiting_payment" && (
+                          <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded px-3 py-2 mt-1">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-medium">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Payment required to proceed
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-orange-500/40 text-orange-600 hover:bg-orange-500/10"
+                              onClick={() =>
+                                navigate(`/author/track/${paper.id}`)
+                              }
+                            >
+                              Pay / Upload Receipt
+                            </Button>
+                          </div>
+                        )}
                         {paper.status === "pending_revision" && (
                           <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded px-3 py-2 mt-1">
                             <span className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-medium">

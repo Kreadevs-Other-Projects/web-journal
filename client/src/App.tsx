@@ -15,7 +15,7 @@ import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import CreateJournal from "./pages/publisher/CreateJournal.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
-// PAYMENT_DISABLED: import PublisherPayments from "./pages/publisher/Payments.tsx";
+import PublisherPayments from "./pages/publisher/Payments.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -166,11 +166,10 @@ const App = () => (
                       element={<CreateJournal />}
                     />
 
-                    {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
-                    {/* <Route
+                    <Route
                       path="/publisher/payments"
-                      element={<PublisherPayments journalId={""} />}
-                    /> */}
+                      element={<PublisherPayments />}
+                    />
                   </Route>
 
                   <Route

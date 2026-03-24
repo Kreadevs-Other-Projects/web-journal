@@ -25,7 +25,7 @@ import subEditorRoutes from "./Api/subEditor/subEditor.routes";
 import browseRoutes from "./Api/browse/browse.route";
 import archiveRouter from "./Api/archive/archive.route";
 import invitationRoutes from "./Api/invitation/invitation.routes";
-// PAYMENT_DISABLED: import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
+import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
 
 const app = express();
 app.use(express.json());
@@ -33,6 +33,7 @@ app.use(cookieParser());
 app.use(cors());
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/api/uploads/receipts", express.static(path.join(__dirname, "..", "uploads", "receipts")));
 
 app.get("/health", (req: Request, res: Response) => {
   return res.json({ success: true, code: 200, message: "Healthy!" });
@@ -48,7 +49,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
-// PAYMENT_DISABLED: app.use("/api/paperPayment", paperPaymentRoutes);
+app.use("/api/payments", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);
 app.use("/api/publisher", publisherRoutes);

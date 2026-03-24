@@ -5,6 +5,7 @@ import {
   BookOpen,
   UserCheck,
   BarChart3,
+  CreditCard,
 } from "lucide-react";
 
 export type UserRole =
@@ -53,7 +54,7 @@ export const roleConfig: Record<
         path: "/publisher/publish-paper",
         icon: FileText,
       },
-      // PAYMENT_DISABLED: { label: "Payments", path: "/publisher/payments", icon: Users },
+      { label: "Payments", path: "/publisher/payments", icon: CreditCard },
     ],
   },
 

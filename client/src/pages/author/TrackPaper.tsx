@@ -7,9 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle } from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
+
+interface PaymentRecord {
+  id: string;
+  invoice_number: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  receipt_url?: string;
+  receipt_uploaded_at?: string;
+  rejection_reason?: string;
+}
 
 interface TrackingData {
   paper: {
@@ -63,6 +74,7 @@ const STAGES = [
 ];
 
 function getStageIndex(status: string): number {
+  if (status === "awaiting_payment" || status === "payment_review") return 0;
   if (status === "submitted" || status === "assigned_to_sub_editor") return 0;
   if (status === "under_review" || status === "resubmitted" || status === "pending_revision") return 1;
   if (status === "accepted" || status === "rejected") return 2;
@@ -79,7 +91,10 @@ export default function TrackPaper() {
   const [data, setData] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [payment, setPayment] = useState<PaymentRecord | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const receiptRef = useRef<HTMLInputElement>(null);
 
   const fetchTracking = () => {
     fetch(`${url}/papers/${paperId}/tracking`, {
@@ -91,8 +106,18 @@ export default function TrackPaper() {
       .finally(() => setLoading(false));
   };
 
+  const fetchPayment = () => {
+    fetch(`${url}/payments/paper/${paperId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setPayment(d.payment); })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchTracking();
+    fetchPayment();
   }, [paperId, token]);
 
   const handleRevisionUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +147,40 @@ export default function TrackPaper() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["jpg", "jpeg", "png", "pdf"].includes(ext || "")) {
+      toast({ title: "Invalid file", description: "Only JPG, PNG or PDF receipts accepted.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB.", variant: "destructive" });
+      return;
+    }
+    setUploadingReceipt(true);
+    try {
+      const fd = new FormData();
+      fd.append("receipt", file);
+      const res = await fetch(`${url}/payments/paper/${paperId}/upload-receipt`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const resp = await res.json();
+      if (!resp.success) throw new Error(resp.message || "Upload failed");
+      toast({ title: "Receipt uploaded", description: "Awaiting publisher review." });
+      fetchTracking();
+      fetchPayment();
+    } catch (err) {
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
+    } finally {
+      setUploadingReceipt(false);
+      if (receiptRef.current) receiptRef.current.value = "";
     }
   };
 
@@ -174,6 +233,79 @@ export default function TrackPaper() {
               {paper.category && <Badge variant="outline">{paper.category}</Badge>}
             </div>
           </div>
+
+          {/* Payment Banner */}
+          {(paper.status === "awaiting_payment" || paper.status === "payment_review") && payment && (
+            <Card className="mb-6 border-orange-400/40 bg-orange-50 dark:bg-orange-950/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                  <CreditCard className="h-4 w-4" />
+                  Payment Required
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {/* Invoice details */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 bg-white dark:bg-muted/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800/30">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Invoice #</p>
+                    <p className="font-mono font-semibold text-xs mt-0.5">{payment.invoice_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Amount Due</p>
+                    <p className="font-bold text-base text-orange-700 dark:text-orange-400">{payment.currency} {Number(payment.total_amount).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge className="mt-0.5 bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 hover:bg-orange-100">
+                      {payment.status === "payment_review" ? "Under Review" : "Unpaid"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Rejection notice */}
+                {payment.status === "failed" && payment.rejection_reason && (
+                  <div className="flex gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg p-3">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Receipt Rejected</p>
+                      <p className="text-xs mt-0.5">{payment.rejection_reason}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload section */}
+                {paper.status === "awaiting_payment" && (
+                  <div className="space-y-2">
+                    <p className="text-muted-foreground text-xs">After completing the bank transfer, upload your payment receipt below:</p>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        size="sm"
+                        onClick={() => receiptRef.current?.click()}
+                        disabled={uploadingReceipt}
+                        className="gap-2 bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        {uploadingReceipt ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                        {uploadingReceipt ? "Uploading…" : "Upload Receipt"}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">JPG, PNG or PDF · max 5MB</span>
+                    </div>
+                    <input ref={receiptRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.pdf" onChange={handleReceiptUpload} />
+                  </div>
+                )}
+
+                {/* Already uploaded */}
+                {paper.status === "payment_review" && payment.receipt_uploaded_at && (
+                  <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Receipt submitted — awaiting publisher approval</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Uploaded on {formatDate(payment.receipt_uploaded_at)}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Timeline */}
           <Card className="mb-6">

@@ -62,6 +62,27 @@ export const manuscriptUpload = multer({
   },
 });
 
+const receiptDir = path.join(process.cwd(), "uploads", "receipts");
+if (!fs.existsSync(receiptDir)) fs.mkdirSync(receiptDir, { recursive: true });
+
+const receiptStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, receiptDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `receipt-${Date.now()}${ext}`);
+  },
+});
+
+export const receiptUpload = multer({
+  storage: receiptStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG, PNG or PDF receipts are accepted"));
+  },
+});
+
 export const logoUpload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 },

@@ -1,26 +1,54 @@
 import { Router } from "express";
-
-import { createPaperPayment, payPaperPayment } from "./paperPayment.controller";
-
-import { payPaperPaymentSchema } from "./paperPayment.schema";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
-import { validate } from "../../middlewares/validate.middleware";
+import { receiptUpload } from "../../middlewares/upload.middleware";
+import {
+  uploadReceipt,
+  approveOrRejectPayment,
+  getPaymentForPaper,
+  getPendingPayments,
+  getAllPayments,
+} from "./paperPayment.controller";
 
 const router = Router();
 
+// Author uploads receipt
 router.post(
-  "/createPaperPayment",
-  authMiddleware,
-  authorize("publisher"),
-  createPaperPayment,
-);
-
-router.post(
-  "/payPaperPayment/:paymentId",
+  "/paper/:paperId/upload-receipt",
   authMiddleware,
   authorize("author"),
-  validate(payPaperPaymentSchema),
-  payPaperPayment,
+  receiptUpload.single("receipt"),
+  uploadReceipt,
+);
+
+// Publisher approves or rejects
+router.post(
+  "/paper/:paperId/approve",
+  authMiddleware,
+  authorize("publisher"),
+  approveOrRejectPayment,
+);
+
+// Get payment for a specific paper (author own, or publisher)
+router.get(
+  "/paper/:paperId",
+  authMiddleware,
+  getPaymentForPaper,
+);
+
+// Publisher: get all pending receipts
+router.get(
+  "/pending",
+  authMiddleware,
+  authorize("publisher"),
+  getPendingPayments,
+);
+
+// Publisher: get all payments
+router.get(
+  "/all",
+  authMiddleware,
+  authorize("publisher"),
+  getAllPayments,
 );
 
 export default router;

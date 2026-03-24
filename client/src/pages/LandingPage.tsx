@@ -131,13 +131,17 @@ export default function LandingPage() {
   useEffect(() => {
     fetch(`${url}/browse/home/journals?limit=6`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setHomeJournals(d.journals || []); })
+      .then((d) => {
+        if (d.success) setHomeJournals(d.journals || []);
+      })
       .catch(() => {})
       .finally(() => setJournalsLoading(false));
 
     fetch(`${url}/browse/home/publications?limit=6`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setHomePapers(d.papers || []); })
+      .then((d) => {
+        if (d.success) setHomePapers(d.papers || []);
+      })
       .catch(() => {})
       .finally(() => setPapersLoading(false));
   }, []);
@@ -414,7 +418,9 @@ export default function LandingPage() {
               <h2 className="font-serif-outfit text-3xl md:text-4xl font-bold text-foreground">
                 Journals
               </h2>
-              <p className="text-muted-foreground mt-1">Explore our collection of peer-reviewed academic journals</p>
+              <p className="text-muted-foreground mt-1">
+                Explore our collection of peer-reviewed academic journals
+              </p>
             </div>
             <Link to="/browse">
               <Button variant="outline" size="sm">
@@ -426,7 +432,10 @@ export default function LandingPage() {
           {journalsLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-xl border border-border p-5 space-y-3">
+                <div
+                  key={i}
+                  className="rounded-xl border border-border p-5 space-y-3"
+                >
                   <Skeleton className="h-12 w-12 rounded-lg" />
                   <Skeleton className="h-5 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -435,7 +444,9 @@ export default function LandingPage() {
               ))}
             </div>
           ) : homeJournals.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">No journals available yet.</p>
+            <p className="text-center text-muted-foreground py-12">
+              No journals available yet.
+            </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {homeJournals.map((j) => (
@@ -449,26 +460,45 @@ export default function LandingPage() {
                   <div className="flex items-start gap-3">
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
                       {j.logo_url ? (
-                        <img src={`${url}${j.logo_url}`} alt={j.title} className="h-full w-full object-cover" />
+                        <img
+                          src={`${url}/uploads/${j.logo_url}`}
+                          alt={j.title}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         <BookOpen className="h-6 w-6 text-primary" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{j.title}</h3>
-                      {j.issn && <p className="text-xs text-muted-foreground mt-0.5">ISSN: {j.issn}</p>}
+                      <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">
+                        {j.title}
+                      </h3>
+                      {j.issn && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          ISSN: {j.issn}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {j.type && (
                       <Badge variant="secondary" className="text-xs">
-                        {j.type === "open_access" ? "Open Access" : "Subscription"}
+                        {j.type === "open_access"
+                          ? "Open Access"
+                          : "Subscription"}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">{j.article_count ?? 0} article{j.article_count !== 1 ? "s" : ""}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {j.article_count ?? 0} article
+                      {j.article_count !== 1 ? "s" : ""}
+                    </span>
                   </div>
                   <Link to={`/journal/${j.id}`}>
-                    <Button variant="outline" size="sm" className="w-full mt-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-auto"
+                    >
                       View Journal <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Button>
                   </Link>
@@ -487,7 +517,9 @@ export default function LandingPage() {
               <h2 className="font-serif-outfit text-3xl md:text-4xl font-bold text-foreground">
                 Recent Publications
               </h2>
-              <p className="text-muted-foreground mt-1">Latest research published in our journals</p>
+              <p className="text-muted-foreground mt-1">
+                Latest research published in our journals
+              </p>
             </div>
             <Link to="/archive">
               <Button variant="outline" size="sm">
@@ -499,7 +531,10 @@ export default function LandingPage() {
           {papersLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-xl border border-border p-5 space-y-3">
+                <div
+                  key={i}
+                  className="rounded-xl border border-border p-5 space-y-3"
+                >
                   <Skeleton className="h-5 w-full" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -507,7 +542,9 @@ export default function LandingPage() {
               ))}
             </div>
           ) : homePapers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">No publications yet.</p>
+            <p className="text-center text-muted-foreground py-12">
+              No publications yet.
+            </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {homePapers.map((p) => (
@@ -518,30 +555,48 @@ export default function LandingPage() {
                   viewport={{ once: true }}
                   className="glass-card p-5 flex flex-col gap-3"
                 >
-                  <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-3">{p.title}</h3>
+                  <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-3">
+                    {p.title}
+                  </h3>
                   {p.author_names && p.author_names.length > 0 && (
                     <p className="text-xs text-muted-foreground line-clamp-1">
-                      {Array.isArray(p.author_names) ? p.author_names.join(", ") : p.author_names}
+                      {Array.isArray(p.author_names)
+                        ? p.author_names.join(", ")
+                        : p.author_names}
                     </p>
                   )}
                   {p.journal_title && (
-                    <p className="text-xs text-primary font-medium truncate">{p.journal_title}</p>
+                    <p className="text-xs text-primary font-medium truncate">
+                      {p.journal_title}
+                    </p>
                   )}
                   {p.keywords && p.keywords.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {(Array.isArray(p.keywords) ? p.keywords : []).slice(0, 3).map((k: string, i: number) => (
-                        <Badge key={i} variant="outline" className="text-xs">{k}</Badge>
-                      ))}
+                      {(Array.isArray(p.keywords) ? p.keywords : [])
+                        .slice(0, 3)
+                        .map((k: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {k}
+                          </Badge>
+                        ))}
                     </div>
                   )}
                   <div className="flex items-center justify-between mt-auto pt-2">
                     {p.published_at && (
                       <span className="text-xs text-muted-foreground">
-                        {new Date(p.published_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        {new Date(p.published_at).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </span>
                     )}
                     <Link to={`/articles/${p.id}`}>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-xs">
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                      >
                         Read Article <ArrowRight className="ml-1 h-3 w-3" />
                       </Button>
                     </Link>

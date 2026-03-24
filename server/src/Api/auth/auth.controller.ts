@@ -480,6 +480,13 @@ export const switchRole = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    // Auto-discover journal_id from user_roles if client didn't provide one
+    let effectiveJournalId = journal_id;
+    if (!effectiveJournalId) {
+      const matchingRow = userRoleRows.find((r) => r.role === role);
+      effectiveJournalId = matchingRow?.journal_id ?? null;
+    }
+
     const newToken = await generateAccessToken(
       user.id,
       user.role,
@@ -487,7 +494,7 @@ export const switchRole = async (req: Request, res: Response) => {
       user.username,
       allRoles,
       role,
-      journal_id,
+      effectiveJournalId,
     );
 
     return res.status(200).json({

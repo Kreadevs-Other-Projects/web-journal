@@ -180,9 +180,7 @@ export default function LandingPage() {
   return (
     <PageTransition className="min-h-screen bg-background">
       <div className="noise-overlay" />
-
       <Navbar />
-
       {/* Hero Section */}
       <section
         ref={heroRef}
@@ -359,7 +357,6 @@ export default function LandingPage() {
           <ChevronDown className="h-6 w-6" />
         </motion.div>
       </section>
-
       {/* Stats Section */}
       <section className="py-20 border-y border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4">
@@ -382,7 +379,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Features Section */}
       <section className="py-24">
         <div className="container mx-auto px-4">
@@ -427,7 +423,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Process Section */}
       <section className="py-24 bg-card/30">
         <div className="container mx-auto px-4">
@@ -493,7 +488,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Testimonials */}
       <section className="py-24">
         <div className="container mx-auto px-4">
@@ -546,7 +540,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-dark" />
@@ -578,7 +571,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border/50 bg-card/50 py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">

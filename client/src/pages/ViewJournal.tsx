@@ -19,6 +19,7 @@ import {
   PlusCircle,
   PlayCircle,
 } from "lucide-react";
+import Navbar from "@/components/navbar";
 
 export default function ViewJournal() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,7 @@ export default function ViewJournal() {
 
   return (
     <div className="min-h-screen bg-[#05070A] text-slate-300 font-sans selection:bg-blue-500/30">
+      <Navbar />
       {/* --- SECTION 1: JOURNAL IDENTITY (REF PG 1) --- */}
       <div className="bg-[#0A0D14] border-b border-slate-800 py-10 px-6 lg:px-12">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-start">

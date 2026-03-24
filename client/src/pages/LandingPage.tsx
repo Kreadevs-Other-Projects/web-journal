@@ -446,7 +446,7 @@ export default function LandingPage() {
                   key={i}
                   className="rounded-xl border border-border p-5 space-y-3"
                 >
-                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <Skeleton className="h-[62px] w-[62px] rounded-lg" />
                   <Skeleton className="h-5 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                   <Skeleton className="h-4 w-1/3" />
@@ -476,10 +476,10 @@ export default function LandingPage() {
                         <img
                           src={getFileUrl(j.logo_url)}
                           alt={j.title}
-                          className="h-20 w-20 rounded-xl object-cover shrink-0"
+                          className="h-[104px] w-[104px] rounded-xl object-cover shrink-0"
                         />
                       ) : (
-                        <div className={`h-20 w-20 rounded-xl flex items-center justify-center font-bold text-white text-xl shrink-0 ${bg}`}>
+                        <div className={`h-[104px] w-[104px] rounded-xl flex items-center justify-center font-bold text-white text-xl shrink-0 ${bg}`}>
                           {initials}
                         </div>
                       );

@@ -443,7 +443,7 @@ export default function BrowsePage() {
                         <JournalLogo
                           logoUrl={journal.logo_url}
                           title={journal.journal_title}
-                          className="h-20 w-20 shrink-0"
+                          className="h-[104px] w-[104px] shrink-0"
                         />
                         <div className="flex-1">
                           <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
@@ -490,7 +490,7 @@ export default function BrowsePage() {
                       <JournalLogo
                         logoUrl={journal.logo_url}
                         title={journal.journal_title}
-                        className="h-20 w-20 shrink-0"
+                        className="h-[104px] w-[104px] shrink-0"
                       />
 
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">

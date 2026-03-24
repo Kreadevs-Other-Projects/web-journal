@@ -96,9 +96,9 @@ function JournalLogo({
 }) {
   const [imgError, setImgError] = useState(false);
   const sizes = {
-    sm: "h-10 w-10 text-xs",
-    md: "h-16 w-16 text-base",
-    lg: "h-32 w-32 text-3xl",
+    sm: "h-[52px] w-[52px] text-xs",
+    md: "h-[83px] w-[83px] text-base",
+    lg: "h-[166px] w-[166px] text-3xl",
   };
   const initials = getInitials(title);
 

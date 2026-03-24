@@ -21,7 +21,8 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Allow access if the user's active role OR any of their assigned roles matches
+  if (allowedRoles && !allowedRoles.some((r) => user.roles.includes(r))) {
     return <Navigate to="/unauthorized" replace />;
   }
 

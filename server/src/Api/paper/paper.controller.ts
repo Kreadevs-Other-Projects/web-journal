@@ -17,6 +17,13 @@ import { AuthUser } from "../../middlewares/auth.middleware";
 export const createPaper = async (req: AuthUser, res: Response) => {
   const body = req.body;
 
+  if (body.policies_accepted !== "true") {
+    return res.status(400).json({
+      success: false,
+      message: "You must accept all journal policies before submitting.",
+    });
+  }
+
   // Multipart fields arrive as strings; parse arrays/objects
   const parse = (field: any, fallback: any = []) => {
     if (!field) return fallback;
@@ -57,6 +64,8 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     data_availability: body.data_availability,
     ethical_approval: body.ethical_approval,
     author_contributions: body.author_contributions,
+    policies_accepted: true,
+    policies_accepted_at: new Date(),
   };
 
   const paper = await createPaperService(

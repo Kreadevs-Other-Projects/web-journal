@@ -85,8 +85,9 @@ const App = () => (
                       element={<ArticlePage />}
                     />
                     <Route path="/archive" element={<Archive />} />
-                    <Route path="/accept-invitation" element={<AcceptInvitation />} />
                   </Route>
+                  {/* accept-invitation is outside PublicRoute so authenticated users can access it */}
+                  <Route path="/accept-invitation" element={<AcceptInvitation />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     <Route path="/author" element={<AuthorDashboard />} />

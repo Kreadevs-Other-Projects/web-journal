@@ -89,6 +89,10 @@ interface StaffMember {
   id: string;
   username: string;
   email: string;
+  degrees?: string[] | null;
+  keywords?: string[] | null;
+  profile_pic_url?: string | null;
+  active_assignments?: number;
 }
 
 interface ReviewerRequest {
@@ -222,10 +226,32 @@ export default function ChiefEditor() {
     }
   };
 
+  // Multi-role combined view state
+  const [myAssignedPapers, setMyAssignedPapers] = useState<any[]>([]);
+  const [myReviewAssignments, setMyReviewAssignments] = useState<any[]>([]);
+
   useEffect(() => {
     if (token) {
       fetchPapers();
       fetchJournals();
+      // If user also has sub_editor role, fetch their assigned papers
+      if (user?.roles?.includes("sub_editor")) {
+        fetch(`${url}/subEditor/getAssignedPapers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((d) => setMyAssignedPapers(d.papers || d.data || []))
+          .catch(() => {});
+      }
+      // If user also has reviewer role, fetch their review assignments
+      if (user?.roles?.includes("reviewer")) {
+        fetch(`${url}/reviewer/getAssignedPapers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((d) => setMyReviewAssignments(d.papers || d.data || []))
+          .catch(() => {});
+      }
     }
   }, [token]);
 
@@ -1273,6 +1299,63 @@ export default function ChiefEditor() {
                 ))}
               </div>
             )}
+
+
+            {/* ===== COMBINED VIEW: Sub-Editor Assignments (if user has sub_editor role) ===== */}
+            {user?.roles?.includes("sub_editor") && (
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileEdit className="h-5 w-5 text-orange-500" />
+                  <h2 className="text-lg font-semibold text-foreground">My Assigned Papers (as Associate Editor)</h2>
+                  <Badge variant="secondary">{myAssignedPapers.length}</Badge>
+                </div>
+                {myAssignedPapers.length === 0 ? (
+                  <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No papers currently assigned to you as Associate Editor.</CardContent></Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {myAssignedPapers.map((p: any) => (
+                      <Card key={p.id} className="glass-card">
+                        <CardContent className="py-4 flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{p.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{p.journal_name || p.journal?.title}</p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0">{p.status?.replace(/_/g, " ")}</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ===== COMBINED VIEW: Reviewer Assignments (if user has reviewer role) ===== */}
+            {user?.roles?.includes("reviewer") && (
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-purple-500" />
+                  <h2 className="text-lg font-semibold text-foreground">My Review Assignments</h2>
+                  <Badge variant="secondary">{myReviewAssignments.length}</Badge>
+                </div>
+                {myReviewAssignments.length === 0 ? (
+                  <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No review assignments currently.</CardContent></Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {myReviewAssignments.map((p: any) => (
+                      <Card key={p.id} className="glass-card">
+                        <CardContent className="py-4 flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{p.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{p.journal_name || p.journal?.title}</p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0">{p.status?.replace(/_/g, " ")}</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           {/* ===== TEAM TAB ===== */}
@@ -1491,39 +1574,51 @@ export default function ChiefEditor() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">
-                    Select Sub-Editor
-                  </Label>
-                  <Select value={subEditorId} onValueChange={setSubEditorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a sub-editor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subEditors.map((se) => (
-                        <SelectItem key={se.id} value={se.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-medium text-blue-800">
-                                {se.username.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{se.username}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {se.email}
-                              </p>
+                  <Label className="text-sm font-medium">Select Sub-Editor</Label>
+                  {subEditors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No sub-editors available.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {subEditors.map((se) => {
+                        const paperKeywords: string[] = selectedPaper?.keywords ?? [];
+                        const overlap = (se.keywords ?? []).filter((k) => paperKeywords.includes(k));
+                        const isSelected = subEditorId === se.id;
+                        return (
+                          <div
+                            key={se.id}
+                            onClick={() => setSubEditorId(se.id)}
+                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                                {se.profile_pic_url
+                                  ? <img src={se.profile_pic_url} alt={se.username} className="h-full w-full object-cover" />
+                                  : <span className="text-sm font-semibold text-primary">{se.username.slice(0, 2).toUpperCase()}</span>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-medium text-foreground">{se.username}</p>
+                                  {overlap.length > 0 && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Best Match</Badge>}
+                                </div>
+                                {se.degrees && se.degrees.length > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{se.degrees.join(", ")}</p>
+                                )}
+                                {se.keywords && se.keywords.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {se.keywords.map((k, i) => (
+                                      <Badge key={i} variant="outline" className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}>{k}</Badge>
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">Currently handling {se.active_assignments ?? 0} paper{se.active_assignments !== 1 ? "s" : ""}</p>
+                              </div>
                             </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Button
-                    className="w-full"
-                    onClick={assignSubEditor}
-                    disabled={!subEditorId}
-                  >
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Button className="w-full" onClick={assignSubEditor} disabled={!subEditorId}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     {loading ? "Assigning..." : "Assign Sub-Editor"}
                   </Button>
@@ -1653,28 +1748,49 @@ export default function ChiefEditor() {
 
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Select Existing Reviewer</Label>
-                  <Select value={selectedReviewerId} onValueChange={setSelectedReviewerId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a reviewer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {reviewers.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-medium text-purple-800">
-                                {r.username.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{r.username}</p>
-                              <p className="text-xs text-muted-foreground">{r.email}</p>
+                  {reviewers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No reviewers available.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {reviewers.map((r) => {
+                        const paperKeywords: string[] = selectedPaper?.keywords ?? [];
+                        const overlap = (r.keywords ?? []).filter((k) => paperKeywords.includes(k));
+                        const isSelected = selectedReviewerId === r.id;
+                        return (
+                          <div
+                            key={r.id}
+                            onClick={() => setSelectedReviewerId(r.id)}
+                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                {r.profile_pic_url
+                                  ? <img src={r.profile_pic_url} alt={r.username} className="h-full w-full object-cover" />
+                                  : <span className="text-sm font-semibold text-purple-700">{r.username.slice(0, 2).toUpperCase()}</span>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-medium text-foreground">{r.username}</p>
+                                  {overlap.length > 0 && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Best Match</Badge>}
+                                </div>
+                                {r.degrees && r.degrees.length > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.degrees.join(", ")}</p>
+                                )}
+                                {r.keywords && r.keywords.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {r.keywords.map((k, i) => (
+                                      <Badge key={i} variant="outline" className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}>{k}</Badge>
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">Currently reviewing {r.active_assignments ?? 0} paper{r.active_assignments !== 1 ? "s" : ""}</p>
+                              </div>
                             </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        );
+                      })}
+                    </div>
+                  )}
                   <Button className="w-full" onClick={assignExistingReviewer} disabled={!selectedReviewerId || assigningReviewer}>
                     <UserCheck className="h-4 w-4 mr-2" />
                     {assigningReviewer ? "Assigning..." : "Assign Reviewer"}

@@ -96,29 +96,70 @@ export const getAllPapers = async (chiefEditorId: string) => {
   return result.rows;
 };
 
-export const findSubEditors = async () => {
+export const findSubEditors = async (journalId?: string, paperId?: string) => {
   const result = await pool.query(
     `
-    SELECT id, username, email
-    FROM users
-    WHERE role = 'sub_editor'
-      AND status = 'active'
-    ORDER BY username ASC
+    SELECT DISTINCT
+      u.id,
+      u.username,
+      u.email,
+      up.degrees,
+      up.keywords,
+      up.profile_pic_url,
+      (
+        SELECT COUNT(*)::int
+        FROM editor_assignments ea
+        JOIN papers p ON p.id = ea.paper_id
+        WHERE ea.sub_editor_id = u.id
+          AND p.status NOT IN ('accepted', 'rejected', 'published')
+      ) AS active_assignments
+    FROM users u
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    WHERE (u.role = 'sub_editor' OR u.id IN (
+      SELECT ur.user_id FROM user_roles ur
+      WHERE ur.role = 'sub_editor' AND ur.is_active = true
+        ${journalId ? "AND ur.journal_id = $1" : ""}
+    ))
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+    ORDER BY u.username ASC
     `,
+    journalId ? [journalId] : [],
   );
 
   return result.rows;
 };
 
-export const findReviewers = async () => {
+export const findReviewers = async (journalId?: string, paperId?: string) => {
   const result = await pool.query(
     `
-    SELECT id, username, email
-    FROM users
-    WHERE role = 'reviewer'
-      AND status = 'active'
-    ORDER BY username ASC
+    SELECT DISTINCT
+      u.id,
+      u.username,
+      u.email,
+      up.degrees,
+      up.keywords,
+      up.profile_pic_url,
+      (
+        SELECT COUNT(*)::int
+        FROM review_assignments ra
+        JOIN papers p ON p.id = ra.paper_id
+        WHERE ra.reviewer_id = u.id
+          AND ra.status = 'assigned'
+          AND p.status NOT IN ('accepted', 'rejected', 'published')
+      ) AS active_assignments
+    FROM users u
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    WHERE (u.role = 'reviewer' OR u.id IN (
+      SELECT ur.user_id FROM user_roles ur
+      WHERE ur.role = 'reviewer' AND ur.is_active = true
+        ${journalId ? "AND ur.journal_id = $1" : ""}
+    ))
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+    ORDER BY u.username ASC
     `,
+    journalId ? [journalId] : [],
   );
 
   return result.rows;

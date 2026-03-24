@@ -326,7 +326,7 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {user && user.roles.length > 1 && (
+              {user && user.roles.length > 1 && user.roles.includes("publisher") && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

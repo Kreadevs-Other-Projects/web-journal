@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -30,8 +29,6 @@ import {
   X,
   Upload,
   Loader2,
-  BookOpen,
-  Sparkles,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -103,15 +100,17 @@ export default function SubmitPaper() {
   const [showReview, setShowReview] = useState(false);
   const [guidelines, setGuidelines] = useState<string | null>(null);
   const [guidelinesRead, setGuidelinesRead] = useState(false);
+  const [oaPolicyRead, setOaPolicyRead] = useState(false);
+  const [peerReviewRead, setPeerReviewRead] = useState(false);
   const [showGuidelinesModal, setShowGuidelinesModal] = useState(false);
+  const [showOaPolicyModal, setShowOaPolicyModal] = useState(false);
+  const [showPeerReviewModal, setShowPeerReviewModal] = useState(false);
 
   // Journal policies
   const [journalPolicies, setJournalPolicies] = useState<JournalPolicies>({
     oa_policy: null,
     peer_review_policy: null,
   });
-  const [showPolicies, setShowPolicies] = useState(false);
-
   // Additional information (collapsible)
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [articleType, setArticleType] = useState("");
@@ -158,6 +157,8 @@ export default function SubmitPaper() {
     if (!journalId) {
       setGuidelines(null);
       setGuidelinesRead(false);
+      setOaPolicyRead(false);
+      setPeerReviewRead(false);
       setJournalPolicies({ oa_policy: null, peer_review_policy: null });
       return;
     }
@@ -185,6 +186,8 @@ export default function SubmitPaper() {
       .catch(() => {});
 
     setGuidelinesRead(false);
+    setOaPolicyRead(false);
+    setPeerReviewRead(false);
   }, [journalId, token]);
 
   const addKeyword = (kw: string) => {
@@ -292,7 +295,11 @@ export default function SubmitPaper() {
   const validate = (): string | null => {
     if (!journalId) return "Please select a journal.";
     if (guidelines && !guidelinesRead)
-      return "Please confirm you have read the author guidelines and submission policies before submitting.";
+      return "Please confirm you have read the Author Guidelines.";
+    if (journalPolicies.oa_policy && !oaPolicyRead)
+      return "Please confirm you have read the Open Access (OA) Policy.";
+    if (journalPolicies.peer_review_policy && !peerReviewRead)
+      return "Please confirm you have read the Peer Review Policy.";
     if (!title.trim()) return "Title is required.";
     if (title.length > 200) return "Title cannot exceed 200 characters.";
     if (!abstract.trim()) return "Abstract is required.";
@@ -359,6 +366,7 @@ export default function SubmitPaper() {
         JSON.stringify(references.filter((r) => r.text.trim())),
       );
       if (manuscript) formData.append("manuscript", manuscript);
+      formData.append("policies_accepted", "true");
 
       // Additional fields
       if (articleType) formData.append("article_type", articleType);
@@ -545,79 +553,75 @@ export default function SubmitPaper() {
               )}
             </div>
 
-            {/* Author Guidelines & Policies Acknowledgement */}
-            {journalId && guidelines && (
-              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="guidelines-read"
-                    checked={guidelinesRead}
-                    onCheckedChange={(checked) => setGuidelinesRead(!!checked)}
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="guidelines-read"
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      I have read and agree to the author guidelines and
-                      submission policies
+            {/* Policy Acceptance Checkboxes */}
+            {journalId && (guidelines || journalPolicies.oa_policy || journalPolicies.peer_review_policy) && (
+              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-4">
+                <p className="text-sm font-medium text-foreground">Journal Policies — all required before submitting</p>
+
+                {/* 1. Author Guidelines */}
+                {guidelines && (
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="guidelines-read"
+                      checked={guidelinesRead}
+                      onCheckedChange={(checked) => setGuidelinesRead(!!checked)}
+                    />
+                    <label htmlFor="guidelines-read" className="flex-1 text-sm cursor-pointer">
+                      I have read and agree to the <strong>Author Guidelines</strong>
                     </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Please read the guidelines and policies for this journal
-                      before submitting.
-                    </p>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline shrink-0"
+                      onClick={() => setShowGuidelinesModal(true)}
+                    >
+                      Read
+                    </button>
                   </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowGuidelinesModal(true)}
-                >
-                  <BookOpen className="h-4 w-4 mr-2" /> Read Author Guidelines
-                </Button>
+                )}
+
+                {/* 2. OA Policy */}
+                {journalPolicies.oa_policy && (
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="oa-policy-read"
+                      checked={oaPolicyRead}
+                      onCheckedChange={(checked) => setOaPolicyRead(!!checked)}
+                    />
+                    <label htmlFor="oa-policy-read" className="flex-1 text-sm cursor-pointer">
+                      I have read and agree to the <strong>Open Access (OA) Policy</strong>
+                    </label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline shrink-0"
+                      onClick={() => setShowOaPolicyModal(true)}
+                    >
+                      Read
+                    </button>
+                  </div>
+                )}
+
+                {/* 3. Peer Review Policy */}
+                {journalPolicies.peer_review_policy && (
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="peer-review-read"
+                      checked={peerReviewRead}
+                      onCheckedChange={(checked) => setPeerReviewRead(!!checked)}
+                    />
+                    <label htmlFor="peer-review-read" className="flex-1 text-sm cursor-pointer">
+                      I have read and agree to the <strong>Peer Review Policy</strong>
+                    </label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline shrink-0"
+                      onClick={() => setShowPeerReviewModal(true)}
+                    >
+                      Read
+                    </button>
+                  </div>
+                )}
               </div>
             )}
-
-            {/* Journal Policies collapsible panel */}
-            {journalId &&
-              (journalPolicies.oa_policy ||
-                journalPolicies.peer_review_policy) && (
-                <div className="rounded-lg border border-border">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors rounded-lg"
-                    onClick={() => setShowPolicies((v) => !v)}
-                  >
-                    <span>View Journal Policies</span>
-                    {showPolicies ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
-                  {showPolicies && (
-                    <div className="px-4 pb-4">
-                      <Tabs defaultValue="oa-policy">
-                        <TabsList className="mb-3">
-                          <TabsTrigger value="oa-policy">OA Policy</TabsTrigger>
-                          <TabsTrigger value="peer-review">
-                            Peer Review Policy
-                          </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="oa-policy">
-                          {renderPolicyContent(journalPolicies.oa_policy)}
-                        </TabsContent>
-                        <TabsContent value="peer-review">
-                          {renderPolicyContent(
-                            journalPolicies.peer_review_policy,
-                          )}
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  )}
-                </div>
-              )}
 
             {/* 2. Title */}
             <div>
@@ -1378,6 +1382,53 @@ export default function SubmitPaper() {
                 }}
               >
                 I have read the guidelines
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* OA Policy Modal */}
+        <Dialog open={showOaPolicyModal} onOpenChange={setShowOaPolicyModal}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Open Access (OA) Policy</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              {renderPolicyContent(journalPolicies.oa_policy)}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setOaPolicyRead(true);
+                  setShowOaPolicyModal(false);
+                }}
+              >
+                I have read the OA Policy
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Peer Review Policy Modal */}
+        <Dialog
+          open={showPeerReviewModal}
+          onOpenChange={setShowPeerReviewModal}
+        >
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Peer Review Policy</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              {renderPolicyContent(journalPolicies.peer_review_policy)}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setPeerReviewRead(true);
+                  setShowPeerReviewModal(false);
+                }}
+              >
+                I have read the Peer Review Policy
               </Button>
             </DialogFooter>
           </DialogContent>

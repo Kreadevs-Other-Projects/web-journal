@@ -20,14 +20,17 @@ export const createPaper = async (data: {
   data_availability?: string;
   ethical_approval?: string;
   author_contributions?: string;
+  policies_accepted?: boolean;
+  policies_accepted_at?: Date | null;
 }) => {
   const result = await pool.query(
     `INSERT INTO papers
       (title, abstract, category, article_type, keywords, journal_id, author_id, issue_id,
        author_names, corresponding_authors, author_details, corresponding_author_details,
        paper_references, manuscript_url, conflict_of_interest, funding_info,
-       data_availability, ethical_approval, author_contributions)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       data_availability, ethical_approval, author_contributions,
+       policies_accepted, policies_accepted_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
      RETURNING *`,
     [
       data.title,
@@ -49,6 +52,8 @@ export const createPaper = async (data: {
       data.data_availability || null,
       data.ethical_approval || null,
       data.author_contributions || null,
+      data.policies_accepted ?? true,
+      data.policies_accepted_at ?? new Date(),
     ],
   );
 

@@ -133,3 +133,44 @@ export const cacheVersionHtmlRepo = async (versionId: string, html: string) => {
     [html, versionId],
   );
 };
+
+export const getPublicJournalsRepo = async (limit: number) => {
+  const result = await pool.query(
+    `SELECT
+       j.id,
+       j.title,
+       j.issn,
+       j.type,
+       j.logo_url,
+       j.aims_and_scope,
+       COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'published')::int AS article_count
+     FROM journals j
+     LEFT JOIN papers p ON p.journal_id = j.id
+     WHERE j.status = 'active' OR j.status IS NULL
+     GROUP BY j.id
+     ORDER BY j.created_at DESC
+     LIMIT $1`,
+    [limit],
+  );
+  return result.rows;
+};
+
+export const getLatestPublishedPapersRepo = async (limit: number) => {
+  const result = await pool.query(
+    `SELECT
+       p.id,
+       p.title,
+       p.author_names,
+       p.keywords,
+       p.published_at,
+       j.title AS journal_title,
+       j.id AS journal_id
+     FROM papers p
+     LEFT JOIN journals j ON j.id = p.journal_id
+     WHERE p.status = 'published' AND p.published_at IS NOT NULL
+     ORDER BY p.published_at DESC
+     LIMIT $1`,
+    [limit],
+  );
+  return result.rows;
+};

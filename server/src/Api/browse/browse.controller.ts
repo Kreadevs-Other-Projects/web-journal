@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getBrowseDataService, getPublicPaperService, getPublicPaperHtmlService } from "./browse.service";
+import { getPublicJournalsRepo, getLatestPublishedPapersRepo } from "./browse.repository";
 
 export const getPublicPaper = async (req: Request, res: Response) => {
   try {
@@ -22,6 +23,26 @@ export const getPaperHtml = async (req: Request, res: Response) => {
     res.json({ success: true, html: html || null });
   } catch {
     res.status(500).json({ success: false, message: "Failed to get paper HTML" });
+  }
+};
+
+export const getHomeJournals = async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 6, 20);
+    const journals = await getPublicJournalsRepo(limit);
+    res.json({ success: true, journals });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to fetch journals" });
+  }
+};
+
+export const getHomePublications = async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 6, 20);
+    const papers = await getLatestPublishedPapersRepo(limit);
+    res.json({ success: true, papers });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to fetch publications" });
   }
 };
 

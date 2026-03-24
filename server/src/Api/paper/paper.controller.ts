@@ -66,6 +66,10 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     author_contributions: body.author_contributions,
     policies_accepted: true,
     policies_accepted_at: new Date(),
+    is_special_issue: body.is_special_issue === "true",
+    previously_submitted: body.previously_submitted || "no",
+    preprint_available: body.preprint_available === "true",
+    human_subjects: body.human_subjects === "true",
   };
 
   const paper = await createPaperService(

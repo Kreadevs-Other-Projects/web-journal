@@ -116,10 +116,16 @@ export default function SubmitPaper() {
   const [articleType, setArticleType] = useState("");
   const [category, setCategory] = useState("");
   const [conflictOfInterest, setConflictOfInterest] = useState("");
+  const [noConflictOfInterest, setNoConflictOfInterest] = useState(false);
   const [fundingInfo, setFundingInfo] = useState("");
-  const [dataAvailability, setDataAvailability] = useState("");
+  const [dataAvailability, setDataAvailability] = useState("on_request");
   const [ethicalApproval, setEthicalApproval] = useState("");
   const [authorContributions, setAuthorContributions] = useState("");
+  // New radio fields
+  const [isSpecialIssue, setIsSpecialIssue] = useState(false);
+  const [previouslySubmitted, setPreviouslySubmitted] = useState("no");
+  const [preprintAvailable, setPreprintAvailable] = useState(false);
+  const [humanSubjects, setHumanSubjects] = useState(false);
 
   useEffect(() => {
     setLoadingJournals(true);
@@ -375,14 +381,16 @@ export default function SubmitPaper() {
       // Additional fields
       if (articleType) formData.append("article_type", articleType);
       if (category) formData.append("category", category);
-      if (conflictOfInterest)
-        formData.append("conflict_of_interest", conflictOfInterest);
+      formData.append("conflict_of_interest", noConflictOfInterest ? "The authors declare no conflict of interest." : conflictOfInterest);
       if (fundingInfo) formData.append("funding_info", fundingInfo);
-      if (dataAvailability)
-        formData.append("data_availability", dataAvailability);
+      formData.append("data_availability", dataAvailability);
       if (ethicalApproval) formData.append("ethical_approval", ethicalApproval);
       if (authorContributions)
         formData.append("author_contributions", authorContributions);
+      formData.append("is_special_issue", String(isSpecialIssue));
+      formData.append("previously_submitted", previouslySubmitted);
+      formData.append("preprint_available", String(preprintAvailable));
+      formData.append("human_subjects", String(humanSubjects));
 
       const res = await fetch(`${url}/papers/createPaper`, {
         method: "POST",
@@ -1101,12 +1109,10 @@ export default function SubmitPaper() {
                 )}
               </button>
               {showAdditionalInfo && (
-                <div className="px-4 pb-4 space-y-4">
+                <div className="px-4 pb-4 space-y-5 divide-y divide-border">
                   {/* Category/Subject Area */}
-                  <div>
-                    <Label className="mb-1.5 block">
-                      Category / Subject Area
-                    </Label>
+                  <div className="pt-4">
+                    <Label className="mb-1.5 block">Category / Subject Area</Label>
                     <Input
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
@@ -1114,21 +1120,132 @@ export default function SubmitPaper() {
                     />
                   </div>
 
-                  {/* Conflict of Interest */}
-                  <div>
-                    <Label className="mb-1.5 block">
-                      Conflict of Interest Statement
-                    </Label>
-                    <Textarea
-                      value={conflictOfInterest}
-                      onChange={(e) => setConflictOfInterest(e.target.value)}
-                      placeholder="The authors declare no conflict of interest"
-                      rows={3}
-                    />
+                  {/* Field 1 — Special Issue */}
+                  <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <div>
+                      <p className="text-sm font-medium">Is this a Special Issue submission?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Select whether this paper is intended for a special issue call.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="isSpecialIssue" checked={isSpecialIssue === true} onChange={() => setIsSpecialIssue(true)} className="accent-primary" />
+                        Yes
+                      </label>
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="isSpecialIssue" checked={isSpecialIssue === false} onChange={() => setIsSpecialIssue(false)} className="accent-primary" />
+                        No
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Field 2 — Previously Submitted */}
+                  <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <div>
+                      <p className="text-sm font-medium">Has this manuscript been submitted previously to this journal?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Include prior submissions or desk-rejected versions.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="previouslySubmitted" checked={previouslySubmitted === "yes"} onChange={() => setPreviouslySubmitted("yes")} className="accent-primary" />
+                        Yes
+                      </label>
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="previouslySubmitted" checked={previouslySubmitted === "no"} onChange={() => setPreviouslySubmitted("no")} className="accent-primary" />
+                        No
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Field 3 — Preprint Available */}
+                  <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <div>
+                      <p className="text-sm font-medium">Has a version of this manuscript been made available online (preprint)?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">e.g., arXiv, bioRxiv, SSRN, or similar servers.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="preprintAvailable" checked={preprintAvailable === true} onChange={() => setPreprintAvailable(true)} className="accent-primary" />
+                        Yes
+                      </label>
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="preprintAvailable" checked={preprintAvailable === false} onChange={() => setPreprintAvailable(false)} className="accent-primary" />
+                        No
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Field 4 — Human Subjects */}
+                  <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <div>
+                      <p className="text-sm font-medium">Informed Consent / Human Subjects</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Does this research involve human participants or personal data?</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="humanSubjects" checked={humanSubjects === true} onChange={() => setHumanSubjects(true)} className="accent-primary" />
+                        Yes
+                      </label>
+                      <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" name="humanSubjects" checked={humanSubjects === false} onChange={() => setHumanSubjects(false)} className="accent-primary" />
+                        No
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Field 5 — Data Availability (dropdown with preview) */}
+                  <div className="pt-4">
+                    <Label className="mb-1.5 block">Data Availability</Label>
+                    <Select value={dataAvailability} onValueChange={setDataAvailability}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="on_request">Available on reasonable request</SelectItem>
+                        <SelectItem value="publicly_available">Publicly available — link/DOI provided in manuscript</SelectItem>
+                        <SelectItem value="not_applicable">Not applicable — no new data generated</SelectItem>
+                        <SelectItem value="restricted">Restricted — due to privacy / ethical constraints</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {dataAvailability && (
+                      <p className="mt-1.5 text-xs text-muted-foreground italic">
+                        {dataAvailability === "on_request" && "The data that support the findings of this study are available from the corresponding author upon reasonable request."}
+                        {dataAvailability === "publicly_available" && "The data that support the findings of this study are openly available. A link or DOI has been provided within the manuscript."}
+                        {dataAvailability === "not_applicable" && "Data sharing is not applicable to this article as no new data were created or analysed in this study."}
+                        {dataAvailability === "restricted" && "The data that support the findings of this study are not publicly available due to privacy or ethical restrictions."}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Field 6 — Conflict of Interest */}
+                  <div className="pt-4">
+                    <Label className="mb-1.5 block">Conflict of Interest Statement</Label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        id="noConflict"
+                        checked={noConflictOfInterest}
+                        onChange={(e) => {
+                          setNoConflictOfInterest(e.target.checked);
+                          if (e.target.checked) setConflictOfInterest("");
+                        }}
+                        className="accent-primary"
+                      />
+                      <label htmlFor="noConflict" className="text-sm cursor-pointer select-none">
+                        The authors declare no conflict of interest
+                      </label>
+                    </div>
+                    {!noConflictOfInterest && (
+                      <Textarea
+                        value={conflictOfInterest}
+                        onChange={(e) => setConflictOfInterest(e.target.value)}
+                        placeholder="Describe any financial, personal, or professional conflicts…"
+                        rows={3}
+                      />
+                    )}
                   </div>
 
                   {/* Funding Information */}
-                  <div>
+                  <div className="pt-4">
                     <Label className="mb-1.5 block">Funding Information</Label>
                     <Textarea
                       value={fundingInfo}
@@ -1138,21 +1255,8 @@ export default function SubmitPaper() {
                     />
                   </div>
 
-                  {/* Data Availability */}
-                  <div>
-                    <Label className="mb-1.5 block">
-                      Data Availability Statement
-                    </Label>
-                    <Textarea
-                      value={dataAvailability}
-                      onChange={(e) => setDataAvailability(e.target.value)}
-                      placeholder="Describe where data can be accessed"
-                      rows={3}
-                    />
-                  </div>
-
                   {/* Ethical Approval */}
-                  <div>
+                  <div className="pt-4">
                     <Label className="mb-1.5 block">Ethical Approval</Label>
                     <Textarea
                       value={ethicalApproval}
@@ -1163,7 +1267,7 @@ export default function SubmitPaper() {
                   </div>
 
                   {/* Author Contributions */}
-                  <div>
+                  <div className="pt-4">
                     <Label className="mb-1.5 block">Author Contributions</Label>
                     <Textarea
                       value={authorContributions}

@@ -126,34 +126,61 @@ export default function LandingPage() {
   // Home page real data
   const [homeJournals, setHomeJournals] = useState<any[]>([]);
   const [homePapers, setHomePapers] = useState<any[]>([]);
+  const [openJournals, setOpenJournals] = useState<any[]>([]);
   const [journalsLoading, setJournalsLoading] = useState(true);
   const [papersLoading, setPapersLoading] = useState(true);
+  const [openJournalsLoading, setOpenJournalsLoading] = useState(true);
 
+  // Inline section filters
+  const [journalFilters, setJournalFilters] = useState({ q: "", type: "" });
+  const [paperFilters, setPaperFilters] = useState({ q: "", category: "", year: "" });
+
+  // Debounced journal filter fetch
   useEffect(() => {
-    const fetchJournals = async () => {
+    setJournalsLoading(true);
+    const timer = setTimeout(async () => {
       try {
-        const r = await fetch(`${url}/browse/home/journals?limit=6`);
+        const params = new URLSearchParams({ limit: "6" });
+        if (journalFilters.q) params.set("q", journalFilters.q);
+        if (journalFilters.type) params.set("type", journalFilters.type);
+        const r = await fetch(`${url}/browse/home/journals?${params}`);
         const d = await r.json();
         if (d.success) setHomeJournals(d.journals || []);
       } catch (_) {
       } finally {
         setJournalsLoading(false);
       }
-    };
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [journalFilters]);
 
-    const fetchPublications = async () => {
+  // Debounced paper filter fetch
+  useEffect(() => {
+    setPapersLoading(true);
+    const timer = setTimeout(async () => {
       try {
-        const r = await fetch(`${url}/browse/home/publications?limit=6`);
+        const params = new URLSearchParams({ limit: "6" });
+        if (paperFilters.q) params.set("q", paperFilters.q);
+        if (paperFilters.category) params.set("category", paperFilters.category);
+        if (paperFilters.year) params.set("year", paperFilters.year);
+        const r = await fetch(`${url}/browse/home/publications?${params}`);
         const d = await r.json();
         if (d.success) setHomePapers(d.papers || []);
       } catch (_) {
       } finally {
         setPapersLoading(false);
       }
-    };
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [paperFilters]);
 
-    fetchJournals();
-    fetchPublications();
+  // Open journals (no filters needed)
+  useEffect(() => {
+    fetch(`${url}/browse/home/open-journals`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setOpenJournals(d.journals || []); })
+      .catch(() => {})
+      .finally(() => setOpenJournalsLoading(false));
   }, []);
 
   const handleFilterChange = (field: keyof SearchFilters, value: string) => {
@@ -439,6 +466,37 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {/* Journal filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search journals..."
+                value={journalFilters.q}
+                onChange={(e) => setJournalFilters((p) => ({ ...p, q: e.target.value }))}
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              />
+            </div>
+            <select
+              value={journalFilters.type}
+              onChange={(e) => setJournalFilters((p) => ({ ...p, type: e.target.value }))}
+              className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[160px]"
+            >
+              <option value="">All Types</option>
+              <option value="Open Access">Open Access</option>
+              <option value="Subscription">Subscription</option>
+            </select>
+            {(journalFilters.q || journalFilters.type) && (
+              <button
+                onClick={() => setJournalFilters({ q: "", type: "" })}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Clear
+              </button>
+            )}
+          </div>
+
           {journalsLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
@@ -455,7 +513,7 @@ export default function LandingPage() {
             </div>
           ) : homeJournals.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              No journals available yet.
+              {(journalFilters.q || journalFilters.type) ? "No journals match your filters." : "No journals available yet."}
             </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -524,6 +582,81 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ===== OPEN FOR SUBMISSIONS SECTION ===== */}
+      {(openJournalsLoading || openJournals.length > 0) && (
+        <section className="py-20 bg-card/30">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <h2 className="font-serif-outfit text-3xl md:text-4xl font-bold text-foreground">
+                  Open for Submissions
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  Submit your research to these journals currently accepting manuscripts
+                </p>
+              </div>
+            </div>
+
+            {openJournalsLoading ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="rounded-xl border border-border p-5 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {openJournals.map((j) => {
+                  const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
+                  const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
+                  const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0,3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
+                  return (
+                    <motion.div
+                      key={j.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      className="glass-card p-5 flex flex-col gap-3 border-emerald-500/20"
+                    >
+                      <div className="flex items-center gap-3">
+                        {j.logo_url ? (
+                          <img src={getFileUrl(j.logo_url)} alt={j.title} className="h-12 w-12 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className={`h-12 w-12 rounded-lg flex items-center justify-center font-bold text-white text-sm shrink-0 ${bg}`}>{initials}</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{j.title}</h3>
+                          {j.issn && <p className="text-xs text-muted-foreground mt-0.5">ISSN: {j.issn}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs border">
+                          Open
+                        </Badge>
+                        {j.open_issue_label && (
+                          <span className="text-xs text-muted-foreground">{j.open_issue_label}</span>
+                        )}
+                        {j.slots_remaining !== undefined && j.slots_remaining > 0 && (
+                          <span className="text-xs text-muted-foreground">{j.slots_remaining} slots remaining</span>
+                        )}
+                      </div>
+                      <Link to={`/author/submit?journal=${j.id}`}>
+                        <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-auto">
+                          Submit Now <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ===== RECENT PUBLICATIONS SECTION ===== */}
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
@@ -543,6 +676,47 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {/* Paper filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by title or keyword..."
+                value={paperFilters.q}
+                onChange={(e) => setPaperFilters((p) => ({ ...p, q: e.target.value }))}
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              />
+            </div>
+            <select
+              value={paperFilters.category}
+              onChange={(e) => setPaperFilters((p) => ({ ...p, category: e.target.value }))}
+              className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[170px]"
+            >
+              <option value="">All Categories</option>
+              {categories.slice(1).map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <select
+              value={paperFilters.year}
+              onChange={(e) => setPaperFilters((p) => ({ ...p, year: e.target.value }))}
+              className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[120px]"
+            >
+              {years.slice(0, 6).map((y) => (
+                <option key={y.value} value={y.value}>{y.label}</option>
+              ))}
+            </select>
+            {(paperFilters.q || paperFilters.category || paperFilters.year) && (
+              <button
+                onClick={() => setPaperFilters({ q: "", category: "", year: "" })}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Clear filters
+              </button>
+            )}
+          </div>
+
           {papersLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
@@ -558,7 +732,7 @@ export default function LandingPage() {
             </div>
           ) : homePapers.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              No publications yet.
+              {(paperFilters.q || paperFilters.category || paperFilters.year) ? "No papers match your filters." : "No publications yet."}
             </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

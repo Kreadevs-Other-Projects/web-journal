@@ -134,7 +134,30 @@ export const cacheVersionHtmlRepo = async (versionId: string, html: string) => {
   );
 };
 
-export const getPublicJournalsRepo = async (limit: number) => {
+export const getPublicJournalsRepo = async (filters: {
+  limit: number;
+  q?: string;
+  type?: string;
+  open?: boolean;
+}) => {
+  const { limit, q, type, open } = filters;
+  const values: any[] = [limit];
+  let where = `WHERE (j.status = 'active' OR j.status IS NULL)`;
+
+  if (q) {
+    values.push(`%${q}%`);
+    where += ` AND (j.title ILIKE $${values.length} OR j.issn ILIKE $${values.length})`;
+  }
+  if (type) {
+    values.push(type);
+    where += ` AND j.type = $${values.length}`;
+  }
+
+  let openJoin = "";
+  if (open) {
+    openJoin = `JOIN journal_issues ji_open ON ji_open.journal_id = j.id AND ji_open.status = 'open'`;
+  }
+
   const result = await pool.query(
     `SELECT
        j.id,
@@ -145,32 +168,83 @@ export const getPublicJournalsRepo = async (limit: number) => {
        j.aims_and_scope,
        COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'published')::int AS article_count
      FROM journals j
+     ${openJoin}
      LEFT JOIN papers p ON p.journal_id = j.id
-     WHERE j.status = 'active' OR j.status IS NULL
+     ${where}
      GROUP BY j.id
      ORDER BY j.created_at DESC
      LIMIT $1`,
-    [limit],
+    values,
   );
   return result.rows;
 };
 
-export const getLatestPublishedPapersRepo = async (limit: number) => {
+export const getOpenJournalsRepo = async () => {
+  const result = await pool.query(
+    `SELECT DISTINCT ON (j.id)
+       j.id,
+       j.title,
+       j.acronym,
+       j.logo_url,
+       j.issn,
+       j.type,
+       ji.id AS open_issue_id,
+       ji.label AS open_issue_label,
+       (99 - (SELECT COUNT(*) FROM papers p2 WHERE p2.issue_id = ji.id))::int AS slots_remaining
+     FROM journals j
+     JOIN journal_issues ji ON ji.journal_id = j.id AND ji.status = 'open'
+     WHERE j.status = 'active' OR j.status IS NULL
+     ORDER BY j.id, ji.created_at DESC`,
+  );
+  return result.rows;
+};
+
+export const getLatestPublishedPapersRepo = async (filters: {
+  limit: number;
+  offset?: number;
+  q?: string;
+  category?: string;
+  year?: number;
+}) => {
+  const { limit, offset = 0, q, category, year } = filters;
+  const values: any[] = [];
+  const conds: string[] = [`p.status = 'published'`];
+
+  if (q) {
+    values.push(`%${q}%`);
+    conds.push(`(p.title ILIKE $${values.length} OR p.keywords::text ILIKE $${values.length})`);
+  }
+  if (category) {
+    values.push(category);
+    conds.push(`p.category = $${values.length}`);
+  }
+  if (year) {
+    values.push(year);
+    conds.push(`EXTRACT(YEAR FROM COALESCE(p.published_at, p.updated_at)) = $${values.length}`);
+  }
+
+  values.push(limit);
+  values.push(offset);
+
   const result = await pool.query(
     `SELECT
        p.id,
        p.title,
        p.author_names,
        p.keywords,
+       p.category,
        p.published_at,
+       p.updated_at,
        j.title AS journal_title,
        j.id AS journal_id
      FROM papers p
      LEFT JOIN journals j ON j.id = p.journal_id
-     WHERE p.status = 'published' AND p.published_at IS NOT NULL
-     ORDER BY p.published_at DESC
-     LIMIT $1`,
-    [limit],
+     WHERE ${conds.join(" AND ")}
+     ORDER BY COALESCE(p.published_at, p.updated_at) DESC NULLS LAST
+     LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
   );
+
+  console.log("Published papers count:", result.rows.length);
   return result.rows;
 };

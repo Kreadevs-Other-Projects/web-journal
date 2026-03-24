@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { getBrowseDataService, getPublicPaperService, getPublicPaperHtmlService } from "./browse.service";
-import { getPublicJournalsRepo, getLatestPublishedPapersRepo } from "./browse.repository";
+import { getPublicJournalsRepo, getLatestPublishedPapersRepo, getOpenJournalsRepo } from "./browse.repository";
 
 export const getPublicPaper = async (req: Request, res: Response) => {
   try {
@@ -29,17 +29,33 @@ export const getPaperHtml = async (req: Request, res: Response) => {
 export const getHomeJournals = async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 6, 20);
-    const journals = await getPublicJournalsRepo(limit);
+    const q = req.query.q as string | undefined;
+    const type = req.query.type as string | undefined;
+    const open = req.query.open === "true";
+    const journals = await getPublicJournalsRepo({ limit, q, type, open: open || undefined });
     res.json({ success: true, journals });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch journals" });
   }
 };
 
+export const getOpenJournals = async (_req: Request, res: Response) => {
+  try {
+    const journals = await getOpenJournalsRepo();
+    res.json({ success: true, journals });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to fetch open journals" });
+  }
+};
+
 export const getHomePublications = async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 6, 20);
-    const papers = await getLatestPublishedPapersRepo(limit);
+    const offset = Number(req.query.offset) || 0;
+    const q = req.query.q as string | undefined;
+    const category = req.query.category as string | undefined;
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const papers = await getLatestPublishedPapersRepo({ limit, offset, q, category, year });
     res.json({ success: true, papers });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch publications" });

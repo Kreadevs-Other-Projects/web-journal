@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import { url } from "@/url";
+import { getFileUrl } from "@/lib/utils";
 
 interface SearchFilters {
   query: string;
@@ -473,7 +474,7 @@ export default function LandingPage() {
                       const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0, 3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
                       return j.logo_url ? (
                         <img
-                          src={`${url}/uploads/${j.logo_url}`}
+                          src={getFileUrl(j.logo_url)}
                           alt={j.title}
                           className="h-20 w-20 rounded-xl object-cover shrink-0"
                         />

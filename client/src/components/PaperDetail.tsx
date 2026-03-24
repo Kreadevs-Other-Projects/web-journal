@@ -14,7 +14,7 @@ import {
   ExternalLink,
   Send,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getFileUrl } from "@/lib/utils";
 import { url } from "@/url";
 import Navbar from "./navbar";
 import DOMPurify from "dompurify";
@@ -116,7 +116,7 @@ function JournalLogo({
   const imgSrc = logoUrl
     ? logoUrl.startsWith("http")
       ? logoUrl
-      : `${url}/uploads/${logoUrl}`
+      : getFileUrl(logoUrl)
     : null;
 
   if (imgSrc && !imgError) {

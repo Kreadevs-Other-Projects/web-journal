@@ -28,7 +28,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "@/components/AnimationWrappers";
-import { cn } from "@/lib/utils";
+import { cn, getFileUrl } from "@/lib/utils";
 import { url } from "@/url";
 import Navbar from "@/components/navbar";
 
@@ -82,7 +82,7 @@ function JournalLogo({
   if (logoUrl) {
     return (
       <img
-        src={`${url}/uploads/${logoUrl}`}
+        src={getFileUrl(logoUrl)}
         alt={title}
         className={cn("object-cover rounded-xl", className)}
       />

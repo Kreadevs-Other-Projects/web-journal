@@ -103,7 +103,7 @@ export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
     const { id } = req.params;
     if (!req.file)
       return res.status(400).json({ success: false, message: "No file uploaded" });
-    const logo_url = `/uploads/${req.file.filename}`;
+    const logo_url = `uploads/${req.file.filename}`;
     await updateJournalLogoService(id, logo_url);
     res.json({ success: true, logo_url });
   } catch (e: any) {
@@ -137,7 +137,7 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const logo_url = req.file ? `uploads/${req.file.filename}` : null;
     const journal = await publisherCreateJournalService(req.user.id, req.user.username, { ...req.body, logo_url });
 
     return res.status(201).json({

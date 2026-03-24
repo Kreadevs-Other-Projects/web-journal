@@ -162,19 +162,22 @@ export default function SubmitPaper() {
       setJournalPolicies({ oa_policy: null, peer_review_policy: null });
       return;
     }
-    fetch(`${url}/journal/${journalId}/guidelines`)
-      .then((r) => r.json())
-      .then((d) => {
+    const fetchGuidelines = async () => {
+      try {
+        const r = await fetch(`${url}/journal/${journalId}/guidelines`);
+        const d = await r.json();
         if (d.success) setGuidelines(d.guidelines || null);
-      })
-      .catch(() => {});
+      } catch (_) {}
+    };
+    fetchGuidelines();
 
     // Fetch journal policies
-    fetch(`${url}/journal/getJournal/${journalId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d) => {
+    const fetchPolicies = async () => {
+      try {
+        const r = await fetch(`${url}/journal/getJournal/${journalId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await r.json();
         const j = d.journal || d;
         if (j) {
           setJournalPolicies({
@@ -182,8 +185,9 @@ export default function SubmitPaper() {
             peer_review_policy: j.peer_review_policy || null,
           });
         }
-      })
-      .catch(() => {});
+      } catch (_) {}
+    };
+    fetchPolicies();
 
     setGuidelinesRead(false);
     setOaPolicyRead(false);
@@ -554,74 +558,97 @@ export default function SubmitPaper() {
             </div>
 
             {/* Policy Acceptance Checkboxes */}
-            {journalId && (guidelines || journalPolicies.oa_policy || journalPolicies.peer_review_policy) && (
-              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-4">
-                <p className="text-sm font-medium text-foreground">Journal Policies — all required before submitting</p>
+            {journalId &&
+              (guidelines ||
+                journalPolicies.oa_policy ||
+                journalPolicies.peer_review_policy) && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Journal Policies — all required before submitting
+                  </p>
 
-                {/* 1. Author Guidelines */}
-                {guidelines && (
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="guidelines-read"
-                      checked={guidelinesRead}
-                      onCheckedChange={(checked) => setGuidelinesRead(!!checked)}
-                    />
-                    <label htmlFor="guidelines-read" className="flex-1 text-sm cursor-pointer">
-                      I have read and agree to the <strong>Author Guidelines</strong>
-                    </label>
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline shrink-0"
-                      onClick={() => setShowGuidelinesModal(true)}
-                    >
-                      Read
-                    </button>
-                  </div>
-                )}
+                  {/* 1. Author Guidelines */}
+                  {guidelines && (
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="guidelines-read"
+                        checked={guidelinesRead}
+                        onCheckedChange={(checked) =>
+                          setGuidelinesRead(!!checked)
+                        }
+                      />
+                      <label
+                        htmlFor="guidelines-read"
+                        className="flex-1 text-sm cursor-pointer"
+                      >
+                        I have read and agree to the{" "}
+                        <strong>Author Guidelines</strong>
+                      </label>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline shrink-0"
+                        onClick={() => setShowGuidelinesModal(true)}
+                      >
+                        Read
+                      </button>
+                    </div>
+                  )}
 
-                {/* 2. OA Policy */}
-                {journalPolicies.oa_policy && (
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="oa-policy-read"
-                      checked={oaPolicyRead}
-                      onCheckedChange={(checked) => setOaPolicyRead(!!checked)}
-                    />
-                    <label htmlFor="oa-policy-read" className="flex-1 text-sm cursor-pointer">
-                      I have read and agree to the <strong>Open Access (OA) Policy</strong>
-                    </label>
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline shrink-0"
-                      onClick={() => setShowOaPolicyModal(true)}
-                    >
-                      Read
-                    </button>
-                  </div>
-                )}
+                  {/* 2. OA Policy */}
+                  {journalPolicies.oa_policy && (
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="oa-policy-read"
+                        checked={oaPolicyRead}
+                        onCheckedChange={(checked) =>
+                          setOaPolicyRead(!!checked)
+                        }
+                      />
+                      <label
+                        htmlFor="oa-policy-read"
+                        className="flex-1 text-sm cursor-pointer"
+                      >
+                        I have read and agree to the{" "}
+                        <strong>Open Access (OA) Policy</strong>
+                      </label>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline shrink-0"
+                        onClick={() => setShowOaPolicyModal(true)}
+                      >
+                        Read
+                      </button>
+                    </div>
+                  )}
 
-                {/* 3. Peer Review Policy */}
-                {journalPolicies.peer_review_policy && (
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="peer-review-read"
-                      checked={peerReviewRead}
-                      onCheckedChange={(checked) => setPeerReviewRead(!!checked)}
-                    />
-                    <label htmlFor="peer-review-read" className="flex-1 text-sm cursor-pointer">
-                      I have read and agree to the <strong>Peer Review Policy</strong>
-                    </label>
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline shrink-0"
-                      onClick={() => setShowPeerReviewModal(true)}
-                    >
-                      Read
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  {/* 3. Peer Review Policy */}
+                  {journalPolicies.peer_review_policy && (
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="peer-review-read"
+                        checked={peerReviewRead}
+                        onCheckedChange={(checked) =>
+                          setPeerReviewRead(!!checked)
+                        }
+                      />
+                      <label
+                        htmlFor="peer-review-read"
+                        className="flex-1 text-sm cursor-pointer"
+                      >
+                        I have read and agree to the{" "}
+                        <strong>Peer Review Policy</strong>
+                      </label>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline shrink-0"
+                        onClick={() => setShowPeerReviewModal(true)}
+                      >
+                        Read
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
             {/* 2. Title */}
             <div>

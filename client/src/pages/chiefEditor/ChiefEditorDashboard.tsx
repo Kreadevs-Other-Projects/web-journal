@@ -146,7 +146,9 @@ export default function ChiefEditor() {
 
   // CE final decision state
   const [ceDecisionPaper, setCeDecisionPaper] = useState<Paper | null>(null);
-  const [ceDecisionAction, setCeDecisionAction] = useState<"accepted" | "rejected" | "revision" | "">("");
+  const [ceDecisionAction, setCeDecisionAction] = useState<
+    "accepted" | "rejected" | "revision" | ""
+  >("");
   const [ceDecisionNote, setCeDecisionNote] = useState("");
   const [submittingCeDecision, setSubmittingCeDecision] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -167,9 +169,13 @@ export default function ChiefEditor() {
   const [creatingTeamRev, setCreatingTeamRev] = useState(false);
 
   // Reviewer requests
-  const [reviewerRequests, setReviewerRequests] = useState<ReviewerRequest[]>([]);
+  const [reviewerRequests, setReviewerRequests] = useState<ReviewerRequest[]>(
+    [],
+  );
   const [reviewerRequestsLoading, setReviewerRequestsLoading] = useState(false);
-  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(
+    null,
+  );
 
   const fetchJournals = async () => {
     try {
@@ -207,7 +213,9 @@ export default function ChiefEditor() {
       const pending = papersData.filter((p) => p.status === "submitted").length;
       const assigned = papersData.filter((p) => p.status === "assigned").length;
       const reviewed = papersData.filter((p) => p.status === "reviewed").length;
-      const needsDecision = papersData.filter((p) => p.status === "sub_editor_approved").length;
+      const needsDecision = papersData.filter(
+        (p) => p.status === "sub_editor_approved",
+      ).length;
 
       setStats({
         total: papersData.length,
@@ -295,19 +303,20 @@ export default function ChiefEditor() {
     }
   };
 
-  const fetchStaff = () => {
+  const fetchStaff = async () => {
     if (!token) return;
-    fetch(`${url}/chiefEditor/getSubEditors`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setSubEditors(data.data || []));
-
-    fetch(`${url}/chiefEditor/getReviewers`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setReviewers(data.data || []));
+    const [subEditorsRes, reviewersRes] = await Promise.all([
+      fetch(`${url}/chiefEditor/getSubEditors`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch(`${url}/chiefEditor/getReviewers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+    const subEditorsData = await subEditorsRes.json();
+    setSubEditors(subEditorsData.data || []);
+    const reviewersData = await reviewersRes.json();
+    setReviewers(reviewersData.data || []);
   };
 
   useEffect(() => {
@@ -413,7 +422,8 @@ export default function ChiefEditor() {
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update issue status");
+      if (!res.ok)
+        throw new Error(data.message || "Failed to update issue status");
 
       // Optimistic update in journals state
       setJournals((prev) =>
@@ -504,11 +514,11 @@ export default function ChiefEditor() {
       });
 
       setSubEditorEmail("");
-      fetch(`${url}/chiefEditor/getSubEditors`, {
+      const subEditorsRes = await fetch(`${url}/chiefEditor/getSubEditors`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setSubEditors(data.data || []));
+      });
+      const subEditorsData = await subEditorsRes.json();
+      setSubEditors(subEditorsData.data || []);
     } catch (e) {
       console.error(e);
       toast({
@@ -523,7 +533,11 @@ export default function ChiefEditor() {
 
   const createAndAssignSubEditor = async () => {
     if (!newSubEditor.name || !newSubEditor.email) {
-      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required",
+        variant: "destructive",
+      });
       return;
     }
     if (!selectedPaper) return;
@@ -532,7 +546,10 @@ export default function ChiefEditor() {
       const journalId = selectedPaper.journalId ?? selectedJournalId;
       const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: newSubEditor.name,
           email: newSubEditor.email,
@@ -544,11 +561,18 @@ export default function ChiefEditor() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send invitation");
 
-      toast({ title: "Invitation Sent", description: `${newSubEditor.name} will be assigned as sub-editor upon acceptance.` });
+      toast({
+        title: "Invitation Sent",
+        description: `${newSubEditor.name} will be assigned as sub-editor upon acceptance.`,
+      });
       setNewSubEditor({ name: "", email: "" });
       setOpenDialog(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCreatingSubEditor(false);
     }
@@ -558,18 +582,31 @@ export default function ChiefEditor() {
     if (!selectedPaper || !selectedReviewerId) return;
     try {
       setAssigningReviewer(true);
-      const res = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reviewerId: selectedReviewerId }),
-      });
+      const res = await fetch(
+        `${url}/subEditor/assignReviewer/${selectedPaper.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reviewerId: selectedReviewerId }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to assign reviewer");
-      toast({ title: "Success", description: "Reviewer assigned successfully" });
+      toast({
+        title: "Success",
+        description: "Reviewer assigned successfully",
+      });
       setSelectedReviewerId("");
       setOpenReviewerDialog(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setAssigningReviewer(false);
     }
@@ -577,7 +614,11 @@ export default function ChiefEditor() {
 
   const createAndAssignReviewer = async () => {
     if (!newReviewer.name || !newReviewer.email) {
-      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required",
+        variant: "destructive",
+      });
       return;
     }
     if (!selectedPaper) return;
@@ -586,7 +627,10 @@ export default function ChiefEditor() {
       const journalId = selectedPaper.journalId ?? selectedJournalId;
       const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: newReviewer.name,
           email: newReviewer.email,
@@ -598,11 +642,18 @@ export default function ChiefEditor() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send invitation");
 
-      toast({ title: "Invitation Sent", description: `${newReviewer.name} will be assigned as reviewer upon acceptance.` });
+      toast({
+        title: "Invitation Sent",
+        description: `${newReviewer.name} will be assigned as reviewer upon acceptance.`,
+      });
       setNewReviewer({ name: "", email: "" });
       setOpenReviewerDialog(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCreatingReviewer(false);
     }
@@ -611,7 +662,11 @@ export default function ChiefEditor() {
   // Team tab: invite sub-editor without paper assignment
   const createTeamSubEditor = async () => {
     if (!newTeamSE.name || !newTeamSE.email) {
-      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required",
+        variant: "destructive",
+      });
       return;
     }
     try {
@@ -619,7 +674,10 @@ export default function ChiefEditor() {
       const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
       const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: newTeamSE.name,
           email: newTeamSE.email,
@@ -629,11 +687,18 @@ export default function ChiefEditor() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send invitation");
-      toast({ title: "Invitation Sent", description: `${newTeamSE.name} will appear as Associate Editor upon acceptance.` });
+      toast({
+        title: "Invitation Sent",
+        description: `${newTeamSE.name} will appear as Associate Editor upon acceptance.`,
+      });
       setNewTeamSE({ name: "", email: "" });
       setOpenCreateSE(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCreatingTeamSE(false);
     }
@@ -642,7 +707,11 @@ export default function ChiefEditor() {
   // Team tab: invite reviewer without paper assignment
   const createTeamReviewer = async () => {
     if (!newTeamRev.name || !newTeamRev.email) {
-      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required",
+        variant: "destructive",
+      });
       return;
     }
     try {
@@ -650,7 +719,10 @@ export default function ChiefEditor() {
       const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
       const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: newTeamRev.name,
           email: newTeamRev.email,
@@ -660,24 +732,40 @@ export default function ChiefEditor() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send invitation");
-      toast({ title: "Invitation Sent", description: `${newTeamRev.name} will appear as Reviewer upon acceptance.` });
+      toast({
+        title: "Invitation Sent",
+        description: `${newTeamRev.name} will appear as Reviewer upon acceptance.`,
+      });
       setNewTeamRev({ name: "", email: "" });
       setOpenCreateRev(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCreatingTeamRev(false);
     }
   };
 
-  const handleReviewerRequest = async (requestId: string, action: "approved" | "rejected") => {
+  const handleReviewerRequest = async (
+    requestId: string,
+    action: "approved" | "rejected",
+  ) => {
     try {
       setProcessingRequestId(requestId);
-      const res = await fetch(`${url}/subEditor/reviewer-requests/${requestId}/review`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action }),
-      });
+      const res = await fetch(
+        `${url}/subEditor/reviewer-requests/${requestId}/review`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to process request");
       toast({
@@ -686,7 +774,11 @@ export default function ChiefEditor() {
       });
       fetchReviewerRequests();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setProcessingRequestId(null);
     }
@@ -696,20 +788,36 @@ export default function ChiefEditor() {
     if (!ceDecisionPaper || !ceDecisionAction) return;
     try {
       setSubmittingCeDecision(true);
-      const res = await fetch(`${url}/chiefEditor/decide/${ceDecisionPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ decision: ceDecisionAction, decision_note: ceDecisionNote }),
-      });
+      const res = await fetch(
+        `${url}/chiefEditor/decide/${ceDecisionPaper.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            decision: ceDecisionAction,
+            decision_note: ceDecisionNote,
+          }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to submit decision");
-      toast({ title: "Decision Submitted", description: `Paper has been ${ceDecisionAction}.` });
+      toast({
+        title: "Decision Submitted",
+        description: `Paper has been ${ceDecisionAction}.`,
+      });
       setCeDecisionPaper(null);
       setCeDecisionAction("");
       setCeDecisionNote("");
       fetchPapers();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSubmittingCeDecision(false);
     }
@@ -848,7 +956,9 @@ export default function ChiefEditor() {
                       <p className="text-sm font-medium text-muted-foreground">
                         Assigned
                       </p>
-                      <p className="text-3xl font-bold mt-2">{stats.assigned}</p>
+                      <p className="text-3xl font-bold mt-2">
+                        {stats.assigned}
+                      </p>
                     </div>
                     <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
                       <Users className="h-6 w-6 text-purple-600" />
@@ -864,7 +974,9 @@ export default function ChiefEditor() {
                       <p className="text-sm font-medium text-muted-foreground">
                         Reviewed
                       </p>
-                      <p className="text-3xl font-bold mt-2">{stats.reviewed}</p>
+                      <p className="text-3xl font-bold mt-2">
+                        {stats.reviewed}
+                      </p>
                     </div>
                     <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle className="h-6 w-6 text-green-600" />
@@ -874,14 +986,19 @@ export default function ChiefEditor() {
               </Card>
 
               {stats.needsDecision > 0 && (
-                <Card className="glass-card border-l-4 border-l-orange-500 cursor-pointer" onClick={() => setActiveTab("sub_editor_approved")}>
+                <Card
+                  className="glass-card border-l-4 border-l-orange-500 cursor-pointer"
+                  onClick={() => setActiveTab("sub_editor_approved")}
+                >
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
                           Needs Decision
                         </p>
-                        <p className="text-3xl font-bold mt-2 text-orange-600">{stats.needsDecision}</p>
+                        <p className="text-3xl font-bold mt-2 text-orange-600">
+                          {stats.needsDecision}
+                        </p>
                       </div>
                       <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
                         <AlertCircle className="h-6 w-6 text-orange-600" />
@@ -952,7 +1069,9 @@ export default function ChiefEditor() {
                               )}
                             </h3>
                             <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                              {journal.issn && <span>ISSN: {journal.issn}</span>}
+                              {journal.issn && (
+                                <span>ISSN: {journal.issn}</span>
+                              )}
                               {journal.status && (
                                 <Badge
                                   variant="outline"
@@ -964,7 +1083,9 @@ export default function ChiefEditor() {
                               {journal.expiry_at && (
                                 <span>
                                   Expires:{" "}
-                                  {new Date(journal.expiry_at).toLocaleDateString()}
+                                  {new Date(
+                                    journal.expiry_at,
+                                  ).toLocaleDateString()}
                                 </span>
                               )}
                             </div>
@@ -985,7 +1106,9 @@ export default function ChiefEditor() {
                               <div
                                 key={issue.id}
                                 className="bg-muted/50 p-3 rounded-md text-sm hover:bg-muted transition-colors cursor-pointer group"
-                                onClick={() => handleIssueClick(issue, journal.id)}
+                                onClick={() =>
+                                  handleIssueClick(issue, journal.id)
+                                }
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1">
@@ -1016,7 +1139,8 @@ export default function ChiefEditor() {
                                         variant="outline"
                                         className="bg-yellow-100 text-yellow-800"
                                       >
-                                        <FileEdit className="h-3 w-3 mr-1" /> Draft
+                                        <FileEdit className="h-3 w-3 mr-1" />{" "}
+                                        Draft
                                       </Badge>
                                     ) : (
                                       <Badge
@@ -1115,7 +1239,9 @@ export default function ChiefEditor() {
                       All Papers
                     </Button>
                     <Button
-                      variant={activeTab === "submitted" ? "default" : "outline"}
+                      variant={
+                        activeTab === "submitted" ? "default" : "outline"
+                      }
                       size="sm"
                       onClick={() => setActiveTab("submitted")}
                     >
@@ -1124,7 +1250,9 @@ export default function ChiefEditor() {
                     </Button>
                     <Button
                       variant={
-                        activeTab === "assigned_to_editor" ? "default" : "outline"
+                        activeTab === "assigned_to_editor"
+                          ? "default"
+                          : "outline"
                       }
                       size="sm"
                       onClick={() => setActiveTab("assigned_to_editor")}
@@ -1133,15 +1261,27 @@ export default function ChiefEditor() {
                       Assigned
                     </Button>
                     <Button
-                      variant={activeTab === "sub_editor_approved" ? "default" : "outline"}
+                      variant={
+                        activeTab === "sub_editor_approved"
+                          ? "default"
+                          : "outline"
+                      }
                       size="sm"
                       onClick={() => setActiveTab("sub_editor_approved")}
-                      className={activeTab !== "sub_editor_approved" && stats.needsDecision > 0 ? "border-orange-400 text-orange-600" : ""}
+                      className={
+                        activeTab !== "sub_editor_approved" &&
+                        stats.needsDecision > 0
+                          ? "border-orange-400 text-orange-600"
+                          : ""
+                      }
                     >
                       <AlertCircle className="h-4 w-4 mr-2" />
                       Needs Decision
                       {stats.needsDecision > 0 && (
-                        <Badge variant="destructive" className="ml-1.5 h-4 px-1 text-xs">
+                        <Badge
+                          variant="destructive"
+                          className="ml-1.5 h-4 px-1 text-xs"
+                        >
                           {stats.needsDecision}
                         </Badge>
                       )}
@@ -1224,7 +1364,10 @@ export default function ChiefEditor() {
                           <Button
                             size="sm"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("accepted"); }}
+                            onClick={() => {
+                              setCeDecisionPaper(paper);
+                              setCeDecisionAction("accepted");
+                            }}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Accept
@@ -1233,7 +1376,10 @@ export default function ChiefEditor() {
                             size="sm"
                             variant="outline"
                             className="flex-1 border-amber-400 text-amber-700 hover:bg-amber-50"
-                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("revision"); }}
+                            onClick={() => {
+                              setCeDecisionPaper(paper);
+                              setCeDecisionAction("revision");
+                            }}
                           >
                             <FileEdit className="h-4 w-4 mr-1" />
                             Revision
@@ -1242,7 +1388,10 @@ export default function ChiefEditor() {
                             size="sm"
                             variant="outline"
                             className="flex-1 border-red-400 text-red-700 hover:bg-red-50"
-                            onClick={() => { setCeDecisionPaper(paper); setCeDecisionAction("rejected"); }}
+                            onClick={() => {
+                              setCeDecisionPaper(paper);
+                              setCeDecisionAction("rejected");
+                            }}
                           >
                             <AlertCircle className="h-4 w-4 mr-1" />
                             Reject
@@ -1300,27 +1449,38 @@ export default function ChiefEditor() {
               </div>
             )}
 
-
             {/* ===== COMBINED VIEW: Sub-Editor Assignments (if user has sub_editor role) ===== */}
             {user?.roles?.includes("sub_editor") && (
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-2">
                   <FileEdit className="h-5 w-5 text-orange-500" />
-                  <h2 className="text-lg font-semibold text-foreground">My Assigned Papers (as Associate Editor)</h2>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    My Assigned Papers (as Associate Editor)
+                  </h2>
                   <Badge variant="secondary">{myAssignedPapers.length}</Badge>
                 </div>
                 {myAssignedPapers.length === 0 ? (
-                  <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No papers currently assigned to you as Associate Editor.</CardContent></Card>
+                  <Card>
+                    <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                      No papers currently assigned to you as Associate Editor.
+                    </CardContent>
+                  </Card>
                 ) : (
                   <div className="grid gap-3">
                     {myAssignedPapers.map((p: any) => (
                       <Card key={p.id} className="glass-card">
                         <CardContent className="py-4 flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{p.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{p.journal_name || p.journal?.title}</p>
+                            <p className="font-medium text-foreground truncate">
+                              {p.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {p.journal_name || p.journal?.title}
+                            </p>
                           </div>
-                          <Badge variant="outline" className="shrink-0">{p.status?.replace(/_/g, " ")}</Badge>
+                          <Badge variant="outline" className="shrink-0">
+                            {p.status?.replace(/_/g, " ")}
+                          </Badge>
                         </CardContent>
                       </Card>
                     ))}
@@ -1334,21 +1494,35 @@ export default function ChiefEditor() {
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-2">
                   <UserCheck className="h-5 w-5 text-purple-500" />
-                  <h2 className="text-lg font-semibold text-foreground">My Review Assignments</h2>
-                  <Badge variant="secondary">{myReviewAssignments.length}</Badge>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    My Review Assignments
+                  </h2>
+                  <Badge variant="secondary">
+                    {myReviewAssignments.length}
+                  </Badge>
                 </div>
                 {myReviewAssignments.length === 0 ? (
-                  <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No review assignments currently.</CardContent></Card>
+                  <Card>
+                    <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                      No review assignments currently.
+                    </CardContent>
+                  </Card>
                 ) : (
                   <div className="grid gap-3">
                     {myReviewAssignments.map((p: any) => (
                       <Card key={p.id} className="glass-card">
                         <CardContent className="py-4 flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{p.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{p.journal_name || p.journal?.title}</p>
+                            <p className="font-medium text-foreground truncate">
+                              {p.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {p.journal_name || p.journal?.title}
+                            </p>
                           </div>
-                          <Badge variant="outline" className="shrink-0">{p.status?.replace(/_/g, " ")}</Badge>
+                          <Badge variant="outline" className="shrink-0">
+                            {p.status?.replace(/_/g, " ")}
+                          </Badge>
                         </CardContent>
                       </Card>
                     ))}
@@ -1367,7 +1541,10 @@ export default function ChiefEditor() {
                 <TabsTrigger value="reviewer_requests">
                   Pending Reviewer Requests
                   {reviewerRequests.length > 0 && (
-                    <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                    <Badge
+                      variant="destructive"
+                      className="ml-2 h-5 px-1.5 text-xs"
+                    >
                       {reviewerRequests.length}
                     </Badge>
                   )}
@@ -1388,8 +1565,12 @@ export default function ChiefEditor() {
                   <Card className="glass-card">
                     <CardContent className="pt-12 pb-12 text-center">
                       <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-                      <h3 className="text-lg font-semibold mb-2">No Associate Editors</h3>
-                      <p className="text-muted-foreground">Add associate editors to get started.</p>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Associate Editors
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Add associate editors to get started.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -1404,8 +1585,12 @@ export default function ChiefEditor() {
                               </span>
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{se.username}</p>
-                              <p className="text-xs text-muted-foreground truncate">{se.email}</p>
+                              <p className="font-medium truncate">
+                                {se.username}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {se.email}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -1429,8 +1614,12 @@ export default function ChiefEditor() {
                   <Card className="glass-card">
                     <CardContent className="pt-12 pb-12 text-center">
                       <UserCheck className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-                      <h3 className="text-lg font-semibold mb-2">No Reviewers</h3>
-                      <p className="text-muted-foreground">Add reviewers to get started.</p>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Reviewers
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Add reviewers to get started.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -1445,8 +1634,12 @@ export default function ChiefEditor() {
                               </span>
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{r.username}</p>
-                              <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                              <p className="font-medium truncate">
+                                {r.username}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {r.email}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -1459,8 +1652,15 @@ export default function ChiefEditor() {
               {/* Pending Reviewer Requests sub-tab */}
               <TabsContent value="reviewer_requests" className="mt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Pending Reviewer Requests</h2>
-                  <Button variant="outline" size="sm" onClick={fetchReviewerRequests} disabled={reviewerRequestsLoading}>
+                  <h2 className="text-lg font-semibold">
+                    Pending Reviewer Requests
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchReviewerRequests}
+                    disabled={reviewerRequestsLoading}
+                  >
                     {reviewerRequestsLoading ? "Refreshing..." : "Refresh"}
                   </Button>
                 </div>
@@ -1473,8 +1673,12 @@ export default function ChiefEditor() {
                   <Card className="glass-card">
                     <CardContent className="pt-12 pb-12 text-center">
                       <CheckCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-                      <h3 className="text-lg font-semibold mb-2">No Pending Requests</h3>
-                      <p className="text-muted-foreground">All reviewer requests have been processed.</p>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Pending Requests
+                      </h3>
+                      <p className="text-muted-foreground">
+                        All reviewer requests have been processed.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -1482,16 +1686,22 @@ export default function ChiefEditor() {
                     {reviewerRequests.map((req) => (
                       <Card key={req.id} className="glass-card">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base line-clamp-2">{req.paper_title}</CardTitle>
+                          <CardTitle className="text-base line-clamp-2">
+                            {req.paper_title}
+                          </CardTitle>
                           <CardDescription className="text-xs">
                             Requested by: {req.sub_editor_name}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3 pb-3">
                           <div className="bg-muted/50 rounded-md p-3 space-y-1">
-                            <p className="text-sm font-medium">Suggested Reviewer</p>
+                            <p className="text-sm font-medium">
+                              Suggested Reviewer
+                            </p>
                             <p className="text-sm">{req.suggested_name}</p>
-                            <p className="text-xs text-muted-foreground">{req.suggested_email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {req.suggested_email}
+                            </p>
                           </div>
                           {req.keywords && req.keywords.length > 0 && (
                             <div>
@@ -1501,7 +1711,11 @@ export default function ChiefEditor() {
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {req.keywords.map((kw, i) => (
-                                  <Badge key={i} variant="secondary" className="text-xs">
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
                                     {kw}
                                   </Badge>
                                 ))}
@@ -1515,7 +1729,9 @@ export default function ChiefEditor() {
                             variant="outline"
                             className="flex-1 border-green-300 text-green-700 hover:bg-green-50"
                             disabled={processingRequestId === req.id}
-                            onClick={() => handleReviewerRequest(req.id, "approved")}
+                            onClick={() =>
+                              handleReviewerRequest(req.id, "approved")
+                            }
                           >
                             <ThumbsUp className="h-4 w-4 mr-1" />
                             Approve
@@ -1525,7 +1741,9 @@ export default function ChiefEditor() {
                             variant="outline"
                             className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
                             disabled={processingRequestId === req.id}
-                            onClick={() => handleReviewerRequest(req.id, "rejected")}
+                            onClick={() =>
+                              handleReviewerRequest(req.id, "rejected")
+                            }
                           >
                             <ThumbsDown className="h-4 w-4 mr-1" />
                             Reject
@@ -1574,14 +1792,21 @@ export default function ChiefEditor() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Select Sub-Editor</Label>
+                  <Label className="text-sm font-medium">
+                    Select Sub-Editor
+                  </Label>
                   {subEditors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No sub-editors available.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No sub-editors available.
+                    </p>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                       {subEditors.map((se) => {
-                        const paperKeywords: string[] = selectedPaper?.keywords ?? [];
-                        const overlap = (se.keywords ?? []).filter((k) => paperKeywords.includes(k));
+                        const paperKeywords: string[] =
+                          selectedPaper?.keywords ?? [];
+                        const overlap = (se.keywords ?? []).filter((k) =>
+                          paperKeywords.includes(k),
+                        );
                         const isSelected = subEditorId === se.id;
                         return (
                           <div
@@ -1591,26 +1816,55 @@ export default function ChiefEditor() {
                           >
                             <div className="flex items-start gap-3">
                               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                                {se.profile_pic_url
-                                  ? <img src={se.profile_pic_url} alt={se.username} className="h-full w-full object-cover" />
-                                  : <span className="text-sm font-semibold text-primary">{se.username.slice(0, 2).toUpperCase()}</span>}
+                                {se.profile_pic_url ? (
+                                  <img
+                                    src={se.profile_pic_url}
+                                    alt={se.username}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-semibold text-primary">
+                                    {se.username.slice(0, 2).toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-medium text-foreground">{se.username}</p>
-                                  {overlap.length > 0 && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Best Match</Badge>}
+                                  <p className="text-sm font-medium text-foreground">
+                                    {se.username}
+                                  </p>
+                                  {overlap.length > 0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-green-100 text-green-700"
+                                    >
+                                      Best Match
+                                    </Badge>
+                                  )}
                                 </div>
                                 {se.degrees && se.degrees.length > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{se.degrees.join(", ")}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    {se.degrees.join(", ")}
+                                  </p>
                                 )}
                                 {se.keywords && se.keywords.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {se.keywords.map((k, i) => (
-                                      <Badge key={i} variant="outline" className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}>{k}</Badge>
+                                      <Badge
+                                        key={i}
+                                        variant="outline"
+                                        className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}
+                                      >
+                                        {k}
+                                      </Badge>
                                     ))}
                                   </div>
                                 )}
-                                <p className="text-xs text-muted-foreground mt-1">Currently handling {se.active_assignments ?? 0} paper{se.active_assignments !== 1 ? "s" : ""}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Currently handling{" "}
+                                  {se.active_assignments ?? 0} paper
+                                  {se.active_assignments !== 1 ? "s" : ""}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -1618,7 +1872,11 @@ export default function ChiefEditor() {
                       })}
                     </div>
                   )}
-                  <Button className="w-full" onClick={assignSubEditor} disabled={!subEditorId}>
+                  <Button
+                    className="w-full"
+                    onClick={assignSubEditor}
+                    disabled={!subEditorId}
+                  >
                     <UserPlus className="h-4 w-4 mr-2" />
                     {loading ? "Assigning..." : "Assign Sub-Editor"}
                   </Button>
@@ -1639,22 +1897,33 @@ export default function ChiefEditor() {
                   <Label className="text-sm font-medium">
                     Invite New Sub-Editor
                   </Label>
-                  <p className="text-xs text-muted-foreground">An invitation email will be sent. They will be assigned to this paper when they accept.</p>
+                  <p className="text-xs text-muted-foreground">
+                    An invitation email will be sent. They will be assigned to
+                    this paper when they accept.
+                  </p>
                   <Input
                     placeholder="Full Name"
                     value={newSubEditor.name}
-                    onChange={(e) => setNewSubEditor((p) => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewSubEditor((p) => ({ ...p, name: e.target.value }))
+                    }
                   />
                   <Input
                     type="email"
                     placeholder="Email address"
                     value={newSubEditor.email}
-                    onChange={(e) => setNewSubEditor((p) => ({ ...p, email: e.target.value }))}
+                    onChange={(e) =>
+                      setNewSubEditor((p) => ({ ...p, email: e.target.value }))
+                    }
                   />
                   <Button
                     className="w-full"
                     onClick={createAndAssignSubEditor}
-                    disabled={creatingSubEditor || !newSubEditor.name || !newSubEditor.email}
+                    disabled={
+                      creatingSubEditor ||
+                      !newSubEditor.name ||
+                      !newSubEditor.email
+                    }
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     {creatingSubEditor ? "Sending..." : "Send Invitation"}
@@ -1742,19 +2011,28 @@ export default function ChiefEditor() {
               <div className="space-y-6">
                 <Card className="bg-muted/50">
                   <CardContent className="pt-4">
-                    <p className="font-medium text-foreground text-sm">{selectedPaper.title}</p>
+                    <p className="font-medium text-foreground text-sm">
+                      {selectedPaper.title}
+                    </p>
                   </CardContent>
                 </Card>
 
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Select Existing Reviewer</Label>
+                  <Label className="text-sm font-medium">
+                    Select Existing Reviewer
+                  </Label>
                   {reviewers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No reviewers available.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No reviewers available.
+                    </p>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                       {reviewers.map((r) => {
-                        const paperKeywords: string[] = selectedPaper?.keywords ?? [];
-                        const overlap = (r.keywords ?? []).filter((k) => paperKeywords.includes(k));
+                        const paperKeywords: string[] =
+                          selectedPaper?.keywords ?? [];
+                        const overlap = (r.keywords ?? []).filter((k) =>
+                          paperKeywords.includes(k),
+                        );
                         const isSelected = selectedReviewerId === r.id;
                         return (
                           <div
@@ -1764,26 +2042,55 @@ export default function ChiefEditor() {
                           >
                             <div className="flex items-start gap-3">
                               <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center shrink-0 overflow-hidden">
-                                {r.profile_pic_url
-                                  ? <img src={r.profile_pic_url} alt={r.username} className="h-full w-full object-cover" />
-                                  : <span className="text-sm font-semibold text-purple-700">{r.username.slice(0, 2).toUpperCase()}</span>}
+                                {r.profile_pic_url ? (
+                                  <img
+                                    src={r.profile_pic_url}
+                                    alt={r.username}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-semibold text-purple-700">
+                                    {r.username.slice(0, 2).toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-medium text-foreground">{r.username}</p>
-                                  {overlap.length > 0 && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Best Match</Badge>}
+                                  <p className="text-sm font-medium text-foreground">
+                                    {r.username}
+                                  </p>
+                                  {overlap.length > 0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-green-100 text-green-700"
+                                    >
+                                      Best Match
+                                    </Badge>
+                                  )}
                                 </div>
                                 {r.degrees && r.degrees.length > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.degrees.join(", ")}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    {r.degrees.join(", ")}
+                                  </p>
                                 )}
                                 {r.keywords && r.keywords.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {r.keywords.map((k, i) => (
-                                      <Badge key={i} variant="outline" className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}>{k}</Badge>
+                                      <Badge
+                                        key={i}
+                                        variant="outline"
+                                        className={`text-xs ${overlap.includes(k) ? "border-green-400 text-green-700" : ""}`}
+                                      >
+                                        {k}
+                                      </Badge>
                                     ))}
                                   </div>
                                 )}
-                                <p className="text-xs text-muted-foreground mt-1">Currently reviewing {r.active_assignments ?? 0} paper{r.active_assignments !== 1 ? "s" : ""}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Currently reviewing{" "}
+                                  {r.active_assignments ?? 0} paper
+                                  {r.active_assignments !== 1 ? "s" : ""}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -1791,37 +2098,58 @@ export default function ChiefEditor() {
                       })}
                     </div>
                   )}
-                  <Button className="w-full" onClick={assignExistingReviewer} disabled={!selectedReviewerId || assigningReviewer}>
+                  <Button
+                    className="w-full"
+                    onClick={assignExistingReviewer}
+                    disabled={!selectedReviewerId || assigningReviewer}
+                  >
                     <UserCheck className="h-4 w-4 mr-2" />
                     {assigningReviewer ? "Assigning..." : "Assign Reviewer"}
                   </Button>
                 </div>
 
                 <div className="relative">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t" />
+                  </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or
+                    </span>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Invite New Reviewer</Label>
-                  <p className="text-xs text-muted-foreground">An invitation email will be sent. They will be assigned to this paper when they accept.</p>
+                  <Label className="text-sm font-medium">
+                    Invite New Reviewer
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    An invitation email will be sent. They will be assigned to
+                    this paper when they accept.
+                  </p>
                   <Input
                     placeholder="Full Name"
                     value={newReviewer.name}
-                    onChange={(e) => setNewReviewer((p) => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewReviewer((p) => ({ ...p, name: e.target.value }))
+                    }
                   />
                   <Input
                     type="email"
                     placeholder="Email address"
                     value={newReviewer.email}
-                    onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
+                    onChange={(e) =>
+                      setNewReviewer((p) => ({ ...p, email: e.target.value }))
+                    }
                   />
                   <Button
                     className="w-full"
                     onClick={createAndAssignReviewer}
-                    disabled={creatingReviewer || !newReviewer.name || !newReviewer.email}
+                    disabled={
+                      creatingReviewer ||
+                      !newReviewer.name ||
+                      !newReviewer.email
+                    }
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     {creatingReviewer ? "Sending..." : "Send Invitation"}
@@ -1831,8 +2159,15 @@ export default function ChiefEditor() {
             )}
 
             <DialogFooter className="sm:justify-between">
-              <div className="text-xs text-muted-foreground">{reviewers.length} available reviewers</div>
-              <Button variant="ghost" onClick={() => setOpenReviewerDialog(false)}>Close</Button>
+              <div className="text-xs text-muted-foreground">
+                {reviewers.length} available reviewers
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => setOpenReviewerDialog(false)}
+              >
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1847,21 +2182,34 @@ export default function ChiefEditor() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground">An invitation email will be sent. They will set their own password when they accept.</p>
+              <p className="text-sm text-muted-foreground">
+                An invitation email will be sent. They will set their own
+                password when they accept.
+              </p>
               <Input
                 placeholder="Full Name"
                 value={newTeamSE.name}
-                onChange={(e) => setNewTeamSE((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) =>
+                  setNewTeamSE((p) => ({ ...p, name: e.target.value }))
+                }
               />
               <Input
                 type="email"
                 placeholder="Email address"
                 value={newTeamSE.email}
-                onChange={(e) => setNewTeamSE((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setNewTeamSE((p) => ({ ...p, email: e.target.value }))
+                }
               />
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setOpenCreateSE(false); setNewTeamSE({ name: "", email: "" }); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setOpenCreateSE(false);
+                  setNewTeamSE({ name: "", email: "" });
+                }}
+              >
                 Cancel
               </Button>
               <Button
@@ -1885,26 +2233,41 @@ export default function ChiefEditor() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground">An invitation email will be sent. They will set their own password when they accept.</p>
+              <p className="text-sm text-muted-foreground">
+                An invitation email will be sent. They will set their own
+                password when they accept.
+              </p>
               <Input
                 placeholder="Full Name"
                 value={newTeamRev.name}
-                onChange={(e) => setNewTeamRev((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) =>
+                  setNewTeamRev((p) => ({ ...p, name: e.target.value }))
+                }
               />
               <Input
                 type="email"
                 placeholder="Email address"
                 value={newTeamRev.email}
-                onChange={(e) => setNewTeamRev((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setNewTeamRev((p) => ({ ...p, email: e.target.value }))
+                }
               />
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setOpenCreateRev(false); setNewTeamRev({ name: "", email: "" }); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setOpenCreateRev(false);
+                  setNewTeamRev({ name: "", email: "" });
+                }}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={createTeamReviewer}
-                disabled={creatingTeamRev || !newTeamRev.name || !newTeamRev.email}
+                disabled={
+                  creatingTeamRev || !newTeamRev.name || !newTeamRev.email
+                }
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 {creatingTeamRev ? "Sending..." : "Send Invitation"}
@@ -1914,16 +2277,32 @@ export default function ChiefEditor() {
         </Dialog>
 
         {/* CE Final Decision Dialog */}
-        <Dialog open={!!ceDecisionPaper} onOpenChange={(open) => { if (!open) { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); } }}>
+        <Dialog
+          open={!!ceDecisionPaper}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCeDecisionPaper(null);
+              setCeDecisionAction("");
+              setCeDecisionNote("");
+            }
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Final Decision — {ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Request Revision"}
+                Final Decision —{" "}
+                {ceDecisionAction === "accepted"
+                  ? "Accept"
+                  : ceDecisionAction === "rejected"
+                    ? "Reject"
+                    : "Request Revision"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground line-clamp-2">{ceDecisionPaper?.title}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {ceDecisionPaper?.title}
+              </p>
               <div className="space-y-2">
                 <Label htmlFor="ce-note">Decision Note (optional)</Label>
                 <textarea
@@ -1936,15 +2315,30 @@ export default function ChiefEditor() {
               </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setCeDecisionPaper(null);
+                  setCeDecisionAction("");
+                  setCeDecisionNote("");
+                }}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={submitCeDecision}
                 disabled={submittingCeDecision}
-                className={ceDecisionAction === "accepted" ? "bg-green-600 hover:bg-green-700 text-white" : ceDecisionAction === "rejected" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+                className={
+                  ceDecisionAction === "accepted"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : ceDecisionAction === "rejected"
+                      ? "bg-red-600 hover:bg-red-700 text-white"
+                      : ""
+                }
               >
-                {submittingCeDecision ? "Submitting..." : `Confirm ${ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Revision"}`}
+                {submittingCeDecision
+                  ? "Submitting..."
+                  : `Confirm ${ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Revision"}`}
               </Button>
             </DialogFooter>
           </DialogContent>

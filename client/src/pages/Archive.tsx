@@ -3,7 +3,13 @@ import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen, ExternalLink, Filter, X } from "lucide-react";
@@ -35,7 +41,11 @@ interface Filters {
 
 function formatDate(d?: string) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export default function Archive() {
@@ -48,7 +58,9 @@ export default function Archive() {
   const [loading, setLoading] = useState(true);
 
   // Filter state
-  const [journalId, setJournalId] = useState(searchParams.get("journal_id") || "");
+  const [journalId, setJournalId] = useState(
+    searchParams.get("journal_id") || "",
+  );
   const [year, setYear] = useState(searchParams.get("year") || "");
   const [volume, setVolume] = useState(searchParams.get("volume") || "");
   const [issue, setIssue] = useState(searchParams.get("issue") || "");
@@ -56,13 +68,18 @@ export default function Archive() {
   const LIMIT = 20;
 
   useEffect(() => {
-    fetch(`${url}/archive/filters`)
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setFilters({ journals: d.journals || [], years: d.years || [] }); })
-      .catch(() => {});
+    const fetchFilters = async () => {
+      try {
+        const r = await fetch(`${url}/archive/filters`);
+        const d = await r.json();
+        if (d.success)
+          setFilters({ journals: d.journals || [], years: d.years || [] });
+      } catch (_) {}
+    };
+    fetchFilters();
   }, []);
 
-  const fetchArchive = (pg: number = page) => {
+  const fetchArchive = async (pg: number = page) => {
     setLoading(true);
     const params = new URLSearchParams();
     if (journalId) params.set("journal_id", journalId);
@@ -72,31 +89,47 @@ export default function Archive() {
     params.set("page", String(pg));
     params.set("limit", String(LIMIT));
 
-    fetch(`${url}/archive?${params}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          setPapers(d.papers || []);
-          setTotal(d.total || 0);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      const r = await fetch(`${url}/archive?${params}`);
+      const d = await r.json();
+      if (d.success) {
+        setPapers(d.papers || []);
+        setTotal(d.total || 0);
+      }
+    } catch (_) {
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchArchive(1); setPage(1); }, []);
+  useEffect(() => {
+    fetchArchive(1);
+    setPage(1);
+  }, []);
 
-  const applyFilters = () => { setPage(1); fetchArchive(1); };
+  const applyFilters = () => {
+    setPage(1);
+    fetchArchive(1);
+  };
 
-  const clearFilters = () => {
-    setJournalId(""); setYear(""); setVolume(""); setIssue("");
+  const clearFilters = async () => {
+    setJournalId("");
+    setYear("");
+    setVolume("");
+    setIssue("");
     setPage(1);
     setLoading(true);
-    fetch(`${url}/archive?page=1&limit=${LIMIT}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.success) { setPapers(d.papers || []); setTotal(d.total || 0); } })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      const r = await fetch(`${url}/archive?page=1&limit=${LIMIT}`);
+      const d = await r.json();
+      if (d.success) {
+        setPapers(d.papers || []);
+        setTotal(d.total || 0);
+      }
+    } catch (_) {
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Group papers by journal → year → volume/issue
@@ -119,7 +152,9 @@ export default function Archive() {
         <div className="container mx-auto px-4">
           <div className="mb-6">
             <h1 className="text-3xl font-bold">Archive</h1>
-            <p className="text-muted-foreground mt-1">Browse all published articles</p>
+            <p className="text-muted-foreground mt-1">
+              Browse all published articles
+            </p>
           </div>
 
           <div className="flex flex-col md:flex-row gap-6">
@@ -127,22 +162,34 @@ export default function Archive() {
             <aside className="w-full md:w-64 shrink-0">
               <div className="border rounded-lg p-4 space-y-4 sticky top-24">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-semibold text-sm flex items-center gap-2"><Filter className="h-4 w-4" /> Filters</h2>
-                  <button onClick={clearFilters} className="text-xs text-primary hover:underline flex items-center gap-1">
+                  <h2 className="font-semibold text-sm flex items-center gap-2">
+                    <Filter className="h-4 w-4" /> Filters
+                  </h2>
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
                     <X className="h-3 w-3" /> Clear
                   </button>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-xs">Journal</Label>
-                  <Select value={journalId || "__all__"} onValueChange={(v) => setJournalId(v === "__all__" ? "" : v)}>
+                  <Select
+                    value={journalId || "__all__"}
+                    onValueChange={(v) =>
+                      setJournalId(v === "__all__" ? "" : v)
+                    }
+                  >
                     <SelectTrigger className="text-sm h-8">
                       <SelectValue placeholder="All journals" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All journals</SelectItem>
                       {filters.journals.map((j) => (
-                        <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>
+                        <SelectItem key={j.id} value={j.id}>
+                          {j.title}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -150,14 +197,19 @@ export default function Archive() {
 
                 <div className="space-y-1">
                   <Label className="text-xs">Year</Label>
-                  <Select value={year || "__all__"} onValueChange={(v) => setYear(v === "__all__" ? "" : v)}>
+                  <Select
+                    value={year || "__all__"}
+                    onValueChange={(v) => setYear(v === "__all__" ? "" : v)}
+                  >
                     <SelectTrigger className="text-sm h-8">
                       <SelectValue placeholder="All years" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All years</SelectItem>
                       {filters.years.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -173,7 +225,9 @@ export default function Archive() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {loading ? "Loading…" : `Showing ${papers.length} of ${total} articles`}
+                  {loading
+                    ? "Loading…"
+                    : `Showing ${papers.length} of ${total} articles`}
                 </p>
               </div>
 
@@ -187,7 +241,11 @@ export default function Archive() {
                   <p>No published articles found.</p>
                 </div>
               ) : (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-8"
+                >
                   {Object.entries(grouped).map(([jTitle, years]) => (
                     <div key={jTitle}>
                       <h2 className="text-lg font-semibold mb-3">{jTitle}</h2>
@@ -195,36 +253,61 @@ export default function Archive() {
                         .sort(([a], [b]) => Number(b) - Number(a))
                         .map(([yr, volumes]) => (
                           <div key={yr} className="mb-4">
-                            <h3 className="text-sm font-medium text-muted-foreground mb-2">{yr}</h3>
-                            {Object.entries(volumes).map(([volIssue, volPapers]) => (
-                              <div key={volIssue} className="mb-4">
-                                <p className="text-sm font-medium mb-2 pl-2 border-l-2 border-primary">{volIssue}</p>
-                                <ul className="space-y-3">
-                                  {volPapers.map((p) => (
-                                    <li key={p.paper_id} className="border rounded-lg p-3 hover:bg-muted/30 transition-colors">
-                                      <Link to={`/articles/${p.paper_id}`} className="font-medium text-sm hover:text-primary leading-snug block mb-1">
-                                        {p.paper_title}
-                                      </Link>
-                                      {p.author_names?.length > 0 && (
-                                        <p className="text-xs text-muted-foreground mb-1">{p.author_names.join(", ")}</p>
-                                      )}
-                                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                                        <span className="text-xs text-muted-foreground">{formatDate(p.published_at)}</span>
-                                        {p.doi && (
-                                          <a href={`https://doi.org/${p.doi}`} target="_blank" rel="noopener noreferrer"
-                                            className="text-xs text-primary hover:underline flex items-center gap-0.5">
-                                            DOI <ExternalLink className="h-3 w-3" />
-                                          </a>
-                                        )}
-                                        <Link to={`/articles/${p.paper_id}`} className="text-xs text-primary hover:underline flex items-center gap-0.5">
-                                          Read Article <ExternalLink className="h-3 w-3" />
+                            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                              {yr}
+                            </h3>
+                            {Object.entries(volumes).map(
+                              ([volIssue, volPapers]) => (
+                                <div key={volIssue} className="mb-4">
+                                  <p className="text-sm font-medium mb-2 pl-2 border-l-2 border-primary">
+                                    {volIssue}
+                                  </p>
+                                  <ul className="space-y-3">
+                                    {volPapers.map((p) => (
+                                      <li
+                                        key={p.paper_id}
+                                        className="border rounded-lg p-3 hover:bg-muted/30 transition-colors"
+                                      >
+                                        <Link
+                                          to={`/articles/${p.paper_id}`}
+                                          className="font-medium text-sm hover:text-primary leading-snug block mb-1"
+                                        >
+                                          {p.paper_title}
                                         </Link>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ))}
+                                        {p.author_names?.length > 0 && (
+                                          <p className="text-xs text-muted-foreground mb-1">
+                                            {p.author_names.join(", ")}
+                                          </p>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                          <span className="text-xs text-muted-foreground">
+                                            {formatDate(p.published_at)}
+                                          </span>
+                                          {p.doi && (
+                                            <a
+                                              href={`https://doi.org/${p.doi}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                                            >
+                                              DOI{" "}
+                                              <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                          )}
+                                          <Link
+                                            to={`/articles/${p.paper_id}`}
+                                            className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                                          >
+                                            Read Article{" "}
+                                            <ExternalLink className="h-3 w-3" />
+                                          </Link>
+                                        </div>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ),
+                            )}
                           </div>
                         ))}
                       <Separator className="mt-2" />
@@ -240,16 +323,26 @@ export default function Archive() {
                     variant="outline"
                     size="sm"
                     disabled={page === 1}
-                    onClick={() => { const p = page - 1; setPage(p); fetchArchive(p); }}
+                    onClick={() => {
+                      const p = page - 1;
+                      setPage(p);
+                      fetchArchive(p);
+                    }}
                   >
                     Previous
                   </Button>
-                  <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={page >= totalPages}
-                    onClick={() => { const p = page + 1; setPage(p); fetchArchive(p); }}
+                    onClick={() => {
+                      const p = page + 1;
+                      setPage(p);
+                      fetchArchive(p);
+                    }}
                   >
                     Next
                   </Button>

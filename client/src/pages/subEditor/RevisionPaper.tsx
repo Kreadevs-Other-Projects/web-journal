@@ -193,11 +193,17 @@ export default function RevisionPaper() {
     const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
     if (ext !== "docx") return;
     setViewerHtmlLoading(true);
-    fetch(`${url}/browse/paper/${viewPdf.paperId}/html`)
-      .then((r) => r.json())
-      .then((d) => { if (d.success && d.html) setViewerHtml(d.html); })
-      .catch(() => {})
-      .finally(() => setViewerHtmlLoading(false));
+    const fetchHtml = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${viewPdf.paperId}/html`);
+        const d = await r.json();
+        if (d.success && d.html) setViewerHtml(d.html);
+      } catch (_) {
+      } finally {
+        setViewerHtmlLoading(false);
+      }
+    };
+    fetchHtml();
   }, [viewPdf?.paperId]);
 
   const getStatusIcon = (status: string) => {
@@ -315,7 +321,9 @@ export default function RevisionPaper() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Pending Revision</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pending Revision
+                  </p>
                   <p className="text-2xl font-bold mt-1">
                     {
                       reviews.filter(
@@ -361,10 +369,7 @@ export default function RevisionPaper() {
                     Filter by Assignment Status
                   </h3>
                 </div>
-                <Badge
-                  variant="outline"
-                  className="text-muted-foreground"
-                >
+                <Badge variant="outline" className="text-muted-foreground">
                   Showing {filteredReviews.length} of {reviews.length} papers
                 </Badge>
               </div>
@@ -525,7 +530,10 @@ export default function RevisionPaper() {
                                     <p className="text-muted-foreground">
                                       Reviewer:{" "}
                                       <span className="text-foreground">
-                                        {r.reviewerName || (r.reviewerId ? "Assigned" : "Not assigned")}
+                                        {r.reviewerName ||
+                                          (r.reviewerId
+                                            ? "Assigned"
+                                            : "Not assigned")}
                                       </span>
                                     </p>
                                   </div>
@@ -537,7 +545,13 @@ export default function RevisionPaper() {
                                   Review Comments
                                 </p>
                                 <div className="text-sm bg-muted rounded-lg p-3 border border-border">
-                                  <p className={r.comments ? "line-clamp-2" : "text-muted-foreground italic"}>
+                                  <p
+                                    className={
+                                      r.comments
+                                        ? "line-clamp-2"
+                                        : "text-muted-foreground italic"
+                                    }
+                                  >
                                     {r.comments || "No comments provided"}
                                   </p>
                                 </div>
@@ -681,19 +695,33 @@ export default function RevisionPaper() {
 
                 <div className="flex-1 relative overflow-hidden">
                   {(() => {
-                    const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                    const ext = viewPdf.fileUrl
+                      ?.split(".")
+                      .pop()
+                      ?.toLowerCase();
                     if (ext === "pdf") {
                       return (
                         <Worker workerUrl="/pdf.worker.min.js">
-                          <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                          <Viewer
+                            fileUrl={`${url}${viewPdf.fileUrl}`}
+                            theme="dark"
+                          />
                         </Worker>
                       );
                     }
                     if (ext === "tex" || ext === "latex") {
                       return (
                         <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                          <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
-                          <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                          <p className="text-sm">
+                            LaTeX files cannot be previewed. Please download to
+                            view.
+                          </p>
+                          <Button
+                            onClick={() =>
+                              window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                            }
+                            className="gap-2"
+                          >
                             <Download className="h-4 w-4" />
                             Download Manuscript
                           </Button>
@@ -712,14 +740,23 @@ export default function RevisionPaper() {
                       return (
                         <div
                           className="paper-content h-full overflow-y-auto p-6 bg-white text-gray-900"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(viewerHtml),
+                          }}
                         />
                       );
                     }
                     return (
                       <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                        <p className="text-sm">Document preview not available.</p>
-                        <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                        <p className="text-sm">
+                          Document preview not available.
+                        </p>
+                        <Button
+                          onClick={() =>
+                            window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                          }
+                          className="gap-2"
+                        >
                           <Download className="h-4 w-4" />
                           Download
                         </Button>
@@ -768,9 +805,7 @@ export default function RevisionPaper() {
         <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
           <DialogContent className="max-w-md">
             <div className="flex items-center justify-between">
-              <DialogTitle>
-                Reviewer Digital Signature
-              </DialogTitle>
+              <DialogTitle>Reviewer Digital Signature</DialogTitle>
 
               <Button
                 variant="ghost"
@@ -810,9 +845,7 @@ export default function RevisionPaper() {
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground">
                   Update status for:{" "}
-                  <span className="font-medium">
-                    {selectedPaper.title}
-                  </span>
+                  <span className="font-medium">{selectedPaper.title}</span>
                 </p>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -892,9 +925,7 @@ export default function RevisionPaper() {
                     className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border hover:border-border/60 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {r.username}
-                      </p>
+                      <p className="font-medium truncate">{r.username}</p>
                       <p className="text-sm text-muted-foreground truncate">
                         {r.email}
                       </p>

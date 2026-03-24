@@ -143,11 +143,17 @@ export default function ChiefEditorSubmittedReviews() {
     const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
     if (ext !== "docx") return;
     setViewerHtmlLoading(true);
-    fetch(`${url}/browse/paper/${viewPdf.paperId}/html`)
-      .then((r) => r.json())
-      .then((d) => { if (d.success && d.html) setViewerHtml(d.html); })
-      .catch(() => {})
-      .finally(() => setViewerHtmlLoading(false));
+    const fetchHtml = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${viewPdf.paperId}/html`);
+        const d = await r.json();
+        if (d.success && d.html) setViewerHtml(d.html);
+      } catch (_) {
+      } finally {
+        setViewerHtmlLoading(false);
+      }
+    };
+    fetchHtml();
   }, [viewPdf?.paperId]);
 
   const getStatusIcon = (status: string) => {
@@ -646,8 +652,16 @@ export default function ChiefEditorSubmittedReviews() {
                   if (ext === "tex" || ext === "latex") {
                     return (
                       <div className="flex flex-col items-center justify-center h-full gap-4">
-                        <p className="text-sm text-muted-foreground">LaTeX files cannot be previewed. Please download to view.</p>
-                        <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                        <p className="text-sm text-muted-foreground">
+                          LaTeX files cannot be previewed. Please download to
+                          view.
+                        </p>
+                        <Button
+                          onClick={() =>
+                            window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                          }
+                          className="gap-2"
+                        >
                           <Download className="h-4 w-4" />
                           Download Manuscript
                         </Button>
@@ -666,14 +680,23 @@ export default function ChiefEditorSubmittedReviews() {
                     return (
                       <div
                         className="paper-content h-full overflow-y-auto p-6"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(viewerHtml),
+                        }}
                       />
                     );
                   }
                   return (
                     <div className="flex flex-col items-center justify-center h-full gap-4">
-                      <p className="text-sm text-muted-foreground">Document preview not available.</p>
-                      <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Document preview not available.
+                      </p>
+                      <Button
+                        onClick={() =>
+                          window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                        }
+                        className="gap-2"
+                      >
                         <Download className="h-4 w-4" />
                         Download
                       </Button>

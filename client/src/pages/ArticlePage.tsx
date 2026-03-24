@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Download, Share2, Calendar, BookOpen, Tag, Hash, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Download,
+  Share2,
+  Calendar,
+  BookOpen,
+  Tag,
+  Hash,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 
@@ -73,9 +82,10 @@ export default function ArticlePage() {
   const [showArticleInfo, setShowArticleInfo] = useState(false);
 
   useEffect(() => {
-    fetch(`${url}/browse/paper/${paperId}`)
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchPaper = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${paperId}`);
+        const data = await r.json();
         console.log("Article data:", data);
         if (data.success) {
           setArticle(data.paper);
@@ -83,9 +93,13 @@ export default function ArticlePage() {
             setHtmlContent(data.paper.html_content);
           }
         }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPaper();
   }, [paperId]);
 
   // Option B: fetch HTML on-demand for papers without cached html_content
@@ -94,18 +108,25 @@ export default function ArticlePage() {
     const ext = article.file_url?.toLowerCase();
     if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf"))) return;
     setHtmlLoading(true);
-    fetch(`${url}/browse/paper/${paperId}/html`)
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchHtml = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${paperId}/html`);
+        const data = await r.json();
         if (data.success && data.html) setHtmlContent(data.html);
-      })
-      .catch(() => {})
-      .finally(() => setHtmlLoading(false));
+      } catch (_) {
+      } finally {
+        setHtmlLoading(false);
+      }
+    };
+    fetchHtml();
   }, [article, paperId, htmlContent]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast({ title: "Link copied", description: "Article URL copied to clipboard." });
+    toast({
+      title: "Link copied",
+      description: "Article URL copied to clipboard.",
+    });
   };
 
   if (loading) {
@@ -144,8 +165,9 @@ export default function ArticlePage() {
     return article.author_username || "Unknown";
   })();
 
-  const volumeIssue = article.issue_label
-    || (article.volume && article.issue
+  const volumeIssue =
+    article.issue_label ||
+    (article.volume && article.issue
       ? `Vol. ${article.volume}, No. ${article.issue} (${article.year})`
       : null);
 
@@ -153,12 +175,24 @@ export default function ArticlePage() {
 
   // Collect non-empty additional info fields
   const additionalInfoFields: { label: string; value: string }[] = [
-    article.article_type ? { label: "Article Type", value: article.article_type } : null,
-    article.conflict_of_interest ? { label: "Conflict of Interest", value: article.conflict_of_interest } : null,
-    article.funding_info ? { label: "Funding Information", value: article.funding_info } : null,
-    article.data_availability ? { label: "Data Availability", value: article.data_availability } : null,
-    article.ethical_approval ? { label: "Ethical Approval", value: article.ethical_approval } : null,
-    article.author_contributions ? { label: "Author Contributions", value: article.author_contributions } : null,
+    article.article_type
+      ? { label: "Article Type", value: article.article_type }
+      : null,
+    article.conflict_of_interest
+      ? { label: "Conflict of Interest", value: article.conflict_of_interest }
+      : null,
+    article.funding_info
+      ? { label: "Funding Information", value: article.funding_info }
+      : null,
+    article.data_availability
+      ? { label: "Data Availability", value: article.data_availability }
+      : null,
+    article.ethical_approval
+      ? { label: "Ethical Approval", value: article.ethical_approval }
+      : null,
+    article.author_contributions
+      ? { label: "Author Contributions", value: article.author_contributions }
+      : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
@@ -182,7 +216,9 @@ export default function ArticlePage() {
                   {article.journal_title}
                 </Link>
                 {volumeIssue && (
-                  <span className="text-sm text-muted-foreground">· {volumeIssue}</span>
+                  <span className="text-sm text-muted-foreground">
+                    · {volumeIssue}
+                  </span>
                 )}
                 <Badge variant="secondary" className="text-xs">
                   {article.article_type || "Research Article"}
@@ -194,12 +230,15 @@ export default function ArticlePage() {
               </h1>
 
               <div className="text-base text-muted-foreground">
-                <span className="font-medium text-foreground">{authorsDisplay}</span>
+                <span className="font-medium text-foreground">
+                  {authorsDisplay}
+                </span>
               </div>
 
               {article.corresponding_authors?.length ? (
                 <p className="text-sm text-muted-foreground">
-                  Corresponding author(s): {article.corresponding_authors.join(", ")}
+                  Corresponding author(s):{" "}
+                  {article.corresponding_authors.join(", ")}
                 </p>
               ) : null}
 
@@ -240,8 +279,12 @@ export default function ArticlePage() {
                 )}
 
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">CC BY 4.0</Badge>
-                  <span className="text-xs text-muted-foreground">Open Access</span>
+                  <Badge variant="outline" className="text-xs">
+                    CC BY 4.0
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Open Access
+                  </span>
                 </div>
 
                 {article.keywords?.length ? (
@@ -260,7 +303,12 @@ export default function ArticlePage() {
                   {(article.pdf_url || article.file_url) && (
                     <Button
                       size="sm"
-                      onClick={() => window.open(`${url}${article.pdf_url || article.file_url}`, "_blank")}
+                      onClick={() =>
+                        window.open(
+                          `${url}${article.pdf_url || article.file_url}`,
+                          "_blank",
+                        )
+                      }
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
@@ -272,14 +320,21 @@ export default function ArticlePage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.open(`${url}${article.html_url}`, "_blank")}
+                      onClick={() =>
+                        window.open(`${url}${article.html_url}`, "_blank")
+                      }
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
                       Download HTML
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" disabled className="gap-2 opacity-50">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled
+                      className="gap-2 opacity-50"
+                    >
                       <Download className="h-4 w-4" />
                       HTML
                     </Button>
@@ -289,19 +344,31 @@ export default function ArticlePage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.open(`${url}${article.xml_url}`, "_blank")}
+                      onClick={() =>
+                        window.open(`${url}${article.xml_url}`, "_blank")
+                      }
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
                       Download XML
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" disabled className="gap-2 opacity-50">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled
+                      className="gap-2 opacity-50"
+                    >
                       <Download className="h-4 w-4" />
                       XML
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={handleShare} className="gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleShare}
+                    className="gap-2"
+                  >
                     <Share2 className="h-4 w-4" />
                     Share
                   </Button>
@@ -311,7 +378,9 @@ export default function ArticlePage() {
 
             {/* ABSTRACT */}
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-foreground">Abstract</h2>
+              <h2 className="text-xl font-semibold text-foreground">
+                Abstract
+              </h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 {article.abstract || "No abstract available."}
               </p>
@@ -320,7 +389,9 @@ export default function ArticlePage() {
             {/* FULL TEXT */}
             <Separator />
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">Full Text</h2>
+              <h2 className="text-xl font-semibold text-foreground">
+                Full Text
+              </h2>
               {htmlLoading ? (
                 <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -330,7 +401,9 @@ export default function ArticlePage() {
                 <div className="space-y-4">
                   <div
                     className="paper-content"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(htmlContent),
+                    }}
                   />
                   {article.file_url && (
                     <p className="text-sm text-muted-foreground pt-2 border-t border-border/40">
@@ -350,12 +423,17 @@ export default function ArticlePage() {
                 <div className="rounded-lg border border-border/60 bg-muted/40 p-6 text-center space-y-3">
                   <p className="text-muted-foreground text-sm">
                     Full text is not available for web viewing
-                    {article.file_url?.endsWith(".tex") ? " (.tex files cannot be rendered inline)" : ""}.
+                    {article.file_url?.endsWith(".tex")
+                      ? " (.tex files cannot be rendered inline)"
+                      : ""}
+                    .
                   </p>
                   {article.file_url && (
                     <Button
                       size="sm"
-                      onClick={() => window.open(`${url}${article.file_url}`, "_blank")}
+                      onClick={() =>
+                        window.open(`${url}${article.file_url}`, "_blank")
+                      }
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
@@ -367,37 +445,46 @@ export default function ArticlePage() {
             </section>
 
             {/* REFERENCES */}
-            {article.paper_references && Array.isArray(article.paper_references) && article.paper_references.length > 0 && (
-              <>
-                <Separator />
-                <section className="space-y-3">
-                  <h2 className="text-xl font-semibold text-foreground">References</h2>
-                  <ol className="space-y-2">
-                    {article.paper_references.map((ref, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                        <span className="shrink-0 font-medium text-foreground">[{i + 1}]</span>
-                        <span>
-                          {ref.text}
-                          {ref.link && (
-                            <>
-                              {" "}
-                              <a
-                                href={ref.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                [link]
-                              </a>
-                            </>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-              </>
-            )}
+            {article.paper_references &&
+              Array.isArray(article.paper_references) &&
+              article.paper_references.length > 0 && (
+                <>
+                  <Separator />
+                  <section className="space-y-3">
+                    <h2 className="text-xl font-semibold text-foreground">
+                      References
+                    </h2>
+                    <ol className="space-y-2">
+                      {article.paper_references.map((ref, i) => (
+                        <li
+                          key={i}
+                          className="flex gap-2 text-sm text-muted-foreground"
+                        >
+                          <span className="shrink-0 font-medium text-foreground">
+                            [{i + 1}]
+                          </span>
+                          <span>
+                            {ref.text}
+                            {ref.link && (
+                              <>
+                                {" "}
+                                <a
+                                  href={ref.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  [link]
+                                </a>
+                              </>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                </>
+              )}
 
             {/* ARTICLE INFORMATION (collapsible) */}
             {additionalInfoFields.length > 0 && (
@@ -420,8 +507,12 @@ export default function ArticlePage() {
                     <div className="mt-4 space-y-4">
                       {additionalInfoFields.map((field) => (
                         <div key={field.label}>
-                          <h3 className="text-sm font-semibold text-foreground mb-1">{field.label}</h3>
-                          <p className="text-sm text-muted-foreground whitespace-pre-line">{field.value}</p>
+                          <h3 className="text-sm font-semibold text-foreground mb-1">
+                            {field.label}
+                          </h3>
+                          <p className="text-sm text-muted-foreground whitespace-pre-line">
+                            {field.value}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -435,7 +526,12 @@ export default function ArticlePage() {
               <div className="flex justify-center pt-4">
                 <Button
                   size="lg"
-                  onClick={() => window.open(`${url}${article.pdf_url || article.file_url}`, "_blank")}
+                  onClick={() =>
+                    window.open(
+                      `${url}${article.pdf_url || article.file_url}`,
+                      "_blank",
+                    )
+                  }
                   className="gap-2"
                 >
                   <Download className="h-5 w-5" />

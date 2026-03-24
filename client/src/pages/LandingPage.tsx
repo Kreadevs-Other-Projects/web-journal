@@ -129,21 +129,30 @@ export default function LandingPage() {
   const [papersLoading, setPapersLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${url}/browse/home/journals?limit=6`)
-      .then((r) => r.json())
-      .then((d) => {
+    const fetchJournals = async () => {
+      try {
+        const r = await fetch(`${url}/browse/home/journals?limit=6`);
+        const d = await r.json();
         if (d.success) setHomeJournals(d.journals || []);
-      })
-      .catch(() => {})
-      .finally(() => setJournalsLoading(false));
+      } catch (_) {
+      } finally {
+        setJournalsLoading(false);
+      }
+    };
 
-    fetch(`${url}/browse/home/publications?limit=6`)
-      .then((r) => r.json())
-      .then((d) => {
+    const fetchPublications = async () => {
+      try {
+        const r = await fetch(`${url}/browse/home/publications?limit=6`);
+        const d = await r.json();
         if (d.success) setHomePapers(d.papers || []);
-      })
-      .catch(() => {})
-      .finally(() => setPapersLoading(false));
+      } catch (_) {
+      } finally {
+        setPapersLoading(false);
+      }
+    };
+
+    fetchJournals();
+    fetchPublications();
   }, []);
 
   const handleFilterChange = (field: keyof SearchFilters, value: string) => {

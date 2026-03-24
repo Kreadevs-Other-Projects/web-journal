@@ -188,41 +188,56 @@ export default function JournalDetail() {
   // Fetch journal details
   useEffect(() => {
     if (!id) return;
-    fetch(`${url}/journal/getJournal/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchJournal = async () => {
+      try {
+        const r = await fetch(`${url}/journal/getJournal/${id}`);
+        const data = await r.json();
         if (data.success && data.journal) setJournal(data.journal);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJournal();
   }, [id]);
 
   // Lazy-load articles
   useEffect(() => {
     if (activeTab !== "articles" || issuesLoaded || !id) return;
-    fetch(`${url}/browse/getBrowseData?journalId=${id}`)
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchIssues = async () => {
+      try {
+        const r = await fetch(`${url}/browse/getBrowseData?journalId=${id}`);
+        const data = await r.json();
         if (data.success) setIssues(data.data);
-      })
-      .catch(console.error)
-      .finally(() => setIssuesLoaded(true));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIssuesLoaded(true);
+      }
+    };
+    fetchIssues();
   }, [activeTab, id, issuesLoaded]);
 
   // Lazy-load editorial board
   useEffect(() => {
     if (activeTab !== "editorial" || boardLoaded || !id) return;
-    fetch(`${url}/journal/${id}/editorial-board`)
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchBoard = async () => {
+      try {
+        const r = await fetch(`${url}/journal/${id}/editorial-board`);
+        const data = await r.json();
         if (data.success)
           setBoard({
             chief_editors: data.chief_editors || [],
             associate_editors: data.associate_editors || [],
           });
-      })
-      .catch(console.error)
-      .finally(() => setBoardLoaded(true));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setBoardLoaded(true);
+      }
+    };
+    fetchBoard();
   }, [activeTab, id, boardLoaded]);
 
   if (loading) {

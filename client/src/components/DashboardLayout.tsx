@@ -330,48 +330,52 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {user && user.roles.length > 1 && (
+              {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
                       className="gap-1.5 text-sm"
-                      disabled={switchingRole}
+                      disabled={switchingRole || !user.roles || user.roles.length <= 1}
                     >
                       <Shield className={cn("h-3.5 w-3.5", config.color)} />
                       {config.label}
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      {user.roles && user.roles.length > 1 && (
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      Switch Role
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {user.roles.map((r) => {
-                      const rc = roleConfig[r as UserRole];
-                      if (!rc) return null;
-                      return (
-                        <DropdownMenuItem
-                          key={r}
-                          onClick={() => handleSwitchRole(r as UserRole)}
-                          className={cn(
-                            "gap-2 cursor-pointer",
-                            r === role && "font-semibold",
-                          )}
-                        >
-                          <rc.icon className={cn("h-4 w-4", rc.color)} />
-                          {rc.label}
-                          {r === role && (
-                            <span className="ml-auto text-xs text-muted-foreground">
-                              Active
-                            </span>
-                          )}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
+                  {user.roles && user.roles.length > 1 && (
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        Switch Role
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {user.roles.map((r) => {
+                        const rc = roleConfig[r as UserRole];
+                        if (!rc) return null;
+                        return (
+                          <DropdownMenuItem
+                            key={r}
+                            onClick={() => handleSwitchRole(r as UserRole)}
+                            className={cn(
+                              "gap-2 cursor-pointer",
+                              r === role && "font-semibold",
+                            )}
+                          >
+                            <rc.icon className={cn("h-4 w-4", rc.color)} />
+                            {rc.label}
+                            {r === role && (
+                              <span className="ml-auto text-xs text-muted-foreground">
+                                Active
+                              </span>
+                            )}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  )}
                 </DropdownMenu>
               )}
               <ThemeToggle />

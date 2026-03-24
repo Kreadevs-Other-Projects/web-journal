@@ -87,16 +87,26 @@ const App = () => (
                     <Route path="/archive" element={<Archive />} />
                   </Route>
                   {/* accept-invitation is outside PublicRoute so authenticated users can access it */}
-                  <Route path="/accept-invitation" element={<AcceptInvitation />} />
+                  <Route
+                    path="/accept-invitation"
+                    element={<AcceptInvitation />}
+                  />
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
                     <Route path="/author" element={<AuthorDashboard />} />
                     <Route path="/author/submit" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />
-                    <Route path="/author/track/:paperId" element={<TrackPaper />} />
+                    <Route
+                      path="/author/track/:paperId"
+                      element={<TrackPaper />}
+                    />
                   </Route>
                   <Route
-                    element={<ProtectedRoute allowedRoles={["reviewer"]} />}
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["reviewer", "chief_editor"]}
+                      />
+                    }
                   >
                     <Route path="/reviewer" element={<ReviewerDashboard />} />
 
@@ -110,7 +120,11 @@ const App = () => (
                     />
                   </Route>
                   <Route
-                    element={<ProtectedRoute allowedRoles={["sub_editor"]} />}
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["sub_editor", "chief_editor"]}
+                      />
+                    }
                   >
                     <Route
                       path="/sub-editor"
@@ -140,14 +154,8 @@ const App = () => (
                       path="/chief-editor/journals/:journalId"
                       element={<CEJournalDetail />}
                     />
-                    <Route
-                      path="/chief-editor/papers"
-                      element={<CEPapers />}
-                    />
-                    <Route
-                      path="/chief-editor/team"
-                      element={<CETeam />}
-                    />
+                    <Route path="/chief-editor/papers" element={<CEPapers />} />
+                    <Route path="/chief-editor/team" element={<CETeam />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}

@@ -11,6 +11,7 @@ import {
   approvePaper,
   getJournalPayments,
   updatePaymentStatus,
+  replaceChiefEditor,
 } from "./publisher.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 
@@ -24,6 +25,13 @@ router.put(
 );
 
 router.get("/getJournals", authMiddleware, authorize("publisher"), getJournals);
+
+router.patch(
+  "/journals/:journalId/chief-editor",
+  authMiddleware,
+  authorize("publisher"),
+  replaceChiefEditor,
+);
 
 router.get(
   "/getIssues/:journalId",

@@ -34,9 +34,29 @@ export const getJournals = async (req: AuthUser, res: Response) => {
   res.json({ success: true, journals });
 };
 
+export const replaceChiefEditor = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const result = await service.replaceChiefEditorService(
+      journalId,
+      req.user!.id,
+    );
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: err.message || "Failed to replace chief editor",
+      });
+  }
+};
+
 export const sendInvoice = async (req: AuthUser, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
-  return res.status(503).json({ message: "Payment flow is currently disabled." });
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const user = req.user!;
     const { journalId, issueId, amount } = req.body;
@@ -93,7 +113,9 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
 
 export const sendPaymentEmail = async (req: Request, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
-  return res.status(503).json({ message: "Payment flow is currently disabled." });
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const {
       paperId,
@@ -150,7 +172,9 @@ export const sendPaymentEmail = async (req: Request, res: Response) => {
 
 export const approvePaper = async (req: Request, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
-  return res.status(503).json({ message: "Payment flow is currently disabled." });
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { paymentId } = req.params;
 
@@ -171,7 +195,9 @@ export const approvePaper = async (req: Request, res: Response) => {
 
 export const getJournalPayments = async (req: Request, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
-  return res.status(503).json({ message: "Payment flow is currently disabled." });
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { journalId } = req.params;
     const payments = await service.fetchJournalPayments();
@@ -191,7 +217,9 @@ export const getJournalPayments = async (req: Request, res: Response) => {
 
 export const updatePaymentStatus = async (req: Request, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
-  return res.status(503).json({ message: "Payment flow is currently disabled." });
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { id } = req.params;
     const { status } = req.body;

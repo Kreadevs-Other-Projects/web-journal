@@ -127,7 +127,11 @@ export function DashboardLayout({
       const target = roleConfig[newRole]?.route ?? "/";
       navigate(target);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to switch role", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Failed to switch role",
+        variant: "destructive",
+      });
     } finally {
       setSwitchingRole(false);
     }
@@ -326,7 +330,7 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {user && user.roles.length > 1 && user.roles.includes("publisher") && (
+              {user && user.roles.length > 1 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

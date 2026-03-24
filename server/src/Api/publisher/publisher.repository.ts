@@ -35,13 +35,15 @@ export const getPublisherJournals = async (publisherId: string) => {
     SELECT
       j.*,
 
-      -- chief editor user
-      json_build_object(
-        'id', ce.id,
-        'name', ce.username,
-        'email', ce.email,
-        'created_at', ce.created_at
-      ) AS chief_editor,
+      -- chief editor user (nullable — invitation may not yet be accepted)
+      CASE WHEN ce.id IS NOT NULL THEN
+        json_build_object(
+          'id', ce.id,
+          'name', ce.username,
+          'email', ce.email,
+          'created_at', ce.created_at
+        )
+      ELSE NULL END AS chief_editor,
 
       -- owner user
       json_build_object(
@@ -70,7 +72,7 @@ export const getPublisherJournals = async (publisherId: string) => {
       ) AS issues
 
     FROM journals j
-    JOIN users ce ON ce.id = j.chief_editor_id
+    LEFT JOIN users ce ON ce.id = j.chief_editor_id
     JOIN users o ON o.id = j.owner_id
     LEFT JOIN journal_issues ji ON ji.journal_id = j.id
     LEFT JOIN (
@@ -131,6 +133,53 @@ export const createJournalPayment = async ({
     ],
   );
   return res.rows[0];
+};
+
+export const replaceChiefEditorRepo = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1. Get current CE id
+    const { rows: journalRows } = await client.query(
+      `SELECT chief_editor_id FROM journals WHERE id = $1 AND owner_id = $2`,
+      [journalId, publisherId],
+    );
+    if (!journalRows.length)
+      throw new Error("Journal not found or access denied");
+    const currentCeId = journalRows[0].chief_editor_id;
+
+    // 2. Deactivate old CE role in user_roles
+    if (currentCeId) {
+      await client.query(
+        `UPDATE user_roles SET is_active = false WHERE user_id = $1 AND role = 'chief_editor' AND journal_id = $2`,
+        [currentCeId, journalId],
+      );
+    }
+
+    // 3. Null out journals.chief_editor_id
+    await client.query(
+      `UPDATE journals SET chief_editor_id = NULL, updated_at = NOW() WHERE id = $1`,
+      [journalId],
+    );
+
+    // 4. Cancel any pending CE invitations for this journal
+    await client.query(
+      `UPDATE staff_invitations SET status = 'cancelled'
+       WHERE journal_id = $1 AND role = 'chief_editor' AND status = 'pending'`,
+      [journalId],
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 export const publishIssue = async (issueId: string) => {

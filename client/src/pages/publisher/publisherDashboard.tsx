@@ -74,10 +74,10 @@ interface Journal {
   status: string;
   website_url: string;
   owner_id: string;
-  chief_editor_id: string;
+  chief_editor_id: string | null;
   created_at: string;
   updated_at?: string | null;
-  chief_editor: User;
+  chief_editor: User | null;
   owner: User;
   issues: JournalIssue[];
 }
@@ -129,6 +129,13 @@ export default function PublisherDashboard() {
   const [issueRequests, setIssueRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+  const [replaceCEOpen, setReplaceCEOpen] = useState(false);
+  const [replaceCEStep, setReplaceCEStep] = useState<"confirm" | "invite">(
+    "confirm",
+  );
+  const [replacingCE, setReplacingCE] = useState(false);
+  const [invitingCE, setInvitingCE] = useState(false);
+  const [newCEForm, setNewCEForm] = useState({ name: "", email: "" });
   const [issueForm, setIssueForm] = useState({
     label: "",
     volume: "",
@@ -206,29 +213,49 @@ export default function PublisherDashboard() {
 
   const createIssue = async () => {
     if (!selectedJournal || !issueForm.label) {
-      toast({ variant: "destructive", title: "Error", description: "Label is required" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Label is required",
+      });
       return;
     }
     try {
       setCreatingIssue(true);
-      const res = await fetch(`${url}/journal-issue/addJournalIssue/${selectedJournal.id}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          label: issueForm.label,
-          volume: issueForm.volume ? Number(issueForm.volume) : undefined,
-          issue: issueForm.issue ? Number(issueForm.issue) : undefined,
-          year: Number(issueForm.year),
-        }),
-      });
+      const res = await fetch(
+        `${url}/journal-issue/addJournalIssue/${selectedJournal.id}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            label: issueForm.label,
+            volume: issueForm.volume ? Number(issueForm.volume) : undefined,
+            issue: issueForm.issue ? Number(issueForm.issue) : undefined,
+            year: Number(issueForm.year),
+          }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create issue");
       toast({ title: "Success", description: "Issue created successfully" });
-      setIssueForm({ label: "", volume: "", issue: "", year: new Date().getFullYear().toString(), amount: "" });
+      setIssueForm({
+        label: "",
+        volume: "",
+        issue: "",
+        year: new Date().getFullYear().toString(),
+        amount: "",
+      });
       setCreateIssueOpen(false);
       fetchJournals();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
     } finally {
       setCreatingIssue(false);
     }
@@ -244,27 +271,47 @@ export default function PublisherDashboard() {
       if (!res.ok) throw new Error(data.message);
       setIssueRequests(data.requests || []);
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to fetch requests" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to fetch requests",
+      });
     } finally {
       setRequestsLoading(false);
     }
   };
 
-  const reviewIssueRequest = async (requestId: string, status: "approved" | "rejected") => {
+  const reviewIssueRequest = async (
+    requestId: string,
+    status: "approved" | "rejected",
+  ) => {
     try {
       setReviewingRequest(requestId);
-      const res = await fetch(`${url}/journal-issue/requests/${requestId}/review`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: status }),
-      });
+      const res = await fetch(
+        `${url}/journal-issue/requests/${requestId}/review`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: status }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast({ title: status === "approved" ? "Request Approved" : "Request Rejected", description: data.message || "Done." });
+      toast({
+        title: status === "approved" ? "Request Approved" : "Request Rejected",
+        description: data.message || "Done.",
+      });
       setIssueRequests((prev) => prev.filter((r) => r.id !== requestId));
       if (status === "approved") fetchJournals();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
     } finally {
       setReviewingRequest(null);
     }
@@ -327,32 +374,112 @@ export default function PublisherDashboard() {
   };
   */
 
+  const replaceChiefEditor = async () => {
+    if (!selectedJournal) return;
+    try {
+      setReplacingCE(true);
+      const res = await fetch(
+        `${url}/publisher/journals/${selectedJournal.id}/chief-editor`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "Chief Editor Removed",
+        description: "You can now invite a new chief editor.",
+      });
+      setReplaceCEStep("invite");
+      // Refresh journal list in background so card reflects null CE
+      fetchJournals();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setReplacingCE(false);
+    }
+  };
+
+  const inviteNewCE = async () => {
+    if (!selectedJournal || !newCEForm.name || !newCEForm.email) return;
+    try {
+      setInvitingCE(true);
+      const res = await fetch(`${url}/invitations/send`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newCEForm.name,
+          email: newCEForm.email,
+          role: "chief_editor",
+          journal_id: selectedJournal.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "Invitation Sent",
+        description: `Invitation sent to ${newCEForm.email}`,
+      });
+      setReplaceCEOpen(false);
+      setReplaceCEStep("confirm");
+      setNewCEForm({ name: "", email: "" });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setInvitingCE(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
         return (
-          <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
+          <Badge
+            variant="default"
+            className="bg-green-500/20 text-green-400 border-green-500/30"
+          >
             <CheckCircle className="h-3 w-3 mr-1" />
             Active
           </Badge>
         );
       case "draft":
         return (
-          <Badge variant="default" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+          <Badge
+            variant="default"
+            className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+          >
             <Clock className="h-3 w-3 mr-1" />
             Draft
           </Badge>
         );
       case "suspended":
         return (
-          <Badge variant="default" className="bg-red-500/20 text-red-400 border-red-500/30">
+          <Badge
+            variant="default"
+            className="bg-red-500/20 text-red-400 border-red-500/30"
+          >
             <AlertCircle className="h-3 w-3 mr-1" />
             Suspended
           </Badge>
         );
       default:
         return (
-          <Badge variant="default" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
+          <Badge
+            variant="default"
+            className="bg-gray-500/20 text-gray-400 border-gray-500/30"
+          >
             <AlertCircle className="h-3 w-3 mr-1" />
             {status}
           </Badge>
@@ -398,7 +525,10 @@ export default function PublisherDashboard() {
               variant="outline"
               size="sm"
               className="gap-1.5 relative"
-              onClick={() => { fetchPendingIssueRequests(); setPendingRequestsOpen(true); }}
+              onClick={() => {
+                fetchPendingIssueRequests();
+                setPendingRequestsOpen(true);
+              }}
             >
               <Bell className="h-4 w-4" /> Issue Requests
             </Button>
@@ -486,7 +616,9 @@ export default function PublisherDashboard() {
             <Card className="glass-card">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BookOpen className="h-12 w-12 text-gray-500 mb-4" />
-                <p className="text-muted-foreground text-lg">No journals found</p>
+                <p className="text-muted-foreground text-lg">
+                  No journals found
+                </p>
                 <p className="text-muted-foreground/70 text-sm mt-1">
                   Journals will appear here once submitted
                 </p>
@@ -650,17 +782,43 @@ export default function PublisherDashboard() {
                       </div>
                       <Separator />
                       <div>
-                        <p className="text-sm text-gray-600">Chief Editor</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <User className="h-4 w-4 text-purple-400" />
-                          <div>
-                            <p>{selectedJournal.chief_editor.name}</p>
-                            <p className="text-sm text-gray-600 flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {selectedJournal.chief_editor.email}
-                            </p>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-gray-600">Chief Editor</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => {
+                              setReplaceCEStep(
+                                selectedJournal.chief_editor
+                                  ? "confirm"
+                                  : "invite",
+                              );
+                              setReplaceCEOpen(true);
+                            }}
+                          >
+                            {selectedJournal.chief_editor
+                              ? "Replace"
+                              : "Invite"}
+                          </Button>
                         </div>
+                        {selectedJournal.chief_editor ? (
+                          <div className="flex items-center gap-2 mt-2">
+                            <User className="h-4 w-4 text-purple-400" />
+                            <div>
+                              <p>{selectedJournal.chief_editor.name}</p>
+                              <p className="text-sm text-gray-600 flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {selectedJournal.chief_editor.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-amber-400 mt-2 flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            No chief editor — invitation pending or not yet sent
+                          </p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -679,7 +837,10 @@ export default function PublisherDashboard() {
                       <Button
                         size="sm"
                         className="gap-1.5"
-                        onClick={(e) => { e.stopPropagation(); setCreateIssueOpen(true); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreateIssueOpen(true);
+                        }}
                       >
                         <Plus className="h-3.5 w-3.5" /> Create New Issue
                       </Button>
@@ -726,7 +887,9 @@ export default function PublisherDashboard() {
                                 <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
                                   <div
                                     className="h-full rounded-full bg-primary transition-all"
-                                    style={{ width: `${Math.min((issue.paper_count / 99) * 100, 100)}%` }}
+                                    style={{
+                                      width: `${Math.min((issue.paper_count / 99) * 100, 100)}%`,
+                                    }}
                                   />
                                 </div>
                               </div>
@@ -785,63 +948,79 @@ export default function PublisherDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      <Dialog open={createIssueOpen} onOpenChange={setCreateIssueOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5" />
-              Create New Issue
-            </DialogTitle>
-            <DialogDescription>
-              {selectedJournal?.title}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label>Label <span className="text-destructive">*</span></Label>
-              <Input
-                placeholder="e.g. Vol 1, Issue 1"
-                value={issueForm.label}
-                onChange={(e) => setIssueForm((p) => ({ ...p, label: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+        <Dialog open={createIssueOpen} onOpenChange={setCreateIssueOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5" />
+                Create New Issue
+              </DialogTitle>
+              <DialogDescription>{selectedJournal?.title}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
               <div className="space-y-1">
-                <Label>Volume</Label>
+                <Label>
+                  Label <span className="text-destructive">*</span>
+                </Label>
                 <Input
-                  type="number"
-                  placeholder="1"
-                  value={issueForm.volume}
-                  onChange={(e) => setIssueForm((p) => ({ ...p, volume: e.target.value }))}
+                  placeholder="e.g. Vol 1, Issue 1"
+                  value={issueForm.label}
+                  onChange={(e) =>
+                    setIssueForm((p) => ({ ...p, label: e.target.value }))
+                  }
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Volume</Label>
+                  <Input
+                    type="number"
+                    placeholder="1"
+                    value={issueForm.volume}
+                    onChange={(e) =>
+                      setIssueForm((p) => ({ ...p, volume: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Issue No.</Label>
+                  <Input
+                    type="number"
+                    placeholder="1"
+                    value={issueForm.issue}
+                    onChange={(e) =>
+                      setIssueForm((p) => ({ ...p, issue: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
               <div className="space-y-1">
-                <Label>Issue No.</Label>
+                <Label>Year</Label>
                 <Input
                   type="number"
-                  placeholder="1"
-                  value={issueForm.issue}
-                  onChange={(e) => setIssueForm((p) => ({ ...p, issue: e.target.value }))}
+                  value={issueForm.year}
+                  onChange={(e) =>
+                    setIssueForm((p) => ({ ...p, year: e.target.value }))
+                  }
                 />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Year</Label>
-              <Input
-                type="number"
-                value={issueForm.year}
-                onChange={(e) => setIssueForm((p) => ({ ...p, year: e.target.value }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateIssueOpen(false)}>Cancel</Button>
-            <Button onClick={createIssue} disabled={creatingIssue || !issueForm.label}>
-              {creatingIssue ? "Creating..." : "Create Issue"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setCreateIssueOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={createIssue}
+                disabled={creatingIssue || !issueForm.label}
+              >
+                {creatingIssue ? "Creating..." : "Create Issue"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Dialog open={pendingRequestsOpen} onOpenChange={setPendingRequestsOpen}>
@@ -852,7 +1031,8 @@ export default function PublisherDashboard() {
               Pending Issue Requests
             </DialogTitle>
             <DialogDescription>
-              Review and approve or reject new issue requests from journal managers.
+              Review and approve or reject new issue requests from journal
+              managers.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 pr-2">
@@ -871,15 +1051,21 @@ export default function PublisherDashboard() {
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-bold text-foreground text-base">{req.label}</p>
-                            <p className="text-sm text-muted-foreground mt-0.5">{req.journal_title || "Journal"}</p>
+                            <p className="font-bold text-foreground text-base">
+                              {req.label}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {req.journal_title || "Journal"}
+                            </p>
                           </div>
                           <div className="flex gap-2 shrink-0">
                             <Button
                               size="sm"
                               className="bg-green-600 hover:bg-green-700 gap-1.5"
                               disabled={reviewingRequest === req.id}
-                              onClick={() => reviewIssueRequest(req.id, "approved")}
+                              onClick={() =>
+                                reviewIssueRequest(req.id, "approved")
+                              }
                             >
                               <ThumbsUp className="h-3.5 w-3.5" />
                               Approve
@@ -889,7 +1075,9 @@ export default function PublisherDashboard() {
                               variant="destructive"
                               className="gap-1.5"
                               disabled={reviewingRequest === req.id}
-                              onClick={() => reviewIssueRequest(req.id, "rejected")}
+                              onClick={() =>
+                                reviewIssueRequest(req.id, "rejected")
+                              }
                             >
                               <ThumbsDown className="h-3.5 w-3.5" />
                               Reject
@@ -898,22 +1086,48 @@ export default function PublisherDashboard() {
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <div>
-                            <p className="text-xs text-muted-foreground">Volume</p>
-                            <p className="font-medium text-foreground">{req.volume ?? "Not specified"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Volume
+                            </p>
+                            <p className="font-medium text-foreground">
+                              {req.volume ?? "Not specified"}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Issue No.</p>
-                            <p className="font-medium text-foreground">{req.issue_no ?? "Not specified"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Issue No.
+                            </p>
+                            <p className="font-medium text-foreground">
+                              {req.issue_no ?? "Not specified"}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Year</p>
-                            <p className="font-medium text-foreground">{req.year ?? new Date().getFullYear()}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Year
+                            </p>
+                            <p className="font-medium text-foreground">
+                              {req.year ?? new Date().getFullYear()}
+                            </p>
                           </div>
                         </div>
                         <Separator />
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Requested by: <span className="font-medium text-foreground">{req.requested_by_name || "Journal Manager"}</span></span>
-                          <span>{new Date(req.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                          <span>
+                            Requested by:{" "}
+                            <span className="font-medium text-foreground">
+                              {req.requested_by_name || "Journal Manager"}
+                            </span>
+                          </span>
+                          <span>
+                            {new Date(req.created_at).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -922,6 +1136,91 @@ export default function PublisherDashboard() {
               </div>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={replaceCEOpen}
+        onOpenChange={(open) => {
+          setReplaceCEOpen(open);
+          if (!open) {
+            setReplaceCEStep("confirm");
+            setNewCEForm({ name: "", email: "" });
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {replaceCEStep === "confirm"
+                ? "Replace Chief Editor"
+                : "Invite New Chief Editor"}
+            </DialogTitle>
+            <DialogDescription>
+              {replaceCEStep === "confirm"
+                ? `This will remove ${selectedJournal?.chief_editor?.name ?? "the current chief editor"} from ${selectedJournal?.title} and cancel any pending invitations.`
+                : "Enter the details of the new chief editor to send them an invitation."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {replaceCEStep === "confirm" ? (
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" onClick={() => setReplaceCEOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={replacingCE}
+                onClick={replaceChiefEditor}
+              >
+                {replacingCE ? "Removing..." : "Remove & Continue"}
+              </Button>
+            </DialogFooter>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1">
+                  <Label>
+                    Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Full name"
+                    value={newCEForm.name}
+                    onChange={(e) =>
+                      setNewCEForm((p) => ({ ...p, name: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={newCEForm.email}
+                    onChange={(e) =>
+                      setNewCEForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setReplaceCEOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={invitingCE || !newCEForm.name || !newCEForm.email}
+                  onClick={inviteNewCE}
+                >
+                  {invitingCE ? "Sending..." : "Send Invitation"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </DashboardLayout>

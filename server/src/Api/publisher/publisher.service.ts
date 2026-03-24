@@ -25,6 +25,14 @@ export const fetchPublisherJournals = async (publisherId: string) => {
   return repo.getPublisherJournals(publisherId);
 };
 
+export const replaceChiefEditorService = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  await repo.replaceChiefEditorRepo(journalId, publisherId);
+  return { message: "Chief editor removed. You can now invite a new one." };
+};
+
 export const journalPaymentInvoice = async (
   user: { id: string; role: string },
   journalId: string,

@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { pool } from "../../configs/db";
 import { env } from "../../configs/envs";
 import { generateAccessToken } from "../../utils/jwt";
-import { insertUserRole } from "../auth/auth.repository";
+import { getUserRoles, insertUserRole } from "../auth/auth.repository";
 import { createUser, createUserProfile } from "../auth/auth.service";
 import {
   createInvitation,
@@ -15,11 +15,22 @@ import {
 import { sendInvitationEmail } from "../../utils/emails/userEmails";
 import { sendWelcomeEmail } from "../../utils/emails/userEmails";
 
-const ALLOWED_ROLES = ["chief_editor", "journal_manager", "sub_editor", "reviewer"];
+const ALLOWED_ROLES = [
+  "chief_editor",
+  "journal_manager",
+  "sub_editor",
+  "reviewer",
+];
 
 export const sendInvitationService = async (
   inviter: { id: string; role: string; username: string },
-  data: { name: string; email: string; role: string; journal_id: string; paper_id?: string },
+  data: {
+    name: string;
+    email: string;
+    role: string;
+    journal_id: string;
+    paper_id?: string;
+  },
 ) => {
   if (!ALLOWED_ROLES.includes(data.role)) {
     throw new Error("Invalid role. Cannot invite publisher or owner.");
@@ -33,7 +44,9 @@ export const sendInvitationService = async (
     [data.email, data.role, data.journal_id],
   );
   if (existing.rows.length) {
-    throw new Error("This person is already assigned this role for the journal.");
+    throw new Error(
+      "This person is already assigned this role for the journal.",
+    );
   }
 
   // For chief_editor: check if one already accepted
@@ -43,10 +56,16 @@ export const sendInvitationService = async (
       [data.journal_id],
     );
     if (ceExists.rows.length) {
-      throw new Error("This journal already has a chief editor. Remove them first to invite a new one.");
+      throw new Error(
+        "This journal already has a chief editor. Remove them first to invite a new one.",
+      );
     }
 
-    const pendingCE = await hasPendingInvitation(data.email, "chief_editor", data.journal_id);
+    const pendingCE = await hasPendingInvitation(
+      data.email,
+      "chief_editor",
+      data.journal_id,
+    );
     if (!pendingCE) {
       // Check if ANY pending CE invitation exists for this journal (not just this email)
       const anyPending = await pool.query(
@@ -54,7 +73,9 @@ export const sendInvitationService = async (
         [data.journal_id],
       );
       if (anyPending.rows.length) {
-        throw new Error("An invitation for chief editor is already pending for this journal. Cancel it first or wait for it to expire.");
+        throw new Error(
+          "An invitation for chief editor is already pending for this journal. Cancel it first or wait for it to expire.",
+        );
       }
     }
   }
@@ -92,15 +113,24 @@ export const sendInvitationService = async (
 
 export const verifyInvitationService = async (token: string) => {
   const inv = await findInvitationByToken(token);
-  if (!inv) throw Object.assign(new Error("Invalid invitation link"), { statusCode: 404 });
+  if (!inv)
+    throw Object.assign(new Error("Invalid invitation link"), {
+      statusCode: 404,
+    });
   if (inv.status === "expired" || new Date(inv.expires_at) < new Date()) {
-    throw Object.assign(new Error("This invitation has expired"), { statusCode: 410 });
+    throw Object.assign(new Error("This invitation has expired"), {
+      statusCode: 410,
+    });
   }
   if (inv.status === "accepted") {
-    throw Object.assign(new Error("This invitation has already been used"), { statusCode: 400 });
+    throw Object.assign(new Error("This invitation has already been used"), {
+      statusCode: 400,
+    });
   }
   if (inv.status === "cancelled") {
-    throw Object.assign(new Error("This invitation has been cancelled"), { statusCode: 400 });
+    throw Object.assign(new Error("This invitation has been cancelled"), {
+      statusCode: 400,
+    });
   }
 
   return {
@@ -114,14 +144,24 @@ export const verifyInvitationService = async (token: string) => {
   };
 };
 
-export const acceptInvitationService = async (token: string, password: string) => {
+export const acceptInvitationService = async (
+  token: string,
+  password: string,
+) => {
   const inv = await findInvitationByToken(token);
-  if (!inv) throw Object.assign(new Error("Invalid invitation link"), { statusCode: 404 });
+  if (!inv)
+    throw Object.assign(new Error("Invalid invitation link"), {
+      statusCode: 404,
+    });
   if (inv.status === "expired" || new Date(inv.expires_at) < new Date()) {
-    throw Object.assign(new Error("This invitation has expired"), { statusCode: 410 });
+    throw Object.assign(new Error("This invitation has expired"), {
+      statusCode: 410,
+    });
   }
   if (inv.status !== "pending") {
-    throw Object.assign(new Error("This invitation is no longer valid"), { statusCode: 400 });
+    throw Object.assign(new Error("This invitation is no longer valid"), {
+      statusCode: 400,
+    });
   }
 
   const hashed = await bcrypt.hash(password, env.SALT_ROUND || 10);
@@ -155,10 +195,10 @@ export const acceptInvitationService = async (token: string, password: string) =
 
   // If chief_editor: update journals.chief_editor_id
   if (inv.role === "chief_editor" && inv.journal_id) {
-    await pool.query(
-      `UPDATE journals SET chief_editor_id = $1 WHERE id = $2`,
-      [userId, inv.journal_id],
-    );
+    await pool.query(`UPDATE journals SET chief_editor_id = $1 WHERE id = $2`, [
+      userId,
+      inv.journal_id,
+    ]);
   }
 
   // If paper_id: create the assignment
@@ -196,22 +236,34 @@ export const acceptInvitationService = async (token: string, password: string) =
   sendWelcomeEmail(inv.email, inv.name, "").catch(console.error);
 
   // Generate JWT so user is logged in immediately
-  const userRow = await pool.query(`SELECT * FROM users WHERE id = $1`, [userId]);
+  const userRow = await pool.query(`SELECT * FROM users WHERE id = $1`, [
+    userId,
+  ]);
   const user = userRow.rows[0];
+
+  // Collect all roles for this user so the token carries them all
+  const userRoleRows = await getUserRoles(userId);
+  const allRoles = userRoleRows.map((r) => r.role);
+  if (!allRoles.includes(user.role)) allRoles.unshift(user.role);
 
   const accessToken = await generateAccessToken(
     user.id,
     user.role,
     user.email,
     user.username,
-    [inv.role],
+    allRoles,
     inv.role,
     inv.journal_id ?? null,
   );
 
   return {
     token: accessToken,
-    user: { id: user.id, username: user.username, email: user.email, role: user.role },
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    },
     journal_name: inv.journal_name,
     role: inv.role,
   };
@@ -225,7 +277,11 @@ export const cancelInvitationService = async (
   const inv = await findInvitationById(invitationId);
   if (!inv) throw new Error("Invitation not found");
 
-  if (inv.invited_by !== requesterId && requesterRole !== "publisher" && requesterRole !== "owner") {
+  if (
+    inv.invited_by !== requesterId &&
+    requesterRole !== "publisher" &&
+    requesterRole !== "owner"
+  ) {
     throw new Error("Not authorised to cancel this invitation");
   }
 

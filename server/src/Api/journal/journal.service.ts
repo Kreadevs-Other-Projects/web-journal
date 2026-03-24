@@ -1,5 +1,4 @@
 import { pool } from "../../configs/db";
-import bcrypt from "bcrypt";
 import {
   createJournal,
   getOwnerJournals,
@@ -10,12 +9,9 @@ import {
   createJournalByPublisher,
   findEditorialBoard,
 } from "./journal.repository";
-import {
-  createUser as createUserInDB,
-  createUserProfile as createUserProfileInDB,
-} from "../profile/profile.repository";
 import { insertUserRole } from "../auth/auth.repository";
-import { sendWelcomeEmail } from "../../utils/emails/userEmails";
+import { sendInvitationEmail } from "../../utils/emails/userEmails";
+import { createInvitation } from "../invitation/invitation.repository";
 import { env } from "../../configs/envs";
 
 export type Journal = {
@@ -172,9 +168,10 @@ export const getEditorialBoardService = async (journalId: string) => {
 
 export const publisherCreateJournalService = async (
   publisherId: string,
+  publisherName: string,
   data: PublisherJournalData & {
-    chief_editor: { name: string; email: string; password: string };
-    journal_manager: { name: string; email: string; password: string };
+    chief_editor: { name: string; email: string };
+    journal_manager: { name: string; email: string };
   },
 ) => {
   // Auto-generate acronym from title if not provided
@@ -183,66 +180,53 @@ export const publisherCreateJournalService = async (
     data.acronym = await getUniqueAcronym(base);
   }
 
-  const existingCE = await pool.query(
-    "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL",
-    [data.chief_editor.email],
-  );
-  if (existingCE.rowCount) {
-    throw new Error("Chief editor email is already in use");
-  }
+  // Create journal with null chief_editor_id — CE will be linked when they accept invitation
+  const journal = await createJournalByPublisher(publisherId, null, data);
 
-  const existingJM = await pool.query(
-    "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL",
-    [data.journal_manager.email],
-  );
-  if (existingJM.rowCount) {
-    throw new Error("Journal manager email is already in use");
-  }
-
-  const saltRounds = Number(env.SALT_ROUND) || 10;
-
-  const ceHashedPwd = await bcrypt.hash(data.chief_editor.password, saltRounds);
-  const ceUser = await createUserInDB({
-    email: data.chief_editor.email,
-    password: ceHashedPwd,
-    username: data.chief_editor.name,
-    role: "chief_editor",
-  });
-  await createUserProfileInDB(ceUser.id);
-
-  const jmHashedPwd = await bcrypt.hash(
-    data.journal_manager.password,
-    saltRounds,
-  );
-  const jmUser = await createUserInDB({
-    email: data.journal_manager.email,
-    password: jmHashedPwd,
-    username: data.journal_manager.name,
-    role: "journal_manager",
-  });
-  await createUserProfileInDB(jmUser.id);
-
-  const journal = await createJournalByPublisher(
-    publisherId,
-    ceUser.id,
-    data,
-  );
-
-  await insertUserRole(ceUser.id, "chief_editor", journal.id, publisherId);
-  await insertUserRole(jmUser.id, "journal_manager", journal.id, publisherId);
+  // Grant publisher their journal_manager role for this journal
   await insertUserRole(publisherId, "journal_manager", journal.id, publisherId);
 
-  sendWelcomeEmail(
-    data.chief_editor.email,
-    data.chief_editor.name,
-    data.chief_editor.password,
-  ).catch(console.error);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const frontendUrl = env.FRONTEND_URL;
 
-  sendWelcomeEmail(
-    data.journal_manager.email,
-    data.journal_manager.name,
-    data.journal_manager.password,
-  ).catch(console.error);
+  // Create CE invitation
+  const ceInvitation = await createInvitation({
+    email: data.chief_editor.email,
+    name: data.chief_editor.name,
+    role: "chief_editor",
+    journal_id: journal.id,
+    invited_by: publisherId,
+  });
+
+  // Create JM invitation
+  const jmInvitation = await createInvitation({
+    email: data.journal_manager.email,
+    name: data.journal_manager.name,
+    role: "journal_manager",
+    journal_id: journal.id,
+    invited_by: publisherId,
+  });
+
+  // Send invitation emails (fire-and-forget)
+  sendInvitationEmail({
+    to: data.chief_editor.email,
+    name: data.chief_editor.name,
+    invitedByName: publisherName,
+    journalName: journal.title,
+    role: "chief_editor",
+    expiresAt,
+    acceptLink: `${frontendUrl}/accept-invitation?token=${ceInvitation.token}`,
+  }).catch(console.error);
+
+  sendInvitationEmail({
+    to: data.journal_manager.email,
+    name: data.journal_manager.name,
+    invitedByName: publisherName,
+    journalName: journal.title,
+    role: "journal_manager",
+    expiresAt,
+    acceptLink: `${frontendUrl}/accept-invitation?token=${jmInvitation.token}`,
+  }).catch(console.error);
 
   return journal;
 };

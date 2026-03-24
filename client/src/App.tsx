@@ -47,6 +47,7 @@ import FAQPage from "./pages/faq.tsx";
 import ContactPage from "./pages/contactUs.tsx";
 import TrackPaper from "./pages/author/TrackPaper.tsx";
 import Archive from "./pages/Archive.tsx";
+import AcceptInvitation from "./pages/AcceptInvitation.tsx";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => (
                       element={<ArticlePage />}
                     />
                     <Route path="/archive" element={<Archive />} />
+                    <Route path="/accept-invitation" element={<AcceptInvitation />} />
                   </Route>
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route element={<ProtectedRoute allowedRoles={["author"]} />}>

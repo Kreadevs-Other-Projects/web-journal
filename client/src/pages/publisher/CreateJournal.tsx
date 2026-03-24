@@ -41,7 +41,6 @@ interface JournalFields {
 interface StaffFields {
   name: string;
   email: string;
-  password: string;
 }
 
 const defaultJournal: JournalFields = {
@@ -56,7 +55,7 @@ const defaultJournal: JournalFields = {
   aims_and_scope: "",
 };
 
-const defaultStaff: StaffFields = { name: "", email: "", password: "" };
+const defaultStaff: StaffFields = { name: "", email: "" };
 
 const STEPS = ["Journal Details", "Chief Editor", "Journal Manager"];
 
@@ -119,7 +118,7 @@ export default function CreateJournal() {
       }
     }
     if (step === 1) {
-      if (!chiefEditor.name || !chiefEditor.email || !chiefEditor.password) {
+      if (!chiefEditor.name || !chiefEditor.email) {
         toast({
           title: "Missing fields",
           description: "Please fill in all Chief Editor fields",
@@ -129,11 +128,7 @@ export default function CreateJournal() {
       }
     }
     if (step === 2) {
-      if (
-        !journalManager.name ||
-        !journalManager.email ||
-        !journalManager.password
-      ) {
+      if (!journalManager.name || !journalManager.email) {
         toast({
           title: "Missing fields",
           description: "Please fill in all Journal Manager fields",
@@ -182,8 +177,8 @@ export default function CreateJournal() {
       }
 
       toast({
-        title: "Success",
-        description: "Journal created successfully. Welcome emails sent.",
+        title: "Journal Created",
+        description: "Invitation emails sent to Chief Editor and Journal Manager.",
       });
 
       // Refresh JWT so new journal_manager role appears in role switcher
@@ -381,11 +376,10 @@ export default function CreateJournal() {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" /> Create Chief Editor
+                <User className="h-5 w-5 text-primary" /> Invite Chief Editor
               </CardTitle>
               <CardDescription>
-                A new account will be created for this user and a welcome email
-                sent
+                An invitation email will be sent. They will set their own password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -410,19 +404,6 @@ export default function CreateJournal() {
                   placeholder="chief.editor@example.com"
                 />
               </div>
-              <div className="space-y-1">
-                <Label>
-                  Temporary Password <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="password"
-                  value={chiefEditor.password}
-                  onChange={(e) =>
-                    updateChiefEditor("password", e.target.value)
-                  }
-                  placeholder="Min. 6 characters"
-                />
-              </div>
             </CardContent>
           </Card>
         )}
@@ -431,11 +412,10 @@ export default function CreateJournal() {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" /> Create Journal Manager
+                <User className="h-5 w-5 text-primary" /> Invite Journal Manager
               </CardTitle>
               <CardDescription>
-                A new account will be created for this user and a welcome email
-                sent
+                An invitation email will be sent. They will set their own password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -464,19 +444,6 @@ export default function CreateJournal() {
                   placeholder="journal.manager@example.com"
                 />
               </div>
-              <div className="space-y-1">
-                <Label>
-                  Temporary Password <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="password"
-                  value={journalManager.password}
-                  onChange={(e) =>
-                    updateJournalManager("password", e.target.value)
-                  }
-                  placeholder="Min. 6 characters"
-                />
-              </div>
             </CardContent>
           </Card>
         )}
@@ -500,7 +467,7 @@ export default function CreateJournal() {
               disabled={submitting}
               className="bg-gradient-primary hover:opacity-90"
             >
-              {submitting ? "Creating..." : "Create Journal"}
+              {submitting ? "Creating..." : "Create Journal & Send Invites"}
             </Button>
           )}
         </div>

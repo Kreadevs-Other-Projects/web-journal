@@ -116,7 +116,7 @@ export const findEditorialBoard = async (journalId: string) => {
 
 export const createJournalByPublisher = async (
   publisher_id: string,
-  chief_editor_id: string,
+  chief_editor_id: string | null,
   data: PublisherJournalData,
 ) => {
   const result = await pool.query(

@@ -42,8 +42,6 @@ import {
   BookOpen,
   Lock,
   Unlock,
-  Eye,
-  EyeOff,
   ThumbsUp,
   ThumbsDown,
   Tag,
@@ -126,13 +124,11 @@ export default function ChiefEditor() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openIssueDialog, setOpenIssueDialog] = useState(false);
   const [subEditorEmail, setSubEditorEmail] = useState("");
-  const [newSubEditor, setNewSubEditor] = useState({ name: "", email: "", password: "" });
-  const [showSEPassword, setShowSEPassword] = useState(false);
+  const [newSubEditor, setNewSubEditor] = useState({ name: "", email: "" });
   const [creatingSubEditor, setCreatingSubEditor] = useState(false);
   const [openReviewerDialog, setOpenReviewerDialog] = useState(false);
   const [selectedReviewerId, setSelectedReviewerId] = useState("");
-  const [newReviewer, setNewReviewer] = useState({ name: "", email: "", password: "" });
-  const [showRevPassword, setShowRevPassword] = useState(false);
+  const [newReviewer, setNewReviewer] = useState({ name: "", email: "" });
   const [creatingReviewer, setCreatingReviewer] = useState(false);
   const [assigningReviewer, setAssigningReviewer] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
@@ -159,13 +155,11 @@ export default function ChiefEditor() {
 
   // Team creation dialogs (standalone, no paper required)
   const [openCreateSE, setOpenCreateSE] = useState(false);
-  const [newTeamSE, setNewTeamSE] = useState({ name: "", email: "", password: "" });
-  const [showTeamSEPw, setShowTeamSEPw] = useState(false);
+  const [newTeamSE, setNewTeamSE] = useState({ name: "", email: "" });
   const [creatingTeamSE, setCreatingTeamSE] = useState(false);
 
   const [openCreateRev, setOpenCreateRev] = useState(false);
-  const [newTeamRev, setNewTeamRev] = useState({ name: "", email: "", password: "" });
-  const [showTeamRevPw, setShowTeamRevPw] = useState(false);
+  const [newTeamRev, setNewTeamRev] = useState({ name: "", email: "" });
   const [creatingTeamRev, setCreatingTeamRev] = useState(false);
 
   // Reviewer requests
@@ -502,39 +496,30 @@ export default function ChiefEditor() {
   };
 
   const createAndAssignSubEditor = async () => {
-    if (!newSubEditor.name || !newSubEditor.email || !newSubEditor.password) {
-      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+    if (!newSubEditor.name || !newSubEditor.email) {
+      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
       return;
     }
     if (!selectedPaper) return;
     try {
       setCreatingSubEditor(true);
       const journalId = selectedPaper.journalId ?? selectedJournalId;
-      const res = await fetch(`${url}/auth/create-staff`, {
+      const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newSubEditor.name,
           email: newSubEditor.email,
-          password: newSubEditor.password,
           role: "sub_editor",
-          journal_id: journalId ?? undefined,
+          journal_id: journalId,
+          paper_id: selectedPaper.id,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create sub-editor");
+      if (!res.ok) throw new Error(data.message || "Failed to send invitation");
 
-      // Assign the new sub-editor to the paper
-      const assignRes = await fetch(`${url}/chiefEditor/assignSubEditor/${selectedPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ subEditorId: data.user.id }),
-      });
-      const assignData = await assignRes.json();
-      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign sub-editor");
-
-      toast({ title: "Success", description: `${newSubEditor.name} created and assigned as sub-editor` });
-      setNewSubEditor({ name: "", email: "", password: "" });
+      toast({ title: "Invitation Sent", description: `${newSubEditor.name} will be assigned as sub-editor upon acceptance.` });
+      setNewSubEditor({ name: "", email: "" });
       setOpenDialog(false);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -565,38 +550,30 @@ export default function ChiefEditor() {
   };
 
   const createAndAssignReviewer = async () => {
-    if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
-      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+    if (!newReviewer.name || !newReviewer.email) {
+      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
       return;
     }
     if (!selectedPaper) return;
     try {
       setCreatingReviewer(true);
       const journalId = selectedPaper.journalId ?? selectedJournalId;
-      const res = await fetch(`${url}/auth/create-staff`, {
+      const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newReviewer.name,
           email: newReviewer.email,
-          password: newReviewer.password,
           role: "reviewer",
-          journal_id: journalId ?? undefined,
+          journal_id: journalId,
+          paper_id: selectedPaper.id,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
+      if (!res.ok) throw new Error(data.message || "Failed to send invitation");
 
-      const assignRes = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reviewerId: data.user.id }),
-      });
-      const assignData = await assignRes.json();
-      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign reviewer");
-
-      toast({ title: "Success", description: `${newReviewer.name} created and assigned as reviewer` });
-      setNewReviewer({ name: "", email: "", password: "" });
+      toast({ title: "Invitation Sent", description: `${newReviewer.name} will be assigned as reviewer upon acceptance.` });
+      setNewReviewer({ name: "", email: "" });
       setOpenReviewerDialog(false);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -605,32 +582,30 @@ export default function ChiefEditor() {
     }
   };
 
-  // Team tab: create sub-editor without paper assignment
+  // Team tab: invite sub-editor without paper assignment
   const createTeamSubEditor = async () => {
-    if (!newTeamSE.name || !newTeamSE.email || !newTeamSE.password) {
-      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+    if (!newTeamSE.name || !newTeamSE.email) {
+      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
       return;
     }
     try {
       setCreatingTeamSE(true);
       const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
-      const res = await fetch(`${url}/auth/create-staff`, {
+      const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newTeamSE.name,
           email: newTeamSE.email,
-          password: newTeamSE.password,
           role: "sub_editor",
           journal_id: journalId,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create associate editor");
-      toast({ title: "Success", description: `${newTeamSE.name} added as Associate Editor` });
-      setNewTeamSE({ name: "", email: "", password: "" });
+      if (!res.ok) throw new Error(data.message || "Failed to send invitation");
+      toast({ title: "Invitation Sent", description: `${newTeamSE.name} will appear as Associate Editor upon acceptance.` });
+      setNewTeamSE({ name: "", email: "" });
       setOpenCreateSE(false);
-      fetchStaff();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -638,32 +613,30 @@ export default function ChiefEditor() {
     }
   };
 
-  // Team tab: create reviewer without paper assignment
+  // Team tab: invite reviewer without paper assignment
   const createTeamReviewer = async () => {
-    if (!newTeamRev.name || !newTeamRev.email || !newTeamRev.password) {
-      toast({ title: "Missing fields", description: "All fields are required", variant: "destructive" });
+    if (!newTeamRev.name || !newTeamRev.email) {
+      toast({ title: "Missing fields", description: "Name and email are required", variant: "destructive" });
       return;
     }
     try {
       setCreatingTeamRev(true);
       const journalId = selectedJournalId ?? journals[0]?.id ?? undefined;
-      const res = await fetch(`${url}/auth/create-staff`, {
+      const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newTeamRev.name,
           email: newTeamRev.email,
-          password: newTeamRev.password,
           role: "reviewer",
           journal_id: journalId,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
-      toast({ title: "Success", description: `${newTeamRev.name} added as Reviewer` });
-      setNewTeamRev({ name: "", email: "", password: "" });
+      if (!res.ok) throw new Error(data.message || "Failed to send invitation");
+      toast({ title: "Invitation Sent", description: `${newTeamRev.name} will appear as Reviewer upon acceptance.` });
+      setNewTeamRev({ name: "", email: "" });
       setOpenCreateRev(false);
-      fetchStaff();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -1271,7 +1244,7 @@ export default function ChiefEditor() {
                             onClick={() => {
                               setSelectedPaper(paper);
                               setSelectedReviewerId("");
-                              setNewReviewer({ name: "", email: "", password: "" });
+                              setNewReviewer({ name: "", email: "" });
                               setOpenReviewerDialog(true);
                             }}
                           >
@@ -1569,8 +1542,9 @@ export default function ChiefEditor() {
 
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">
-                    Create New Sub-Editor
+                    Invite New Sub-Editor
                   </Label>
+                  <p className="text-xs text-muted-foreground">An invitation email will be sent. They will be assigned to this paper when they accept.</p>
                   <Input
                     placeholder="Full Name"
                     value={newSubEditor.name}
@@ -1582,30 +1556,13 @@ export default function ChiefEditor() {
                     value={newSubEditor.email}
                     onChange={(e) => setNewSubEditor((p) => ({ ...p, email: e.target.value }))}
                   />
-                  <div className="relative">
-                    <Input
-                      type={showSEPassword ? "text" : "password"}
-                      placeholder="Temporary password (min. 6 chars)"
-                      value={newSubEditor.password}
-                      onChange={(e) => setNewSubEditor((p) => ({ ...p, password: e.target.value }))}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSEPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      tabIndex={-1}
-                    >
-                      {showSEPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
                   <Button
                     className="w-full"
                     onClick={createAndAssignSubEditor}
-                    disabled={creatingSubEditor || !newSubEditor.name || !newSubEditor.email || !newSubEditor.password}
+                    disabled={creatingSubEditor || !newSubEditor.name || !newSubEditor.email}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    {creatingSubEditor ? "Creating..." : "Create & Assign Sub-Editor"}
+                    {creatingSubEditor ? "Sending..." : "Send Invitation"}
                   </Button>
                 </div>
               </div>
@@ -1732,7 +1689,8 @@ export default function ChiefEditor() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Create New Reviewer</Label>
+                  <Label className="text-sm font-medium">Invite New Reviewer</Label>
+                  <p className="text-xs text-muted-foreground">An invitation email will be sent. They will be assigned to this paper when they accept.</p>
                   <Input
                     placeholder="Full Name"
                     value={newReviewer.name}
@@ -1744,30 +1702,13 @@ export default function ChiefEditor() {
                     value={newReviewer.email}
                     onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
                   />
-                  <div className="relative">
-                    <Input
-                      type={showRevPassword ? "text" : "password"}
-                      placeholder="Temporary password (min. 6 chars)"
-                      value={newReviewer.password}
-                      onChange={(e) => setNewReviewer((p) => ({ ...p, password: e.target.value }))}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRevPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      tabIndex={-1}
-                    >
-                      {showRevPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
                   <Button
                     className="w-full"
                     onClick={createAndAssignReviewer}
-                    disabled={creatingReviewer || !newReviewer.name || !newReviewer.email || !newReviewer.password}
+                    disabled={creatingReviewer || !newReviewer.name || !newReviewer.email}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
+                    {creatingReviewer ? "Sending..." : "Send Invitation"}
                   </Button>
                 </div>
               </div>
@@ -1790,6 +1731,7 @@ export default function ChiefEditor() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">An invitation email will be sent. They will set their own password when they accept.</p>
               <Input
                 placeholder="Full Name"
                 value={newTeamSE.name}
@@ -1801,34 +1743,17 @@ export default function ChiefEditor() {
                 value={newTeamSE.email}
                 onChange={(e) => setNewTeamSE((p) => ({ ...p, email: e.target.value }))}
               />
-              <div className="relative">
-                <Input
-                  type={showTeamSEPw ? "text" : "password"}
-                  placeholder="Temporary password (min. 6 chars)"
-                  value={newTeamSE.password}
-                  onChange={(e) => setNewTeamSE((p) => ({ ...p, password: e.target.value }))}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowTeamSEPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showTeamSEPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setOpenCreateSE(false); setNewTeamSE({ name: "", email: "", password: "" }); }}>
+              <Button variant="ghost" onClick={() => { setOpenCreateSE(false); setNewTeamSE({ name: "", email: "" }); }}>
                 Cancel
               </Button>
               <Button
                 onClick={createTeamSubEditor}
-                disabled={creatingTeamSE || !newTeamSE.name || !newTeamSE.email || !newTeamSE.password}
+                disabled={creatingTeamSE || !newTeamSE.name || !newTeamSE.email}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
-                {creatingTeamSE ? "Creating..." : "Create Associate Editor"}
+                {creatingTeamSE ? "Sending..." : "Send Invitation"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1844,6 +1769,7 @@ export default function ChiefEditor() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">An invitation email will be sent. They will set their own password when they accept.</p>
               <Input
                 placeholder="Full Name"
                 value={newTeamRev.name}
@@ -1855,34 +1781,17 @@ export default function ChiefEditor() {
                 value={newTeamRev.email}
                 onChange={(e) => setNewTeamRev((p) => ({ ...p, email: e.target.value }))}
               />
-              <div className="relative">
-                <Input
-                  type={showTeamRevPw ? "text" : "password"}
-                  placeholder="Temporary password (min. 6 chars)"
-                  value={newTeamRev.password}
-                  onChange={(e) => setNewTeamRev((p) => ({ ...p, password: e.target.value }))}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowTeamRevPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showTeamRevPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setOpenCreateRev(false); setNewTeamRev({ name: "", email: "", password: "" }); }}>
+              <Button variant="ghost" onClick={() => { setOpenCreateRev(false); setNewTeamRev({ name: "", email: "" }); }}>
                 Cancel
               </Button>
               <Button
                 onClick={createTeamReviewer}
-                disabled={creatingTeamRev || !newTeamRev.name || !newTeamRev.email || !newTeamRev.password}
+                disabled={creatingTeamRev || !newTeamRev.name || !newTeamRev.email}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
-                {creatingTeamRev ? "Creating..." : "Create Reviewer"}
+                {creatingTeamRev ? "Sending..." : "Send Invitation"}
               </Button>
             </DialogFooter>
           </DialogContent>

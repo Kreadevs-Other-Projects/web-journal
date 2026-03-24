@@ -138,7 +138,7 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
     }
 
     const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
-    const journal = await publisherCreateJournalService(req.user.id, { ...req.body, logo_url });
+    const journal = await publisherCreateJournalService(req.user.id, req.user.username, { ...req.body, logo_url });
 
     return res.status(201).json({
       success: true,

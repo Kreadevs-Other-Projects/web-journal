@@ -98,9 +98,20 @@ function JournalLogo({
   const sizes = {
     sm: "h-10 w-10 text-xs",
     md: "h-16 w-16 text-base",
-    lg: "h-24 w-24 text-xl",
+    lg: "h-32 w-32 text-3xl",
   };
   const initials = getInitials(title);
+
+  const placeholderColors = [
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-green-500",
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-pink-500",
+  ];
+  const placeholderBg =
+    placeholderColors[(title.charCodeAt(0) ?? 0) % placeholderColors.length];
 
   const imgSrc = logoUrl
     ? logoUrl.startsWith("http")
@@ -113,7 +124,7 @@ function JournalLogo({
       <img
         src={imgSrc}
         alt={title}
-        className={cn("object-cover rounded-lg", sizes[size])}
+        className={cn("object-cover rounded-xl", sizes[size])}
         onError={() => setImgError(true)}
       />
     );
@@ -121,7 +132,8 @@ function JournalLogo({
   return (
     <div
       className={cn(
-        "rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary",
+        "rounded-xl flex items-center justify-center font-bold text-white",
+        placeholderBg,
         sizes[size],
       )}
     >

@@ -467,17 +467,22 @@ export default function LandingPage() {
                   className="glass-card p-5 flex flex-col gap-3 group"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
-                      {j.logo_url ? (
+                    {(() => {
+                      const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
+                      const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
+                      const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0, 3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
+                      return j.logo_url ? (
                         <img
                           src={`${url}/uploads/${j.logo_url}`}
                           alt={j.title}
-                          className="h-full w-full object-cover"
+                          className="h-20 w-20 rounded-xl object-cover shrink-0"
                         />
                       ) : (
-                        <BookOpen className="h-6 w-6 text-primary" />
-                      )}
-                    </div>
+                        <div className={`h-20 w-20 rounded-xl flex items-center justify-center font-bold text-white text-xl shrink-0 ${bg}`}>
+                          {initials}
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">
                         {j.title}

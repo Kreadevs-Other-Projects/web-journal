@@ -68,19 +68,31 @@ function JournalLogo({
     .slice(0, 3)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+  const placeholderColors = [
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-green-500",
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-pink-500",
+  ];
+  const placeholderBg =
+    placeholderColors[(title.charCodeAt(0) ?? 0) % placeholderColors.length];
+
   if (logoUrl) {
     return (
       <img
         src={`${url}/uploads/${logoUrl}`}
         alt={title}
-        className={cn("object-cover rounded-lg", className)}
+        className={cn("object-cover rounded-xl", className)}
       />
     );
   }
   return (
     <div
       className={cn(
-        "rounded-lg bg-gradient-primary/10 flex items-center justify-center font-bold text-primary text-sm",
+        "rounded-xl flex items-center justify-center font-bold text-white text-xl",
+        placeholderBg,
         className,
       )}
     >
@@ -431,7 +443,7 @@ export default function BrowsePage() {
                         <JournalLogo
                           logoUrl={journal.logo_url}
                           title={journal.journal_title}
-                          className="h-12 w-12 shrink-0"
+                          className="h-20 w-20 shrink-0"
                         />
                         <div className="flex-1">
                           <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
@@ -478,7 +490,7 @@ export default function BrowsePage() {
                       <JournalLogo
                         logoUrl={journal.logo_url}
                         title={journal.journal_title}
-                        className="h-16 w-16 shrink-0"
+                        className="h-20 w-20 shrink-0"
                       />
 
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">

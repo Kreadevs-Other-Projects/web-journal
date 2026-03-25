@@ -26,6 +26,7 @@ interface Paper {
   updated_at: string;
   submitted_at?: string;
   journal_title?: string;
+  payment_status?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -158,11 +159,11 @@ export default function AuthorDashboard() {
                             Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
-                        {paper.status === "awaiting_payment" && (
+                        {(paper.payment_status === "pending" || paper.payment_status === "failed") && (
                           <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded px-3 py-2 mt-1">
                             <span className="inline-flex items-center gap-1.5 text-xs text-orange-600 font-medium">
                               <AlertTriangle className="h-3.5 w-3.5" />
-                              Payment required to proceed
+                              {paper.payment_status === "failed" ? "Receipt rejected — re-upload required" : "Payment required to proceed"}
                             </span>
                             <Button
                               size="sm"
@@ -172,7 +173,7 @@ export default function AuthorDashboard() {
                                 navigate(`/author/track/${paper.id}`)
                               }
                             >
-                              Pay / Upload Receipt
+                              Upload Receipt
                             </Button>
                           </div>
                         )}

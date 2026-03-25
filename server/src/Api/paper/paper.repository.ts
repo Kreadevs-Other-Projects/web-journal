@@ -141,9 +141,10 @@ export const getAllPapers = async () => {
 
 export const getPapersByAuthor = async (author_id: string) => {
   const result = await pool.query(
-    `SELECT p.*, j.title AS journal_title
+    `SELECT p.*, j.title AS journal_title, pp.status AS payment_status
      FROM papers p
      LEFT JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN paper_payments pp ON pp.paper_id = p.id
      WHERE p.author_id = $1
      ORDER BY p.created_at DESC`,
     [author_id],

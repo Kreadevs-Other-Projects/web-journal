@@ -234,8 +234,8 @@ export default function TrackPaper() {
             </div>
           </div>
 
-          {/* Payment Banner — shown whenever paper needs payment, with or without payment record loaded */}
-          {(paper.status === "awaiting_payment" || paper.status === "payment_review") && (
+          {/* Payment Banner — driven by payment.status, not paper.status */}
+          {(payment?.status === "pending" || payment?.status === "failed" || payment?.status === "payment_review") && (
             <Card className="mb-6 border-orange-400/40 bg-orange-50 dark:bg-orange-950/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
@@ -258,7 +258,7 @@ export default function TrackPaper() {
                     <div>
                       <p className="text-xs text-muted-foreground">Status</p>
                       <Badge className="mt-0.5 bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 hover:bg-orange-100">
-                        {payment.status === "payment_review" ? "Under Review" : "Unpaid"}
+                        {payment.status === "payment_review" ? "Under Review" : payment.status === "failed" ? "Rejected" : "Unpaid"}
                       </Badge>
                     </div>
                   </div>
@@ -277,8 +277,8 @@ export default function TrackPaper() {
                   </div>
                 )}
 
-                {/* Upload section — always show when awaiting_payment */}
-                {paper.status === "awaiting_payment" && (
+                {/* Upload section — show when payment is pending or failed (rejected) */}
+                {(payment?.status === "pending" || payment?.status === "failed") && (
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-xs">After completing the bank transfer, upload your payment receipt below:</p>
                     <div className="flex items-center gap-3">
@@ -298,7 +298,7 @@ export default function TrackPaper() {
                 )}
 
                 {/* Already uploaded */}
-                {paper.status === "payment_review" && payment?.receipt_uploaded_at && (
+                {payment?.status === "payment_review" && payment?.receipt_uploaded_at && (
                   <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400">
                     <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
                     <div>
@@ -309,7 +309,7 @@ export default function TrackPaper() {
                 )}
 
                 {/* payment_review but no receipt timestamp — generic message */}
-                {paper.status === "payment_review" && !payment?.receipt_uploaded_at && (
+                {payment?.status === "payment_review" && !payment?.receipt_uploaded_at && (
                   <div className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-400">
                     <Clock className="h-4 w-4 shrink-0 mt-0.5" />
                     <p>Your receipt is under review.</p>

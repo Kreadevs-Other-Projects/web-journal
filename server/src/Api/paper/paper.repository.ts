@@ -156,8 +156,8 @@ export const updatePaperStatus = async (paper_id: string, status: string) => {
     `
     UPDATE papers
     SET status = $1,
-        accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
-        published_at = CASE WHEN $1 = 'published' THEN NOW() ELSE published_at END,
+        accepted_at = CASE WHEN $1::text = 'accepted' THEN NOW() ELSE accepted_at END,
+        published_at = CASE WHEN $1::text = 'published' THEN NOW() ELSE published_at END,
         updated_at = NOW()
     WHERE id = $2
     RETURNING *

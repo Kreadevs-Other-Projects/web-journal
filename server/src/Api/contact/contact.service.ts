@@ -63,7 +63,31 @@ export const applyAsReviewerService = async (data: {
 
   const frontendUrl = env.CORS_ORIGIN || "http://localhost:5173";
 
-  // 3. Send email to chief editor
+  // 3. Store application in DB
+  const profilePicUrl = data.profilePicPath
+    ? `uploads/profiles/${data.profilePicPath.split(/[\\/]/).pop()}`
+    : null;
+
+  const appRes = await pool.query(
+    `INSERT INTO reviewer_applications
+       (journal_id, name, email, profile_pic_url, degrees, keywords, statement, affiliation, orcid)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id`,
+    [
+      data.journalId,
+      data.name,
+      data.email,
+      profilePicUrl,
+      data.degrees,
+      data.keywords,
+      data.statement || null,
+      data.affiliation || null,
+      data.orcid || null,
+    ],
+  );
+  const applicationId = appRes.rows[0].id;
+
+  // 4. Send email to chief editor
   await sendReviewerApplicationToEditor(editorEmail, editorName, {
     journalName,
     applicantName: data.name,
@@ -75,10 +99,11 @@ export const applyAsReviewerService = async (data: {
     statement: data.statement,
     profilePicPath: data.profilePicPath,
     submittedAt,
+    dashboardLink: `${frontendUrl}/chief-editor/applications?journal=${data.journalId}`,
   }, frontendUrl);
 
-  // 4. Send confirmation to applicant
+  // 5. Send confirmation to applicant
   await sendReviewerApplicationConfirmation(data.email, data.name, journalName, submittedAt);
 
-  return { journalName };
+  return { journalName, applicationId };
 };

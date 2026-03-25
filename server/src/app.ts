@@ -35,6 +35,7 @@ app.use(cors());
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api/uploads/receipts", express.static(path.join(__dirname, "..", "uploads", "receipts")));
+app.use("/api/uploads/profiles", express.static(path.join(__dirname, "..", "uploads", "profiles")));
 
 app.get("/health", (req: Request, res: Response) => {
   return res.json({ success: true, code: 200, message: "Healthy!" });

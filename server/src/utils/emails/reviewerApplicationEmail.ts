@@ -12,7 +12,43 @@ interface ReviewerApplicationData {
   statement?: string;
   profilePicPath?: string;
   submittedAt: string;
+  dashboardLink?: string;
 }
+
+export const sendRejectionEmailToApplicant = async (
+  applicantEmail: string,
+  applicantName: string,
+  journalName: string,
+): Promise<void> => {
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>Regarding your application</title></head>
+<body style="margin:0;padding:0;background:#0B1220;font-family:Arial,sans-serif;color:#fff;">
+  <div style="max-width:600px;margin:40px auto;background:#111827;border-radius:12px;overflow:hidden;border:1px solid #1F2937;">
+    <div style="padding:24px;text-align:center;background:linear-gradient(135deg,#1E3A8A,#2563EB);font-size:22px;font-weight:bold;">
+      Regarding Your Reviewer Application
+    </div>
+    <div style="padding:28px;color:#E5E7EB;line-height:1.7;">
+      <p>Dear <strong>${applicantName}</strong>,</p>
+      <p>Thank you for your interest in reviewing for <strong>${journalName}</strong>.</p>
+      <p>After careful consideration, we are unable to proceed with your application at this time. We encourage you to apply again in the future as our reviewer needs evolve.</p>
+      <p style="color:#9CA3AF;font-size:13px;">If you have questions, please contact the editorial team directly.</p>
+    </div>
+    <div style="padding:20px;text-align:center;font-size:12px;color:#6B7280;border-top:1px solid #1F2937;">
+      © ${new Date().getFullYear()} GIKI JournalHub. This is an automated email.
+    </div>
+  </div>
+</body>
+</html>`;
+
+  await transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_USER}>`,
+    to: applicantEmail,
+    subject: `Regarding your reviewer application for ${journalName}`,
+    html,
+  });
+};
 
 export const sendReviewerApplicationToEditor = async (
   editorEmail: string,
@@ -96,7 +132,7 @@ export const sendReviewerApplicationToEditor = async (
       }
 
       <div style="margin-top:28px;display:flex;gap:12px;flex-wrap:wrap;">
-        <a href="${frontendUrl}/chief-editor" style="display:inline-block;padding:10px 20px;background:#2563EB;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View in Dashboard</a>
+        <a href="${data.dashboardLink || `${frontendUrl}/chief-editor/applications`}" style="display:inline-block;padding:10px 20px;background:#2563EB;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View in Dashboard</a>
         <a href="mailto:${data.applicantEmail}" style="display:inline-block;padding:10px 20px;background:#374151;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">Reply to Applicant</a>
       </div>
     </div>

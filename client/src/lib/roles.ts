@@ -81,6 +81,7 @@ export const roleConfig: Record<
       { label: "Papers", path: "/chief-editor/papers", icon: FileText },
       { label: "Team", path: "/chief-editor/team", icon: Users },
       { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: UserCheck },
+      { label: "Applications", path: "/chief-editor/applications", icon: UserCheck },
     ],
   },
 

@@ -50,10 +50,34 @@ export function DashboardLayout({
   role,
   userName,
 }: DashboardLayoutProps) {
-  const { logout, userData, user, switchRole } = useAuth();
+  const { logout, userData, user, switchRole, token } = useAuth();
   const [switchingRole, setSwitchingRole] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navBadges, setNavBadges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (role !== "chief_editor" || !token) return;
+    const fetchCount = () => {
+      fetch(`${url}/chiefEditor/applications/count?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.count > 0) {
+            setNavBadges({ "/chief-editor/applications": d.count });
+          } else {
+            setNavBadges({});
+          }
+        })
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    const onFocus = () => fetchCount();
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
+  }, [role, token]);
 
   const { toast } = useToast();
   const config = roleConfig[role];
@@ -223,6 +247,7 @@ export function DashboardLayout({
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {config.navigation.map((item) => {
             const isActive = location.pathname === item.path;
+            const badge = navBadges[item.path];
             return (
               <Link key={item.path} to={item.path}>
                 <motion.div
@@ -238,8 +263,13 @@ export function DashboardLayout({
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   {sidebarOpen && (
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-sm font-medium flex-1">{item.label}</span>
                   )}
+                  {sidebarOpen && badge ? (
+                    <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">
+                      {badge}
+                    </span>
+                  ) : null}
                 </motion.div>
               </Link>
             );

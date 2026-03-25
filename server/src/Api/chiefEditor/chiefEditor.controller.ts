@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import * as service from "./chiefEditor.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
+import { pool } from "../../configs/db";
+import { sendInvitationService } from "../invitation/invitation.service";
+import { sendRejectionEmailToApplicant } from "../../utils/emails/reviewerApplicationEmail";
 
 export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
   try {
@@ -203,5 +206,130 @@ export const updateIssueStatus = async (req: Request, res: Response) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// ===== REVIEWER APPLICATIONS =====
+
+export const getApplications = async (req: AuthUser, res: Response) => {
+  try {
+    const ceId = req.user!.id;
+    const status = (req.query.status as string) || "pending";
+
+    // Get journal IDs this CE manages
+    const journalsRes = await pool.query(
+      `SELECT journal_id FROM user_roles WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true`,
+      [ceId],
+    );
+    const journalIds = journalsRes.rows.map((r: any) => r.journal_id);
+    if (!journalIds.length) return res.json({ success: true, applications: [] });
+
+    const result = await pool.query(
+      `SELECT ra.*, j.title AS journal_name
+       FROM reviewer_applications ra
+       JOIN journals j ON j.id = ra.journal_id
+       WHERE ra.journal_id = ANY($1::uuid[]) AND ra.status = $2
+       ORDER BY ra.created_at DESC`,
+      [journalIds, status],
+    );
+    res.json({ success: true, applications: result.rows });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const getApplicationsCount = async (req: AuthUser, res: Response) => {
+  try {
+    const ceId = req.user!.id;
+    const status = (req.query.status as string) || "pending";
+
+    const journalsRes = await pool.query(
+      `SELECT journal_id FROM user_roles WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true`,
+      [ceId],
+    );
+    const journalIds = journalsRes.rows.map((r: any) => r.journal_id);
+    if (!journalIds.length) return res.json({ success: true, count: 0 });
+
+    const result = await pool.query(
+      `SELECT COUNT(*) FROM reviewer_applications WHERE journal_id = ANY($1::uuid[]) AND status = $2`,
+      [journalIds, status],
+    );
+    res.json({ success: true, count: parseInt(result.rows[0].count, 10) });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const inviteApplication = async (req: AuthUser, res: Response) => {
+  try {
+    const ceId = req.user!.id;
+    const { applicationId } = req.params;
+
+    const appRes = await pool.query(
+      `SELECT * FROM reviewer_applications WHERE id = $1`,
+      [applicationId],
+    );
+    if (!appRes.rows.length) return res.status(404).json({ success: false, message: "Application not found" });
+
+    const app = appRes.rows[0];
+
+    // Verify CE owns this journal
+    const owns = await pool.query(
+      `SELECT 1 FROM user_roles WHERE user_id = $1 AND journal_id = $2 AND role = 'chief_editor' AND is_active = true`,
+      [ceId, app.journal_id],
+    );
+    if (!owns.rows.length) return res.status(403).json({ success: false, message: "Forbidden" });
+
+    const ceRes = await pool.query(`SELECT username FROM users WHERE id = $1`, [ceId]);
+    const ceName = ceRes.rows[0]?.username || "Chief Editor";
+
+    // Send invitation via existing invitation service
+    await sendInvitationService(
+      { id: ceId, role: "chief_editor", username: ceName },
+      { name: app.name, email: app.email, role: "reviewer", journal_id: app.journal_id },
+    );
+
+    // Update application status
+    await pool.query(
+      `UPDATE reviewer_applications SET status = 'invited', reviewed_by = $1, reviewed_at = NOW() WHERE id = $2`,
+      [ceId, applicationId],
+    );
+
+    res.json({ success: true, message: `Invitation sent to ${app.name}` });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const declineApplication = async (req: AuthUser, res: Response) => {
+  try {
+    const ceId = req.user!.id;
+    const { applicationId } = req.params;
+
+    const appRes = await pool.query(
+      `SELECT ra.*, j.title AS journal_name FROM reviewer_applications ra JOIN journals j ON j.id = ra.journal_id WHERE ra.id = $1`,
+      [applicationId],
+    );
+    if (!appRes.rows.length) return res.status(404).json({ success: false, message: "Application not found" });
+
+    const app = appRes.rows[0];
+
+    const owns = await pool.query(
+      `SELECT 1 FROM user_roles WHERE user_id = $1 AND journal_id = $2 AND role = 'chief_editor' AND is_active = true`,
+      [ceId, app.journal_id],
+    );
+    if (!owns.rows.length) return res.status(403).json({ success: false, message: "Forbidden" });
+
+    await pool.query(
+      `UPDATE reviewer_applications SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW() WHERE id = $2`,
+      [ceId, applicationId],
+    );
+
+    // Send polite rejection email
+    sendRejectionEmailToApplicant(app.email, app.name, app.journal_name).catch(console.error);
+
+    res.json({ success: true, message: `Application from ${app.name} declined` });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
   }
 };

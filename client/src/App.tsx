@@ -28,6 +28,7 @@ import CEJournals from "./pages/chiefEditor/CEJournals.tsx";
 import CEJournalDetail from "./pages/chiefEditor/CEJournalDetail.tsx";
 import CEPapers from "./pages/chiefEditor/CEPapers.tsx";
 import CETeam from "./pages/chiefEditor/CETeam.tsx";
+import CEApplications from "./pages/chiefEditor/CEApplications.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
@@ -158,6 +159,7 @@ const App = () => (
                     />
                     <Route path="/chief-editor/papers" element={<CEPapers />} />
                     <Route path="/chief-editor/team" element={<CETeam />} />
+                    <Route path="/chief-editor/applications" element={<CEApplications />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}

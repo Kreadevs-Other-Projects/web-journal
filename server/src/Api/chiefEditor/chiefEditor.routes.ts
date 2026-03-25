@@ -15,6 +15,10 @@ import {
   assignPaperToIssue,
   updateIssueStatus,
   getJournalDetails,
+  getApplications,
+  getApplicationsCount,
+  inviteApplication,
+  declineApplication,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -118,5 +122,11 @@ router.get("/getPapersByIssue/:issueId", getPapersByIssue);
 router.post("/assignPaperToIssue", assignPaperToIssue);
 
 router.put("/updateIssueStatus/:issueId", updateIssueStatus);
+
+// Reviewer applications
+router.get("/applications", authMiddleware, authorize("chief_editor"), getApplications);
+router.get("/applications/count", authMiddleware, authorize("chief_editor"), getApplicationsCount);
+router.post("/applications/:applicationId/invite", authMiddleware, authorize("chief_editor"), inviteApplication);
+router.post("/applications/:applicationId/decline", authMiddleware, authorize("chief_editor"), declineApplication);
 
 export default router;

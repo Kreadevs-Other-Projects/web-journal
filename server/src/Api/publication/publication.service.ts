@@ -78,6 +78,20 @@ export const setPaperPublished = async (
     throw new Error("Editor decision must be accept before publishing");
   }
 
+  // ✅ Payment check
+  const paymentRes = await pool.query(
+    `SELECT status FROM paper_payments WHERE paper_id = $1`,
+    [paperId],
+  );
+
+  if (!paymentRes.rows.length) {
+    throw new Error("Payment record not found");
+  }
+
+  if (paymentRes.rows[0].status !== "success") {
+    throw new Error("Payment must be completed before publishing");
+  }
+
   const publication = await publishPaper(paperId, editorId, issueId, doi);
   // Trigger format generation in background (non-blocking)
   generateFormatsService(paperId, publication.id).catch(() => {});

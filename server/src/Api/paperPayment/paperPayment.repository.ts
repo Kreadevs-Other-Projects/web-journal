@@ -49,11 +49,11 @@ export const updateReceiptRepo = async (
     `UPDATE paper_payments
      SET receipt_url = $1,
          receipt_uploaded_at = NOW(),
-         status = 'payment_review',
+         status = $2,
          updated_at = NOW()
-     WHERE paper_id = $2
+     WHERE paper_id = $3
      RETURNING *`,
-    [receipt_url, paper_id],
+    [receipt_url, 'payment_review', paper_id],
   );
   return result.rows[0];
 };

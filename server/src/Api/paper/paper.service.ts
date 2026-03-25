@@ -90,16 +90,18 @@ export const createPaperService = async (
     note: "Paper submitted — awaiting payment",
   });
 
-  // Initiate payment: create record + send invoice
+  // Initiate payment: create record + send invoice (awaited so errors surface)
   if (authorEmail && authorUsername) {
-    initiatePaperPaymentService(paper.id, data.author_id, authorEmail, authorUsername).catch(
-      () => {},
-    );
+    try {
+      await initiatePaperPaymentService(paper.id, data.author_id, authorEmail, authorUsername);
+    } catch (err) {
+      console.error("[payment] initiatePaperPaymentService failed:", err);
+    }
   }
 
   if (authorEmail && authorUsername) {
     sendSubmissionConfirmationEmail(authorEmail, authorUsername, paper.title, paper.id).catch(
-      () => {},
+      (err) => console.error("[email] submission confirmation failed:", err),
     );
   }
 

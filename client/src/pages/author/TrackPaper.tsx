@@ -234,8 +234,8 @@ export default function TrackPaper() {
             </div>
           </div>
 
-          {/* Payment Banner */}
-          {(paper.status === "awaiting_payment" || paper.status === "payment_review") && payment && (
+          {/* Payment Banner — shown whenever paper needs payment, with or without payment record loaded */}
+          {(paper.status === "awaiting_payment" || paper.status === "payment_review") && (
             <Card className="mb-6 border-orange-400/40 bg-orange-50 dark:bg-orange-950/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
@@ -244,26 +244,30 @@ export default function TrackPaper() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
-                {/* Invoice details */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 bg-white dark:bg-muted/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800/30">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Invoice #</p>
-                    <p className="font-mono font-semibold text-xs mt-0.5">{payment.invoice_number}</p>
+                {/* Invoice details — only when payment record is loaded */}
+                {payment ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 bg-white dark:bg-muted/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800/30">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Invoice #</p>
+                      <p className="font-mono font-semibold text-xs mt-0.5">{payment.invoice_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Amount Due</p>
+                      <p className="font-bold text-base text-orange-700 dark:text-orange-400">{payment.currency} {Number(payment.total_amount).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <Badge className="mt-0.5 bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 hover:bg-orange-100">
+                        {payment.status === "payment_review" ? "Under Review" : "Unpaid"}
+                      </Badge>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Amount Due</p>
-                    <p className="font-bold text-base text-orange-700 dark:text-orange-400">{payment.currency} {Number(payment.total_amount).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge className="mt-0.5 bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 hover:bg-orange-100">
-                      {payment.status === "payment_review" ? "Under Review" : "Unpaid"}
-                    </Badge>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Your invoice is being generated. Please refresh in a moment.</p>
+                )}
 
                 {/* Rejection notice */}
-                {payment.status === "failed" && payment.rejection_reason && (
+                {payment?.status === "failed" && payment.rejection_reason && (
                   <div className="flex gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg p-3">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <div>
@@ -273,7 +277,7 @@ export default function TrackPaper() {
                   </div>
                 )}
 
-                {/* Upload section */}
+                {/* Upload section — always show when awaiting_payment */}
                 {paper.status === "awaiting_payment" && (
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-xs">After completing the bank transfer, upload your payment receipt below:</p>
@@ -294,13 +298,21 @@ export default function TrackPaper() {
                 )}
 
                 {/* Already uploaded */}
-                {paper.status === "payment_review" && payment.receipt_uploaded_at && (
+                {paper.status === "payment_review" && payment?.receipt_uploaded_at && (
                   <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400">
                     <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium">Receipt submitted — awaiting publisher approval</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Uploaded on {formatDate(payment.receipt_uploaded_at)}</p>
                     </div>
+                  </div>
+                )}
+
+                {/* payment_review but no receipt timestamp — generic message */}
+                {paper.status === "payment_review" && !payment?.receipt_uploaded_at && (
+                  <div className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+                    <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>Your receipt is under review.</p>
                   </div>
                 )}
               </CardContent>

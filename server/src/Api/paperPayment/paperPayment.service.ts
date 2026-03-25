@@ -43,10 +43,12 @@ export const initiatePaperPaymentService = async (
      WHERE p.id = $1`,
     [paperId],
   );
-  if (!paperRes.rows.length) throw new Error("Paper not found");
+  if (!paperRes.rows.length) throw new Error("Paper not found for payment initiation");
   const row = paperRes.rows[0];
 
-  const pricePerPage = parseFloat(row.publication_fee) || 50;
+  console.log(`[payment] creating invoice for paper "${row.title}" — fee: ${row.publication_fee}, currency: ${row.currency}`);
+
+  const pricePerPage = row.publication_fee != null ? parseFloat(row.publication_fee) : 50;
   const currency = row.currency || "USD";
   const pages = DEFAULT_PAGES;
   const totalAmount = pricePerPage * pages;
@@ -61,6 +63,8 @@ export const initiatePaperPaymentService = async (
     currency,
     invoice_number: invoiceNumber,
   });
+
+  console.log(`[payment] record created: ${payment.id} — invoice ${invoiceNumber} — ${currency} ${totalAmount}`);
 
   const now = new Date();
   const due = new Date(now);
@@ -79,7 +83,7 @@ export const initiatePaperPaymentService = async (
     totalAmount,
     currency,
     publisherName: row.publisher_name || "Publisher",
-  }).catch(() => {});
+  }).catch((err) => console.error("[payment] invoice email failed:", err));
 
   return payment;
 };

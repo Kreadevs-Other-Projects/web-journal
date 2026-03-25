@@ -13,6 +13,7 @@ import {
   ScrollText,
   ExternalLink,
   Send,
+  UserCheck,
 } from "lucide-react";
 import { cn, getFileUrl } from "@/lib/utils";
 import { url } from "@/url";
@@ -335,10 +336,15 @@ export default function JournalDetail() {
                 )}
               </div>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 flex flex-col sm:flex-row gap-2">
               <Button asChild className="bg-gradient-primary hover:opacity-90">
                 <Link to={`/author/submit?journal=${journal.id}`}>
                   <Send className="h-4 w-4 mr-2" /> Submit an Article
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}`}>
+                  <UserCheck className="h-4 w-4 mr-2" /> Apply as Reviewer
                 </Link>
               </Button>
             </div>

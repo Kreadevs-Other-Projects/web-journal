@@ -81,22 +81,25 @@ function JournalLogo({
 
   if (logoUrl) {
     return (
-      <img
-        src={getFileUrl(logoUrl)}
-        alt={title}
-        className={cn("object-cover rounded-xl", className)}
-      />
+      <div className={cn("aspect-[3/4] overflow-hidden rounded-lg bg-muted shrink-0", className)}>
+        <img
+          src={getFileUrl(logoUrl)}
+          alt={title}
+          className="w-full h-full object-cover object-top"
+        />
+      </div>
     );
   }
   return (
     <div
       className={cn(
-        "rounded-xl flex items-center justify-center font-bold text-white text-xl",
+        "aspect-[3/4] rounded-lg flex flex-col items-center justify-center font-bold text-white shrink-0",
         placeholderBg,
         className,
       )}
     >
-      {initials}
+      <span className="text-4xl">{initials}</span>
+      <span className="text-xs text-white/60 mt-1">No Cover</span>
     </div>
   );
 }
@@ -437,15 +440,15 @@ export default function BrowsePage() {
                     <motion.div
                       whileHover={{ y: -5 }}
                       onClick={() => handleJournalClick(journal)}
-                      className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col"
+                      className="glass-card cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col overflow-hidden"
                     >
-                      <div className="flex items-start gap-4 mb-4">
-                        <JournalLogo
-                          logoUrl={journal.logo_url}
-                          title={journal.journal_title}
-                          className="h-[104px] w-[104px] shrink-0"
-                        />
-                        <div className="flex-1">
+                      <JournalLogo
+                        logoUrl={journal.logo_url}
+                        title={journal.journal_title}
+                        className="w-full h-[200px]"
+                      />
+                      <div className="p-6 flex flex-col flex-1">
+                        <div className="mb-4">
                           <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {journal.journal_title}
                           </h2>
@@ -453,31 +456,31 @@ export default function BrowsePage() {
                             {journal.issue}
                           </p>
                         </div>
-                      </div>
 
-                      <div className="space-y-2 mb-4 flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            ISSN: {journal.issn}
+                        <div className="space-y-2 mb-4 flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Tag className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              ISSN: {journal.issn}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {formatDate(journal.published_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                          <span className="text-sm font-medium text-accent">
+                            {journal.papers.length} paper
+                            {journal.papers.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                            View Journal →
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {formatDate(journal.published_at)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="pt-4 border-t border-border/50 flex items-center justify-between">
-                        <span className="text-sm font-medium text-accent">
-                          {journal.papers.length} paper
-                          {journal.papers.length !== 1 ? "s" : ""}
-                        </span>
-                        <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                          View Journal →
-                        </span>
                       </div>
                     </motion.div>
                   ) : (
@@ -490,7 +493,7 @@ export default function BrowsePage() {
                       <JournalLogo
                         logoUrl={journal.logo_url}
                         title={journal.journal_title}
-                        className="h-[104px] w-[104px] shrink-0"
+                        className="w-[78px] h-[104px] shrink-0"
                       />
 
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">

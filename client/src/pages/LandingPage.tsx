@@ -523,26 +523,31 @@ export default function LandingPage() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="glass-card p-5 flex flex-col gap-3 group"
+                  className="glass-card flex flex-col group overflow-hidden"
                 >
-                  <div className="flex items-start gap-3">
-                    {(() => {
-                      const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
-                      const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
-                      const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0, 3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
-                      return j.logo_url ? (
-                        <img
-                          src={getFileUrl(j.logo_url)}
-                          alt={j.title}
-                          className="h-[104px] w-[104px] rounded-xl object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className={`h-[104px] w-[104px] rounded-xl flex items-center justify-center font-bold text-white text-xl shrink-0 ${bg}`}>
-                          {initials}
-                        </div>
-                      );
-                    })()}
-                    <div className="flex-1 min-w-0">
+                  {(() => {
+                    const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
+                    const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
+                    const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0, 3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
+                    return (
+                      <div className="h-[200px] w-full overflow-hidden bg-muted shrink-0">
+                        {j.logo_url ? (
+                          <img
+                            src={getFileUrl(j.logo_url)}
+                            alt={j.title}
+                            className="w-full h-full object-cover object-top"
+                          />
+                        ) : (
+                          <div className={`w-full h-full flex flex-col items-center justify-center font-bold text-white ${bg}`}>
+                            <span className="text-4xl">{initials}</span>
+                            <span className="text-xs text-white/60 mt-1">No Cover</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <div className="p-5 flex flex-col gap-3 flex-1">
+                    <div>
                       <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">
                         {j.title}
                       </h3>
@@ -552,29 +557,29 @@ export default function LandingPage() {
                         </p>
                       )}
                     </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {j.type && (
+                        <Badge variant="secondary" className="text-xs">
+                          {j.type === "open_access"
+                            ? "Open Access"
+                            : "Subscription"}
+                        </Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {j.article_count ?? 0} article
+                        {j.article_count !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <Link to={`/journal/${j.id}`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-auto"
+                      >
+                        View Journal <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {j.type && (
-                      <Badge variant="secondary" className="text-xs">
-                        {j.type === "open_access"
-                          ? "Open Access"
-                          : "Subscription"}
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {j.article_count ?? 0} article
-                      {j.article_count !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <Link to={`/journal/${j.id}`}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-auto"
-                    >
-                      View Journal <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
                 </motion.div>
               ))}
             </div>
@@ -623,9 +628,14 @@ export default function LandingPage() {
                     >
                       <div className="flex items-center gap-3">
                         {j.logo_url ? (
-                          <img src={getFileUrl(j.logo_url)} alt={j.title} className="h-12 w-12 rounded-lg object-cover shrink-0" />
+                          <div className="w-[45px] h-[60px] rounded-lg overflow-hidden shrink-0">
+                            <img src={getFileUrl(j.logo_url)} alt={j.title} className="w-full h-full object-cover object-top" />
+                          </div>
                         ) : (
-                          <div className={`h-12 w-12 rounded-lg flex items-center justify-center font-bold text-white text-sm shrink-0 ${bg}`}>{initials}</div>
+                          <div className={`w-[45px] h-[60px] rounded-lg flex flex-col items-center justify-center font-bold text-white shrink-0 ${bg}`}>
+                            <span className="text-base">{initials}</span>
+                            <span className="text-[8px] text-white/60">No Cover</span>
+                          </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{j.title}</h3>

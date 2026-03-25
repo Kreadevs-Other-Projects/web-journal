@@ -232,16 +232,16 @@ export default function CreateJournal() {
             <CardContent className="space-y-4">
               {/* Logo Upload */}
               <div className="space-y-1">
-                <Label>Journal Logo</Label>
-                <div className="flex items-center gap-4">
+                <Label>Journal Cover <span className="text-muted-foreground font-normal">(Portrait recommended: 3:4 ratio)</span></Label>
+                <div className="flex items-start gap-4">
                   <div
-                    className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
+                    className="w-[90px] h-[120px] rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
                     onClick={() => logoRef.current?.click()}
                   >
                     {logoPreview ? (
-                      <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
+                      <img src={logoPreview} alt="Cover preview" className="h-full w-full object-cover object-top" />
                     ) : (
-                      <div className="text-center">
+                      <div className="text-center px-1">
                         <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
                         <span className="text-xs text-muted-foreground">Upload</span>
                       </div>
@@ -249,6 +249,7 @@ export default function CreateJournal() {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <p>Optional. JPG, PNG, WebP or GIF, max 2MB.</p>
+                    <p className="text-xs mt-1">Upload a portrait-oriented cover image for best display.</p>
                     {logo && (
                       <button
                         type="button"

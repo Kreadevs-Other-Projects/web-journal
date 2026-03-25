@@ -103,21 +103,30 @@ export const uploadReceiptService = async (
   if (!paperRes.rows.length) throw new Error("Paper not found");
   if (paperRes.rows[0].author_id !== authorId) throw new Error("Forbidden");
 
+  console.log("[receipt] Q1: updating paper_payments receipt_url...");
   const payment = await updateReceiptRepo(paperId, receiptUrl);
+  console.log("[receipt] Q1 done");
 
   // Update paper status
+  console.log("[receipt] Q2: updating papers status to payment_review...");
   await updatePaperStatus(paperId, "payment_review");
+  console.log("[receipt] Q2 done");
+
+  console.log("[receipt] Q3: inserting paper_status_log...");
   await insertStatusLog({
     paper_id: paperId,
     status: "payment_review",
     changed_by: authorId,
     note: "Payment receipt uploaded by author",
   });
+  console.log("[receipt] Q3 done");
 
   // Notify publisher (best-effort)
+  console.log("[receipt] Q4: fetching publisher email...");
   const publisherRes = await pool.query(
     `SELECT u.email FROM users u WHERE u.role = 'publisher' LIMIT 1`,
   );
+  console.log("[receipt] Q4 done");
   if (publisherRes.rows.length) {
     sendReceiptNotificationEmail({
       publisherEmail: publisherRes.rows[0].email,

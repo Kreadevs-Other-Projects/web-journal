@@ -155,9 +155,9 @@ export const updatePaperStatus = async (paper_id: string, status: string) => {
   const result = await pool.query(
     `
     UPDATE papers
-    SET status = $1,
-        accepted_at = CASE WHEN $1::text = 'accepted' THEN NOW() ELSE accepted_at END,
-        published_at = CASE WHEN $1::text = 'published' THEN NOW() ELSE published_at END,
+    SET status = $1::paper_status,
+        accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
+        published_at = CASE WHEN $1 = 'published' THEN NOW() ELSE published_at END,
         updated_at = NOW()
     WHERE id = $2
     RETURNING *

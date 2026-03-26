@@ -8,8 +8,7 @@ import {
   getPendingPaymentsRepo,
   getAllPaperPaymentsRepo,
 } from "./paperPayment.repository";
-import { insertStatusLog } from "../paper/paper.repository";
-import { updatePaperStatus } from "../paper/paper.repository";
+
 import {
   sendInvoiceEmail,
   sendReceiptNotificationEmail,
@@ -107,22 +106,8 @@ export const uploadReceiptService = async (
   const payment = await updateReceiptRepo(paperId, receiptUrl);
   console.log("[receipt] Q1 done");
 
-  // Update paper status
-  console.log("[receipt] Q2: updating papers status to payment_review...");
-  await updatePaperStatus(paperId, "payment_review");
-  console.log("[receipt] Q2 done");
-
-  console.log("[receipt] Q3: inserting paper_status_log...");
-  await insertStatusLog({
-    paper_id: paperId,
-    status: "payment_review",
-    changed_by: authorId,
-    note: "Payment receipt uploaded by author",
-  });
-  console.log("[receipt] Q3 done");
-
   // Notify publisher (best-effort)
-  console.log("[receipt] Q4: fetching publisher email...");
+  console.log("[receipt] Q2: fetching publisher email...");
   const publisherRes = await pool.query(
     `SELECT u.email FROM users u WHERE u.role = 'publisher' LIMIT 1`,
   );
@@ -151,13 +136,6 @@ export const approveOrRejectPaymentService = async (
 
   if (approved) {
     const payment = await approvePaymentRepo(paperId, publisherId);
-    await updatePaperStatus(paperId, "submitted");
-    await insertStatusLog({
-      paper_id: paperId,
-      status: "submitted",
-      changed_by: publisherId,
-      note: "Payment approved — paper entered editorial workflow",
-    });
     sendPaymentApprovalEmail({
       authorEmail: existing.author_email,
       authorName: existing.author_name,
@@ -167,13 +145,6 @@ export const approveOrRejectPaymentService = async (
     return payment;
   } else {
     const payment = await rejectPaymentRepo(paperId, rejectionReason || "Receipt rejected");
-    await updatePaperStatus(paperId, "awaiting_payment");
-    await insertStatusLog({
-      paper_id: paperId,
-      status: "awaiting_payment",
-      changed_by: publisherId,
-      note: `Payment receipt rejected: ${rejectionReason}`,
-    });
     sendPaymentApprovalEmail({
       authorEmail: existing.author_email,
       authorName: existing.author_name,

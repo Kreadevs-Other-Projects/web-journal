@@ -177,6 +177,11 @@ export const updatePaperStatusService = async (
     throw new Error("Unauthorized");
   }
 
+  const paper = await getPaperById(paper_id);
+  if (paper?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
+
   return updatePaperStatus(paper_id, status);
 };
 

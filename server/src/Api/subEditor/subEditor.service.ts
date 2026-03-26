@@ -21,6 +21,13 @@ export const assignReviewer = async (
   reviewerId: string,
   assignedBy: string,
 ) => {
+  const { rows } = await pool.query(
+    "SELECT status FROM papers WHERE id = $1",
+    [paperId],
+  );
+  if (rows[0]?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
   const assignment = await repo.assignReviewer(paperId, reviewerId, assignedBy);
   return assignment;
 };
@@ -29,6 +36,13 @@ export const setSubEditorPaperStatus = async (
   paperId: string,
   status: string,
 ) => {
+  const { rows } = await pool.query(
+    "SELECT status FROM papers WHERE id = $1",
+    [paperId],
+  );
+  if (rows[0]?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
   return repo.updatePaperStatusSubEditor(paperId, status);
 };
 
@@ -53,6 +67,13 @@ export const subEditorDecisionService = async (
   action: "approve" | "revision" | "reject",
   note?: string,
 ) => {
+  const statusCheck = await pool.query(
+    "SELECT status FROM papers WHERE id = $1",
+    [paperId],
+  );
+  if (statusCheck.rows[0]?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
   const paper = await repo.subEditorDecision(paperId, action, note);
 
   // Email notifications

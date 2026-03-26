@@ -5,10 +5,11 @@ export const getArchiveRepo = async (filters: {
   year?: number;
   volume?: number;
   issue?: number;
+  search?: string;
   page?: number;
   limit?: number;
 }) => {
-  const { journal_id, year, volume, issue, page = 1, limit = 20 } = filters;
+  const { journal_id, year, volume, issue, search, page = 1, limit = 20 } = filters;
   const offset = (page - 1) * limit;
 
   const conditions: string[] = ["p.status = 'published'"];
@@ -29,6 +30,10 @@ export const getArchiveRepo = async (filters: {
   if (issue) {
     values.push(issue);
     conditions.push(`ji.issue = $${values.length}`);
+  }
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(`(p.title ILIKE $${values.length} OR p.author_names::text ILIKE $${values.length})`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

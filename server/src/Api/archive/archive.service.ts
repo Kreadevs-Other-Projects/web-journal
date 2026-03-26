@@ -8,6 +8,7 @@ export const getArchiveService = async (filters: any) => {
     year: filters.year ? parseInt(filters.year) : undefined,
     volume: filters.volume ? parseInt(filters.volume) : undefined,
     issue: filters.issue ? parseInt(filters.issue) : undefined,
+    search: filters.search || undefined,
     page,
     limit,
   });

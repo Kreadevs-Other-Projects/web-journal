@@ -20,7 +20,7 @@ export const getBrowseDataService = async (filters: any) => {
         issue: row.issue_id
           ? `Vol ${row.volume} Issue ${row.issue} (${row.year})`
           : "No issues published yet",
-        published_at: row.published_at,
+        published_at: row.journal_created_at,
         papers: [],
       };
     }

@@ -170,6 +170,14 @@ export const assignSubEditor = async (
   subEditorId: string,
   assignedBy: string,
 ) => {
+  const statusCheck = await pool.query(
+    "SELECT status FROM papers WHERE id = $1",
+    [paperId],
+  );
+  if (statusCheck.rows[0]?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
+
   const client = await pool.connect();
 
   try {

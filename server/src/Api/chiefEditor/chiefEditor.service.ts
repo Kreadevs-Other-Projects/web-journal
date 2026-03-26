@@ -64,6 +64,11 @@ export const makeEditorDecision = async (
     throw new Error("Cannot decide without submitted reviews");
   }
 
+  const currentPaper = await repo.getPaperByIdRepo(paperId);
+  if (currentPaper?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
+
   const decisionRow = await repo.createEditorDecision(
     paperId,
     editorId,
@@ -87,6 +92,10 @@ export const makeEditorDecision = async (
 };
 
 export const changePaperStatus = async (paperId: string, status: string) => {
+  const currentPaper = await repo.getPaperByIdRepo(paperId);
+  if (currentPaper?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
   return repo.updatePaperStatus(paperId, status);
 };
 

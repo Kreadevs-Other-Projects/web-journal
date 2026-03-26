@@ -46,7 +46,7 @@ interface Journal {
   aims_and_scope?: string;
   logo_url?: string;
   issue: string;
-  published_at: string;
+  published_at: string; // journal created_at
   papers: Paper[];
 }
 

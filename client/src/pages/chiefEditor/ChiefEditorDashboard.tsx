@@ -96,6 +96,9 @@ interface Paper {
   issue_label?: string;
   journalId?: string;
   keywords?: string[];
+  current_ae_id?: string;
+  current_ae_name?: string;
+  current_ae_email?: string;
 }
 
 interface StaffMember {
@@ -1847,40 +1850,54 @@ export default function ChiefEditor() {
                 <RefreshCw className="h-5 w-5 text-orange-500" />
                 Replace Associate Editor
               </DialogTitle>
+              <p className="text-sm text-muted-foreground pt-1">
+                The current associate editor will be removed and replaced with your selection.
+              </p>
             </DialogHeader>
             {replaceAEPaper && (
               <div className="space-y-4 py-2">
                 <p className="text-sm text-muted-foreground line-clamp-2">{replaceAEPaper.title}</p>
+
+                {replaceAEPaper.current_ae_name && (
+                  <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50/50 px-3 py-2">
+                    <span className="text-xs text-orange-700 font-medium">Current:</span>
+                    <span className="text-xs text-orange-900">{replaceAEPaper.current_ae_name}</span>
+                    <span className="text-xs text-muted-foreground">({replaceAEPaper.current_ae_email})</span>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Select New Associate Editor</Label>
-                  {subEditors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No associate editors available.</p>
+                  <Label className="text-sm font-medium">Select Replacement</Label>
+                  {subEditors.filter((se) => se.id !== replaceAEPaper.current_ae_id).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No other associate editors available.</p>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                      {subEditors.map((se) => {
-                        const isSelected = replaceAESubEditorId === se.id;
-                        return (
-                          <div
-                            key={se.id}
-                            onClick={() => setReplaceAESubEditorId(se.id)}
-                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
-                                {se.profile_pic_url ? (
-                                  <img src={se.profile_pic_url} alt={se.username} className="h-full w-full object-cover" />
-                                ) : (
-                                  <span className="text-xs font-bold text-blue-700">{se.username.slice(0, 2).toUpperCase()}</span>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground">{se.username}</p>
-                                <p className="text-xs text-muted-foreground truncate">{se.email}</p>
+                      {subEditors
+                        .filter((se) => se.id !== replaceAEPaper.current_ae_id)
+                        .map((se) => {
+                          const isSelected = replaceAESubEditorId === se.id;
+                          return (
+                            <div
+                              key={se.id}
+                              onClick={() => setReplaceAESubEditorId(se.id)}
+                              className={`rounded-lg border p-3 cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                  {se.profile_pic_url ? (
+                                    <img src={se.profile_pic_url} alt={se.username} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <span className="text-xs font-bold text-blue-700">{se.username.slice(0, 2).toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-foreground">{se.username}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{se.email}</p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   )}
                 </div>

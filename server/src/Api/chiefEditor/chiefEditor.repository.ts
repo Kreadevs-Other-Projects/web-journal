@@ -81,12 +81,18 @@ export const getAllPapers = async (chiefEditorId: string) => {
       u.username AS author_name,
       j.title AS journal_name,
       ji.label AS issue_label,
-      ed.decision AS editor_decision
+      ed.decision AS editor_decision,
+      ae.id AS current_ae_id,
+      ae.username AS current_ae_name,
+      ae.email AS current_ae_email
     FROM papers p
     JOIN journals j ON j.id = p.journal_id
     LEFT JOIN users u ON u.id = p.author_id
     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
     LEFT JOIN editor_decisions ed ON ed.paper_id = p.id
+    LEFT JOIN editor_assignments ea_active ON ea_active.paper_id = p.id
+      AND ea_active.status NOT IN ('reassigned', 'rejected', 'completed')
+    LEFT JOIN users ae ON ae.id = ea_active.sub_editor_id
     WHERE j.chief_editor_id = $1
     ORDER BY p.created_at DESC
     `,
@@ -183,27 +189,25 @@ export const assignSubEditor = async (
   try {
     await client.query("BEGIN");
 
+    // Deactivate any existing active assignment before inserting a new one
+    await client.query(
+      `UPDATE editor_assignments
+       SET status = 'reassigned', completed_at = NOW()
+       WHERE paper_id = $1
+         AND status NOT IN ('reassigned', 'rejected', 'completed')`,
+      [paperId],
+    );
+
     const assignmentResult = await client.query(
-      `
-      INSERT INTO editor_assignments
-        (paper_id, sub_editor_id, assigned_by, assigned_at)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (paper_id)
-      DO UPDATE SET
-        sub_editor_id = EXCLUDED.sub_editor_id,
-        assigned_by = EXCLUDED.assigned_by,
-        assigned_at = EXCLUDED.assigned_at
-      RETURNING *
-      `,
+      `INSERT INTO editor_assignments
+         (paper_id, sub_editor_id, assigned_by, assigned_at, status)
+       VALUES ($1, $2, $3, NOW(), 'pending')
+       RETURNING *`,
       [paperId, subEditorId, assignedBy],
     );
 
     await client.query(
-      `
-      UPDATE papers
-      SET status = 'assigned_to_sub_editor'
-      WHERE id = $1
-      `,
+      `UPDATE papers SET status = 'assigned_to_sub_editor' WHERE id = $1`,
       [paperId],
     );
 

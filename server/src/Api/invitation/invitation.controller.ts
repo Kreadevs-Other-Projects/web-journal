@@ -6,11 +6,13 @@ import {
   acceptInvitationService,
   cancelInvitationService,
   getJournalInvitationsService,
+  resendInvitationService,
 } from "./invitation.service";
 
 export const sendInvitation = async (req: AuthUser, res: Response) => {
   try {
-    if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!req.user)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     const result = await sendInvitationService(req.user as any, req.body);
     return res.status(201).json({ success: true, ...result });
   } catch (e: any) {
@@ -32,7 +34,10 @@ export const acceptInvitation = async (req: Request, res: Response) => {
   try {
     const { password } = req.body;
     if (!password || password.length < 8) {
-      return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
     }
     const result = await acceptInvitationService(req.params.token, password);
     return res.status(201).json({ success: true, ...result });
@@ -44,7 +49,8 @@ export const acceptInvitation = async (req: Request, res: Response) => {
 
 export const cancelInvitation = async (req: AuthUser, res: Response) => {
   try {
-    if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!req.user)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     const result = await cancelInvitationService(
       req.params.invitationId,
       req.user.id,
@@ -58,8 +64,29 @@ export const cancelInvitation = async (req: AuthUser, res: Response) => {
 
 export const getJournalInvitations = async (req: AuthUser, res: Response) => {
   try {
-    const invitations = await getJournalInvitationsService(req.params.journalId);
+    const invitations = await getJournalInvitationsService(
+      req.params.journalId,
+    );
     return res.json({ success: true, invitations });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, message: e.message });
+  }
+};
+export const resendInvitation = async (req: AuthUser, res: Response) => {
+  console.log(req.body, req.params);
+  try {
+    const { email, role, journal_id, chiedEditorName, title } = req.body;
+    const username = req.user?.username || "";
+    const result = await resendInvitationService(
+      email,
+      role,
+      journal_id,
+      username,
+      chiedEditorName,
+      title,
+    );
+
+    return res.json({ success: true, ...result });
   } catch (e: any) {
     return res.status(400).json({ success: false, message: e.message });
   }

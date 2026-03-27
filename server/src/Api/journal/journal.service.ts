@@ -23,23 +23,27 @@ export type Journal = {
   chief_editor_id: string;
 };
 
-const SKIP_WORDS = new Set(['of', 'the', 'and', 'for', 'in', 'a', 'an']);
+const SKIP_WORDS = new Set(["of", "the", "and", "for", "in", "a", "an"]);
 
 function buildAcronym(title: string): string {
   const letters = title
     .split(/\s+/)
     .filter((w) => w.length > 0 && !SKIP_WORDS.has(w.toLowerCase()))
     .map((w) => w[0].toUpperCase())
-    .join('');
+    .join("");
   return letters || title.slice(0, 3).toUpperCase();
 }
 
 async function getUniqueAcronym(base: string): Promise<string> {
-  const check = await pool.query('SELECT 1 FROM journals WHERE acronym = $1', [base]);
+  const check = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
+    base,
+  ]);
   if (!check.rows.length) return base;
   for (let n = 2; n <= 99; n++) {
     const candidate = `${base}${n}`;
-    const r = await pool.query('SELECT 1 FROM journals WHERE acronym = $1', [candidate]);
+    const r = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
+      candidate,
+    ]);
     if (!r.rows.length) return candidate;
   }
   return `${base}${Date.now()}`;
@@ -60,7 +64,6 @@ export type PublisherJournalData = {
   currency?: string | null;
   logo_url?: string | null;
 };
-
 
 export const addJournalService = async (
   user: { id: string; role: string },
@@ -157,9 +160,14 @@ export const deleteJournalService = async (id: string) => {
   }
 };
 
-export const updateJournalLogoService = async (id: string, logo_url: string) => {
-  const { pool } = await import("../../configs/db");
-  await pool.query("UPDATE journals SET logo_url = $1 WHERE id = $2", [logo_url, id]);
+export const updateJournalLogoService = async (
+  id: string,
+  logo_url: string,
+) => {
+  await pool.query("UPDATE journals SET logo_url = $1 WHERE id = $2", [
+    logo_url,
+    id,
+  ]);
 };
 
 export const getEditorialBoardService = async (journalId: string) => {

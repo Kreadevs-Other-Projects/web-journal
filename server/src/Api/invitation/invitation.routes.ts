@@ -6,6 +6,7 @@ import {
   acceptInvitation,
   cancelInvitation,
   getJournalInvitations,
+  resendInvitation,
 } from "./invitation.controller";
 
 const router = Router();
@@ -39,5 +40,8 @@ router.get(
   authorize("publisher", "chief_editor", "owner"),
   getJournalInvitations,
 );
+
+// Endpoint: POST /api/invitations/resend
+router.post("/resend", resendInvitation);
 
 export default router;

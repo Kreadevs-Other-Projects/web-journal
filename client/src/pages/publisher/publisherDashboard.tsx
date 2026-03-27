@@ -43,6 +43,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { title } from "process";
 
 interface User {
   id: string;
@@ -80,6 +81,14 @@ interface Journal {
   chief_editor: User | null;
   owner: User;
   issues: JournalIssue[];
+
+  // These fields are populated by the new LEFT JOIN subquery
+  chief_editor_invitation_status?:
+    | "pending"
+    | "expired"
+    | "accepted"
+    | "cancelled";
+  chief_editor_email?: string;
 }
 
 /* PAYMENT_DISABLED: Payment step hidden per client instruction
@@ -441,6 +450,55 @@ export default function PublisherDashboard() {
       setInvitingCE(false);
     }
   };
+  const [resending, setResending] = useState(false);
+
+  const resendInvitation = async () => {
+    // Only proceed if we have a journal and an email to send to
+    if (!selectedJournal || !selectedJournal.chief_editor_email) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No email address found to resend the invitation.",
+      });
+      return;
+    }
+
+    try {
+      setResending(true);
+      const res = await fetch(`${url}/invitations/resend`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          journal_id: selectedJournal.id,
+          email: selectedJournal.chief_editor_email,
+          role: "chief_editor",
+          title: selectedJournal.title,
+          chiefEditorName: selectedJournal.chief_editor,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Resend failed");
+
+      toast({
+        title: "Invitation Resent",
+        description: `A fresh invitation was sent to ${selectedJournal.chief_editor_email}`,
+      });
+
+      fetchJournals(); // Refresh list to change status from 'expired' to 'pending'
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setResending(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -633,7 +691,7 @@ export default function PublisherDashboard() {
                     key={journal.id}
                     className="glass-card hover:shadow-lg transition-all duration-300 hover:border-blue-500/50 cursor-pointer group"
                     onClick={() => {
-                      setSelectedJournal(journal);
+                      (console.log({ journal }), setSelectedJournal(journal));
                       setDetailsModalOpen(true);
                     }}
                   >
@@ -767,6 +825,7 @@ export default function PublisherDashboard() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Owner Section */}
                       <div>
                         <p className="text-sm text-gray-600">Owner</p>
                         <div className="flex items-center gap-2 mt-2">
@@ -780,28 +839,53 @@ export default function PublisherDashboard() {
                           </div>
                         </div>
                       </div>
+
                       <Separator />
+
+                      {/* Chief Editor Section */}
                       <div>
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-gray-600">Chief Editor</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs gap-1"
-                            onClick={() => {
-                              setReplaceCEStep(
-                                selectedJournal.chief_editor
-                                  ? "confirm"
-                                  : "invite",
-                              );
-                              setReplaceCEOpen(true);
-                            }}
-                          >
-                            {selectedJournal.chief_editor
-                              ? "Replace"
-                              : "Invite"}
-                          </Button>
+                          <div className="flex gap-2">
+                            {/* THE FIX: Resend button appears ONLY when status is 'expired' */}
+                            {selectedJournal.chief_editor_invitation_status ===
+                              "expired" && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border border-amber-500/30"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  resendInvitation();
+                                }}
+                                disabled={resending}
+                              >
+                                <Bell className="h-3 w-3" />
+                                {resending ? "Sending..." : "Resend"}
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReplaceCEStep(
+                                  selectedJournal.chief_editor
+                                    ? "confirm"
+                                    : "invite",
+                                );
+                                setReplaceCEOpen(true);
+                              }}
+                            >
+                              {selectedJournal.chief_editor
+                                ? "Replace"
+                                : "Invite"}
+                            </Button>
+                          </div>
                         </div>
+
                         {selectedJournal.chief_editor ? (
                           <div className="flex items-center gap-2 mt-2">
                             <User className="h-4 w-4 text-purple-400" />
@@ -814,10 +898,22 @@ export default function PublisherDashboard() {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-amber-400 mt-2 flex items-center gap-1">
-                            <AlertCircle className="h-3.5 w-3.5" />
-                            No chief editor — invitation pending or not yet sent
-                          </p>
+                          <div className="mt-2">
+                            <p
+                              className={`text-sm flex items-center gap-1 ${
+                                selectedJournal.chief_editor_invitation_status ===
+                                "expired"
+                                  ? "text-red-400 font-medium"
+                                  : "text-amber-400"
+                              }`}
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {selectedJournal.chief_editor_invitation_status ===
+                              "expired"
+                                ? `Invitation to ${selectedJournal.chief_editor_email || "editor"} has expired`
+                                : "No chief editor — invitation pending or not yet sent"}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </CardContent>

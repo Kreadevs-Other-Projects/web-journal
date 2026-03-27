@@ -35,7 +35,7 @@ export const getPublisherJournals = async (publisherId: string) => {
     SELECT
       j.*,
 
-      -- chief editor user (nullable — invitation may not yet be accepted)
+      -- chief editor user (nullable)
       CASE WHEN ce.id IS NOT NULL THEN
         json_build_object(
           'id', ce.id,
@@ -52,6 +52,10 @@ export const getPublisherJournals = async (publisherId: string) => {
         'email', o.email,
         'created_at', o.created_at
       ) AS owner,
+
+      -- Latest Chief Editor Invitation Data
+      inv.status AS chief_editor_invitation_status,
+      inv.email AS chief_editor_email,
 
       -- journal issues array
       COALESCE(
@@ -75,13 +79,23 @@ export const getPublisherJournals = async (publisherId: string) => {
     LEFT JOIN users ce ON ce.id = j.chief_editor_id
     JOIN users o ON o.id = j.owner_id
     LEFT JOIN journal_issues ji ON ji.journal_id = j.id
+    
+    -- Subquery to get the latest chief editor invitation
+    LEFT JOIN (
+      SELECT DISTINCT ON (journal_id) 
+        journal_id, status, email 
+      FROM staff_invitations 
+      WHERE role = 'chief_editor' 
+      ORDER BY journal_id, created_at DESC
+    ) inv ON inv.journal_id = j.id
+
     LEFT JOIN (
       SELECT issue_id, COUNT(*)::int AS cnt FROM papers GROUP BY issue_id
     ) ipc ON ipc.issue_id = ji.id
 
     WHERE j.owner_id = $1
 
-    GROUP BY j.id, ce.id, o.id
+    GROUP BY j.id, ce.id, o.id, inv.status, inv.email
     ORDER BY j.created_at DESC
   `,
     [publisherId],

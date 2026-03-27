@@ -11,6 +11,8 @@ import {
   markInvitationAccepted,
   markInvitationCancelled,
   hasPendingInvitation,
+  updateInvitationForResend,
+  findExpiredInvitation,
 } from "./invitation.repository";
 import { sendInvitationEmail } from "../../utils/emails/userEmails";
 import { sendWelcomeEmail } from "../../utils/emails/userEmails";
@@ -290,6 +292,42 @@ export const cancelInvitationService = async (
 };
 
 export const getJournalInvitationsService = async (journal_id: string) => {
-  const { getInvitationsForJournal } = await import("./invitation.repository");
+  const { getInvitationsForJournal } =
+    await import("./invitation.repository.js");
   return getInvitationsForJournal(journal_id);
+};
+
+import crypto from "crypto";
+
+export const resendInvitationService = async (
+  email: string,
+  role: string,
+  journal_id: string,
+  title: string,
+  username: string,
+  cheifEditorName: string,
+) => {
+  // 1. Check if an expired invitation actually exists
+  const inv = await findExpiredInvitation(email, role, journal_id);
+  if (!inv) throw new Error("No expired invitation found to resend");
+
+  // 2. Generate a new secure hex token
+  const newToken = crypto.randomBytes(32).toString("hex");
+
+  // 3. Update the database
+  const newInv = await updateInvitationForResend(inv.id, newToken);
+
+  const acceptLink = `${env.FRONTEND_URL}/accept-invitation?token=${newToken}`;
+
+  sendInvitationEmail({
+    to: email,
+    name: cheifEditorName,
+    invitedByName: username,
+    journalName: title,
+    role,
+    expiresAt: newInv.expires_at,
+    acceptLink,
+  }).catch(console.error);
+
+  return { message: "Invitation resent successfully" };
 };

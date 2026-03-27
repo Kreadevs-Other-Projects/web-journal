@@ -28,6 +28,7 @@ import invitationRoutes from "./Api/invitation/invitation.routes";
 import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
 import contactRoutes from "./Api/contact/contact.route";
 import categoriesRoutes from "./Api/categories/categories.route";
+import journalCategoriesRoutes from "./Api/journalCategories/journalCategories.route";
 
 const app = express();
 app.use(express.json());
@@ -68,6 +69,7 @@ app.use("/api/archive", archiveRouter);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/journal-categories", journalCategoriesRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

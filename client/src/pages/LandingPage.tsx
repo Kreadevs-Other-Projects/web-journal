@@ -132,8 +132,17 @@ export default function LandingPage() {
   const [openJournalsLoading, setOpenJournalsLoading] = useState(true);
 
   // Inline section filters
-  const [journalFilters, setJournalFilters] = useState({ q: "", type: "" });
+  const [journalFilters, setJournalFilters] = useState({ q: "", type: "", category_id: "" });
   const [paperFilters, setPaperFilters] = useState({ q: "", category: "", year: "" });
+
+  // Journal categories for filter chips
+  const [journalCategoryChips, setJournalCategoryChips] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch(`${url}/journal-categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJournalCategoryChips(d.categories || []); })
+      .catch(() => {});
+  }, []);
 
   // Debounced journal filter fetch
   useEffect(() => {
@@ -143,6 +152,7 @@ export default function LandingPage() {
         const params = new URLSearchParams({ limit: "6" });
         if (journalFilters.q) params.set("q", journalFilters.q);
         if (journalFilters.type) params.set("type", journalFilters.type);
+        if (journalFilters.category_id) params.set("category_id", journalFilters.category_id);
         const r = await fetch(`${url}/browse/home/journals?${params}`);
         const d = await r.json();
         if (d.success) setHomeJournals(d.journals || []);
@@ -469,7 +479,36 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Journal filters */}
+          {/* Journal category chips */}
+          {journalCategoryChips.length > 0 && (
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setJournalFilters((p) => ({ ...p, category_id: "" }))}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                  !journalFilters.category_id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                All
+              </button>
+              {journalCategoryChips.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setJournalFilters((p) => ({ ...p, category_id: p.category_id === cat.id ? "" : cat.id }))}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                    journalFilters.category_id === cat.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Journal search + type filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -487,12 +526,12 @@ export default function LandingPage() {
               className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[160px]"
             >
               <option value="">All Types</option>
-              <option value="Open Access">Open Access</option>
-              <option value="Subscription">Subscription</option>
+              <option value="open_access">Open Access</option>
+              <option value="subscription">Subscription</option>
             </select>
-            {(journalFilters.q || journalFilters.type) && (
+            {(journalFilters.q || journalFilters.type || journalFilters.category_id) && (
               <button
-                onClick={() => setJournalFilters({ q: "", type: "" })}
+                onClick={() => setJournalFilters({ q: "", type: "", category_id: "" })}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Clear
@@ -516,7 +555,7 @@ export default function LandingPage() {
             </div>
           ) : homeJournals.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              {(journalFilters.q || journalFilters.type) ? "No journals match your filters." : "No journals available yet."}
+              {(journalFilters.q || journalFilters.type || journalFilters.category_id) ? "No journals match your filters." : "No journals available yet."}
             </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -566,6 +605,11 @@ export default function LandingPage() {
                           {j.type === "open_access"
                             ? "Open Access"
                             : "Subscription"}
+                        </Badge>
+                      )}
+                      {j.category_name && (
+                        <Badge variant="outline" className="text-xs border-primary/30 text-primary/80">
+                          {j.category_name}
                         </Badge>
                       )}
                       <span className="text-xs text-muted-foreground">

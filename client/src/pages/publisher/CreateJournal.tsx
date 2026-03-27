@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
@@ -30,6 +30,7 @@ import {
   User,
   Upload,
   X,
+  Plus,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
@@ -43,6 +44,14 @@ interface JournalFields {
   oa_policy: string;
   author_guidelines: string;
   aims_and_scope: string;
+  journal_category_id: string;
+}
+
+interface JournalCategory {
+  id: string;
+  name: string;
+  slug: string;
+  journal_count: number;
 }
 
 interface StaffFields {
@@ -60,6 +69,7 @@ const defaultJournal: JournalFields = {
   oa_policy: "",
   author_guidelines: "",
   aims_and_scope: "",
+  journal_category_id: "",
 };
 
 const defaultStaff: StaffFields = { name: "", email: "" };
@@ -78,9 +88,42 @@ export default function CreateJournal() {
     useState<StaffFields>(defaultStaff);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [journalCategories, setJournalCategories] = useState<JournalCategory[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  const fetchJournalCategories = () => {
+    fetch(`${url}/journal-categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJournalCategories(d.categories || []); })
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchJournalCategories(); }, []);
+
+  const handleQuickAddCategory = async () => {
+    if (!newCategoryName.trim() || addingCategory) return;
+    setAddingCategory(true);
+    try {
+      const res = await fetch(`${url}/journal-categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Failed");
+      setNewCategoryName("");
+      fetchJournalCategories();
+      updateJournal("journal_category_id", data.category.id);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setAddingCategory(false);
+    }
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,6 +223,8 @@ export default function CreateJournal() {
       formData.append("author_guidelines", journal.author_guidelines);
       if (journal.aims_and_scope)
         formData.append("aims_and_scope", journal.aims_and_scope);
+      if (journal.journal_category_id)
+        formData.append("journal_category_id", journal.journal_category_id);
       formData.append("chief_editor", JSON.stringify(chiefEditor));
       formData.append("journal_manager", JSON.stringify(journalManager));
 
@@ -380,6 +425,45 @@ export default function CreateJournal() {
                       <SelectItem value="subscription">Subscription</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="space-y-1">
+                <Label>Subject Category</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={journal.journal_category_id}
+                    onValueChange={(v) => updateJournal("journal_category_id", v)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select a subject category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {journalCategories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-1">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New category..."
+                      className="w-40"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleQuickAddCategory(); } }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleQuickAddCategory}
+                      disabled={!newCategoryName.trim() || addingCategory}
+                      title="Add new category"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 

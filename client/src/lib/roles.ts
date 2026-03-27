@@ -56,7 +56,8 @@ export const roleConfig: Record<
         icon: FileText,
       },
       { label: "Payments", path: "/publisher/payments", icon: CreditCard },
-      { label: "Categories", path: "/publisher/categories", icon: Tag },
+      { label: "Paper Categories", path: "/publisher/categories", icon: Tag },
+      { label: "Journal Categories", path: "/publisher/journal-categories", icon: Tag },
     ],
   },
 

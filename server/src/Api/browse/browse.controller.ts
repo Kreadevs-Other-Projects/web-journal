@@ -32,7 +32,8 @@ export const getHomeJournals = async (req: Request, res: Response) => {
     const q = req.query.q as string | undefined;
     const type = req.query.type as string | undefined;
     const open = req.query.open === "true";
-    const journals = await getPublicJournalsRepo({ limit, q, type, open: open || undefined });
+    const category_id = req.query.category_id as string | undefined;
+    const journals = await getPublicJournalsRepo({ limit, q, type, open: open || undefined, category_id });
     res.json({ success: true, journals });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch journals" });

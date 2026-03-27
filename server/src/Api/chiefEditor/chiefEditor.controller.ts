@@ -4,6 +4,7 @@ import { AuthUser } from "../../middlewares/auth.middleware";
 import { pool } from "../../configs/db";
 import { sendInvitationService } from "../invitation/invitation.service";
 import { sendRejectionEmailToApplicant } from "../../utils/emails/reviewerApplicationEmail";
+import asyncHandler from "../../utils/asyncHandler";
 
 export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
   try {
@@ -90,21 +91,56 @@ export const assignSubEditor = async (req: AuthUser, res: Response) => {
 };
 
 export const decidePaper = async (req: AuthUser, res: Response) => {
-  const { paperId } = req.params;
-  const { decision, decision_note } = req.body;
+  try {
+    const { paperId } = req.params;
+    const { decision, decision_note, email, password } = req.body;
 
-  const result = await service.makeEditorDecision(
-    paperId,
-    req.user!.id,
-    decision,
-    decision_note,
-  );
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required to submit a decision" });
+    }
 
-  res.json({
-    success: true,
-    message: "Editor decision saved successfully",
-    data: result,
-  });
+    const result = await service.makeEditorDecision(
+      paperId,
+      req.user!.id,
+      email,
+      password,
+      decision,
+      decision_note || "",
+    );
+
+    res.json({
+      success: true,
+      message: "Editor decision saved successfully",
+      data: result,
+    });
+  } catch (e: any) {
+    const status = e.message.includes("Email does not match") || e.message.includes("Incorrect password") ? 401 : 400;
+    res.status(status).json({ success: false, message: e.message });
+  }
+};
+
+export const replaceSubEditor = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { newSubEditorId } = req.body;
+    if (!newSubEditorId) {
+      return res.status(400).json({ success: false, message: "newSubEditorId is required" });
+    }
+    const result = await service.replaceSubEditorService(paperId, req.user!.id, newSubEditorId);
+    res.json({ success: true, message: "Associate editor replaced successfully", data: result });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getPaperDecisionHistory = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const history = await service.getPaperDecisionHistoryService(paperId);
+    res.json({ success: true, history });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
 };
 
 export const updatePaperStatus = async (req: Request, res: Response) => {

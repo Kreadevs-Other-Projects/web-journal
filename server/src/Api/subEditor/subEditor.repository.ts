@@ -144,8 +144,9 @@ export const getReviewsForPaper = async (paperId: string) => {
 
 export const subEditorDecision = async (
   paperId: string,
+  subEditorId: string,
   action: "approve" | "revision" | "reject",
-  note?: string,
+  comments?: string,
 ) => {
   const statusMap = {
     approve: "sub_editor_approved",
@@ -153,11 +154,46 @@ export const subEditorDecision = async (
     reject: "rejected",
   };
   const newStatus = statusMap[action];
-  const result = await pool.query(
-    `UPDATE papers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-    [newStatus, paperId],
-  );
-  return result.rows[0];
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get current version id for audit record
+    const paperRes = await client.query(
+      `SELECT current_version_id FROM papers WHERE id = $1`,
+      [paperId],
+    );
+    const currentVersionId = paperRes.rows[0]?.current_version_id ?? null;
+
+    // Update paper status
+    const result = await client.query(
+      `UPDATE papers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [newStatus, paperId],
+    );
+
+    // Insert into sub_editor_decisions
+    await client.query(
+      `INSERT INTO sub_editor_decisions (paper_id, sub_editor_id, decision, comments, paper_version_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [paperId, subEditorId, action, comments ?? null, currentVersionId],
+    );
+
+    // Insert into paper_status_log
+    await client.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+       VALUES ($1, $2, $3, $4)`,
+      [paperId, newStatus, subEditorId, comments ?? `Sub editor decision: ${action}`],
+    );
+
+    await client.query("COMMIT");
+    return result.rows[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 // ---- Reviewer Requests ----

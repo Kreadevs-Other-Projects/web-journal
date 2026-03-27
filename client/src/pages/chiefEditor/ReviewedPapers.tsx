@@ -72,6 +72,8 @@ export default function ChiefEditorSubmittedReviews() {
   );
   const [decision, setDecision] = useState("accepted");
   const [decisionNote, setDecisionNote] = useState("");
+  const [credentialEmail, setCredentialEmail] = useState("");
+  const [credentialPassword, setCredentialPassword] = useState("");
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -200,6 +202,15 @@ export default function ChiefEditorSubmittedReviews() {
   const saveDecision = async () => {
     if (!selectedReview) return;
 
+    if (!credentialEmail || !credentialPassword) {
+      toast({
+        title: "Credentials required",
+        description: "Please enter your email and password to confirm this decision.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const res = await fetch(
         `${url}/chiefEditor/decide/${selectedReview.paperId}`,
@@ -209,7 +220,7 @@ export default function ChiefEditorSubmittedReviews() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ decision, decision_note: decisionNote }),
+          body: JSON.stringify({ decision, decision_note: decisionNote, email: credentialEmail, password: credentialPassword }),
         },
       );
 
@@ -247,6 +258,8 @@ export default function ChiefEditorSubmittedReviews() {
       setOpenDecision(false);
       setSelectedReview(null);
       setDecisionNote("");
+      setCredentialEmail("");
+      setCredentialPassword("");
 
       toast({
         title: "Decision saved",
@@ -748,17 +761,45 @@ export default function ChiefEditorSubmittedReviews() {
                     {decisionNote.length}/5 characters
                   </div>
                 </div>
+
+                <div className="border-t border-border pt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Verify your identity</p>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium block">Email <span className="text-red-400">*</span></label>
+                    <Input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={credentialEmail}
+                      onChange={(e) => setCredentialEmail(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium block">Password <span className="text-red-400">*</span></label>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={credentialPassword}
+                      onChange={(e) => setCredentialPassword(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button
                   variant="outline"
-                  onClick={() => setOpenDecision(false)}
+                  onClick={() => {
+                    setOpenDecision(false);
+                    setCredentialEmail("");
+                    setCredentialPassword("");
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={saveDecision}
-                  disabled={decisionNote.length < 5}
+                  disabled={decisionNote.length < 5 || !credentialEmail || !credentialPassword}
                 >
                   Save Decision
                 </Button>

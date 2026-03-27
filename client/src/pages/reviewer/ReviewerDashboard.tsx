@@ -75,6 +75,8 @@ export default function ReviewerDashboard() {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
+  const [reviewEmail, setReviewEmail] = useState("");
+  const [reviewPassword, setReviewPassword] = useState("");
 
   const fetchPapers = async () => {
     if (!token) return;
@@ -157,11 +159,11 @@ export default function ReviewerDashboard() {
 
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
-      toast({
-        title: "Incomplete",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
+      toast({ title: "Incomplete", description: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    if (!reviewEmail || !reviewPassword) {
+      toast({ title: "Credentials required", description: "Enter your email and password to submit the review", variant: "destructive" });
       return;
     }
 
@@ -174,7 +176,7 @@ export default function ReviewerDashboard() {
 
   const handleReviewSubmission = async (
     signature?: string,
-    password?: string,
+    signaturePassword?: string,
   ) => {
     if (!selectedPaper) return;
 
@@ -184,21 +186,17 @@ export default function ReviewerDashboard() {
       formData.append("decision", decision);
       formData.append("comments", comments);
       formData.append("confidentialComments", confidentialComments);
+      formData.append("email", reviewEmail);
+      formData.append("password", signaturePassword || reviewPassword);
 
       if (decision === "accepted" || decision === "rejected") {
-        if (!signature || !password) {
-          toast({
-            title: "Error",
-            description: "Signature and password required",
-            variant: "destructive",
-          });
+        if (!signature || !signaturePassword) {
+          toast({ title: "Error", description: "Signature and password required", variant: "destructive" });
           return;
         }
 
         const signatureFile = base64ToFile(signature, "signature.png");
-
         formData.append("signature", signatureFile);
-        formData.append("password", password);
       }
 
       const res = await fetch(
@@ -650,9 +648,35 @@ export default function ReviewerDashboard() {
                           </RadioGroup>
                         </div>
 
+                        <div className="border-t border-border pt-4 space-y-3">
+                          <p className="text-sm font-medium text-muted-foreground">Verify your identity to submit</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs mb-1 block">Email *</Label>
+                              <input
+                                type="email"
+                                className="w-full rounded-md border border-border bg-background text-foreground px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
+                                placeholder="your@email.com"
+                                value={reviewEmail}
+                                onChange={(e) => setReviewEmail(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs mb-1 block">Password *</Label>
+                              <input
+                                type="password"
+                                className="w-full rounded-md border border-border bg-background text-foreground px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
+                                placeholder="••••••••"
+                                value={reviewPassword}
+                                onChange={(e) => setReviewPassword(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         <Button
                           onClick={submitReview}
-                          disabled={!decision || !comments.trim()}
+                          disabled={!decision || !comments.trim() || !reviewEmail || !reviewPassword}
                           className="w-full btn-physics"
                           size="lg"
                         >

@@ -47,6 +47,8 @@ import {
   GraduationCap,
   Mail,
   Calendar,
+  History,
+  RefreshCw,
 } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -157,6 +159,8 @@ export default function ChiefEditor() {
   const [ceDecisionAction, setCeDecisionAction] = useState<"accepted" | "rejected" | "revision" | "">("");
   const [ceDecisionNote, setCeDecisionNote] = useState("");
   const [submittingCeDecision, setSubmittingCeDecision] = useState(false);
+  const [ceDecisionEmail, setCeDecisionEmail] = useState("");
+  const [ceDecisionPassword, setCeDecisionPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [dashboardTab, setDashboardTab] = useState("overview");
@@ -173,6 +177,16 @@ export default function ChiefEditor() {
   const [reviewerRequests, setReviewerRequests] = useState<ReviewerRequest[]>([]);
   const [reviewerRequestsLoading, setReviewerRequestsLoading] = useState(false);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
+  // Replace AE
+  const [replaceAEPaper, setReplaceAEPaper] = useState<Paper | null>(null);
+  const [replaceAESubEditorId, setReplaceAESubEditorId] = useState("");
+  const [replacingAE, setReplacingAE] = useState(false);
+
+  // Decision History
+  const [historyPaper, setHistoryPaper] = useState<Paper | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchJournals = async () => {
     try {
@@ -549,14 +563,58 @@ export default function ChiefEditor() {
     }
   };
 
+  const replaceSubEditor = async () => {
+    if (!replaceAEPaper || !replaceAESubEditorId) return;
+    try {
+      setReplacingAE(true);
+      const res = await fetch(`${url}/chiefEditor/papers/${replaceAEPaper.id}/replace-ae`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newSubEditorId: replaceAESubEditorId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to replace Associate Editor");
+      toast({ title: "AE Replaced", description: "The Associate Editor has been replaced successfully." });
+      setReplaceAEPaper(null);
+      setReplaceAESubEditorId("");
+      fetchPapers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setReplacingAE(false);
+    }
+  };
+
+  const fetchDecisionHistory = async (paper: Paper) => {
+    setHistoryPaper(paper);
+    setHistoryEntries([]);
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`${url}/chiefEditor/papers/${paper.id}/decision-history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch history");
+      setHistoryEntries(data.data || []);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const submitCeDecision = async () => {
     if (!ceDecisionPaper || !ceDecisionAction) return;
+    if (!ceDecisionEmail || !ceDecisionPassword) {
+      toast({ title: "Credentials required", description: "Enter your email and password to confirm this decision.", variant: "destructive" });
+      return;
+    }
     try {
       setSubmittingCeDecision(true);
       const res = await fetch(`${url}/chiefEditor/decide/${ceDecisionPaper.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ decision: ceDecisionAction, decision_note: ceDecisionNote }),
+        body: JSON.stringify({ decision: ceDecisionAction, decision_note: ceDecisionNote, email: ceDecisionEmail, password: ceDecisionPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to submit decision");
@@ -564,6 +622,8 @@ export default function ChiefEditor() {
       setCeDecisionPaper(null);
       setCeDecisionAction("");
       setCeDecisionNote("");
+      setCeDecisionEmail("");
+      setCeDecisionPassword("");
       fetchPapers();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -1009,15 +1069,33 @@ export default function ChiefEditor() {
                         return (
                           <TooltipProvider>
                             <div className="flex flex-col gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2.5 text-xs whitespace-nowrap"
+                                onClick={() => fetchDecisionHistory(paper)}
+                              >
+                                <History className="h-3 w-3 mr-1" /> History
+                              </Button>
                               {subEditorAssigned ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  className="h-7 px-2.5 text-xs whitespace-nowrap border-green-400 text-green-600"
-                                >
-                                  <CheckCircle className="h-3 w-3 mr-1" /> Sub Editor Assigned
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="h-7 px-2.5 text-xs whitespace-nowrap border-green-400 text-green-600"
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1" /> Sub Editor Assigned
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs whitespace-nowrap border-orange-300 text-orange-700 hover:bg-orange-50"
+                                    onClick={() => { setReplaceAEPaper(paper); setReplaceAESubEditorId(""); }}
+                                  >
+                                    <RefreshCw className="h-3 w-3 mr-1" /> Replace AE
+                                  </Button>
+                                </>
                               ) : (
                                 <Button
                                   variant="outline"
@@ -1703,7 +1781,7 @@ export default function ChiefEditor() {
         <Dialog
           open={!!ceDecisionPaper}
           onOpenChange={(open) => {
-            if (!open) { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); }
+            if (!open) { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); setCeDecisionEmail(""); setCeDecisionPassword(""); }
           }}
         >
           <DialogContent className="max-w-md">
@@ -1726,9 +1804,20 @@ export default function ChiefEditor() {
                   onChange={(e) => setCeDecisionNote(e.target.value)}
                 />
               </div>
+              <div className="border-t border-border pt-3 space-y-2">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Verify your identity</p>
+                <div className="space-y-1">
+                  <Label className="text-xs">Email <span className="text-red-400">*</span></Label>
+                  <Input type="email" placeholder="your@email.com" value={ceDecisionEmail} onChange={(e) => setCeDecisionEmail(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Password <span className="text-red-400">*</span></Label>
+                  <Input type="password" placeholder="••••••••" value={ceDecisionPassword} onChange={(e) => setCeDecisionPassword(e.target.value)} className="h-8 text-sm" />
+                </div>
+              </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); }}>
+              <Button variant="ghost" onClick={() => { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); setCeDecisionEmail(""); setCeDecisionPassword(""); }}>
                 Cancel
               </Button>
               <Button
@@ -1746,6 +1835,148 @@ export default function ChiefEditor() {
                   ? "Submitting..."
                   : `Confirm ${ceDecisionAction === "accepted" ? "Accept" : ceDecisionAction === "rejected" ? "Reject" : "Revision"}`}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Replace Associate Editor */}
+        <Dialog open={!!replaceAEPaper} onOpenChange={(open) => { if (!open) { setReplaceAEPaper(null); setReplaceAESubEditorId(""); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-orange-500" />
+                Replace Associate Editor
+              </DialogTitle>
+            </DialogHeader>
+            {replaceAEPaper && (
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground line-clamp-2">{replaceAEPaper.title}</p>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Select New Associate Editor</Label>
+                  {subEditors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No associate editors available.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {subEditors.map((se) => {
+                        const isSelected = replaceAESubEditorId === se.id;
+                        return (
+                          <div
+                            key={se.id}
+                            onClick={() => setReplaceAESubEditorId(se.id)}
+                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                {se.profile_pic_url ? (
+                                  <img src={se.profile_pic_url} alt={se.username} className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="text-xs font-bold text-blue-700">{se.username.slice(0, 2).toUpperCase()}</span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground">{se.username}</p>
+                                <p className="text-xs text-muted-foreground truncate">{se.email}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setReplaceAEPaper(null); setReplaceAESubEditorId(""); }}>Cancel</Button>
+              <Button
+                onClick={replaceSubEditor}
+                disabled={!replaceAESubEditorId || replacingAE}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {replacingAE ? "Replacing..." : "Replace AE"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Decision History */}
+        <Dialog open={!!historyPaper} onOpenChange={(open) => { if (!open) { setHistoryPaper(null); setHistoryEntries([]); } }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Decision History
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              {historyPaper && (
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{historyPaper.title}</p>
+              )}
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  Loading history...
+                </div>
+              ) : historyEntries.length === 0 ? (
+                <div className="text-center py-10">
+                  <History className="h-10 w-10 mx-auto text-muted-foreground/25 mb-3" />
+                  <p className="text-sm text-muted-foreground">No decision history yet</p>
+                </div>
+              ) : (
+                <div className="relative space-y-0">
+                  {historyEntries.map((entry: any, idx: number) => {
+                    const roleColors: Record<string, string> = {
+                      reviewer: "bg-purple-100 text-purple-700",
+                      sub_editor: "bg-blue-100 text-blue-700",
+                      chief_editor: "bg-orange-100 text-orange-700",
+                    };
+                    const decisionColors: Record<string, string> = {
+                      accept: "text-green-600",
+                      approve: "text-green-600",
+                      accepted: "text-green-600",
+                      revision: "text-amber-600",
+                      pending_revision: "text-amber-600",
+                      reject: "text-red-600",
+                      rejected: "text-red-600",
+                    };
+                    return (
+                      <div key={idx} className="flex gap-3 pb-4 last:pb-0">
+                        <div className="flex flex-col items-center shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                            <History className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                          {idx < historyEntries.length - 1 && (
+                            <div className="w-px flex-1 bg-border mt-1" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 pb-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={`text-xs ${roleColors[entry.role_type] || "bg-muted text-muted-foreground"}`}>
+                              {entry.role_type?.replace("_", " ")}
+                            </Badge>
+                            <span className={`text-sm font-semibold ${decisionColors[entry.decision?.toLowerCase()] || "text-foreground"}`}>
+                              {entry.decision}
+                            </span>
+                            {entry.version_number && (
+                              <span className="text-xs text-muted-foreground">v{entry.version_number}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {entry.username} · {entry.decided_at ? new Date(entry.decided_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                          </p>
+                          {entry.comments && (
+                            <p className="text-xs text-foreground mt-1 bg-muted/40 rounded p-2 line-clamp-3">{entry.comments}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setHistoryPaper(null); setHistoryEntries([]); }}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

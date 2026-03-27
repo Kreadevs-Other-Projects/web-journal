@@ -120,6 +120,9 @@ export default function SubEditorDashboard() {
   const [decisionNote, setDecisionNote] = useState("");
   const [decisionAction, setDecisionAction] = useState<"approve" | "revision" | "reject" | null>(null);
   const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [decisionEmail, setDecisionEmail] = useState("");
+  const [decisionPassword, setDecisionPassword] = useState("");
+  const [showDecisionPassword, setShowDecisionPassword] = useState(false);
   const [paperReviews, setPaperReviews] = useState<any[]>([]);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
@@ -383,12 +386,20 @@ export default function SubEditorDashboard() {
 
   const submitDecision = async () => {
     if (!selectedPaper || !decisionAction) return;
+    if (!decisionEmail || !decisionPassword) {
+      toast({ title: "Credentials required", description: "Enter your email and password to confirm this decision.", variant: "destructive" });
+      return;
+    }
+    if ((decisionAction === "revision" || decisionAction === "reject") && !decisionNote.trim()) {
+      toast({ title: "Comments required", description: `Comments are required when requesting ${decisionAction === "revision" ? "a revision" : "rejection"}.`, variant: "destructive" });
+      return;
+    }
     try {
       setSubmittingDecision(true);
       const res = await fetch(`${url}/subEditor/decision/${selectedPaper.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: decisionAction, note: decisionNote }),
+        body: JSON.stringify({ action: decisionAction, comments: decisionNote, email: decisionEmail, password: decisionPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to submit decision");
@@ -399,6 +410,8 @@ export default function SubEditorDashboard() {
       setOpenDecisionDialog(false);
       setDecisionNote("");
       setDecisionAction(null);
+      setDecisionEmail("");
+      setDecisionPassword("");
       setSelectedPaper(null);
       fetchPapers();
     } catch (err: any) {
@@ -1434,21 +1447,50 @@ export default function SubEditorDashboard() {
           )}
 
           <div className="space-y-2">
-            <Label className="">
-              Notes {decisionAction !== "approve" && <span className="text-red-400">*</span>}
-              <span className="text-muted-foreground text-xs ml-1">(optional for approval)</span>
+            <Label>
+              Comments {decisionAction !== "approve" && <span className="text-red-400">*</span>}
+              {decisionAction === "approve" && <span className="text-muted-foreground text-xs ml-1">(optional)</span>}
             </Label>
             <textarea
               className="w-full rounded-md bg-background border border-border text-foreground p-3 text-sm resize-none focus:outline-none focus:border-primary"
               rows={3}
-              placeholder={decisionAction === "revision" ? "Describe what needs to be revised..." : decisionAction === "reject" ? "Provide reason for rejection..." : "Additional notes for Chief Editor..."}
+              placeholder={decisionAction === "revision" ? "Describe what needs to be revised..." : decisionAction === "reject" ? "Provide reason for rejection (required)..." : "Additional notes for Chief Editor..."}
               value={decisionNote}
               onChange={(e) => setDecisionNote(e.target.value)}
             />
           </div>
 
+          <div className="border-t border-border pt-3 space-y-2">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Verify your identity</p>
+            <div className="space-y-1">
+              <Label className="text-xs">Email <span className="text-red-400">*</span></Label>
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={decisionEmail}
+                onChange={(e) => setDecisionEmail(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Password <span className="text-red-400">*</span></Label>
+              <div className="relative">
+                <Input
+                  type={showDecisionPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={decisionPassword}
+                  onChange={(e) => setDecisionPassword(e.target.value)}
+                  className="h-8 text-sm pr-8"
+                />
+                <button type="button" onClick={() => setShowDecisionPassword(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showDecisionPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => { setOpenDecisionDialog(false); setDecisionNote(""); setDecisionAction(null); }}>
+            <Button variant="outline" className="flex-1" onClick={() => { setOpenDecisionDialog(false); setDecisionNote(""); setDecisionAction(null); setDecisionEmail(""); setDecisionPassword(""); }}>
               Cancel
             </Button>
             <Button

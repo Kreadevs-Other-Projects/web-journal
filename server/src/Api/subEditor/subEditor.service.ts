@@ -63,10 +63,26 @@ export const getReviewsForPaperService = async (paperId: string) => {
 };
 
 export const subEditorDecisionService = async (
+  subEditorId: string,
+  subEditorEmail: string,
+  password: string,
   paperId: string,
   action: "approve" | "revision" | "reject",
-  note?: string,
+  comments?: string,
 ) => {
+  // Credential verification
+  const userRes = await pool.query(
+    `SELECT * FROM users WHERE id = $1 AND email = $2`,
+    [subEditorId, subEditorEmail],
+  );
+  if (!userRes.rows.length) {
+    throw new Error("Email does not match your account");
+  }
+  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  if (!passwordValid) {
+    throw new Error("Incorrect password");
+  }
+
   const statusCheck = await pool.query(
     "SELECT status FROM papers WHERE id = $1",
     [paperId],
@@ -74,9 +90,14 @@ export const subEditorDecisionService = async (
   if (statusCheck.rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
   }
-  const paper = await repo.subEditorDecision(paperId, action, note);
 
-  // Email notifications
+  if ((action === "revision" || action === "reject") && !comments?.trim()) {
+    throw new Error(`Comments are required when requesting ${action === "revision" ? "a revision" : "rejection"}.`);
+  }
+
+  const paper = await repo.subEditorDecision(paperId, subEditorId, action, comments);
+
+  // Email notifications to author
   const authorRes = await pool.query(
     `SELECT u.email, u.username, p.title FROM papers p JOIN users u ON u.id = p.author_id WHERE p.id = $1`,
     [paperId],
@@ -90,8 +111,8 @@ export const subEditorDecisionService = async (
         .sendMail({
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: email,
-          subject: `Revision Requested — "${title}"`,
-          text: `Hi ${username},\n\nThe sub-editor has requested a revision for your paper "${title}".\n\nNotes: ${note || "Please revise and resubmit your manuscript."}\n\nPlease log in to upload your revised version.`,
+          subject: `Revision Required — "${title}"`,
+          text: `Hi ${username},\n\nYour paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Revision Required\n\nAssociate Editor Comments:\n${comments}\n\nPlease log in and upload a revised version of your paper to continue the review process.`,
         })
         .catch(() => {});
     } else if (action === "reject") {
@@ -100,7 +121,7 @@ export const subEditorDecisionService = async (
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Paper Decision — "${title}"`,
-          text: `Hi ${username},\n\nWe regret to inform you that your paper "${title}" has not been accepted at this time.\n\nNotes: ${note || "Thank you for your submission."}\n\nYou are welcome to submit to a future issue.`,
+          text: `Hi ${username},\n\nWe regret to inform you that your paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Rejected\n\nAssociate Editor Comments:\n${comments}\n\nThank you for your submission. You are welcome to submit to a future issue.`,
         })
         .catch(() => {});
     }

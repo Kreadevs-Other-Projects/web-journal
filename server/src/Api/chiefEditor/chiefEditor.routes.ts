@@ -19,6 +19,8 @@ import {
   getApplicationsCount,
   inviteApplication,
   declineApplication,
+  replaceSubEditor,
+  getPaperDecisionHistory,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -122,6 +124,22 @@ router.get("/getPapersByIssue/:issueId", getPapersByIssue);
 router.post("/assignPaperToIssue", assignPaperToIssue);
 
 router.put("/updateIssueStatus/:issueId", updateIssueStatus);
+
+// Replace associate editor
+router.post(
+  "/papers/:paperId/replace-ae",
+  authMiddleware,
+  authorize("chief_editor"),
+  replaceSubEditor,
+);
+
+// Decision history
+router.get(
+  "/papers/:paperId/decision-history",
+  authMiddleware,
+  authorize("chief_editor", "sub_editor", "author"),
+  getPaperDecisionHistory,
+);
 
 // Reviewer applications
 router.get("/applications", authMiddleware, authorize("chief_editor"), getApplications);

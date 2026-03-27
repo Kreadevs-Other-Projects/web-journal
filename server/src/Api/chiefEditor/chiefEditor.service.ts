@@ -3,6 +3,9 @@ import { sendSubEditorInviteEmail } from "../../utils/emails/userEmails";
 import { pool } from "../../configs/db";
 import { insertStatusLog } from "../paper/paper.repository";
 import { initiatePaperPaymentService } from "../paperPayment/paperPayment.service";
+import { transporter } from "../../configs/email";
+import { env } from "../../configs/envs";
+import bcrypt from "bcrypt";
 
 export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
   if (!chiefEditorId) {
@@ -58,13 +61,22 @@ export const addSubEditor = async (
 export const makeEditorDecision = async (
   paperId: string,
   editorId: string,
+  editorEmail: string,
+  password: string,
   decision: string,
   note: string,
 ) => {
-  const hasReviews = await repo.hasSubmittedReviews(paperId);
-
-  if (!hasReviews) {
-    throw new Error("Cannot decide without submitted reviews");
+  // Credential verification
+  const userRes = await pool.query(
+    `SELECT * FROM users WHERE id = $1 AND email = $2`,
+    [editorId, editorEmail],
+  );
+  if (!userRes.rows.length) {
+    throw new Error("Email does not match your account");
+  }
+  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  if (!passwordValid) {
+    throw new Error("Incorrect password");
   }
 
   const currentPaper = await repo.getPaperByIdRepo(paperId);
@@ -88,7 +100,15 @@ export const makeEditorDecision = async (
   const paperStatus = statusMap[decision] ?? decision;
   const updatedPaper = await repo.updatePaperStatus(paperId, paperStatus);
 
-  // On acceptance: create payment record, update status to awaiting_payment, send invoice
+  // Insert into paper_status_log
+  await insertStatusLog({
+    paper_id: paperId,
+    status: paperStatus,
+    changed_by: editorId,
+    note: `Chief editor decision: ${decision}. ${note || ""}`.trim(),
+  });
+
+  // On acceptance: create payment record
   if (decision === "accepted") {
     const authorRes = await pool.query(
       `SELECT u.id, u.email, u.username FROM users u JOIN papers p ON p.author_id = u.id WHERE p.id = $1`,
@@ -118,6 +138,83 @@ export const makeEditorDecision = async (
     decision: decisionRow,
     paper: updatedPaper,
   };
+};
+
+export const replaceSubEditorService = async (
+  paperId: string,
+  chiefEditorId: string,
+  newSubEditorId: string,
+) => {
+  // Get current assignment and paper/journal info
+  const currentRes = await pool.query(
+    `SELECT ea.sub_editor_id, p.title, u.email AS old_ae_email, u.username AS old_ae_name
+     FROM editor_assignments ea
+     JOIN papers p ON p.id = ea.paper_id
+     JOIN users u ON u.id = ea.sub_editor_id
+     WHERE ea.paper_id = $1 AND ea.status NOT IN ('reassigned', 'rejected')
+     ORDER BY ea.assigned_at DESC LIMIT 1`,
+    [paperId],
+  );
+
+  const newAERes = await pool.query(
+    `SELECT email, username FROM users WHERE id = $1`,
+    [newSubEditorId],
+  );
+  if (!newAERes.rows.length) throw new Error("New associate editor not found");
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Mark old assignment as reassigned
+    await client.query(
+      `UPDATE editor_assignments SET status = 'reassigned', completed_at = NOW()
+       WHERE paper_id = $1 AND status NOT IN ('reassigned', 'rejected')`,
+      [paperId],
+    );
+
+    // Insert new assignment
+    await client.query(
+      `INSERT INTO editor_assignments (paper_id, sub_editor_id, assigned_by, assigned_at, status)
+       VALUES ($1, $2, $3, NOW(), 'pending')`,
+      [paperId, newSubEditorId, chiefEditorId],
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  // Notify old AE
+  if (currentRes.rows.length) {
+    const { old_ae_email, old_ae_name, title } = currentRes.rows[0];
+    transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: old_ae_email,
+      subject: `You have been removed from paper "${title}"`,
+      text: `Hi ${old_ae_name},\n\nYou have been removed as Associate Editor for the paper "${title}". Another editor has been assigned to this paper.`,
+    }).catch(() => {});
+  }
+
+  // Notify new AE
+  const newAE = newAERes.rows[0];
+  const paperRes = await pool.query(`SELECT title FROM papers WHERE id = $1`, [paperId]);
+  const title = paperRes.rows[0]?.title || "a paper";
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: newAE.email,
+    subject: `You have been assigned to paper "${title}"`,
+    text: `Hi ${newAE.username},\n\nYou have been assigned as Associate Editor for the paper "${title}". Please log in to review the manuscript.`,
+  }).catch(() => {});
+
+  return { success: true };
+};
+
+export const getPaperDecisionHistoryService = async (paperId: string) => {
+  return repo.getPaperDecisionHistoryRepo(paperId);
 };
 
 export const changePaperStatus = async (paperId: string, status: string) => {

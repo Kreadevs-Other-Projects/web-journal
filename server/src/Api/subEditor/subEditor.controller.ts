@@ -103,14 +103,20 @@ export const getReviewsForPaper = async (req: Request, res: Response) => {
 export const subEditorDecision = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { action, note } = req.body;
+    const { action, comments, email, password } = req.body;
     if (!["approve", "revision", "reject"].includes(action)) {
       return res.status(400).json({ success: false, message: "Invalid action. Must be approve, revision, or reject" });
     }
-    const paper = await service.subEditorDecisionService(paperId, action, note);
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required to submit a decision" });
+    }
+    const paper = await service.subEditorDecisionService(
+      req.user!.id, email, password, paperId, action, comments,
+    );
     res.json({ success: true, paper });
   } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message });
+    res.status(e.message.includes("Email does not match") || e.message.includes("Incorrect password") ? 401 : 400)
+      .json({ success: false, message: e.message });
   }
 };
 

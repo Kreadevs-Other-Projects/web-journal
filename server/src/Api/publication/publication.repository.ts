@@ -43,7 +43,7 @@ export const getPaperForPublish = async () => {
     LEFT JOIN reviews r ON r.review_assignment_id = ra.id
     LEFT JOIN users ru ON ru.id = ra.reviewer_id
 
-    WHERE p.status IN ('accepted', 'published')
+    WHERE p.status IN ('accepted', 'ready_for_publication', 'published')
 
     ORDER BY ra.submitted_at DESC NULLS LAST
   `);

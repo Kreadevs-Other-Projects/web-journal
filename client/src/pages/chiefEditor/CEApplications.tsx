@@ -37,6 +37,7 @@ interface Application {
   affiliation?: string;
   orcid?: string;
   status: "pending" | "invited" | "rejected";
+  applied_role: "reviewer" | "associate_editor";
   created_at: string;
 }
 
@@ -79,12 +80,15 @@ function ApplicationCard({
                   <AtSign className="h-3 w-3" /> {app.email}
                 </a>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   {new Date(app.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                 </span>
                 <Badge variant="outline" className="text-xs">{app.journal_name}</Badge>
+                <Badge variant="secondary" className={`text-xs ${app.applied_role === "associate_editor" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
+                  {app.applied_role === "associate_editor" ? "Associate Editor" : "Reviewer"}
+                </Badge>
               </div>
             </div>
 
@@ -146,7 +150,8 @@ function ApplicationCard({
               className="bg-green-600 hover:bg-green-700 text-white"
               onClick={() => onInvite?.(app)}
             >
-              <UserCheck className="h-4 w-4 mr-1.5" /> Invite as Reviewer
+              <UserCheck className="h-4 w-4 mr-1.5" />
+              {app.applied_role === "associate_editor" ? "Invite as Associate Editor" : "Invite as Reviewer"}
             </Button>
             <Button
               size="sm"
@@ -167,6 +172,7 @@ export default function CEApplications() {
   const { user, token } = useAuth();
   const { toast } = useToast();
 
+  const [roleFilter, setRoleFilter] = useState<"all" | "reviewer" | "associate_editor">("all");
   const [pending, setPending] = useState<Application[]>([]);
   const [invited, setInvited] = useState<Application[]>([]);
   const [rejected, setRejected] = useState<Application[]>([]);
@@ -178,11 +184,12 @@ export default function CEApplications() {
   const fetchAll = async () => {
     if (!token) return;
     setLoading(true);
+    const roleParam = roleFilter !== "all" ? `&applied_role=${roleFilter}` : "";
     try {
       const [p, i, r] = await Promise.all([
-        fetch(`${url}/chiefEditor/applications?status=pending`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-        fetch(`${url}/chiefEditor/applications?status=invited`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-        fetch(`${url}/chiefEditor/applications?status=rejected`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`${url}/chiefEditor/applications?status=pending${roleParam}`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`${url}/chiefEditor/applications?status=invited${roleParam}`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`${url}/chiefEditor/applications?status=rejected${roleParam}`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
       ]);
       if (p.success) setPending(p.applications);
       if (i.success) setInvited(i.applications);
@@ -191,7 +198,7 @@ export default function CEApplications() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchAll(); }, [token]);
+  useEffect(() => { fetchAll(); }, [token, roleFilter]);
 
   const handleInvite = async (app: Application) => {
     if (actioning) return;
@@ -231,11 +238,28 @@ export default function CEApplications() {
   return (
     <DashboardLayout role="chief_editor" userName={user?.username}>
       <div className="max-w-4xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Reviewer Applications</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Review and act on applications submitted via the public journal page
-          </p>
+        <div className="mb-4 flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Applications</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Review and act on applications submitted via the public journal page
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            {(["all", "reviewer", "associate_editor"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRoleFilter(r)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                  roleFilter === r
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {r === "all" ? "All Roles" : r === "reviewer" ? "Reviewers" : "Associate Editors"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <Tabs defaultValue="pending">

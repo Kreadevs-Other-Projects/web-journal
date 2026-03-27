@@ -82,12 +82,43 @@ export const deleteJournalIssue = async (issue_id: string) => {
   await pool.query(`DELETE FROM journal_issues WHERE id = $1`, [issue_id]);
 };
 
+export const getNextIssueSerial = async (journal_id: string) => {
+  const lastIssue = await pool.query(
+    `SELECT volume, issue, year
+     FROM journal_issues
+     WHERE journal_id = $1
+     ORDER BY volume DESC, issue DESC
+     LIMIT 1`,
+    [journal_id],
+  );
+
+  const year = new Date().getFullYear();
+
+  if (!lastIssue.rows.length) {
+    return { volume: 1, issue: 1, year, label: "Vol 1, Issue 1" };
+  }
+
+  const last = lastIssue.rows[0];
+  let newVolume: number;
+  let newIssue: number;
+
+  if (last.issue >= 4) {
+    newVolume = last.volume + 1;
+    newIssue = 1;
+  } else {
+    newVolume = last.volume;
+    newIssue = last.issue + 1;
+  }
+
+  return { volume: newVolume, issue: newIssue, year, label: `Vol ${newVolume}, Issue ${newIssue}` };
+};
+
 // ---- Issue Requests ----
 
 export const createIssueRequest = async (data: {
   journal_id: string;
   requested_by: string;
-  label: string;
+  label?: string;
   volume?: number;
   issue_no?: number;
   year?: number;
@@ -96,7 +127,7 @@ export const createIssueRequest = async (data: {
     `INSERT INTO issue_requests (journal_id, requested_by, label, volume, issue_no, year)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [data.journal_id, data.requested_by, data.label, data.volume ?? null, data.issue_no ?? null, data.year ?? null],
+    [data.journal_id, data.requested_by, data.label ?? null, data.volume ?? null, data.issue_no ?? null, data.year ?? null],
   );
   return result.rows[0];
 };

@@ -4,6 +4,7 @@ import { applyAsReviewerService } from "./contact.service";
 export const applyAsReviewer = async (req: Request, res: Response) => {
   try {
     const { journalId, name, email, statement, affiliation, orcid } = req.body;
+    const appliedRole = req.body.applied_role === "associate_editor" ? "associate_editor" : "reviewer";
 
     if (!journalId || !name || !email) {
       return res.status(400).json({ success: false, message: "journalId, name and email are required" });
@@ -48,6 +49,7 @@ export const applyAsReviewer = async (req: Request, res: Response) => {
       affiliation,
       orcid,
       profilePicPath,
+      appliedRole,
     });
 
     res.json({

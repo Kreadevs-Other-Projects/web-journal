@@ -12,6 +12,7 @@ import {
   getPendingIssueRequestsService,
   reviewIssueRequestService,
   getManagerPapersService,
+  getNextIssuePreviewService,
 } from "./journalIssue.service";
 
 export const addJournalIssue = async (req: AuthUser, res: Response) => {
@@ -19,9 +20,7 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
     if (!req.user) throw new Error("Unauthorized");
 
     const journal_id = req.params.journalId;
-    const data: JournalIssueData = req.body;
-
-    const { issue } = await addJournalIssueService(req.user, journal_id, data);
+    const { issue } = await addJournalIssueService(req.user, journal_id);
 
     return res.status(201).json({
       success: true,
@@ -33,6 +32,16 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const getNextIssuePreview = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const preview = await getNextIssuePreviewService(journalId);
+    res.json({ success: true, preview });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
   }
 };
 
@@ -75,7 +84,9 @@ export const deleteJournalIssue = async (req: AuthUser, res: Response) => {
 
 export const requestNewIssue = async (req: AuthUser, res: Response) => {
   try {
-    const request = await requestNewIssueService(req.user! as any, req.body);
+    const { journal_id } = req.body;
+    if (!journal_id) return res.status(400).json({ success: false, message: "journal_id is required" });
+    const request = await requestNewIssueService(req.user! as any, { journal_id });
     res.status(201).json({ success: true, request });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });

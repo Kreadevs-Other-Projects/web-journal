@@ -70,15 +70,16 @@ const STAGES = [
   { key: "submitted", label: "Submitted" },
   { key: "under_review", label: "Under Review" },
   { key: "decision", label: "Decision" },
+  { key: "payment", label: "Payment Required" },
   { key: "published", label: "Published" },
 ];
 
 function getStageIndex(status: string): number {
-  if (status === "awaiting_payment" || status === "payment_review") return 0;
   if (status === "submitted" || status === "assigned_to_sub_editor") return 0;
   if (status === "under_review" || status === "resubmitted" || status === "pending_revision") return 1;
-  if (status === "accepted" || status === "rejected") return 2;
-  if (status === "published") return 3;
+  if (status === "accepted" || status === "rejected" || status === "sub_editor_approved") return 2;
+  if (status === "awaiting_payment" || status === "payment_review" || status === "ready_for_publication") return 3;
+  if (status === "published") return 4;
   return 0;
 }
 
@@ -331,6 +332,7 @@ export default function TrackPaper() {
                     if (stage.key === "submitted") return l.status === "submitted";
                     if (stage.key === "under_review") return l.status === "under_review" || l.status === "assigned_to_sub_editor";
                     if (stage.key === "decision") return l.status === "accepted" || l.status === "rejected" || l.status === "pending_revision";
+                    if (stage.key === "payment") return l.status === "awaiting_payment" || l.status === "payment_review" || l.status === "ready_for_publication";
                     if (stage.key === "published") return l.status === "published";
                     return false;
                   });

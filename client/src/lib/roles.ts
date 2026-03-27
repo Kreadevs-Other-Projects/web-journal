@@ -6,6 +6,7 @@ import {
   UserCheck,
   BarChart3,
   CreditCard,
+  Tag,
 } from "lucide-react";
 
 export type UserRole =
@@ -55,6 +56,8 @@ export const roleConfig: Record<
         icon: FileText,
       },
       { label: "Payments", path: "/publisher/payments", icon: CreditCard },
+      { label: "Paper Categories", path: "/publisher/categories", icon: Tag },
+      { label: "Journal Categories", path: "/publisher/journal-categories", icon: Tag },
     ],
   },
 

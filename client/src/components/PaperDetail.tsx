@@ -343,8 +343,13 @@ export default function JournalDetail() {
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}`}>
+                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=reviewer`}>
                   <UserCheck className="h-4 w-4 mr-2" /> Apply as Reviewer
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=associate_editor`}>
+                  <UserCheck className="h-4 w-4 mr-2" /> Apply as Associate Editor
                 </Link>
               </Button>
             </div>

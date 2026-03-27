@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
@@ -23,7 +23,15 @@ import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, BookOpen, User, Upload, X } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronLeft,
+  BookOpen,
+  User,
+  Upload,
+  X,
+  Plus,
+} from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface JournalFields {
@@ -36,6 +44,14 @@ interface JournalFields {
   oa_policy: string;
   author_guidelines: string;
   aims_and_scope: string;
+  journal_category_id: string;
+}
+
+interface JournalCategory {
+  id: string;
+  name: string;
+  slug: string;
+  journal_count: number;
 }
 
 interface StaffFields {
@@ -53,6 +69,7 @@ const defaultJournal: JournalFields = {
   oa_policy: "",
   author_guidelines: "",
   aims_and_scope: "",
+  journal_category_id: "",
 };
 
 const defaultStaff: StaffFields = { name: "", email: "" };
@@ -70,28 +87,72 @@ export default function CreateJournal() {
   const [journalManager, setJournalManager] =
     useState<StaffFields>(defaultStaff);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [journalCategories, setJournalCategories] = useState<JournalCategory[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  const fetchJournalCategories = () => {
+    fetch(`${url}/journal-categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJournalCategories(d.categories || []); })
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchJournalCategories(); }, []);
+
+  const handleQuickAddCategory = async () => {
+    if (!newCategoryName.trim() || addingCategory) return;
+    setAddingCategory(true);
+    try {
+      const res = await fetch(`${url}/journal-categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Failed");
+      setNewCategoryName("");
+      fetchJournalCategories();
+      updateJournal("journal_category_id", data.category.id);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setAddingCategory(false);
+    }
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
-      toast({ title: "Invalid file type", description: "Only JPG, PNG, WebP, or GIF allowed.", variant: "destructive" });
+      toast({
+        title: "Invalid file type",
+        description: "Only JPG, PNG, WebP, or GIF allowed.",
+        variant: "destructive",
+      });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Logo must be under 2MB.", variant: "destructive" });
+      toast({
+        title: "File too large",
+        description: "Logo must be under 2MB.",
+        variant: "destructive",
+      });
       return;
     }
     setLogo(file);
     setLogoPreview(URL.createObjectURL(file));
   };
 
-  const updateJournal = (field: keyof JournalFields, value: string) =>
+  const updateJournal = (field: keyof JournalFields, value: string) => {
     setJournal((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+  };
 
   const updateChiefEditor = (field: keyof StaffFields, value: string) =>
     setChiefEditor((prev) => ({ ...prev, [field]: value }));
@@ -160,7 +221,10 @@ export default function CreateJournal() {
       formData.append("peer_review_policy", journal.peer_review_policy);
       formData.append("oa_policy", journal.oa_policy);
       formData.append("author_guidelines", journal.author_guidelines);
-      if (journal.aims_and_scope) formData.append("aims_and_scope", journal.aims_and_scope);
+      if (journal.aims_and_scope)
+        formData.append("aims_and_scope", journal.aims_and_scope);
+      if (journal.journal_category_id)
+        formData.append("journal_category_id", journal.journal_category_id);
       formData.append("chief_editor", JSON.stringify(chiefEditor));
       formData.append("journal_manager", JSON.stringify(journalManager));
 
@@ -173,16 +237,27 @@ export default function CreateJournal() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const map: Record<string, string> = {};
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setFieldErrors(map);
+        }
         throw new Error(data.message || "Failed to create journal");
       }
+      setFieldErrors({});
 
       toast({
         title: "Journal Created",
-        description: "Invitation emails sent to Chief Editor and Journal Manager.",
+        description:
+          "Invitation emails sent to Chief Editor and Journal Manager.",
       });
 
       // Refresh JWT so new journal_manager role appears in role switcher
-      try { await switchRole("publisher" as UserRole, null); } catch {}
+      try {
+        await switchRole("publisher" as UserRole, null);
+      } catch {}
 
       navigate("/publisher");
     } catch (err: any) {
@@ -232,36 +307,59 @@ export default function CreateJournal() {
             <CardContent className="space-y-4">
               {/* Logo Upload */}
               <div className="space-y-1">
-                <Label>Journal Cover <span className="text-muted-foreground font-normal">(Portrait recommended: 3:4 ratio)</span></Label>
+                <Label>
+                  Journal Cover{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (Portrait recommended: 3:4 ratio)
+                  </span>
+                </Label>
                 <div className="flex items-start gap-4">
                   <div
                     className="w-[90px] h-[120px] rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
                     onClick={() => logoRef.current?.click()}
                   >
                     {logoPreview ? (
-                      <img src={logoPreview} alt="Cover preview" className="h-full w-full object-cover object-top" />
+                      <img
+                        src={logoPreview}
+                        alt="Cover preview"
+                        className="h-full w-full object-cover object-top"
+                      />
                     ) : (
                       <div className="text-center px-1">
                         <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
-                        <span className="text-xs text-muted-foreground">Upload</span>
+                        <span className="text-xs text-muted-foreground">
+                          Upload
+                        </span>
                       </div>
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <p>Optional. JPG, PNG, WebP or GIF, max 2MB.</p>
-                    <p className="text-xs mt-1">Upload a portrait-oriented cover image for best display.</p>
+                    <p className="text-xs mt-1">
+                      Upload a portrait-oriented cover image for best display.
+                    </p>
                     {logo && (
                       <button
                         type="button"
                         className="text-destructive text-xs mt-1 flex items-center gap-1"
-                        onClick={() => { setLogo(null); setLogoPreview(null); if (logoRef.current) logoRef.current.value = ""; }}
+                        onClick={() => {
+                          setLogo(null);
+                          setLogoPreview(null);
+                          if (logoRef.current) logoRef.current.value = "";
+                        }}
                       >
                         <X className="h-3 w-3" /> Remove
                       </button>
                     )}
                   </div>
                 </div>
-                <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleLogoChange} />
+                <input
+                  ref={logoRef}
+                  type="file"
+                  className="hidden"
+                  accept=".jpg,.jpeg,.png,.webp,.gif"
+                  onChange={handleLogoChange}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -273,7 +371,11 @@ export default function CreateJournal() {
                     value={journal.title}
                     onChange={(e) => updateJournal("title", e.target.value)}
                     placeholder="e.g. Journal of Artificial Intelligence"
+                    className={fieldErrors["title"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["title"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>
@@ -285,7 +387,11 @@ export default function CreateJournal() {
                       updateJournal("publisher_name", e.target.value)
                     }
                     placeholder="e.g. GIKI Press"
+                    className={fieldErrors["publisher_name"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["publisher_name"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["publisher_name"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>ISSN</Label>
@@ -293,15 +399,27 @@ export default function CreateJournal() {
                     value={journal.issn}
                     onChange={(e) => updateJournal("issn", e.target.value)}
                     placeholder="e.g. 1234-567X"
+                    className={fieldErrors["issn"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["issn"] ? (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Format: XXXX-XXXX — e.g. 1234-567X</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>DOI</Label>
                   <Input
                     value={journal.doi}
                     onChange={(e) => updateJournal("doi", e.target.value)}
-                    placeholder="Optional"
+                    placeholder="e.g. 10.12345/journal.2026.001"
+                    className={fieldErrors["doi"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["doi"] ? (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["doi"]}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Format: 10.XXXXX/suffix — e.g. 10.12345/tm.2026.001</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>
@@ -319,6 +437,45 @@ export default function CreateJournal() {
                       <SelectItem value="subscription">Subscription</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="space-y-1">
+                <Label>Subject Category</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={journal.journal_category_id}
+                    onValueChange={(v) => updateJournal("journal_category_id", v)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select a subject category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {journalCategories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-1">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New category..."
+                      className="w-40"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleQuickAddCategory(); } }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleQuickAddCategory}
+                      disabled={!newCategoryName.trim() || addingCategory}
+                      title="Add new category"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -348,24 +505,18 @@ export default function CreateJournal() {
                 <Label>
                   Author Guidelines <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
+                <RichTextEditor
                   value={journal.author_guidelines}
-                  onChange={(e) =>
-                    updateJournal("author_guidelines", e.target.value)
-                  }
-                  rows={4}
+                  onChange={(html) => updateJournal("author_guidelines", html)}
                   placeholder="Guidelines for authors submitting manuscripts..."
                 />
               </div>
 
               <div className="space-y-1">
-                <Label>Aims &amp; Scope</Label>
-                <Textarea
+                <Label>Aims & Scope</Label>
+                <RichTextEditor
                   value={journal.aims_and_scope}
-                  onChange={(e) =>
-                    updateJournal("aims_and_scope", e.target.value)
-                  }
-                  rows={4}
+                  onChange={(html) => updateJournal("aims_and_scope", html)}
                   placeholder="Describe the journal's aims and scope..."
                 />
               </div>
@@ -380,7 +531,8 @@ export default function CreateJournal() {
                 <User className="h-5 w-5 text-primary" /> Invite Chief Editor
               </CardTitle>
               <CardDescription>
-                An invitation email will be sent. They will set their own password when they accept.
+                An invitation email will be sent. They will set their own
+                password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -416,7 +568,8 @@ export default function CreateJournal() {
                 <User className="h-5 w-5 text-primary" /> Invite Journal Manager
               </CardTitle>
               <CardDescription>
-                An invitation email will be sent. They will set their own password when they accept.
+                An invitation email will be sent. They will set their own
+                password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -426,9 +579,7 @@ export default function CreateJournal() {
                 </Label>
                 <Input
                   value={journalManager.name}
-                  onChange={(e) =>
-                    updateJournalManager("name", e.target.value)
-                  }
+                  onChange={(e) => updateJournalManager("name", e.target.value)}
                   placeholder="Journal Manager's full name"
                 />
               </div>

@@ -7,9 +7,12 @@ import {
   editProfile,
   removeProfile,
   changePasswordController,
+  uploadCertification,
+  getCertifications,
+  deleteCertification,
 } from "./profile.controller";
 import { updateProfileSchema, changePasswordSchema } from "./profile.schema";
-import { upload } from "../../middlewares/upload.middleware";
+import { upload, certificationUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -31,5 +34,20 @@ router.put(
 );
 
 router.delete("/deleteProfile", authMiddleware, asyncHandler(removeProfile));
+
+router.post(
+  "/certifications",
+  authMiddleware,
+  certificationUpload.single("certification"),
+  asyncHandler(uploadCertification),
+);
+
+router.get("/certifications", authMiddleware, asyncHandler(getCertifications));
+
+router.delete(
+  "/certifications/:certId",
+  authMiddleware,
+  asyncHandler(deleteCertification),
+);
 
 export default router;

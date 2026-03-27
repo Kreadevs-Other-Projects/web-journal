@@ -146,6 +146,13 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       journal,
     });
   } catch (error: any) {
+    if (error.field) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        errors: [{ field: error.field, message: error.message }],
+      });
+    }
     return res.status(400).json({
       success: false,
       message: error.message || "Failed to create journal",

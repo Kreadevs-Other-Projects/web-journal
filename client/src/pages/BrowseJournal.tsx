@@ -46,8 +46,11 @@ interface Journal {
   aims_and_scope?: string;
   logo_url?: string;
   issue: string;
-  published_at: string;
+  published_at: string; // journal created_at
   papers: Paper[];
+  journal_category_id?: string;
+  category_name?: string;
+  category_slug?: string;
 }
 
 function JournalLogo({
@@ -122,6 +125,8 @@ export default function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [journalCategoryChips, setJournalCategoryChips] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const fetchBrowse = async () => {
@@ -138,6 +143,10 @@ export default function BrowsePage() {
       }
     };
     fetchBrowse();
+    fetch(`${url}/journal-categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJournalCategoryChips(d.categories || []); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -173,7 +182,9 @@ export default function BrowsePage() {
         selectedYear === "All Years" ||
         new Date(journal.published_at).getFullYear().toString() ===
           selectedYear;
-      return matchesJournal && matchesYear;
+      const matchesCategory =
+        !selectedCategoryId || journal.journal_category_id === selectedCategoryId;
+      return matchesJournal && matchesYear && matchesCategory;
     })
     .map((journal) => ({
       ...journal,
@@ -266,6 +277,35 @@ export default function BrowsePage() {
                 Filters
               </Button>
             </div>
+
+            {/* Category chips */}
+            {journalCategoryChips.length > 0 && (
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+                <button
+                  onClick={() => setSelectedCategoryId("")}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                    !selectedCategoryId
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {journalCategoryChips.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategoryId((prev) => prev === cat.id ? "" : cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                      selectedCategoryId === cat.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <AnimatePresence>
               {showFilters && (

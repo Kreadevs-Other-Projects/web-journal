@@ -20,8 +20,8 @@ import { Label } from "@/components/ui/label";
 
 import { Separator } from "@/components/ui/separator";
 
-import { BookOpen, ExternalLink, Filter, X } from "lucide-react";
-
+import { BookOpen, ExternalLink, Filter, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { url } from "@/url";
 
 import { motion } from "framer-motion";
@@ -100,6 +100,9 @@ export default function Archive() {
   const [volume, setVolume] = useState(searchParams.get("volume") || "");
 
   const [issue, setIssue] = useState(searchParams.get("issue") || "");
+  const [searchInput, setSearchInput] = useState(
+    searchParams.get("search") || "",
+  );
 
   const LIMIT = 20;
 
@@ -118,9 +121,10 @@ export default function Archive() {
     fetchFilters();
   }, []);
 
-  const fetchArchive = async (pg: number = page) => {
+  const fetchArchive = async (pg: number = page, searchOverride?: string) => {
     setLoading(true);
 
+    const q = searchOverride !== undefined ? searchOverride : searchInput;
     const params = new URLSearchParams();
 
     if (journalId) params.set("journal_id", journalId);
@@ -131,6 +135,7 @@ export default function Archive() {
 
     if (issue) params.set("issue", issue);
 
+    if (q) params.set("search", q);
     params.set("page", String(pg));
 
     params.set("limit", String(LIMIT));
@@ -172,6 +177,7 @@ export default function Archive() {
 
     setIssue("");
 
+    setSearchInput("");
     setPage(1);
 
     setLoading(true);
@@ -301,6 +307,35 @@ export default function Archive() {
             {/* MAIN CONTENT */}
 
             <div className="flex-1 min-w-0">
+              <form
+                className="relative mb-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setPage(1);
+                  fetchArchive(1);
+                }}
+              >
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search by title or author…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9 pr-9"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput("");
+                      setPage(1);
+                      fetchArchive(1, "");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </form>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
                   {loading

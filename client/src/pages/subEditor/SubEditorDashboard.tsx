@@ -216,7 +216,7 @@ export default function SubEditorDashboard() {
     try {
       setAssignLoading(true);
 
-      await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
+      const res = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -224,6 +224,8 @@ export default function SubEditorDashboard() {
         },
         body: JSON.stringify({ reviewerId: selectedReviewerId }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to assign reviewer.");
 
       toast({
         title: "Reviewer Assigned",
@@ -233,11 +235,10 @@ export default function SubEditorDashboard() {
       setSelectedReviewerId("");
       setOpenAssignReviewerDialog(false);
       fetchReviewers(selectedPaper.id);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
       toast({
         title: "Error",
-        description: "Failed to assign reviewer.",
+        description: err.message,
         variant: "destructive",
       });
     } finally {

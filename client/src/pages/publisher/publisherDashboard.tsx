@@ -26,6 +26,7 @@ import {
   Bell,
   ThumbsUp,
   ThumbsDown,
+  RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,6 +139,7 @@ export default function PublisherDashboard() {
   const [issueRequests, setIssueRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+  const [resetingIssues, setResetingIssues] = useState(false);
   const [replaceCEOpen, setReplaceCEOpen] = useState(false);
   const [replaceCEStep, setReplaceCEStep] = useState<"confirm" | "invite">(
     "confirm",
@@ -145,13 +147,7 @@ export default function PublisherDashboard() {
   const [replacingCE, setReplacingCE] = useState(false);
   const [invitingCE, setInvitingCE] = useState(false);
   const [newCEForm, setNewCEForm] = useState({ name: "", email: "" });
-  const [issueForm, setIssueForm] = useState({
-    label: "",
-    volume: "",
-    issue: "",
-    year: new Date().getFullYear().toString(),
-    amount: "",
-  });
+  const [issuePreview, setIssuePreview] = useState<{ label: string; volume: number; issue: number; year: number } | null>(null);
   const [creatingIssue, setCreatingIssue] = useState(false);
 
   const statusMap: Record<string, string[]> = {
@@ -220,51 +216,35 @@ export default function PublisherDashboard() {
     }
   };
 
-  const createIssue = async () => {
-    if (!selectedJournal || !issueForm.label) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Label is required",
+  const fetchIssuePreview = async (journalId: string) => {
+    try {
+      const res = await fetch(`${url}/journal-issue/${journalId}/next-issue-preview`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      return;
-    }
+      const data = await res.json();
+      if (data.success) setIssuePreview(data.preview);
+    } catch {}
+  };
+
+  const createIssue = async () => {
+    if (!selectedJournal) return;
     try {
       setCreatingIssue(true);
       const res = await fetch(
         `${url}/journal-issue/addJournalIssue/${selectedJournal.id}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            label: issueForm.label,
-            volume: issueForm.volume ? Number(issueForm.volume) : undefined,
-            issue: issueForm.issue ? Number(issueForm.issue) : undefined,
-            year: Number(issueForm.year),
-          }),
+          headers: { Authorization: `Bearer ${token}` },
         },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create issue");
-      toast({ title: "Success", description: "Issue created successfully" });
-      setIssueForm({
-        label: "",
-        volume: "",
-        issue: "",
-        year: new Date().getFullYear().toString(),
-        amount: "",
-      });
+      toast({ title: "Success", description: `Issue created: ${data.issue?.label}` });
       setCreateIssueOpen(false);
+      setIssuePreview(null);
       fetchJournals();
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message,
-      });
+      toast({ variant: "destructive", title: "Error", description: err.message });
     } finally {
       setCreatingIssue(false);
     }
@@ -500,6 +480,26 @@ export default function PublisherDashboard() {
     }
   };
 
+  const handleIssueReset = async () => {
+    if (resetingIssues) return;
+    if (!window.confirm("This will close ALL open journal issues platform-wide. Continue?")) return;
+    setResetingIssues(true);
+    try {
+      const res = await fetch(`${url}/publisher/issues/reset-all`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Failed");
+      toast({ title: "Issues Reset", description: data.message });
+      fetchJournals();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setResetingIssues(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -589,6 +589,16 @@ export default function PublisherDashboard() {
               }}
             >
               <Bell className="h-4 w-4" /> Issue Requests
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-orange-600 border-orange-300 hover:bg-orange-50"
+              onClick={handleIssueReset}
+              disabled={resetingIssues}
+            >
+              <RotateCcw className="h-4 w-4" />
+              {resetingIssues ? "Resetting..." : "Reset Issues"}
             </Button>
             <Button
               onClick={() => navigate("/publisher/create-journal")}
@@ -936,6 +946,7 @@ export default function PublisherDashboard() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setCreateIssueOpen(true);
+                          if (selectedJournal) fetchIssuePreview(selectedJournal.id);
                         }}
                       >
                         <Plus className="h-3.5 w-3.5" /> Create New Issue
@@ -1044,7 +1055,7 @@ export default function PublisherDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <Dialog open={createIssueOpen} onOpenChange={setCreateIssueOpen}>
+        <Dialog open={createIssueOpen} onOpenChange={(open) => { setCreateIssueOpen(open); if (!open) setIssuePreview(null); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1053,65 +1064,24 @@ export default function PublisherDashboard() {
               </DialogTitle>
               <DialogDescription>{selectedJournal?.title}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-1">
-                <Label>
-                  Label <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  placeholder="e.g. Vol 1, Issue 1"
-                  value={issueForm.label}
-                  onChange={(e) =>
-                    setIssueForm((p) => ({ ...p, label: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Volume</Label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={issueForm.volume}
-                    onChange={(e) =>
-                      setIssueForm((p) => ({ ...p, volume: e.target.value }))
-                    }
-                  />
+            <div className="py-4">
+              {issuePreview ? (
+                <div className="rounded-lg border bg-muted/40 p-4 text-center space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Next issue</p>
+                  <p className="text-xl font-semibold text-foreground">{issuePreview.label}</p>
+                  <p className="text-sm text-muted-foreground">{issuePreview.year}</p>
                 </div>
-                <div className="space-y-1">
-                  <Label>Issue No.</Label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={issueForm.issue}
-                    onChange={(e) =>
-                      setIssueForm((p) => ({ ...p, issue: e.target.value }))
-                    }
-                  />
+              ) : (
+                <div className="rounded-lg border bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+                  Loading preview…
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label>Year</Label>
-                <Input
-                  type="number"
-                  value={issueForm.year}
-                  onChange={(e) =>
-                    setIssueForm((p) => ({ ...p, year: e.target.value }))
-                  }
-                />
-              </div>
+              )}
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setCreateIssueOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setCreateIssueOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={createIssue}
-                disabled={creatingIssue || !issueForm.label}
-              >
+              <Button onClick={createIssue} disabled={creatingIssue}>
                 {creatingIssue ? "Creating..." : "Create Issue"}
               </Button>
             </DialogFooter>

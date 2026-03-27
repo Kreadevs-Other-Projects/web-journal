@@ -32,6 +32,7 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageTransition } from "@/components/AnimationWrappers";
@@ -75,6 +76,7 @@ export default function SubmitPaper() {
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState(true);
+  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
 
   // Form state
   const [journalId, setJournalId] = useState("");
@@ -94,6 +96,7 @@ export default function SubmitPaper() {
   ]);
   const [manuscript, setManuscript] = useState<File | null>(null);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [extractedBanner, setExtractedBanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -126,6 +129,7 @@ export default function SubmitPaper() {
   const [previouslySubmitted, setPreviouslySubmitted] = useState("no");
   const [preprintAvailable, setPreprintAvailable] = useState(false);
   const [humanSubjects, setHumanSubjects] = useState(false);
+  const [otherJournalSubmission, setOtherJournalSubmission] = useState("no");
 
   useEffect(() => {
     setLoadingJournals(true);
@@ -138,6 +142,13 @@ export default function SubmitPaper() {
       })
       .finally(() => setLoadingJournals(false));
   }, [token]);
+
+  useEffect(() => {
+    fetch(`${url}/categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setAvailableCategories(d.categories || []); })
+      .catch(() => {});
+  }, []);
 
   // Keyword suggestions
   useEffect(() => {
@@ -381,7 +392,12 @@ export default function SubmitPaper() {
       // Additional fields
       if (articleType) formData.append("article_type", articleType);
       if (category) formData.append("category", category);
-      formData.append("conflict_of_interest", noConflictOfInterest ? "The authors declare no conflict of interest." : conflictOfInterest);
+      formData.append(
+        "conflict_of_interest",
+        noConflictOfInterest
+          ? "The authors declare no conflict of interest."
+          : conflictOfInterest,
+      );
       if (fundingInfo) formData.append("funding_info", fundingInfo);
       formData.append("data_availability", dataAvailability);
       if (ethicalApproval) formData.append("ethical_approval", ethicalApproval);
@@ -391,6 +407,7 @@ export default function SubmitPaper() {
       formData.append("previously_submitted", previouslySubmitted);
       formData.append("preprint_available", String(preprintAvailable));
       formData.append("human_subjects", String(humanSubjects));
+      formData.append("other_journal_submission", otherJournalSubmission);
 
       const res = await fetch(`${url}/papers/createPaper`, {
         method: "POST",
@@ -398,7 +415,18 @@ export default function SubmitPaper() {
         body: formData,
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || "Submission failed");
+      if (!res.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const map: Record<string, string> = {};
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setFieldErrors(map);
+          setShowReview(false);
+        }
+        throw new Error(data.message || "Submission failed");
+      }
+      setFieldErrors({});
 
       toast({
         title: "Paper submitted!",
@@ -538,8 +566,8 @@ export default function SubmitPaper() {
                   Loading journals…
                 </p>
               ) : (
-                <Select value={journalId} onValueChange={setJournalId}>
-                  <SelectTrigger>
+                <Select value={journalId} onValueChange={(v) => { setJournalId(v); if (fieldErrors["journal_id"]) setFieldErrors((p) => { const n = {...p}; delete n["journal_id"]; return n; }); }}>
+                  <SelectTrigger className={fieldErrors["journal_id"] ? "border-destructive" : ""}>
                     <SelectValue placeholder="Choose a journal with open submissions" />
                   </SelectTrigger>
                   <SelectContent>
@@ -562,6 +590,9 @@ export default function SubmitPaper() {
                     )}
                   </SelectContent>
                 </Select>
+              )}
+              {fieldErrors["journal_id"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["journal_id"]}</p>
               )}
             </div>
 
@@ -670,10 +701,14 @@ export default function SubmitPaper() {
               </div>
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); if (fieldErrors["title"]) setFieldErrors((p) => { const n = {...p}; delete n["title"]; return n; }); }}
                 maxLength={200}
                 placeholder="Enter paper title"
+                className={fieldErrors["title"] ? "border-destructive" : ""}
               />
+              {fieldErrors["title"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+              )}
             </div>
 
             {/* 3. Abstract */}
@@ -1011,6 +1046,9 @@ export default function SubmitPaper() {
                   )}
                 </div>
               )}
+              {fieldErrors["keywords"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["keywords"]}</p>
+              )}
             </div>
 
             {/* 7. References */}
@@ -1112,27 +1150,51 @@ export default function SubmitPaper() {
                 <div className="px-4 pb-4 space-y-5 divide-y divide-border">
                   {/* Category/Subject Area */}
                   <div className="pt-4">
-                    <Label className="mb-1.5 block">Category / Subject Area</Label>
-                    <Input
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="e.g., Computer Science, Medicine"
-                    />
+                    <Label className="mb-1.5 block">
+                      Category / Subject Area
+                    </Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCategories.map((c) => (
+                          <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Field 1 — Special Issue */}
                   <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
                     <div>
-                      <p className="text-sm font-medium">Is this a Special Issue submission?</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Select whether this paper is intended for a special issue call.</p>
+                      <p className="text-sm font-medium">
+                        Is this a Special Issue submission?
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Select whether this paper is intended for a special
+                        issue call.
+                      </p>
                     </div>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="isSpecialIssue" checked={isSpecialIssue === true} onChange={() => setIsSpecialIssue(true)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="isSpecialIssue"
+                          checked={isSpecialIssue === true}
+                          onChange={() => setIsSpecialIssue(true)}
+                          className="accent-primary"
+                        />
                         Yes
                       </label>
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="isSpecialIssue" checked={isSpecialIssue === false} onChange={() => setIsSpecialIssue(false)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="isSpecialIssue"
+                          checked={isSpecialIssue === false}
+                          onChange={() => setIsSpecialIssue(false)}
+                          className="accent-primary"
+                        />
                         No
                       </label>
                     </div>
@@ -1141,16 +1203,33 @@ export default function SubmitPaper() {
                   {/* Field 2 — Previously Submitted */}
                   <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
                     <div>
-                      <p className="text-sm font-medium">Has this manuscript been submitted previously to this journal?</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Include prior submissions or desk-rejected versions.</p>
+                      <p className="text-sm font-medium">
+                        Has this manuscript been submitted previously to this
+                        journal?
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Include prior submissions or desk-rejected versions.
+                      </p>
                     </div>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="previouslySubmitted" checked={previouslySubmitted === "yes"} onChange={() => setPreviouslySubmitted("yes")} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="previouslySubmitted"
+                          checked={previouslySubmitted === "yes"}
+                          onChange={() => setPreviouslySubmitted("yes")}
+                          className="accent-primary"
+                        />
                         Yes
                       </label>
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="previouslySubmitted" checked={previouslySubmitted === "no"} onChange={() => setPreviouslySubmitted("no")} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="previouslySubmitted"
+                          checked={previouslySubmitted === "no"}
+                          onChange={() => setPreviouslySubmitted("no")}
+                          className="accent-primary"
+                        />
                         No
                       </label>
                     </div>
@@ -1159,16 +1238,33 @@ export default function SubmitPaper() {
                   {/* Field 3 — Preprint Available */}
                   <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
                     <div>
-                      <p className="text-sm font-medium">Has a version of this manuscript been made available online (preprint)?</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">e.g., arXiv, bioRxiv, SSRN, or similar servers.</p>
+                      <p className="text-sm font-medium">
+                        Has a version of this manuscript been made available
+                        online (preprint)?
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        e.g., arXiv, bioRxiv, SSRN, or similar servers.
+                      </p>
                     </div>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="preprintAvailable" checked={preprintAvailable === true} onChange={() => setPreprintAvailable(true)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="preprintAvailable"
+                          checked={preprintAvailable === true}
+                          onChange={() => setPreprintAvailable(true)}
+                          className="accent-primary"
+                        />
                         Yes
                       </label>
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="preprintAvailable" checked={preprintAvailable === false} onChange={() => setPreprintAvailable(false)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="preprintAvailable"
+                          checked={preprintAvailable === false}
+                          onChange={() => setPreprintAvailable(false)}
+                          className="accent-primary"
+                        />
                         No
                       </label>
                     </div>
@@ -1177,23 +1273,110 @@ export default function SubmitPaper() {
                   {/* Field 4 — Human Subjects */}
                   <div className="pt-4 grid grid-cols-[1fr_auto] gap-4 items-start">
                     <div>
-                      <p className="text-sm font-medium">Informed Consent / Human Subjects</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Does this research involve human participants or personal data?</p>
+                      <p className="text-sm font-medium">
+                        Informed Consent / Human Subjects
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Does this research involve human participants or
+                        personal data?
+                      </p>
                     </div>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="humanSubjects" checked={humanSubjects === true} onChange={() => setHumanSubjects(true)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="humanSubjects"
+                          checked={humanSubjects === true}
+                          onChange={() => setHumanSubjects(true)}
+                          className="accent-primary"
+                        />
                         Yes
                       </label>
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <input type="radio" name="humanSubjects" checked={humanSubjects === false} onChange={() => setHumanSubjects(false)} className="accent-primary" />
+                        <input
+                          type="radio"
+                          name="humanSubjects"
+                          checked={humanSubjects === false}
+                          onChange={() => setHumanSubjects(false)}
+                          className="accent-primary"
+                        />
                         No
                       </label>
                     </div>
                   </div>
 
-                  {/* Field 5 — Data Availability (dropdown with preview) */}
-                  <div className="pt-4">
+                  {/* Field 5 — Other Journal Submission */}
+                  <div className="pt-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        Has this paper been submitted to or published in another
+                        journal?
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Simultaneous submission to multiple journals is not
+                        permitted.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-start gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          name="otherJournalSubmission"
+                          value="no"
+                          checked={otherJournalSubmission === "no"}
+                          onChange={() => setOtherJournalSubmission("no")}
+                          className="accent-primary mt-0.5"
+                        />
+                        No, this paper has not been submitted elsewhere
+                      </label>
+                      <label className="flex items-start gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          name="otherJournalSubmission"
+                          value="under_review_elsewhere"
+                          checked={
+                            otherJournalSubmission === "under_review_elsewhere"
+                          }
+                          onChange={() =>
+                            setOtherJournalSubmission("under_review_elsewhere")
+                          }
+                          className="accent-primary mt-0.5"
+                        />
+                        Yes, it has been submitted to another journal (currently
+                        under review)
+                      </label>
+                      <label className="flex items-start gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          name="otherJournalSubmission"
+                          value="previously_submitted"
+                          checked={
+                            otherJournalSubmission === "previously_submitted"
+                          }
+                          onChange={() =>
+                            setOtherJournalSubmission("previously_submitted")
+                          }
+                          className="accent-primary mt-0.5"
+                        />
+                        Yes, it was previously submitted but withdrawn/rejected
+                      </label>
+                    </div>
+                    {(otherJournalSubmission === "under_review_elsewhere" ||
+                      otherJournalSubmission === "previously_submitted") && (
+                      <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/40 p-3 text-sm text-amber-800 dark:text-amber-400">
+                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <p>
+                          Please note: Submitting a paper that is currently
+                          under review elsewhere may violate publication ethics.
+                          Ensure you have withdrawn from the other journal
+                          before proceeding.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Field 6 — Data Availability (dropdown with preview) */}
+                  {/* <div className="pt-4">
                     <Label className="mb-1.5 block">Data Availability</Label>
                     <Select value={dataAvailability} onValueChange={setDataAvailability}>
                       <SelectTrigger>
@@ -1214,11 +1397,13 @@ export default function SubmitPaper() {
                         {dataAvailability === "restricted" && "The data that support the findings of this study are not publicly available due to privacy or ethical restrictions."}
                       </p>
                     )}
-                  </div>
+                  </div> */}
 
                   {/* Field 6 — Conflict of Interest */}
                   <div className="pt-4">
-                    <Label className="mb-1.5 block">Conflict of Interest Statement</Label>
+                    <Label className="mb-1.5 block">
+                      Conflict of Interest Statement
+                    </Label>
                     <div className="flex items-center gap-2 mb-2">
                       <input
                         type="checkbox"
@@ -1230,7 +1415,10 @@ export default function SubmitPaper() {
                         }}
                         className="accent-primary"
                       />
-                      <label htmlFor="noConflict" className="text-sm cursor-pointer select-none">
+                      <label
+                        htmlFor="noConflict"
+                        className="text-sm cursor-pointer select-none"
+                      >
                         The authors declare no conflict of interest
                       </label>
                     </div>
@@ -1245,7 +1433,7 @@ export default function SubmitPaper() {
                   </div>
 
                   {/* Funding Information */}
-                  <div className="pt-4">
+                  {/* <div className="pt-4">
                     <Label className="mb-1.5 block">Funding Information</Label>
                     <Textarea
                       value={fundingInfo}
@@ -1253,10 +1441,10 @@ export default function SubmitPaper() {
                       placeholder="List grant numbers and funding bodies"
                       rows={3}
                     />
-                  </div>
+                  </div> */}
 
                   {/* Ethical Approval */}
-                  <div className="pt-4">
+                  {/* <div className="pt-4">
                     <Label className="mb-1.5 block">Ethical Approval</Label>
                     <Textarea
                       value={ethicalApproval}
@@ -1264,7 +1452,7 @@ export default function SubmitPaper() {
                       placeholder="IRB number or 'Not applicable'"
                       rows={2}
                     />
-                  </div>
+                  </div> */}
 
                   {/* Author Contributions */}
                   <div className="pt-4">

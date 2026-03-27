@@ -1,5 +1,8 @@
 import * as repo from "./chiefEditor.repository";
 import { sendSubEditorInviteEmail } from "../../utils/emails/userEmails";
+import { pool } from "../../configs/db";
+import { insertStatusLog } from "../paper/paper.repository";
+import { initiatePaperPaymentService } from "../paperPayment/paperPayment.service";
 
 export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
   if (!chiefEditorId) {
@@ -64,6 +67,11 @@ export const makeEditorDecision = async (
     throw new Error("Cannot decide without submitted reviews");
   }
 
+  const currentPaper = await repo.getPaperByIdRepo(paperId);
+  if (currentPaper?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
+
   const decisionRow = await repo.createEditorDecision(
     paperId,
     editorId,
@@ -80,6 +88,32 @@ export const makeEditorDecision = async (
   const paperStatus = statusMap[decision] ?? decision;
   const updatedPaper = await repo.updatePaperStatus(paperId, paperStatus);
 
+  // On acceptance: create payment record, update status to awaiting_payment, send invoice
+  if (decision === "accepted") {
+    const authorRes = await pool.query(
+      `SELECT u.id, u.email, u.username FROM users u JOIN papers p ON p.author_id = u.id WHERE p.id = $1`,
+      [paperId],
+    );
+    if (authorRes.rows.length) {
+      const author = authorRes.rows[0];
+      try {
+        await initiatePaperPaymentService(paperId, author.id, author.email, author.username);
+      } catch (err) {
+        console.error("[payment] initiatePaperPaymentService failed on acceptance:", err);
+      }
+      await pool.query(
+        `UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`,
+        [paperId],
+      );
+      await insertStatusLog({
+        paper_id: paperId,
+        status: "awaiting_payment",
+        changed_by: editorId,
+        note: "Paper accepted — awaiting payment",
+      });
+    }
+  }
+
   return {
     decision: decisionRow,
     paper: updatedPaper,
@@ -87,6 +121,10 @@ export const makeEditorDecision = async (
 };
 
 export const changePaperStatus = async (paperId: string, status: string) => {
+  const currentPaper = await repo.getPaperByIdRepo(paperId);
+  if (currentPaper?.status === "published") {
+    throw new Error("Cannot change the status of a published paper.");
+  }
   return repo.updatePaperStatus(paperId, status);
 };
 

@@ -60,6 +60,10 @@ export const getBrowseDataRepo = async (filters: any) => {
     j.issn,
     j.aims_and_scope,
     j.logo_url,
+    j.journal_category_id,
+    jc.name as category_name,
+    jc.slug as category_slug,
+    j.created_at as journal_created_at,
     ji.id as issue_id,
     ji.year,
     ji.volume,
@@ -71,6 +75,7 @@ export const getBrowseDataRepo = async (filters: any) => {
     pv.file_url,
     pv.version_number
   FROM journals j
+  LEFT JOIN journal_categories jc ON jc.id = j.journal_category_id
   LEFT JOIN journal_issues ji
       ON ji.journal_id = j.id
   LEFT JOIN papers p
@@ -139,8 +144,9 @@ export const getPublicJournalsRepo = async (filters: {
   q?: string;
   type?: string;
   open?: boolean;
+  category_id?: string;
 }) => {
-  const { limit, q, type, open } = filters;
+  const { limit, q, type, open, category_id } = filters;
   const values: any[] = [limit];
   let where = `WHERE (j.status = 'active' OR j.status IS NULL)`;
 
@@ -151,6 +157,10 @@ export const getPublicJournalsRepo = async (filters: {
   if (type) {
     values.push(type);
     where += ` AND j.type = $${values.length}`;
+  }
+  if (category_id) {
+    values.push(category_id);
+    where += ` AND j.journal_category_id = $${values.length}`;
   }
 
   let openJoin = "";
@@ -166,12 +176,16 @@ export const getPublicJournalsRepo = async (filters: {
        j.type,
        j.logo_url,
        j.aims_and_scope,
+       j.journal_category_id,
+       jc.name AS category_name,
+       jc.slug AS category_slug,
        COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'published')::int AS article_count
      FROM journals j
      ${openJoin}
      LEFT JOIN papers p ON p.journal_id = j.id
+     LEFT JOIN journal_categories jc ON jc.id = j.journal_category_id
      ${where}
-     GROUP BY j.id
+     GROUP BY j.id, jc.name, jc.slug
      ORDER BY j.created_at DESC
      LIMIT $1`,
     values,

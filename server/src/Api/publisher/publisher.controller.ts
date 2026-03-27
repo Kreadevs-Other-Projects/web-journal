@@ -247,3 +247,14 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
     });
   }
 };
+
+import { triggerIssueReset } from '../../cron/issueResetCron';
+
+export const manualIssueReset = async (req: Request, res: Response) => {
+  try {
+    const count = await triggerIssueReset();
+    return res.json({ success: true, message: `Closed ${count} open issue(s)`, count });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

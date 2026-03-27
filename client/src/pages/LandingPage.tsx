@@ -183,6 +183,19 @@ export default function LandingPage() {
       .finally(() => setOpenJournalsLoading(false));
   }, []);
 
+  // Dynamic categories from API
+  const [dynamicCategories, setDynamicCategories] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    fetch(`${url}/categories`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.categories) {
+          setDynamicCategories(d.categories.map((c: any) => ({ value: c.slug, label: c.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleFilterChange = (field: keyof SearchFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
     if (errors) setErrors("");
@@ -218,17 +231,7 @@ export default function LandingPage() {
 
   const categories = [
     { value: "", label: "All Categories" },
-    { value: "physics", label: "Physics" },
-    { value: "computer-science", label: "Computer Science" },
-    { value: "mathematics", label: "Mathematics" },
-    { value: "biology", label: "Biology" },
-    { value: "chemistry", label: "Chemistry" },
-    { value: "engineering", label: "Engineering" },
-    { value: "medicine", label: "Medicine" },
-    { value: "social-sciences", label: "Social Sciences" },
-    { value: "arts-humanities", label: "Arts & Humanities" },
-    { value: "business-economics", label: "Business & Economics" },
-    { value: "environmental-science", label: "Environmental Science" },
+    ...dynamicCategories,
   ];
 
   const currentYear = new Date().getFullYear();

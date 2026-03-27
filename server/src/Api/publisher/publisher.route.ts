@@ -12,6 +12,7 @@ import {
   getJournalPayments,
   updatePaymentStatus,
   replaceChiefEditor,
+  manualIssueReset,
 } from "./publisher.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 
@@ -80,5 +81,8 @@ router.put(
   authorize("publisher"),
   updatePaymentStatus,
 );
+
+// Manual trigger: close all open issues (new year reset)
+router.post("/issues/reset-all", authMiddleware, authorize("publisher"), manualIssueReset);
 
 export default router;

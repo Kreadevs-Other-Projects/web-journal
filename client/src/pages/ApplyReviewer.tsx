@@ -17,6 +17,8 @@ export default function ApplyReviewerPage() {
   const [searchParams] = useSearchParams();
   const journalId = searchParams.get("journalId") || "";
   const journalAcronym = searchParams.get("journal") || "";
+  const appliedRole = searchParams.get("role") === "associate_editor" ? "associate_editor" : "reviewer";
+  const roleLabel = appliedRole === "associate_editor" ? "Associate Editor" : "Reviewer";
 
   const [journalName, setJournalName] = useState<string>("");
   const [journalLoading, setJournalLoading] = useState(true);
@@ -114,6 +116,7 @@ export default function ApplyReviewerPage() {
       formData.append("degrees", JSON.stringify(degrees.filter((d) => d.trim())));
       formData.append("keywords", JSON.stringify(keywords));
       if (profilePic) formData.append("profile_pic", profilePic);
+      formData.append("applied_role", appliedRole);
 
       const res = await fetch(`${url}/contact/apply-reviewer`, {
         method: "POST",
@@ -163,9 +166,9 @@ export default function ApplyReviewerPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <UserCheck className="h-5 w-5 text-primary" />
-            <span className="text-sm text-primary font-medium uppercase tracking-wide">Reviewer Application</span>
+            <span className="text-sm text-primary font-medium uppercase tracking-wide">{roleLabel} Application</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Apply as Reviewer</h1>
+          <h1 className="text-3xl font-bold text-foreground">Apply as {roleLabel}</h1>
           {(journalName || journalLoading) && (
             <p className="text-muted-foreground mt-1">
               Journal:{" "}

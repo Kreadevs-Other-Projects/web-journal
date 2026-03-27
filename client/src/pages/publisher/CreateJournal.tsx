@@ -77,6 +77,7 @@ export default function CreateJournal() {
   const [journalManager, setJournalManager] =
     useState<StaffFields>(defaultStaff);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
@@ -105,8 +106,10 @@ export default function CreateJournal() {
     setLogoPreview(URL.createObjectURL(file));
   };
 
-  const updateJournal = (field: keyof JournalFields, value: string) =>
+  const updateJournal = (field: keyof JournalFields, value: string) => {
     setJournal((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+  };
 
   const updateChiefEditor = (field: keyof StaffFields, value: string) =>
     setChiefEditor((prev) => ({ ...prev, [field]: value }));
@@ -189,8 +192,16 @@ export default function CreateJournal() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const map: Record<string, string> = {};
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setFieldErrors(map);
+        }
         throw new Error(data.message || "Failed to create journal");
       }
+      setFieldErrors({});
 
       toast({
         title: "Journal Created",
@@ -335,7 +346,11 @@ export default function CreateJournal() {
                     value={journal.issn}
                     onChange={(e) => updateJournal("issn", e.target.value)}
                     placeholder="e.g. 1234-567X"
+                    className={fieldErrors["issn"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["issn"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>DOI</Label>
@@ -343,7 +358,11 @@ export default function CreateJournal() {
                     value={journal.doi}
                     onChange={(e) => updateJournal("doi", e.target.value)}
                     placeholder="Optional"
+                    className={fieldErrors["doi"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["doi"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["doi"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>

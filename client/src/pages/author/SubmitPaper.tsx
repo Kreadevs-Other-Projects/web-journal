@@ -76,6 +76,7 @@ export default function SubmitPaper() {
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState(true);
+  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
 
   // Form state
   const [journalId, setJournalId] = useState("");
@@ -140,6 +141,13 @@ export default function SubmitPaper() {
       })
       .finally(() => setLoadingJournals(false));
   }, [token]);
+
+  useEffect(() => {
+    fetch(`${url}/categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setAvailableCategories(d.categories || []); })
+      .catch(() => {});
+  }, []);
 
   // Keyword suggestions
   useEffect(() => {
@@ -1123,11 +1131,16 @@ export default function SubmitPaper() {
                     <Label className="mb-1.5 block">
                       Category / Subject Area
                     </Label>
-                    <Input
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="e.g., Computer Science, Medicine"
-                    />
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCategories.map((c) => (
+                          <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Field 1 — Special Issue */}

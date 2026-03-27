@@ -215,6 +215,7 @@ export const getApplications = async (req: AuthUser, res: Response) => {
   try {
     const ceId = req.user!.id;
     const status = (req.query.status as string) || "pending";
+    const appliedRole = req.query.applied_role as string | undefined;
 
     // Get journal IDs this CE manages
     const journalsRes = await pool.query(
@@ -224,13 +225,20 @@ export const getApplications = async (req: AuthUser, res: Response) => {
     const journalIds = journalsRes.rows.map((r: any) => r.journal_id);
     if (!journalIds.length) return res.json({ success: true, applications: [] });
 
+    const params: any[] = [journalIds, status];
+    let roleClause = "";
+    if (appliedRole === "reviewer" || appliedRole === "associate_editor") {
+      params.push(appliedRole);
+      roleClause = ` AND ra.applied_role = $${params.length}`;
+    }
+
     const result = await pool.query(
       `SELECT ra.*, j.title AS journal_name
        FROM reviewer_applications ra
        JOIN journals j ON j.id = ra.journal_id
-       WHERE ra.journal_id = ANY($1::uuid[]) AND ra.status = $2
+       WHERE ra.journal_id = ANY($1::uuid[]) AND ra.status = $2${roleClause}
        ORDER BY ra.created_at DESC`,
-      [journalIds, status],
+      params,
     );
     res.json({ success: true, applications: result.rows });
   } catch (e: any) {

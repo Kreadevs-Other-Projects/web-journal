@@ -174,6 +174,30 @@ export const publisherCreateJournalService = async (
     journal_manager: { name: string; email: string };
   },
 ) => {
+  // Uniqueness checks for ISSN and DOI
+  if (data.issn) {
+    const issnCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE issn = $1`,
+      [data.issn]
+    );
+    if (issnCheck.rows.length) {
+      const err: any = new Error("A journal with this ISSN already exists");
+      err.field = "issn";
+      throw err;
+    }
+  }
+  if (data.doi) {
+    const doiCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE doi = $1`,
+      [data.doi]
+    );
+    if (doiCheck.rows.length) {
+      const err: any = new Error("A journal with this DOI already exists");
+      err.field = "doi";
+      throw err;
+    }
+  }
+
   // Auto-generate acronym from title if not provided
   if (!data.acronym) {
     const base = buildAcronym(data.title);

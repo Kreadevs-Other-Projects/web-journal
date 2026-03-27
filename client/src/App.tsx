@@ -16,6 +16,7 @@ import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import CreateJournal from "./pages/publisher/CreateJournal.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
 import PublisherPayments from "./pages/publisher/Payments.tsx";
+import PublisherCategories from "./pages/publisher/Categories.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -173,6 +174,10 @@ const App = () => (
                     <Route
                       path="/publisher/payments"
                       element={<PublisherPayments />}
+                    />
+                    <Route
+                      path="/publisher/categories"
+                      element={<PublisherCategories />}
                     />
                   </Route>
 

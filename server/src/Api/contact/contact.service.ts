@@ -15,6 +15,7 @@ export const applyAsReviewerService = async (data: {
   affiliation?: string;
   orcid?: string;
   profilePicPath?: string;
+  appliedRole?: string;
 }) => {
   // 1. Get journal name
   const journalRes = await pool.query(
@@ -68,10 +69,11 @@ export const applyAsReviewerService = async (data: {
     ? `uploads/profiles/${data.profilePicPath.split(/[\\/]/).pop()}`
     : null;
 
+  const appliedRole = data.appliedRole === "associate_editor" ? "associate_editor" : "reviewer";
   const appRes = await pool.query(
     `INSERT INTO reviewer_applications
-       (journal_id, name, email, profile_pic_url, degrees, keywords, statement, affiliation, orcid)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (journal_id, name, email, profile_pic_url, degrees, keywords, statement, affiliation, orcid, applied_role)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
     [
       data.journalId,
@@ -83,6 +85,7 @@ export const applyAsReviewerService = async (data: {
       data.statement || null,
       data.affiliation || null,
       data.orcid || null,
+      appliedRole,
     ],
   );
   const applicationId = appRes.rows[0].id;

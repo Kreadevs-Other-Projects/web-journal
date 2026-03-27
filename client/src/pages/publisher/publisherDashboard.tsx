@@ -26,6 +26,7 @@ import {
   Bell,
   ThumbsUp,
   ThumbsDown,
+  RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,6 +130,7 @@ export default function PublisherDashboard() {
   const [issueRequests, setIssueRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+  const [resetingIssues, setResetingIssues] = useState(false);
   const [replaceCEOpen, setReplaceCEOpen] = useState(false);
   const [replaceCEStep, setReplaceCEStep] = useState<"confirm" | "invite">(
     "confirm",
@@ -420,6 +422,26 @@ export default function PublisherDashboard() {
     }
   };
 
+  const handleIssueReset = async () => {
+    if (resetingIssues) return;
+    if (!window.confirm("This will close ALL open journal issues platform-wide. Continue?")) return;
+    setResetingIssues(true);
+    try {
+      const res = await fetch(`${url}/publisher/issues/reset-all`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Failed");
+      toast({ title: "Issues Reset", description: data.message });
+      fetchJournals();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setResetingIssues(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -509,6 +531,16 @@ export default function PublisherDashboard() {
               }}
             >
               <Bell className="h-4 w-4" /> Issue Requests
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-orange-600 border-orange-300 hover:bg-orange-50"
+              onClick={handleIssueReset}
+              disabled={resetingIssues}
+            >
+              <RotateCcw className="h-4 w-4" />
+              {resetingIssues ? "Resetting..." : "Reset Issues"}
             </Button>
             <Button
               onClick={() => navigate("/publisher/create-journal")}

@@ -52,6 +52,7 @@ export default function CETeam() {
   const [openInviteRev, setOpenInviteRev] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: "", email: "" });
   const [inviting, setInviting] = useState(false);
+  const [inviteFieldErrors, setInviteFieldErrors] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     if (!token) return;
@@ -116,7 +117,15 @@ export default function CETeam() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to send invitation");
+      if (!res.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const map: Record<string, string> = {};
+          data.errors.forEach((e: { field: string; message: string }) => { map[e.field] = e.message; });
+          setInviteFieldErrors(map);
+        }
+        throw new Error(data.message || "Failed to send invitation");
+      }
+      setInviteFieldErrors({});
       toast({ title: "Invitation Sent", description: `${inviteForm.name} has been invited as ${role.replace("_", " ")}.` });
       setInviteForm({ name: "", email: "" });
       setOpenInviteSE(false);
@@ -226,8 +235,10 @@ export default function CETeam() {
             <Input
               placeholder="Full name"
               value={inviteForm.name}
-              onChange={(e) => setInviteForm((p) => ({ ...p, name: e.target.value }))}
+              onChange={(e) => { setInviteForm((p) => ({ ...p, name: e.target.value })); if (inviteFieldErrors.name) setInviteFieldErrors((p) => { const n = {...p}; delete n.name; return n; }); }}
+              className={inviteFieldErrors.name ? "border-destructive" : ""}
             />
+            {inviteFieldErrors.name && <p className="text-xs text-destructive">{inviteFieldErrors.name}</p>}
           </div>
           <div className="space-y-1">
             <Label>Email *</Label>
@@ -235,12 +246,14 @@ export default function CETeam() {
               type="email"
               placeholder="email@example.com"
               value={inviteForm.email}
-              onChange={(e) => setInviteForm((p) => ({ ...p, email: e.target.value }))}
+              onChange={(e) => { setInviteForm((p) => ({ ...p, email: e.target.value })); if (inviteFieldErrors.email) setInviteFieldErrors((p) => { const n = {...p}; delete n.email; return n; }); }}
+              className={inviteFieldErrors.email ? "border-destructive" : ""}
             />
+            {inviteFieldErrors.email && <p className="text-xs text-destructive">{inviteFieldErrors.email}</p>}
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => { onOpenChange(false); setInviteForm({ name: "", email: "" }); }}>
+          <Button variant="ghost" onClick={() => { onOpenChange(false); setInviteForm({ name: "", email: "" }); setInviteFieldErrors({}); }}>
             Cancel
           </Button>
           <Button onClick={() => handleInvite(role)} disabled={inviting || !inviteForm.name || !inviteForm.email}>

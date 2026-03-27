@@ -149,6 +149,14 @@ export default function SignupPage() {
       const signupResult = await signupRes.json();
 
       if (!signupRes.ok) {
+        if (signupResult.errors && Array.isArray(signupResult.errors)) {
+          const map: Record<string, string> = {};
+          signupResult.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setErrors(map);
+          return;
+        }
         throw new Error(signupResult.message || "Signup failed");
       }
 

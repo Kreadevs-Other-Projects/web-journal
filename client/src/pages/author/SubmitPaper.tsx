@@ -96,6 +96,7 @@ export default function SubmitPaper() {
   ]);
   const [manuscript, setManuscript] = useState<File | null>(null);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [extractedBanner, setExtractedBanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -414,7 +415,18 @@ export default function SubmitPaper() {
         body: formData,
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || "Submission failed");
+      if (!res.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const map: Record<string, string> = {};
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setFieldErrors(map);
+          setShowReview(false);
+        }
+        throw new Error(data.message || "Submission failed");
+      }
+      setFieldErrors({});
 
       toast({
         title: "Paper submitted!",
@@ -554,8 +566,8 @@ export default function SubmitPaper() {
                   Loading journals…
                 </p>
               ) : (
-                <Select value={journalId} onValueChange={setJournalId}>
-                  <SelectTrigger>
+                <Select value={journalId} onValueChange={(v) => { setJournalId(v); if (fieldErrors["journal_id"]) setFieldErrors((p) => { const n = {...p}; delete n["journal_id"]; return n; }); }}>
+                  <SelectTrigger className={fieldErrors["journal_id"] ? "border-destructive" : ""}>
                     <SelectValue placeholder="Choose a journal with open submissions" />
                   </SelectTrigger>
                   <SelectContent>
@@ -578,6 +590,9 @@ export default function SubmitPaper() {
                     )}
                   </SelectContent>
                 </Select>
+              )}
+              {fieldErrors["journal_id"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["journal_id"]}</p>
               )}
             </div>
 
@@ -686,10 +701,14 @@ export default function SubmitPaper() {
               </div>
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); if (fieldErrors["title"]) setFieldErrors((p) => { const n = {...p}; delete n["title"]; return n; }); }}
                 maxLength={200}
                 placeholder="Enter paper title"
+                className={fieldErrors["title"] ? "border-destructive" : ""}
               />
+              {fieldErrors["title"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+              )}
             </div>
 
             {/* 3. Abstract */}
@@ -1026,6 +1045,9 @@ export default function SubmitPaper() {
                     </div>
                   )}
                 </div>
+              )}
+              {fieldErrors["keywords"] && (
+                <p className="text-xs text-destructive mt-1">{fieldErrors["keywords"]}</p>
               )}
             </div>
 

@@ -371,7 +371,11 @@ export default function CreateJournal() {
                     value={journal.title}
                     onChange={(e) => updateJournal("title", e.target.value)}
                     placeholder="e.g. Journal of Artificial Intelligence"
+                    className={fieldErrors["title"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["title"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>
@@ -383,7 +387,11 @@ export default function CreateJournal() {
                       updateJournal("publisher_name", e.target.value)
                     }
                     placeholder="e.g. GIKI Press"
+                    className={fieldErrors["publisher_name"] ? "border-destructive" : ""}
                   />
+                  {fieldErrors["publisher_name"] && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors["publisher_name"]}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>ISSN</Label>
@@ -393,8 +401,10 @@ export default function CreateJournal() {
                     placeholder="e.g. 1234-567X"
                     className={fieldErrors["issn"] ? "border-destructive" : ""}
                   />
-                  {fieldErrors["issn"] && (
+                  {fieldErrors["issn"] ? (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Format: XXXX-XXXX — e.g. 1234-567X</p>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -402,11 +412,13 @@ export default function CreateJournal() {
                   <Input
                     value={journal.doi}
                     onChange={(e) => updateJournal("doi", e.target.value)}
-                    placeholder="Optional"
+                    placeholder="e.g. 10.12345/journal.2026.001"
                     className={fieldErrors["doi"] ? "border-destructive" : ""}
                   />
-                  {fieldErrors["doi"] && (
+                  {fieldErrors["doi"] ? (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["doi"]}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Format: 10.XXXXX/suffix — e.g. 10.12345/tm.2026.001</p>
                   )}
                 </div>
                 <div className="space-y-1">

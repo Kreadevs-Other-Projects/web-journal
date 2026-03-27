@@ -83,12 +83,28 @@ export const subEditorDecisionService = async (
     throw new Error("Incorrect password");
   }
 
-  const statusCheck = await pool.query(
-    "SELECT status FROM papers WHERE id = $1",
+  // Get current paper version and status
+  const paperInfo = await pool.query(
+    "SELECT current_version_id, status FROM papers WHERE id = $1",
     [paperId],
   );
-  if (statusCheck.rows[0]?.status === "published") {
+  if (paperInfo.rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
+  }
+  const currentVersionId = paperInfo.rows[0]?.current_version_id;
+
+  // Block duplicate decision on the same version
+  const existingDecision = await pool.query(
+    `SELECT id, decision, decided_at
+     FROM sub_editor_decisions
+     WHERE paper_id = $1 AND sub_editor_id = $2 AND paper_version_id = $3`,
+    [paperId, subEditorId, currentVersionId],
+  );
+  if (existingDecision.rows.length > 0) {
+    const d = existingDecision.rows[0];
+    throw new Error(
+      `You have already submitted a decision (${d.decision}) for this version on ${new Date(d.decided_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}. A new decision can only be made after the author uploads a revised version.`,
+    );
   }
 
   if ((action === "revision" || action === "reject") && !comments?.trim()) {

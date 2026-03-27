@@ -124,6 +124,7 @@ export default function SubEditorDashboard() {
   const [decisionPassword, setDecisionPassword] = useState("");
   const [showDecisionPassword, setShowDecisionPassword] = useState(false);
   const [paperReviews, setPaperReviews] = useState<any[]>([]);
+  const [lastDecision, setLastDecision] = useState<{ action: string; date: string } | null>(null);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
@@ -403,16 +404,26 @@ export default function SubEditorDashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to submit decision");
+      const actionStatusMap: Record<string, string> = {
+        approve: "sub_editor_approved",
+        revision: "pending_revision",
+        reject: "rejected",
+      };
+      const newStatus = actionStatusMap[decisionAction!];
       toast({
         title: "Decision Submitted",
         description: decisionAction === "approve" ? "Paper forwarded to Chief Editor." : decisionAction === "revision" ? "Revision requested from author." : "Paper rejected.",
       });
       setOpenDecisionDialog(false);
       setDecisionNote("");
-      setDecisionAction(null);
       setDecisionEmail("");
       setDecisionPassword("");
-      setSelectedPaper(null);
+      setLastDecision({
+        action: decisionAction!,
+        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+      });
+      setDecisionAction(null);
+      setSelectedPaper((prev) => prev ? { ...prev, status: newStatus } : null);
       fetchPapers();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -594,7 +605,7 @@ export default function SubEditorDashboard() {
                   variant="ghost"
                   size="icon"
                   className="rounded-full hover:bg-white/10 transition-colors"
-                  onClick={() => setSelectedPaper(null)}
+                  onClick={() => { setSelectedPaper(null); setLastDecision(null); }}
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -902,7 +913,22 @@ export default function SubEditorDashboard() {
                   </CardContent>
                 </Card>
 
-                {selectedPaper.status === "reviewed" && (
+                {lastDecision ? (
+                  <Card className="glass-card border-0 bg-gradient-to-br from-green-900/20 to-green-800/10">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-green-400">
+                        <CheckCircle className="h-5 w-5" />
+                        <span className="font-semibold">Decision Submitted</span>
+                      </div>
+                      <p className="text-sm text-foreground">
+                        {lastDecision.action === "approve" ? "Approved" : lastDecision.action === "revision" ? "Revision Requested" : "Rejected"} on {lastDecision.date}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        A new decision can only be made after the author uploads a revised version.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : selectedPaper.status === "reviewed" && (
                   <Card className="glass-card border-0 bg-gradient-to-br from-orange-900/20 to-orange-800/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-orange-400">

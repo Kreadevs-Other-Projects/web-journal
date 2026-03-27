@@ -1,4 +1,6 @@
 import { Response } from "express";
+import path from "path";
+import fs from "fs";
 import { AuthUser } from "../../middlewares/auth.middleware";
 import {
   getFullProfile,
@@ -7,6 +9,13 @@ import {
   changePassword,
 } from "./profile.service";
 import { deleteAllUserRefreshTokens } from "../auth/auth.repository";
+import {
+  createCertificationRepo,
+  getCertificationsByUserRepo,
+  getCertificationByIdRepo,
+  deleteCertificationRepo,
+  countCertificationsRepo,
+} from "./profile.repository";
 
 export const getProfile = async (req: AuthUser, res: Response) => {
   const userId = req.user?.id;
@@ -170,6 +179,56 @@ export const editProfile = async (req: AuthUser, res: Response) => {
       message: "Failed to update profile",
     });
   }
+};
+
+export const uploadCertification = async (req: AuthUser, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+
+  const count = await countCertificationsRepo(userId);
+  if (count >= 5) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ success: false, message: "Maximum 5 certifications allowed" });
+  }
+
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const fileUrl = `${baseUrl}/api/uploads/certifications/${req.file.filename}`;
+
+  const cert = await createCertificationRepo({
+    user_id: userId,
+    file_url: fileUrl,
+    file_name: req.file.originalname,
+    file_type: req.file.mimetype,
+  });
+
+  return res.status(201).json({ success: true, certification: cert });
+};
+
+export const getCertifications = async (req: AuthUser, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const certs = await getCertificationsByUserRepo(userId);
+  return res.json({ success: true, certifications: certs });
+};
+
+export const deleteCertification = async (req: AuthUser, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const { certId } = req.params;
+  const cert = await getCertificationByIdRepo(certId);
+  if (!cert) return res.status(404).json({ success: false, message: "Certification not found" });
+  if (cert.user_id !== userId) return res.status(403).json({ success: false, message: "Forbidden" });
+
+  // Delete file from disk
+  const filename = path.basename(cert.file_url);
+  const filePath = path.join(process.cwd(), "uploads", "certifications", filename);
+  fs.unlink(filePath, () => {});
+
+  await deleteCertificationRepo(certId, userId);
+  return res.json({ success: true, message: "Certification deleted" });
 };
 
 export const removeProfile = async (req: AuthUser, res: Response) => {

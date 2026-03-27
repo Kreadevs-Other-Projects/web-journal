@@ -15,7 +15,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -97,12 +96,8 @@ export default function PublisherManager() {
   const [issueStatusFilter, setIssueStatusFilter] = useState<IssueStatusFilter>("all");
   const [openRequestIssue, setOpenRequestIssue] = useState(false);
   const [requestingIssue, setRequestingIssue] = useState(false);
-  const [newIssueForm, setNewIssueForm] = useState({
-    label: "",
-    volume: "",
-    issue_no: "",
-    year: "",
-  });
+  const [nextIssuePreview, setNextIssuePreview] = useState<{ label: string; volume: number; issue: number; year: number } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -167,11 +162,24 @@ export default function PublisherManager() {
     issueStatusFilter === "all" ? true : iss.status === issueStatusFilter,
   );
 
-  const handleRequestIssue = async () => {
-    if (!newIssueForm.label.trim()) {
-      toast({ title: "Label required", description: "Please enter a label for the issue.", variant: "destructive" });
-      return;
+  const fetchNextIssuePreview = async () => {
+    const journalId = user?.active_journal_id ?? issues[0]?.journal_id ?? null;
+    if (!journalId) return;
+    try {
+      setPreviewLoading(true);
+      const res = await fetch(`${url}/journal-issue/${journalId}/next-issue-preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) setNextIssuePreview(data.preview);
+    } catch (err) {
+      console.error("Failed to fetch issue preview", err);
+    } finally {
+      setPreviewLoading(false);
     }
+  };
+
+  const handleRequestIssue = async () => {
     try {
       setRequestingIssue(true);
       const journalId = user?.active_journal_id ?? issues[0]?.journal_id ?? null;
@@ -181,19 +189,13 @@ export default function PublisherManager() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          journal_id: journalId,
-          label: newIssueForm.label.trim(),
-          volume: newIssueForm.volume ? Number(newIssueForm.volume) : undefined,
-          issue_no: newIssueForm.issue_no ? Number(newIssueForm.issue_no) : undefined,
-          year: newIssueForm.year ? Number(newIssueForm.year) : undefined,
-        }),
+        body: JSON.stringify({ journal_id: journalId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to request issue");
       toast({ title: "Issue Requested", description: "Your request has been submitted." });
       setOpenRequestIssue(false);
-      setNewIssueForm({ label: "", volume: "", issue_no: "", year: "" });
+      setNextIssuePreview(null);
       fetchIssues();
     } catch (err: any) {
       toast({ title: "Request Failed", description: err.message, variant: "destructive" });
@@ -395,7 +397,7 @@ export default function PublisherManager() {
               </Tabs>
 
               <Button
-                onClick={() => setOpenRequestIssue(true)}
+                onClick={() => { setOpenRequestIssue(true); fetchNextIssuePreview(); }}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -496,47 +498,40 @@ export default function PublisherManager() {
               </div>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Label <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  placeholder="e.g., Vol 1 Issue 1 — Spring 2026"
-                  value={newIssueForm.label}
-                  onChange={(e) => setNewIssueForm((p) => ({ ...p, label: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Volume</label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={newIssueForm.volume}
-                    onChange={(e) => setNewIssueForm((p) => ({ ...p, volume: e.target.value }))}
-                  />
+            <div className="py-4">
+              {previewLoading ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading next issue preview...</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Issue No</label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={newIssueForm.issue_no}
-                    onChange={(e) => setNewIssueForm((p) => ({ ...p, issue_no: e.target.value }))}
-                  />
+              ) : nextIssuePreview ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-4 space-y-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Next Issue</p>
+                  <p className="text-2xl font-bold text-foreground">{nextIssuePreview.label}</p>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Volume</p>
+                      <p className="font-semibold">{nextIssuePreview.volume}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Issue No</p>
+                      <p className="font-semibold">{nextIssuePreview.issue}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Year</p>
+                      <p className="font-semibold">{nextIssuePreview.year}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The system will automatically assign this label when your request is approved.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Year</label>
-                  <Input
-                    type="number"
-                    placeholder="2026"
-                    value={newIssueForm.year}
-                    onChange={(e) => setNewIssueForm((p) => ({ ...p, year: e.target.value }))}
-                  />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Info className="h-8 w-8 opacity-50" />
+                  <p className="text-sm">Unable to load issue preview. You can still submit the request.</p>
                 </div>
-              </div>
+              )}
             </div>
 
             <DialogFooter className="gap-2">
@@ -544,7 +539,7 @@ export default function PublisherManager() {
                 variant="outline"
                 onClick={() => {
                   setOpenRequestIssue(false);
-                  setNewIssueForm({ label: "", volume: "", issue_no: "", year: "" });
+                  setNextIssuePreview(null);
                 }}
                 className="flex-1"
               >
@@ -553,7 +548,7 @@ export default function PublisherManager() {
               </Button>
               <Button
                 onClick={handleRequestIssue}
-                disabled={requestingIssue || !newIssueForm.label.trim()}
+                disabled={requestingIssue}
                 className="flex-1"
               >
                 {requestingIssue ? (

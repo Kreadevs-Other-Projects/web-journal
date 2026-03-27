@@ -95,3 +95,24 @@ export const logoUpload = multer({
     }
   },
 });
+
+const certDir = path.join(process.cwd(), "uploads", "certifications");
+if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
+
+const certStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, certDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `cert-${Date.now()}${ext}`);
+  },
+});
+
+export const certificationUpload = multer({
+  storage: certStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF, JPG, and PNG files are accepted"));
+  },
+});

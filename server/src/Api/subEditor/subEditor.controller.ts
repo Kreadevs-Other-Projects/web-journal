@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as service from "./subEditor.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
+import { pool } from "../../configs/db";
 
 export const getSubEditorPapers = async (req: AuthUser, res: Response) => {
   const papers = await service.fetchSubEditorPapers(req.user!.id);
@@ -26,6 +27,18 @@ export const assignReviewer = async (req: AuthUser, res: Response) => {
       return res.status(400).json({
         success: false,
         message: "Reviewer ID is required",
+      });
+    }
+
+    // Sub editor must be assigned before reviewer
+    const subEditorCheck = await pool.query(
+      `SELECT id FROM editor_assignments WHERE paper_id = $1 AND status IN ('accepted', 'pending')`,
+      [paperId],
+    );
+    if (subEditorCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "A Sub Editor must be assigned before assigning a reviewer",
       });
     }
 

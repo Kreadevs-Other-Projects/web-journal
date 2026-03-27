@@ -10,6 +10,7 @@ import {
   reviewIssueRequest,
   getJournalIssuesByManagerJournals,
   getPublishedPapersForManager,
+  getNextIssueSerial,
 } from "./journalIssue.repository";
 import { pool } from "../../configs/db";
 import { transporter } from "../../configs/email";
@@ -17,10 +18,18 @@ import { env } from "../../configs/envs";
 
 export type { JournalIssueData };
 
+export const getNextIssuePreviewService = async (journal_id: string) => {
+  const journalResult = await pool.query(
+    `SELECT id FROM journals WHERE id = $1`,
+    [journal_id],
+  );
+  if (!journalResult.rows.length) throw new Error("Journal not found");
+  return getNextIssueSerial(journal_id);
+};
+
 export const addJournalIssueService = async (
   user: { id: string; role: string; email: string; username: string },
   journal_id: string,
-  data: JournalIssueData,
 ) => {
   if (user.role !== "publisher" && user.role !== "journal_manager") {
     throw new Error("Only publishers or journal managers can create journal issues");
@@ -35,7 +44,8 @@ export const addJournalIssueService = async (
     throw new Error("Journal not found");
   }
 
-  const issue = await createJournalIssue(journal_id, data);
+  const serial = await getNextIssueSerial(journal_id);
+  const issue = await createJournalIssue(journal_id, serial);
 
   return { issue };
 };
@@ -91,9 +101,17 @@ export const deleteJournalIssueService = async (
 
 export const requestNewIssueService = async (
   user: { id: string; role: string; username: string; email: string },
-  data: { journal_id: string; label: string; volume?: number; issue_no?: number; year?: number },
+  data: { journal_id: string },
 ) => {
-  const request = await createIssueRequest({ ...data, requested_by: user.id });
+  const serial = await getNextIssueSerial(data.journal_id);
+  const request = await createIssueRequest({
+    journal_id: data.journal_id,
+    requested_by: user.id,
+    label: serial.label,
+    volume: serial.volume,
+    issue_no: serial.issue,
+    year: serial.year,
+  });
 
   // Notify publisher by email
   const journalRes = await pool.query(
@@ -107,7 +125,7 @@ export const requestNewIssueService = async (
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: publisher_email,
       subject: `New Issue Request — ${title}`,
-      text: `Hi ${publisher_name},\n\n${user.username} (Journal Manager) has requested a new issue for "${title}".\n\nDetails: ${data.label}${data.volume ? `, Vol ${data.volume}` : ""}${data.issue_no ? `, Issue ${data.issue_no}` : ""}${data.year ? `, ${data.year}` : ""}.\n\nPlease log in to review this request.`,
+      text: `Hi ${publisher_name},\n\n${user.username} (Journal Manager) has requested a new issue for "${title}".\n\nRequesting: ${serial.label} (${serial.year}).\n\nPlease log in to review this request.`,
     }).catch(() => {});
   }
 
@@ -142,24 +160,10 @@ export const reviewIssueRequestService = async (
   const updated = await reviewIssueRequest(request_id, action, user.id);
 
   if (action === "approved") {
-    // Calculate defaults for nullable fields before INSERT
-    const countRes = await pool.query(
-      `SELECT COUNT(*)::int AS cnt FROM journal_issues WHERE journal_id = $1`,
-      [req.journal_id],
-    );
-    const existingCount: number = countRes.rows[0].cnt ?? 0;
+    // Always use auto-serial at time of approval (ignores any stored label/volume/issue_no)
+    const serial = await getNextIssueSerial(req.journal_id);
 
-    const year: number = req.year ?? new Date().getFullYear();
-    const volume: number = req.volume ?? 1;
-    const issueNo: number = req.issue_no ?? existingCount + 1;
-
-    // Create the actual issue
-    await createJournalIssue(req.journal_id, {
-      label: req.label,
-      volume,
-      issue: issueNo,
-      year,
-    });
+    await createJournalIssue(req.journal_id, serial);
 
     // Notify the journal manager
     const notifyRes = await pool.query(
@@ -172,7 +176,7 @@ export const reviewIssueRequestService = async (
         from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
         to: email,
         subject: "Your Issue Request Has Been Approved",
-        text: `Hi ${username},\n\nYour request for issue "${req.label}" has been approved and the issue has been created.`,
+        text: `Hi ${username},\n\nYour request has been approved. Issue created: ${serial.label} (${serial.year}).`,
       }).catch(() => {});
     }
   }

@@ -23,7 +23,14 @@ import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, BookOpen, User, Upload, X } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronLeft,
+  BookOpen,
+  User,
+  Upload,
+  X,
+} from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface JournalFields {
@@ -79,11 +86,19 @@ export default function CreateJournal() {
     if (!file) return;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
-      toast({ title: "Invalid file type", description: "Only JPG, PNG, WebP, or GIF allowed.", variant: "destructive" });
+      toast({
+        title: "Invalid file type",
+        description: "Only JPG, PNG, WebP, or GIF allowed.",
+        variant: "destructive",
+      });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Logo must be under 2MB.", variant: "destructive" });
+      toast({
+        title: "File too large",
+        description: "Logo must be under 2MB.",
+        variant: "destructive",
+      });
       return;
     }
     setLogo(file);
@@ -160,7 +175,8 @@ export default function CreateJournal() {
       formData.append("peer_review_policy", journal.peer_review_policy);
       formData.append("oa_policy", journal.oa_policy);
       formData.append("author_guidelines", journal.author_guidelines);
-      if (journal.aims_and_scope) formData.append("aims_and_scope", journal.aims_and_scope);
+      if (journal.aims_and_scope)
+        formData.append("aims_and_scope", journal.aims_and_scope);
       formData.append("chief_editor", JSON.stringify(chiefEditor));
       formData.append("journal_manager", JSON.stringify(journalManager));
 
@@ -178,11 +194,14 @@ export default function CreateJournal() {
 
       toast({
         title: "Journal Created",
-        description: "Invitation emails sent to Chief Editor and Journal Manager.",
+        description:
+          "Invitation emails sent to Chief Editor and Journal Manager.",
       });
 
       // Refresh JWT so new journal_manager role appears in role switcher
-      try { await switchRole("publisher" as UserRole, null); } catch {}
+      try {
+        await switchRole("publisher" as UserRole, null);
+      } catch {}
 
       navigate("/publisher");
     } catch (err: any) {
@@ -232,36 +251,59 @@ export default function CreateJournal() {
             <CardContent className="space-y-4">
               {/* Logo Upload */}
               <div className="space-y-1">
-                <Label>Journal Cover <span className="text-muted-foreground font-normal">(Portrait recommended: 3:4 ratio)</span></Label>
+                <Label>
+                  Journal Cover{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (Portrait recommended: 3:4 ratio)
+                  </span>
+                </Label>
                 <div className="flex items-start gap-4">
                   <div
                     className="w-[90px] h-[120px] rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
                     onClick={() => logoRef.current?.click()}
                   >
                     {logoPreview ? (
-                      <img src={logoPreview} alt="Cover preview" className="h-full w-full object-cover object-top" />
+                      <img
+                        src={logoPreview}
+                        alt="Cover preview"
+                        className="h-full w-full object-cover object-top"
+                      />
                     ) : (
                       <div className="text-center px-1">
                         <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
-                        <span className="text-xs text-muted-foreground">Upload</span>
+                        <span className="text-xs text-muted-foreground">
+                          Upload
+                        </span>
                       </div>
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <p>Optional. JPG, PNG, WebP or GIF, max 2MB.</p>
-                    <p className="text-xs mt-1">Upload a portrait-oriented cover image for best display.</p>
+                    <p className="text-xs mt-1">
+                      Upload a portrait-oriented cover image for best display.
+                    </p>
                     {logo && (
                       <button
                         type="button"
                         className="text-destructive text-xs mt-1 flex items-center gap-1"
-                        onClick={() => { setLogo(null); setLogoPreview(null); if (logoRef.current) logoRef.current.value = ""; }}
+                        onClick={() => {
+                          setLogo(null);
+                          setLogoPreview(null);
+                          if (logoRef.current) logoRef.current.value = "";
+                        }}
                       >
                         <X className="h-3 w-3" /> Remove
                       </button>
                     )}
                   </div>
                 </div>
-                <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleLogoChange} />
+                <input
+                  ref={logoRef}
+                  type="file"
+                  className="hidden"
+                  accept=".jpg,.jpeg,.png,.webp,.gif"
+                  onChange={handleLogoChange}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -348,24 +390,18 @@ export default function CreateJournal() {
                 <Label>
                   Author Guidelines <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
+                <RichTextEditor
                   value={journal.author_guidelines}
-                  onChange={(e) =>
-                    updateJournal("author_guidelines", e.target.value)
-                  }
-                  rows={4}
+                  onChange={(html) => updateJournal("author_guidelines", html)}
                   placeholder="Guidelines for authors submitting manuscripts..."
                 />
               </div>
 
               <div className="space-y-1">
-                <Label>Aims &amp; Scope</Label>
-                <Textarea
+                <Label>Aims & Scope</Label>
+                <RichTextEditor
                   value={journal.aims_and_scope}
-                  onChange={(e) =>
-                    updateJournal("aims_and_scope", e.target.value)
-                  }
-                  rows={4}
+                  onChange={(html) => updateJournal("aims_and_scope", html)}
                   placeholder="Describe the journal's aims and scope..."
                 />
               </div>
@@ -380,7 +416,8 @@ export default function CreateJournal() {
                 <User className="h-5 w-5 text-primary" /> Invite Chief Editor
               </CardTitle>
               <CardDescription>
-                An invitation email will be sent. They will set their own password when they accept.
+                An invitation email will be sent. They will set their own
+                password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -416,7 +453,8 @@ export default function CreateJournal() {
                 <User className="h-5 w-5 text-primary" /> Invite Journal Manager
               </CardTitle>
               <CardDescription>
-                An invitation email will be sent. They will set their own password when they accept.
+                An invitation email will be sent. They will set their own
+                password when they accept.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -426,9 +464,7 @@ export default function CreateJournal() {
                 </Label>
                 <Input
                   value={journalManager.name}
-                  onChange={(e) =>
-                    updateJournalManager("name", e.target.value)
-                  }
+                  onChange={(e) => updateJournalManager("name", e.target.value)}
                   placeholder="Journal Manager's full name"
                 />
               </div>

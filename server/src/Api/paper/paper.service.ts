@@ -14,7 +14,6 @@ import {
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
-import { initiatePaperPaymentService } from "../paperPayment/paperPayment.service";
 
 const MAX_PAPERS_PER_ISSUE = 99;
 
@@ -78,34 +77,13 @@ export const createPaperService = async (
     await autoAssignToIssue(paper.id, data.journal_id).catch(() => {});
   }
 
-  // Set paper status to awaiting_payment and log it
-  await pool.query(
-    `UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`,
-    [paper.id],
-  );
-  await insertStatusLog({
-    paper_id: paper.id,
-    status: "awaiting_payment",
-    changed_by: data.author_id,
-    note: "Paper submitted — awaiting payment",
-  });
-
-  // Initiate payment: create record + send invoice (awaited so errors surface)
-  if (authorEmail && authorUsername) {
-    try {
-      await initiatePaperPaymentService(paper.id, data.author_id, authorEmail, authorUsername);
-    } catch (err) {
-      console.error("[payment] initiatePaperPaymentService failed:", err);
-    }
-  }
-
   if (authorEmail && authorUsername) {
     sendSubmissionConfirmationEmail(authorEmail, authorUsername, paper.title, paper.id).catch(
       (err) => console.error("[email] submission confirmation failed:", err),
     );
   }
 
-  return { ...paper, status: "awaiting_payment" };
+  return { ...paper, status: "submitted" };
 };
 
 export const getPaperVersionsService = async (paperId: string) => {

@@ -12,9 +12,9 @@ import {
   getPendingIssueRequests,
   reviewIssueRequest,
   getManagerPapers,
+  getNextIssuePreview,
 } from "./journalIssue.controller";
 import {
-  createJournalIssueSchema,
   updateJournalIssueSchema,
 } from "./journalIssue.schema";
 import { validate } from "../../middlewares/validate.middleware";
@@ -25,8 +25,14 @@ router.post(
   "/addJournalIssue/:journalId",
   authMiddleware,
   authorize("owner", "publisher", "journal_manager"),
-  validate(createJournalIssueSchema),
   addJournalIssue,
+);
+
+router.get(
+  "/:journalId/next-issue-preview",
+  authMiddleware,
+  authorize("publisher", "journal_manager", "owner"),
+  getNextIssuePreview,
 );
 
 router.get(

@@ -136,6 +136,10 @@ export const approveOrRejectPaymentService = async (
 
   if (approved) {
     const payment = await approvePaymentRepo(paperId, publisherId);
+    await pool.query(
+      `UPDATE papers SET status = 'ready_for_publication', updated_at = NOW() WHERE id = $1`,
+      [paperId],
+    );
     sendPaymentApprovalEmail({
       authorEmail: existing.author_email,
       authorName: existing.author_name,

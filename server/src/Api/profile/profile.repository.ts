@@ -235,3 +235,49 @@ export const softDeleteUser = async (userId: string) => {
   );
   return result.rows[0];
 };
+
+export const createCertificationRepo = async (data: {
+  user_id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+}) => {
+  const result = await pool.query(
+    `INSERT INTO user_certifications (user_id, file_url, file_name, file_type)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [data.user_id, data.file_url, data.file_name, data.file_type],
+  );
+  return result.rows[0];
+};
+
+export const getCertificationsByUserRepo = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM user_certifications WHERE user_id = $1 ORDER BY uploaded_at DESC`,
+    [userId],
+  );
+  return result.rows;
+};
+
+export const getCertificationByIdRepo = async (certId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM user_certifications WHERE id = $1`,
+    [certId],
+  );
+  return result.rows[0];
+};
+
+export const deleteCertificationRepo = async (certId: string, userId: string) => {
+  const result = await pool.query(
+    `DELETE FROM user_certifications WHERE id = $1 AND user_id = $2 RETURNING *`,
+    [certId, userId],
+  );
+  return result.rows[0];
+};
+
+export const countCertificationsRepo = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM user_certifications WHERE user_id = $1`,
+    [userId],
+  );
+  return result.rows[0].count as number;
+};

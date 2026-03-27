@@ -50,6 +50,12 @@ import {
 } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Issue {
   id: string;
@@ -84,6 +90,8 @@ interface Paper {
   authors?: string[];
   submittedDate?: string;
   issueId?: string;
+  issue_id?: string;
+  issue_label?: string;
   journalId?: string;
   keywords?: string[];
 }
@@ -956,10 +964,10 @@ export default function ChiefEditor() {
                               })}
                             </span>
                           )}
-                          {paper.issueId && (
+                          {(paper.issue_id || paper.issueId) && (
                             <span className="flex items-center gap-1 shrink-0 text-blue-600">
                               <BookOpen className="h-3 w-3" />
-                              Assigned to issue
+                              {paper.issue_label || "Assigned to issue"}
                             </span>
                           )}
                         </div>
@@ -996,41 +1004,77 @@ export default function ChiefEditor() {
                         )}
                       </div>
 
-                      {paper.status !== "sub_editor_approved" && (
-                        <div className="flex flex-col gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2.5 text-xs whitespace-nowrap"
-                            onClick={() => { setSelectedPaper(paper); setOpenDialog(true); }}
-                          >
-                            <UserPlus className="h-3 w-3 mr-1" /> Assign Editor
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2.5 text-xs whitespace-nowrap"
-                            onClick={() => {
-                              setSelectedPaper(paper);
-                              setSelectedReviewerId("");
-                              setNewReviewer({ name: "", email: "" });
-                              setOpenReviewerDialog(true);
-                            }}
-                          >
-                            <UserCheck className="h-3 w-3 mr-1" /> Assign Reviewer
-                          </Button>
-                          {!paper.issueId && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2.5 text-xs whitespace-nowrap"
-                              onClick={() => { setSelectedPaper(paper); setOpenIssueDialog(true); }}
-                            >
-                              <BookOpen className="h-3 w-3 mr-1" /> Assign Issue
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      {paper.status !== "sub_editor_approved" && (() => {
+                        const subEditorAssigned = paper.status !== "submitted";
+                        return (
+                          <TooltipProvider>
+                            <div className="flex flex-col gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {subEditorAssigned ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="h-7 px-2.5 text-xs whitespace-nowrap border-green-400 text-green-600"
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-1" /> Sub Editor Assigned
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2.5 text-xs whitespace-nowrap"
+                                  onClick={() => { setSelectedPaper(paper); setOpenDialog(true); }}
+                                >
+                                  <UserPlus className="h-3 w-3 mr-1" /> Assign Editor
+                                </Button>
+                              )}
+                              {subEditorAssigned ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2.5 text-xs whitespace-nowrap"
+                                  onClick={() => {
+                                    setSelectedPaper(paper);
+                                    setSelectedReviewerId("");
+                                    setNewReviewer({ name: "", email: "" });
+                                    setOpenReviewerDialog(true);
+                                  }}
+                                >
+                                  <UserCheck className="h-3 w-3 mr-1" /> Assign Reviewer
+                                </Button>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled
+                                        className="h-7 px-2.5 text-xs whitespace-nowrap w-full"
+                                      >
+                                        <UserCheck className="h-3 w-3 mr-1" /> Assign Reviewer
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    <p>Assign a Sub Editor first</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {!(paper.issue_id || paper.issueId) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2.5 text-xs whitespace-nowrap"
+                                  onClick={() => { setSelectedPaper(paper); setOpenIssueDialog(true); }}
+                                >
+                                  <BookOpen className="h-3 w-3 mr-1" /> Assign Issue
+                                </Button>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>

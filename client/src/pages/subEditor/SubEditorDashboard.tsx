@@ -97,7 +97,6 @@ export default function SubEditorDashboard() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  const [status, setStatus] = useState("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [allReviewers, setAllReviewers] = useState<Reviewer[]>([]);
   const [selectedReviewerId, setSelectedReviewerId] = useState("");
@@ -266,52 +265,6 @@ export default function SubEditorDashboard() {
       toast({
         title: "Error",
         description: "Failed to load reviewers.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateStatus = async () => {
-    if (!selectedPaper || !status) {
-      toast({
-        title: "Invalid action",
-        description: "Please select a status before updating.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        `${url}/subEditor/updateSubEditorPaperStatus/${selectedPaper.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status }),
-        },
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to update status");
-      }
-
-      setSelectedPaper(null);
-      fetchPapers();
-
-      toast({
-        title: "Status Updated",
-        description: `Paper status changed to "${status}".`,
-      });
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to update status.",
         variant: "destructive",
       });
     }
@@ -779,85 +732,6 @@ export default function SubEditorDashboard() {
               </div>
 
               <div className="space-y-6">
-                <Card className="glass-card border-0 bg-gradient-to-br from-blue-900/20 to-blue-800/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Send className="h-5 w-5 text-blue-400" />
-                      Update Status
-                    </CardTitle>
-                    <CardDescription>
-                      Change the paper workflow status
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium mb-2">
-                        Current Status
-                      </Label>
-                      <Badge
-                        className={cn(
-                          "w-full justify-center py-2",
-                          getStatusColor(selectedPaper.status),
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          {getStatusIcon(selectedPaper.status)}
-                          {selectedPaper.status.replace("_", " ").toUpperCase()}
-                        </span>
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium mb-2">
-                        New Status
-                      </Label>
-                      <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select new status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem
-                            value="under_review"
-                            className="hover:bg-muted"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              Under Review
-                            </span>
-                          </SelectItem>
-                          <SelectItem
-                            value="pending_revision"
-                            className="hover:bg-muted"
-                          >
-                            <span className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4" />
-                              Pending Revision
-                            </span>
-                          </SelectItem>
-                          <SelectItem
-                            value="resubmitted"
-                            className="hover:bg-muted"
-                          >
-                            <span className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4" />
-                              Resubmitted
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button
-                      onClick={updateStatus}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                      disabled={!status}
-                    >
-                      Update Status
-                    </Button>
-                  </CardContent>
-                </Card>
-
                 <Card className="glass-card border-0 bg-gradient-to-br from-purple-900/20 to-purple-800/10">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">

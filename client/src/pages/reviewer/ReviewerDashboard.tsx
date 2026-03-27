@@ -75,8 +75,6 @@ export default function ReviewerDashboard() {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
-  const [reviewEmail, setReviewEmail] = useState("");
-  const [reviewPassword, setReviewPassword] = useState("");
 
   const fetchPapers = async () => {
     if (!token) return;
@@ -159,11 +157,11 @@ export default function ReviewerDashboard() {
 
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
-      toast({ title: "Incomplete", description: "Please fill in all required fields", variant: "destructive" });
-      return;
-    }
-    if (!reviewEmail || !reviewPassword) {
-      toast({ title: "Credentials required", description: "Enter your email and password to submit the review", variant: "destructive" });
+      toast({
+        title: "Incomplete",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -176,7 +174,7 @@ export default function ReviewerDashboard() {
 
   const handleReviewSubmission = async (
     signature?: string,
-    signaturePassword?: string,
+    password?: string,
   ) => {
     if (!selectedPaper) return;
 
@@ -186,17 +184,21 @@ export default function ReviewerDashboard() {
       formData.append("decision", decision);
       formData.append("comments", comments);
       formData.append("confidentialComments", confidentialComments);
-      formData.append("email", reviewEmail);
-      formData.append("password", signaturePassword || reviewPassword);
 
       if (decision === "accepted" || decision === "rejected") {
-        if (!signature || !signaturePassword) {
-          toast({ title: "Error", description: "Signature and password required", variant: "destructive" });
+        if (!signature || !password) {
+          toast({
+            title: "Error",
+            description: "Signature and password required",
+            variant: "destructive",
+          });
           return;
         }
 
         const signatureFile = base64ToFile(signature, "signature.png");
+
         formData.append("signature", signatureFile);
+        formData.append("password", password);
       }
 
       const res = await fetch(
@@ -462,20 +464,26 @@ export default function ReviewerDashboard() {
 
                     {selectedPaper.review_decision && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Your Decision</Label>
+                        <Label className="text-sm font-medium">
+                          Your Decision
+                        </Label>
                         <div
                           className={cn(
                             "flex items-center gap-3 p-4 rounded-lg border-2",
                             selectedPaper.review_decision === "accepted"
                               ? "border-success/50 bg-success/10"
-                              : selectedPaper.review_decision?.includes("revision")
+                              : selectedPaper.review_decision?.includes(
+                                    "revision",
+                                  )
                                 ? "border-warning/50 bg-warning/10"
                                 : "border-destructive/50 bg-destructive/10",
                           )}
                         >
                           {selectedPaper.review_decision === "accepted" ? (
                             <CheckCircle2 className="h-5 w-5 text-success" />
-                          ) : selectedPaper.review_decision?.includes("revision") ? (
+                          ) : selectedPaper.review_decision?.includes(
+                              "revision",
+                            ) ? (
                             <AlertTriangle className="h-5 w-5 text-warning" />
                           ) : (
                             <XCircle className="h-5 w-5 text-destructive" />
@@ -489,7 +497,9 @@ export default function ReviewerDashboard() {
 
                     {selectedPaper.comments && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Comments Submitted</Label>
+                        <Label className="text-sm font-medium">
+                          Comments Submitted
+                        </Label>
                         <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg whitespace-pre-wrap">
                           {selectedPaper.comments}
                         </p>
@@ -499,10 +509,13 @@ export default function ReviewerDashboard() {
                     {selectedPaper.review_submitted_at && (
                       <p className="text-xs text-muted-foreground">
                         Submitted on{" "}
-                        {new Date(selectedPaper.review_submitted_at).toLocaleDateString(
-                          "en-GB",
-                          { day: "2-digit", month: "short", year: "numeric" },
-                        )}
+                        {new Date(
+                          selectedPaper.review_submitted_at,
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </p>
                     )}
                   </CardContent>
@@ -522,14 +535,18 @@ export default function ReviewerDashboard() {
                     <ScrollArea className="h-[600px]">
                       <div className="p-6 space-y-6">
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Abstract</Label>
+                          <Label className="text-sm font-medium">
+                            Abstract
+                          </Label>
                           <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
                             {selectedPaper.abstract}
                           </p>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="comments">Comments for Authors *</Label>
+                          <Label htmlFor="comments">
+                            Comments for Authors *
+                          </Label>
                           <Textarea
                             id="comments"
                             value={comments}
@@ -581,7 +598,10 @@ export default function ReviewerDashboard() {
                               )}
                               onClick={() => setDecision("minor_revision")}
                             >
-                              <RadioGroupItem value="minor_revision" id="minor" />
+                              <RadioGroupItem
+                                value="minor_revision"
+                                id="minor"
+                              />
                               <Edit3 className="h-5 w-5 text-info" />
                               <div className="flex-1">
                                 <Label
@@ -606,7 +626,10 @@ export default function ReviewerDashboard() {
                               )}
                               onClick={() => setDecision("major_revision")}
                             >
-                              <RadioGroupItem value="major_revision" id="major" />
+                              <RadioGroupItem
+                                value="major_revision"
+                                id="major"
+                              />
                               <AlertTriangle className="h-5 w-5 text-warning" />
                               <div className="flex-1">
                                 <Label
@@ -648,41 +671,16 @@ export default function ReviewerDashboard() {
                           </RadioGroup>
                         </div>
 
-                        <div className="border-t border-border pt-4 space-y-3">
-                          <p className="text-sm font-medium text-muted-foreground">Verify your identity to submit</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs mb-1 block">Email *</Label>
-                              <input
-                                type="email"
-                                className="w-full rounded-md border border-border bg-background text-foreground px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
-                                placeholder="your@email.com"
-                                value={reviewEmail}
-                                onChange={(e) => setReviewEmail(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs mb-1 block">Password *</Label>
-                              <input
-                                type="password"
-                                className="w-full rounded-md border border-border bg-background text-foreground px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
-                                placeholder="••••••••"
-                                value={reviewPassword}
-                                onChange={(e) => setReviewPassword(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
                         <Button
                           onClick={submitReview}
-                          disabled={!decision || !comments.trim() || !reviewEmail || !reviewPassword}
+                          disabled={!decision || !comments.trim()}
                           className="w-full btn-physics"
                           size="lg"
                         >
                           <Send className="h-4 w-4 mr-2" />
                           Submit Review
-                          {(decision === "accepted" || decision === "rejected") &&
+                          {(decision === "accepted" ||
+                            decision === "rejected") &&
                             " (Requires Signature)"}
                         </Button>
                       </div>
@@ -914,7 +912,9 @@ export default function ReviewerDashboard() {
                             {review.review_submitted_at && (
                               <p className="text-sm text-muted-foreground mt-1">
                                 Submitted:{" "}
-                                {new Date(review.review_submitted_at).toLocaleDateString()}
+                                {new Date(
+                                  review.review_submitted_at,
+                                ).toLocaleDateString()}
                               </p>
                             )}
                             {review.review_decision && (

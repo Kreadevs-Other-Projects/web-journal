@@ -233,6 +233,24 @@ export const getPendingReviewerRequestsForCE = async (chiefEditorId: string) => 
   return result.rows;
 };
 
+export const getExistingSubEditorDecision = async (
+  paperId: string,
+  subEditorId: string,
+) => {
+  const result = await pool.query(
+    `SELECT sed.decision, sed.comments, sed.decided_at
+     FROM sub_editor_decisions sed
+     JOIN papers p ON p.id = sed.paper_id
+     WHERE sed.paper_id = $1
+       AND sed.sub_editor_id = $2
+       AND sed.paper_version_id = p.current_version_id
+     ORDER BY sed.decided_at DESC
+     LIMIT 1`,
+    [paperId, subEditorId],
+  );
+  return result.rows[0] || null;
+};
+
 export const reviewReviewerRequest = async (
   request_id: string,
   status: "approved" | "rejected",

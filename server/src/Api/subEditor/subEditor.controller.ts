@@ -120,6 +120,16 @@ export const subEditorDecision = async (req: AuthUser, res: Response) => {
   }
 };
 
+export const getExistingDecision = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const data = await service.getExistingDecisionService(paperId, req.user!.id);
+    res.json({ success: true, data });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
 export const suggestReviewer = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;

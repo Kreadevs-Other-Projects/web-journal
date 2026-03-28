@@ -11,6 +11,7 @@ import {
   reviewReviewerRequest,
   getReviewsForPaper,
   subEditorDecision,
+  getExistingDecision,
 } from "./subEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -77,6 +78,13 @@ router.post(
   authMiddleware,
   authorize("sub_editor"),
   subEditorDecision,
+);
+
+router.get(
+  "/existingDecision/:paperId",
+  authMiddleware,
+  authorize("sub_editor"),
+  getExistingDecision,
 );
 
 // Reviewer requests (sub_editor → chief_editor approval)

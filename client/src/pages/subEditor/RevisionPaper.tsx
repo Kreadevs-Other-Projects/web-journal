@@ -10,7 +10,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -28,13 +30,15 @@ import {
   Shield,
   AlertCircle,
   Users,
-  TrendingUp,
-  Hash,
   Link,
   X,
   Info,
   ExternalLink,
   Filter,
+  ThumbsUp,
+  RotateCcw,
+  XCircle,
+  Lock,
 } from "lucide-react";
 
 import { Worker, Viewer } from "@react-pdf-viewer/core";
@@ -75,26 +79,35 @@ interface SubmittedReview {
   signedAt?: string;
 }
 
+interface ExistingDecision {
+  decision: string;
+  comments: string;
+  decided_at: string;
+}
+
 export default function RevisionPaper() {
   const { user, token } = useAuth();
   const { toast } = useToast();
 
   const [reviews, setReviews] = useState<SubmittedReview[]>([]);
-  const [selectedPaper, setSelectedPaper] = useState<SubmittedReview | null>(
-    null,
-  );
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
   const [viewerHtmlLoading, setViewerHtmlLoading] = useState(false);
-  const [status, setStatus] = useState("");
-  const [assignmentStatus, setAssignmentStatus] = useState<string>("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [selectedSignature, setSelectedSignature] = useState<string | null>(
-    null,
-  );
+  const [selectedSignature, setSelectedSignature] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
+
+  // Decision state
+  const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  const [activePaperId, setActivePaperId] = useState<string | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<"approve" | "revision" | "reject" | null>(null);
+  const [decisionComments, setDecisionComments] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [existingDecisions, setExistingDecisions] = useState<Record<string, ExistingDecision | null>>({});
 
   const fetchPapers = async () => {
     try {
@@ -112,7 +125,6 @@ export default function RevisionPaper() {
         return;
       }
 
-      console.log("Fetched reviews:", data.data);
       setReviews(data.data || []);
     } catch (err) {
       console.error("Error fetching sub-editor papers:", err);
@@ -122,6 +134,27 @@ export default function RevisionPaper() {
         variant: "destructive",
       });
     }
+  };
+
+  const fetchExistingDecisions = async (paperIds: string[]) => {
+    const uniqueIds = [...new Set(paperIds)];
+    const results: Record<string, ExistingDecision | null> = {};
+
+    await Promise.all(
+      uniqueIds.map(async (paperId) => {
+        try {
+          const res = await fetch(`${url}/subEditor/existingDecision/${paperId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          results[paperId] = data.data || null;
+        } catch {
+          results[paperId] = null;
+        }
+      }),
+    );
+
+    setExistingDecisions(results);
   };
 
   const fetchReviewers = async (paperId: string) => {
@@ -146,46 +179,99 @@ export default function RevisionPaper() {
     }
   };
 
-  const updateAssignmentStatus = async (
-    editorAssignmentId: string,
-    status: string,
-  ) => {
+  const submitDecision = async () => {
+    if (!activePaperId || !pendingDecision) return;
+    if (
+      (pendingDecision === "revision" || pendingDecision === "reject") &&
+      !decisionComments.trim()
+    ) {
+      toast({
+        title: "Comments required",
+        description: `Please provide comments when requesting ${pendingDecision === "revision" ? "a revision" : "rejection"}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!confirmEmail || !confirmPassword) {
+      toast({
+        title: "Credentials required",
+        description: "Please enter your email and password to confirm.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingDecision(true);
     try {
-      const res = await fetch(
-        `${url}/editorAssignment/handleAssignmentStatus/${editorAssignmentId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status }),
+      const res = await fetch(`${url}/subEditor/decision/${activePaperId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          action: pendingDecision,
+          comments: decisionComments,
+          email: confirmEmail,
+          password: confirmPassword,
+        }),
+      });
 
       const data = await res.json();
-      if (!res.ok)
-        throw new Error(data.message || "Failed to update assignment");
+      if (!res.ok) throw new Error(data.message || "Failed to submit decision");
 
       toast({
-        title: "Success",
-        description: `Assignment status updated to "${status}"`,
-        variant: "default",
+        title: "Decision submitted",
+        description:
+          pendingDecision === "approve"
+            ? "Paper has been approved."
+            : pendingDecision === "revision"
+              ? "Revision has been requested."
+              : "Paper has been rejected.",
       });
+
+      setExistingDecisions((prev) => ({
+        ...prev,
+        [activePaperId]: {
+          decision: pendingDecision,
+          comments: decisionComments,
+          decided_at: new Date().toISOString(),
+        },
+      }));
+
+      setDecisionModalOpen(false);
+      setActivePaperId(null);
+      setPendingDecision(null);
+      setDecisionComments("");
+      setConfirmEmail("");
+      setConfirmPassword("");
 
       fetchPapers();
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmittingDecision(false);
     }
+  };
+
+  const closeDecisionModal = () => {
+    setDecisionModalOpen(false);
+    setActivePaperId(null);
+    setPendingDecision(null);
+    setDecisionComments("");
+    setConfirmEmail("");
+    setConfirmPassword("");
   };
 
   useEffect(() => {
     if (token) fetchPapers();
   }, [token]);
+
+  useEffect(() => {
+    if (reviews.length > 0 && token) {
+      fetchExistingDecisions(reviews.map((r) => r.paperId));
+    }
+  }, [reviews]);
 
   useEffect(() => {
     setViewerHtml(null);
@@ -588,25 +674,82 @@ export default function RevisionPaper() {
                               </div>
                             </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-border">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className={`flex-1 gap-2 ${r.paperStatus === "published" ? "opacity-50 cursor-not-allowed" : ""}`}
-                                onClick={() => {
-                                  setSelectedPaper(r);
-                                  setAssignmentStatus(r.editorAssignmentStatus);
-                                }}
-                                disabled={r.paperStatus === "published"}
-                              >
-                                <Edit className="h-4 w-4" />
-                                Update Assignment Status
-                              </Button>
+                            <div className="flex flex-col gap-3 pt-4 border-t border-border">
+                              {existingDecisions[r.paperId] ? (
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                                  <Lock className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                  <div className="space-y-1 min-w-0">
+                                    <p className="text-sm font-semibold text-emerald-400">
+                                      Decision Submitted
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Decision:{" "}
+                                      <span className="font-medium capitalize text-foreground">
+                                        {existingDecisions[r.paperId]!.decision}
+                                      </span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Submitted:{" "}
+                                      {formatDate(
+                                        existingDecisions[r.paperId]!.decided_at,
+                                      )}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground italic">
+                                      A new decision can only be made after the
+                                      author uploads a revised version.
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    onClick={() => {
+                                      setActivePaperId(r.paperId);
+                                      setPendingDecision("approve");
+                                      setDecisionModalOpen(true);
+                                    }}
+                                    disabled={r.paperStatus === "published"}
+                                  >
+                                    <ThumbsUp className="h-3.5 w-3.5" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 gap-1.5 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                    onClick={() => {
+                                      setActivePaperId(r.paperId);
+                                      setPendingDecision("revision");
+                                      setDecisionModalOpen(true);
+                                    }}
+                                    disabled={r.paperStatus === "published"}
+                                  >
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    Revision
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="flex-1 gap-1.5"
+                                    onClick={() => {
+                                      setActivePaperId(r.paperId);
+                                      setPendingDecision("reject");
+                                      setDecisionModalOpen(true);
+                                    }}
+                                    disabled={r.paperStatus === "published"}
+                                  >
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
 
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="flex-1 gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
+                                className="w-full gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
                                 onClick={() => fetchReviewers(r.paperId)}
                               >
                                 <Users className="h-4 w-4" />
@@ -832,73 +975,122 @@ export default function RevisionPaper() {
           </DialogContent>
         </Dialog>
 
-        {selectedPaper && (
-          <Dialog
-            open={!!selectedPaper}
-            onOpenChange={() => setSelectedPaper(null)}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Edit className="h-5 w-5" />
-                  Update Paper Status
-                </DialogTitle>
+        <Dialog open={decisionModalOpen} onOpenChange={(open) => { if (!open) closeDecisionModal(); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                {pendingDecision === "approve" && (
+                  <ThumbsUp className="h-5 w-5 text-emerald-400" />
+                )}
+                {pendingDecision === "revision" && (
+                  <RotateCcw className="h-5 w-5 text-amber-400" />
+                )}
+                {pendingDecision === "reject" && (
+                  <XCircle className="h-5 w-5 text-red-400" />
+                )}
+                {pendingDecision === "approve"
+                  ? "Approve Paper"
+                  : pendingDecision === "revision"
+                    ? "Request Revision"
+                    : "Reject Paper"}
+              </DialogTitle>
+              {activePaperId && (
                 <p className="text-sm text-muted-foreground">
-                  Update status for:{" "}
-                  <span className="font-medium">{selectedPaper.title}</span>
+                  {reviews.find((r) => r.paperId === activePaperId)?.title}
                 </p>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
+              )}
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>
+                  Comments{" "}
+                  {(pendingDecision === "revision" ||
+                    pendingDecision === "reject") && (
+                    <span className="text-red-400">*</span>
+                  )}
+                </Label>
+                <Textarea
+                  placeholder={
+                    pendingDecision === "approve"
+                      ? "Optional comments..."
+                      : "Please provide detailed comments..."
+                  }
+                  value={decisionComments}
+                  onChange={(e) => setDecisionComments(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+
+              <div className="space-y-3 p-3 rounded-lg bg-muted border border-border">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Verify your identity
+                </p>
                 <div className="space-y-2">
-                  <Label>Current Status</Label>
-                  <div
-                    className={`px-3 py-2 rounded border ${getStatusColor(selectedPaper.paperStatus)} text-sm`}
-                  >
-                    {selectedPaper.paperStatus.replace("_", " ")}
-                  </div>
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="Your account email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Assignment Status</Label>
-                  <select
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    value={assignmentStatus}
-                    onChange={(e) => setAssignmentStatus(e.target.value)}
-                  >
-                    <option value="pending" disabled>
-                      Pending
-                    </option>
-                    <option value="accepted">Accepted</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="completed">Completed</option>
-                    <option value="reassigned">Reassigned</option>
-                  </select>
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="Your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
                 </div>
               </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedPaper(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (selectedPaper && assignmentStatus) {
-                      updateAssignmentStatus(
-                        selectedPaper.editorAssignmentId,
-                        assignmentStatus,
-                      );
-                      setSelectedPaper(null);
-                    }
-                  }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                >
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closeDecisionModal}
+                disabled={submittingDecision}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={submitDecision}
+                disabled={
+                  submittingDecision ||
+                  !confirmEmail ||
+                  !confirmPassword ||
+                  ((pendingDecision === "revision" ||
+                    pendingDecision === "reject") &&
+                    !decisionComments.trim())
+                }
+                className={
+                  pendingDecision === "approve"
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : pendingDecision === "revision"
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "bg-red-600 hover:bg-red-700 text-white"
+                }
+              >
+                {submittingDecision ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Submitting...
+                  </div>
+                ) : pendingDecision === "approve" ? (
+                  "Confirm Approval"
+                ) : pendingDecision === "revision" ? (
+                  "Request Revision"
+                ) : (
+                  "Confirm Rejection"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={openReviewers} onOpenChange={setOpenReviewers}>
           <DialogContent className="max-w-md">

@@ -148,6 +148,13 @@ export const subEditorDecisionService = async (
 
 // ---- Reviewer Requests ----
 
+export const getExistingDecisionService = async (
+  paperId: string,
+  subEditorId: string,
+) => {
+  return repo.getExistingSubEditorDecision(paperId, subEditorId);
+};
+
 export const suggestReviewerService = async (
   subEditorId: string,
   paperId: string,

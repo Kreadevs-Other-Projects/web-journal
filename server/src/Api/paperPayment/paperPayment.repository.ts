@@ -118,3 +118,42 @@ export const getAllPaperPaymentsRepo = async () => {
   );
   return result.rows;
 };
+
+export const getRejectedPaymentsRepo = async () => {
+  const result = await pool.query(
+    `SELECT pp.*, u.username AS author_name, u.email AS author_email,
+            p.title AS paper_title, j.title AS journal_name
+     FROM paper_payments pp
+     JOIN papers p ON p.id = pp.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     JOIN users u ON u.id = pp.author_id
+     WHERE pp.status = 'failed'
+     ORDER BY pp.updated_at DESC`,
+  );
+  return result.rows;
+};
+
+export const getPaymentReminderInfoRepo = async (paper_id: string) => {
+  const result = await pool.query(
+    `SELECT pp.*, u.username AS author_name, u.email AS author_email,
+            p.title AS paper_title, j.title AS journal_name, j.publisher_name
+     FROM paper_payments pp
+     JOIN papers p ON p.id = pp.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     JOIN users u ON u.id = pp.author_id
+     WHERE pp.paper_id = $1`,
+    [paper_id],
+  );
+  return result.rows[0];
+};
+
+export const updateLastReminderSentRepo = async (paper_id: string) => {
+  const result = await pool.query(
+    `UPDATE paper_payments
+     SET last_reminder_sent_at = NOW(), updated_at = NOW()
+     WHERE paper_id = $1
+     RETURNING *`,
+    [paper_id],
+  );
+  return result.rows[0];
+};

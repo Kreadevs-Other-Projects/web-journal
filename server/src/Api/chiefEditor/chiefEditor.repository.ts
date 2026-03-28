@@ -283,6 +283,7 @@ export const getSubmittedReviewsByChiefEditor = async (
 
       ra.status AS assignment_status,
       ra.reviewer_id,
+      u.username AS reviewer_name,
       ra.submitted_at,
 
       r.id AS review_id,
@@ -300,6 +301,8 @@ export const getSubmittedReviewsByChiefEditor = async (
       ON r.review_assignment_id = ra.id
     JOIN editor_assignments ea
       ON p.id = ea.paper_id
+    JOIN users u
+      ON u.id = ra.reviewer_id
 
     WHERE 
       j.chief_editor_id = $1

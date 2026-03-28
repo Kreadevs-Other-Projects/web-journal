@@ -181,6 +181,72 @@ export const sendReceiptNotificationEmail = async (data: {
   });
 };
 
+export const sendPaymentReminderEmail = async (data: {
+  authorName: string;
+  authorEmail: string;
+  paperTitle: string;
+  journalName: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  totalAmount: number;
+  currency: string;
+  paperUrl: string;
+}) => {
+  const { authorName, authorEmail, paperTitle, journalName, invoiceNumber, invoiceDate, totalAmount, currency, paperUrl } = data;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><title>Payment Reminder</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f0f4f8;font-family:Arial,sans-serif;color:#1a202c}
+  .wrapper{max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
+  .header{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:24px 32px;color:#fff}
+  .header h1{font-size:20px;font-weight:800}
+  .header p{font-size:12px;color:#bfdbfe;margin-top:4px}
+  .body{padding:28px 32px}
+  .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0}
+  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;color:#374151}
+  .row .val{font-weight:600;color:#1a202c}
+  .status-unpaid{display:inline-block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700}
+  .cta{display:inline-block;background:#2563eb;color:#fff!important;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;margin-top:12px}
+  .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;font-size:12px;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Payment Reminder</h1>
+    <p>GIKI JournalHub — Action Required</p>
+  </div>
+  <div class="body">
+    <p style="font-size:14px;margin-bottom:12px">Dear <strong>${authorName}</strong>,</p>
+    <p style="font-size:14px;color:#374151">This is a friendly reminder that your publication fee for the following paper is still outstanding:</p>
+    <div class="box">
+      <div class="row"><span>Paper Title</span><span class="val" style="max-width:60%;text-align:right">${paperTitle}</span></div>
+      <div class="row"><span>Journal</span><span class="val">${journalName}</span></div>
+      <div class="row"><span>Invoice #</span><span class="val">${invoiceNumber}</span></div>
+      <div class="row"><span>Amount Due</span><span class="val">${currency} ${Number(totalAmount).toFixed(2)}</span></div>
+      <div class="row"><span>Invoice Date</span><span class="val">${invoiceDate}</span></div>
+      <div class="row"><span>Status</span><span class="status-unpaid">UNPAID</span></div>
+    </div>
+    <p style="font-size:14px;color:#374151">Please complete payment and upload your receipt at:</p>
+    <a href="${paperUrl}" class="cta">Upload Receipt →</a>
+    <p style="font-size:13px;color:#64748b;margin-top:16px">If you have already made payment, please upload your receipt so we can verify and proceed.</p>
+  </div>
+  <div class="footer">GIKI JournalHub — Automated Reminder &nbsp;·&nbsp; &copy; ${new Date().getFullYear()}</div>
+</div>
+</body></html>`;
+
+  await transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: authorEmail,
+    subject: `Payment Reminder — Invoice #${invoiceNumber} for "${paperTitle}"`,
+    html,
+    text: `Payment Reminder | Invoice ${invoiceNumber} | ${currency} ${totalAmount} | Paper: "${paperTitle}"`,
+  });
+};
+
 export const sendPaymentApprovalEmail = async (data: {
   authorEmail: string;
   authorName: string;

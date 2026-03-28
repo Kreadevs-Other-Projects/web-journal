@@ -44,6 +44,7 @@ export const getPublicPaperRepo = async (paperId: string) => {
     LEFT JOIN publications pub ON pub.paper_id = p.id
     LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
     WHERE p.id = $1
+      AND (p.is_taken_down IS NULL OR p.is_taken_down = false)
     `,
     [paperId],
   );
@@ -89,6 +90,8 @@ export const getBrowseDataRepo = async (filters: any) => {
       LIMIT 1
   ) pv ON true
   WHERE j.status = 'active'
+    AND (j.is_taken_down IS NULL OR j.is_taken_down = false)
+    AND (ji.is_taken_down IS NULL OR ji.is_taken_down = false)
 `;
 
   const values: any[] = [];

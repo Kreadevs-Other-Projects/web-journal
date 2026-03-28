@@ -4,6 +4,8 @@ import {
   sendInvoiceEmail,
   sendPaperPaymentEmail,
 } from "../../utils/emails/paymentEmails";
+import { transporter } from "../../configs/email";
+import { env } from "../../configs/envs";
 
 export type Journal = {
   journalId: string;
@@ -238,6 +240,44 @@ export const approvePaperPaymentService = async (id: string) => {
 export const fetchJournalPayments = async () => {
   const payments = await repo.getPaymentsByJournal();
   return payments;
+};
+
+export const takedownJournalService = async (
+  journalId: string,
+  reason: string,
+  publisherId: string,
+) => {
+  await repo.takedownJournalRepo(journalId, reason, publisherId);
+  const ceRow = await repo.getJournalChiefEditorEmail(journalId);
+  if (ceRow && (ceRow as any).email) {
+    transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: (ceRow as any).email,
+      subject: `Journal Taken Down — ${(ceRow as any).journal_title}`,
+      html: `<p>Dear Chief Editor,</p><p>The journal <strong>${(ceRow as any).journal_title}</strong> has been taken down by the Publisher.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the Publisher for more information.</p>`,
+      text: `Journal "${(ceRow as any).journal_title}" has been taken down. Reason: ${reason}`,
+    }).catch(() => {});
+  }
+};
+
+export const restoreJournalService = async (journalId: string) => {
+  await repo.restoreJournalRepo(journalId);
+};
+
+export const takedownIssueService = async (issueId: string, reason: string, publisherId: string) => {
+  await repo.takedownIssueRepo(issueId, reason, publisherId);
+};
+
+export const restoreIssueService = async (issueId: string) => {
+  await repo.restoreIssueRepo(issueId);
+};
+
+export const takedownPaperService = async (paperId: string, reason: string, publisherId: string) => {
+  return repo.takedownPaperRepo(paperId, reason, publisherId);
+};
+
+export const restorePaperService = async (paperId: string) => {
+  return repo.restorePaperRepo(paperId);
 };
 
 export const updatePaymentStatus = async (

@@ -7,6 +7,8 @@ import {
   getPaymentForPaper,
   getPendingPayments,
   getAllPayments,
+  getRejectedPayments,
+  sendPaymentReminder,
 } from "./paperPayment.controller";
 
 const router = Router();
@@ -49,6 +51,22 @@ router.get(
   authMiddleware,
   authorize("publisher"),
   getAllPayments,
+);
+
+// Publisher: get rejected payments
+router.get(
+  "/rejected",
+  authMiddleware,
+  authorize("publisher"),
+  getRejectedPayments,
+);
+
+// Publisher: send payment reminder email
+router.post(
+  "/paper/:paperId/remind",
+  authMiddleware,
+  authorize("publisher"),
+  sendPaymentReminder,
 );
 
 export default router;

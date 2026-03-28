@@ -300,3 +300,79 @@ export const updateJournalStatus = async (
     [status, journalId],
   );
 };
+
+// ===== TAKEDOWN =====
+
+export const takedownJournalRepo = async (
+  journalId: string,
+  reason: string,
+  publisherId: string,
+) => {
+  await pool.query(
+    `UPDATE journals SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2 WHERE id = $3`,
+    [reason, publisherId, journalId],
+  );
+  // Cascade to issues and papers
+  await pool.query(
+    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW() WHERE journal_id = $2`,
+    [reason, journalId],
+  );
+  await pool.query(
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2
+     WHERE journal_id = $3`,
+    [reason, publisherId, journalId],
+  );
+};
+
+export const restoreJournalRepo = async (journalId: string) => {
+  await pool.query(
+    `UPDATE journals SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL WHERE id = $1`,
+    [journalId],
+  );
+};
+
+export const takedownIssueRepo = async (issueId: string, reason: string, publisherId: string) => {
+  await pool.query(
+    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW() WHERE id = $2`,
+    [reason, issueId],
+  );
+  await pool.query(
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2
+     WHERE issue_id = $3`,
+    [reason, publisherId, issueId],
+  );
+};
+
+export const restoreIssueRepo = async (issueId: string) => {
+  await pool.query(
+    `UPDATE journal_issues SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL WHERE id = $1`,
+    [issueId],
+  );
+};
+
+export const takedownPaperRepo = async (paperId: string, reason: string, publisherId: string) => {
+  const result = await pool.query(
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2 WHERE id = $3 RETURNING *`,
+    [reason, publisherId, paperId],
+  );
+  return result.rows[0];
+};
+
+export const restorePaperRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `UPDATE papers SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL WHERE id = $1 RETURNING *`,
+    [paperId],
+  );
+  return result.rows[0];
+};
+
+export const getJournalChiefEditorEmail = async (journalId: string): Promise<string | null> => {
+  const result = await pool.query(
+    `SELECT u.email, j.title AS journal_title
+     FROM journals j
+     LEFT JOIN users u ON u.id = j.chief_editor_id
+     WHERE j.id = $1`,
+    [journalId],
+  );
+  return result.rows[0] || null;
+};

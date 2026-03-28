@@ -258,3 +258,71 @@ export const manualIssueReset = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ===== TAKEDOWN ENDPOINTS =====
+
+export const takedownJournal = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    await service.takedownJournalService(journalId, reason, req.user!.id);
+    res.json({ success: true, message: "Journal taken down" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restoreJournal = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    await service.restoreJournalService(journalId);
+    res.json({ success: true, message: "Journal restored" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const takedownIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { issueId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    await service.takedownIssueService(issueId, reason, req.user!.id);
+    res.json({ success: true, message: "Issue taken down" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restoreIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { issueId } = req.params;
+    await service.restoreIssueService(issueId);
+    res.json({ success: true, message: "Issue restored" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const takedownPaper = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    const paper = await service.takedownPaperService(paperId, reason, req.user!.id);
+    res.json({ success: true, message: "Paper taken down", data: paper });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restorePaper = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const paper = await service.restorePaperService(paperId);
+    res.json({ success: true, message: "Paper restored", data: paper });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};

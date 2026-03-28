@@ -6,6 +6,8 @@ import {
   getPaymentByPaperService,
   getPendingPaymentsService,
   getAllPaperPaymentsService,
+  getRejectedPaymentsService,
+  sendPaymentReminderService,
 } from "./paperPayment.service";
 
 export const uploadReceipt = async (req: AuthUser, res: Response) => {
@@ -85,5 +87,27 @@ export const getAllPayments = async (req: AuthUser, res: Response) => {
     res.json({ success: true, payments });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const getRejectedPayments = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const payments = await getRejectedPaymentsService();
+    res.json({ success: true, payments });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const sendPaymentReminder = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { paperId } = req.params;
+    const result = await sendPaymentReminderService(paperId);
+    res.json({ success: true, message: `Reminder sent to ${result.authorEmail}`, authorEmail: result.authorEmail });
+  } catch (e: any) {
+    const status = e.message.includes("last 24 hours") ? 400 : 500;
+    res.status(status).json({ success: false, message: e.message });
   }
 };

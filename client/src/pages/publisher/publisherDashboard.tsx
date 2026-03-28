@@ -27,9 +27,21 @@ import {
   ThumbsUp,
   ThumbsDown,
   RotateCcw,
+  MoreVertical,
+  ShieldOff,
+  ShieldCheck,
+  Loader2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -82,6 +94,8 @@ interface Journal {
   chief_editor: User | null;
   owner: User;
   issues: JournalIssue[];
+  is_taken_down?: boolean;
+  takedown_reason?: string;
 
   // These fields are populated by the new LEFT JOIN subquery
   chief_editor_invitation_status?:
@@ -432,6 +446,12 @@ export default function PublisherDashboard() {
   };
   const [resending, setResending] = useState(false);
 
+  // Takedown state
+  const [takedownModalOpen, setTakedownModalOpen] = useState(false);
+  const [takedownTarget, setTakedownTarget] = useState<{ type: "journal"; id: string; title: string } | null>(null);
+  const [takedownReason, setTakedownReason] = useState("");
+  const [takedownProcessing, setTakedownProcessing] = useState(false);
+
   const resendInvitation = async () => {
     // Only proceed if we have a journal and an email to send to
     if (!selectedJournal || !selectedJournal.chief_editor_email) {
@@ -497,6 +517,44 @@ export default function PublisherDashboard() {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setResetingIssues(false);
+    }
+  };
+
+  const handleTakedown = async () => {
+    if (!takedownTarget || !takedownReason.trim()) return;
+    setTakedownProcessing(true);
+    try {
+      const res = await fetch(`${url}/publisher/journals/${takedownTarget.id}/takedown`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: takedownReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: "Journal taken down", description: `"${takedownTarget.title}" is now hidden from public view.` });
+      setTakedownModalOpen(false);
+      setTakedownReason("");
+      setTakedownTarget(null);
+      fetchJournals();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setTakedownProcessing(false);
+    }
+  };
+
+  const handleRestoreJournal = async (journalId: string, journalTitle: string) => {
+    try {
+      const res = await fetch(`${url}/publisher/journals/${journalId}/restore`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: "Journal restored", description: `"${journalTitle}" is now visible to the public.` });
+      fetchJournals();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
     }
   };
 
@@ -699,19 +757,55 @@ export default function PublisherDashboard() {
                 .map((journal) => (
                   <Card
                     key={journal.id}
-                    className="glass-card hover:shadow-lg transition-all duration-300 hover:border-blue-500/50 cursor-pointer group"
+                    className={`glass-card hover:shadow-lg transition-all duration-300 hover:border-blue-500/50 cursor-pointer group ${journal.is_taken_down ? "border-red-500/40 opacity-75" : ""}`}
                     onClick={() => {
                       (console.log({ journal }), setSelectedJournal(journal));
                       setDetailsModalOpen(true);
                     }}
                   >
                     <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-blue-500 transition-colors">
-                          <BookOpen className="h-5 w-5" />
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-blue-500 transition-colors flex-1 min-w-0">
+                          <BookOpen className="h-5 w-5 shrink-0" />
                           <span className="line-clamp-1">{journal.title}</span>
                         </CardTitle>
-                        {getStatusBadge(journal.status)}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {journal.is_taken_down ? (
+                            <Badge className="border text-xs bg-red-100 text-red-800 border-red-300 hover:bg-red-100">
+                              <ShieldOff className="h-3 w-3 mr-1" />Taken Down
+                            </Badge>
+                          ) : (
+                            getStatusBadge(journal.status)
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              {journal.is_taken_down ? (
+                                <DropdownMenuItem
+                                  className="text-green-600 gap-2"
+                                  onClick={() => handleRestoreJournal(journal.id, journal.title)}
+                                >
+                                  <ShieldCheck className="h-4 w-4" /> Restore Journal
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-red-600 gap-2"
+                                  onClick={() => {
+                                    setTakedownTarget({ type: "journal", id: journal.id, title: journal.title });
+                                    setTakedownReason("");
+                                    setTakedownModalOpen(true);
+                                  }}
+                                >
+                                  <ShieldOff className="h-4 w-4" /> Take Down Journal
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -723,6 +817,11 @@ export default function PublisherDashboard() {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {journal.description}
                         </p>
+                        {journal.is_taken_down && journal.takedown_reason && (
+                          <p className="text-xs text-red-600 dark:text-red-400 line-clamp-2">
+                            Reason: {journal.takedown_reason}
+                          </p>
+                        )}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
@@ -1287,6 +1386,42 @@ export default function PublisherDashboard() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Takedown confirmation modal */}
+      <Dialog open={takedownModalOpen} onOpenChange={(open) => { if (!open) { setTakedownModalOpen(false); setTakedownReason(""); setTakedownTarget(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <ShieldOff className="h-5 w-5" /> Take Down Journal
+            </DialogTitle>
+            <DialogDescription>
+              This will hide <strong>{takedownTarget?.title}</strong> and all its issues and papers from public view. You can restore it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm mb-1.5 block">Reason for Takedown <span className="text-red-500">*</span></Label>
+              <Textarea
+                value={takedownReason}
+                onChange={(e) => setTakedownReason(e.target.value)}
+                placeholder="e.g., Copyright violation, inappropriate content, author request…"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setTakedownModalOpen(false); setTakedownReason(""); setTakedownTarget(null); }}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+              onClick={handleTakedown}
+              disabled={!takedownReason.trim() || takedownProcessing}
+            >
+              {takedownProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+              Confirm Takedown
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

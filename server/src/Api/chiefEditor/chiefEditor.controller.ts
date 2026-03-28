@@ -4,7 +4,7 @@ import { AuthUser } from "../../middlewares/auth.middleware";
 import { pool } from "../../configs/db";
 import { sendInvitationService } from "../invitation/invitation.service";
 import { sendRejectionEmailToApplicant } from "../../utils/emails/reviewerApplicationEmail";
-import asyncHandler from "../../utils/asyncHandler";
+import { asyncHandler } from "../../utils/asyncHandler";
 
 export const getChiefEditorJournals = async (req: AuthUser, res: Response) => {
   try {
@@ -96,7 +96,12 @@ export const decidePaper = async (req: AuthUser, res: Response) => {
     const { decision, decision_note, email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password are required to submit a decision" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Email and password are required to submit a decision",
+        });
     }
 
     const result = await service.makeEditorDecision(
@@ -114,7 +119,11 @@ export const decidePaper = async (req: AuthUser, res: Response) => {
       data: result,
     });
   } catch (e: any) {
-    const status = e.message.includes("Email does not match") || e.message.includes("Incorrect password") ? 401 : 400;
+    const status =
+      e.message.includes("Email does not match") ||
+      e.message.includes("Incorrect password")
+        ? 401
+        : 400;
     res.status(status).json({ success: false, message: e.message });
   }
 };
@@ -124,10 +133,20 @@ export const replaceSubEditor = async (req: AuthUser, res: Response) => {
     const { paperId } = req.params;
     const { newSubEditorId } = req.body;
     if (!newSubEditorId) {
-      return res.status(400).json({ success: false, message: "newSubEditorId is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "newSubEditorId is required" });
     }
-    const result = await service.replaceSubEditorService(paperId, req.user!.id, newSubEditorId);
-    res.json({ success: true, message: "Associate editor replaced successfully", data: result });
+    const result = await service.replaceSubEditorService(
+      paperId,
+      req.user!.id,
+      newSubEditorId,
+    );
+    res.json({
+      success: true,
+      message: "Associate editor replaced successfully",
+      data: result,
+    });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
   }
@@ -215,7 +234,10 @@ export const assignPaperToIssue = async (req: Request, res: Response) => {
 export const getJournalDetails = async (req: AuthUser, res: Response) => {
   try {
     const { journalId } = req.params;
-    const data = await service.getJournalDetailsService(journalId, req.user!.id);
+    const data = await service.getJournalDetailsService(
+      journalId,
+      req.user!.id,
+    );
     res.json({ success: true, data });
   } catch (e: any) {
     res.status(404).json({ success: false, message: e.message });
@@ -259,7 +281,8 @@ export const getApplications = async (req: AuthUser, res: Response) => {
       [ceId],
     );
     const journalIds = journalsRes.rows.map((r: any) => r.journal_id);
-    if (!journalIds.length) return res.json({ success: true, applications: [] });
+    if (!journalIds.length)
+      return res.json({ success: true, applications: [] });
 
     const params: any[] = [journalIds, status];
     let roleClause = "";
@@ -313,7 +336,10 @@ export const inviteApplication = async (req: AuthUser, res: Response) => {
       `SELECT * FROM reviewer_applications WHERE id = $1`,
       [applicationId],
     );
-    if (!appRes.rows.length) return res.status(404).json({ success: false, message: "Application not found" });
+    if (!appRes.rows.length)
+      return res
+        .status(404)
+        .json({ success: false, message: "Application not found" });
 
     const app = appRes.rows[0];
 
@@ -322,15 +348,23 @@ export const inviteApplication = async (req: AuthUser, res: Response) => {
       `SELECT 1 FROM user_roles WHERE user_id = $1 AND journal_id = $2 AND role = 'chief_editor' AND is_active = true`,
       [ceId, app.journal_id],
     );
-    if (!owns.rows.length) return res.status(403).json({ success: false, message: "Forbidden" });
+    if (!owns.rows.length)
+      return res.status(403).json({ success: false, message: "Forbidden" });
 
-    const ceRes = await pool.query(`SELECT username FROM users WHERE id = $1`, [ceId]);
+    const ceRes = await pool.query(`SELECT username FROM users WHERE id = $1`, [
+      ceId,
+    ]);
     const ceName = ceRes.rows[0]?.username || "Chief Editor";
 
     // Send invitation via existing invitation service
     await sendInvitationService(
       { id: ceId, role: "chief_editor", username: ceName },
-      { name: app.name, email: app.email, role: "reviewer", journal_id: app.journal_id },
+      {
+        name: app.name,
+        email: app.email,
+        role: "reviewer",
+        journal_id: app.journal_id,
+      },
     );
 
     // Update application status
@@ -354,7 +388,10 @@ export const declineApplication = async (req: AuthUser, res: Response) => {
       `SELECT ra.*, j.title AS journal_name FROM reviewer_applications ra JOIN journals j ON j.id = ra.journal_id WHERE ra.id = $1`,
       [applicationId],
     );
-    if (!appRes.rows.length) return res.status(404).json({ success: false, message: "Application not found" });
+    if (!appRes.rows.length)
+      return res
+        .status(404)
+        .json({ success: false, message: "Application not found" });
 
     const app = appRes.rows[0];
 
@@ -362,7 +399,8 @@ export const declineApplication = async (req: AuthUser, res: Response) => {
       `SELECT 1 FROM user_roles WHERE user_id = $1 AND journal_id = $2 AND role = 'chief_editor' AND is_active = true`,
       [ceId, app.journal_id],
     );
-    if (!owns.rows.length) return res.status(403).json({ success: false, message: "Forbidden" });
+    if (!owns.rows.length)
+      return res.status(403).json({ success: false, message: "Forbidden" });
 
     await pool.query(
       `UPDATE reviewer_applications SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW() WHERE id = $2`,
@@ -370,9 +408,14 @@ export const declineApplication = async (req: AuthUser, res: Response) => {
     );
 
     // Send polite rejection email
-    sendRejectionEmailToApplicant(app.email, app.name, app.journal_name).catch(console.error);
+    sendRejectionEmailToApplicant(app.email, app.name, app.journal_name).catch(
+      console.error,
+    );
 
-    res.json({ success: true, message: `Application from ${app.name} declined` });
+    res.json({
+      success: true,
+      message: `Application from ${app.name} declined`,
+    });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
   }

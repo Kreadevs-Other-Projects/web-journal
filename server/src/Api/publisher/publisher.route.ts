@@ -13,6 +13,12 @@ import {
   updatePaymentStatus,
   replaceChiefEditor,
   manualIssueReset,
+  takedownJournal,
+  restoreJournal,
+  takedownIssue,
+  restoreIssue,
+  takedownPaper,
+  restorePaper,
 } from "./publisher.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 
@@ -84,5 +90,13 @@ router.put(
 
 // Manual trigger: close all open issues (new year reset)
 router.post("/issues/reset-all", authMiddleware, authorize("publisher"), manualIssueReset);
+
+// Takedown / restore
+router.post("/journals/:journalId/takedown", authMiddleware, authorize("publisher"), takedownJournal);
+router.post("/journals/:journalId/restore", authMiddleware, authorize("publisher"), restoreJournal);
+router.post("/journals/:journalId/issues/:issueId/takedown", authMiddleware, authorize("publisher"), takedownIssue);
+router.post("/journals/:journalId/issues/:issueId/restore", authMiddleware, authorize("publisher"), restoreIssue);
+router.post("/papers/:paperId/takedown", authMiddleware, authorize("publisher"), takedownPaper);
+router.post("/papers/:paperId/restore", authMiddleware, authorize("publisher"), restorePaper);
 
 export default router;

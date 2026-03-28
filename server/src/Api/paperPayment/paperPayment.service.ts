@@ -7,12 +7,16 @@ import {
   rejectPaymentRepo,
   getPendingPaymentsRepo,
   getAllPaperPaymentsRepo,
+  getRejectedPaymentsRepo,
+  getPaymentReminderInfoRepo,
+  updateLastReminderSentRepo,
 } from "./paperPayment.repository";
 
 import {
   sendInvoiceEmail,
   sendReceiptNotificationEmail,
   sendPaymentApprovalEmail,
+  sendPaymentReminderEmail,
 } from "../../utils/emails/invoiceEmail";
 import { env } from "../../configs/envs";
 
@@ -182,4 +186,44 @@ export const getPendingPaymentsService = async () => {
 
 export const getAllPaperPaymentsService = async () => {
   return getAllPaperPaymentsRepo();
+};
+
+export const getRejectedPaymentsService = async () => {
+  return getRejectedPaymentsRepo();
+};
+
+export const sendPaymentReminderService = async (
+  paperId: string,
+): Promise<{ authorEmail: string }> => {
+  const payment = await getPaymentReminderInfoRepo(paperId);
+  if (!payment) throw new Error("Payment not found");
+
+  if (payment.last_reminder_sent_at) {
+    const last = new Date(payment.last_reminder_sent_at).getTime();
+    const diffHours = (Date.now() - last) / (1000 * 60 * 60);
+    if (diffHours < 24) {
+      throw new Error("Reminder already sent in the last 24 hours. Please wait before sending another.");
+    }
+  }
+
+  const paperUrl = `${env.CORS_ORIGIN || "http://localhost:5173"}/author`;
+  const invoiceDate = payment.created_at
+    ? new Date(payment.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "—";
+
+  await sendPaymentReminderEmail({
+    authorName: payment.author_name,
+    authorEmail: payment.author_email,
+    paperTitle: payment.paper_title,
+    journalName: payment.journal_name,
+    invoiceNumber: payment.invoice_number || "—",
+    invoiceDate,
+    totalAmount: payment.total_amount,
+    currency: payment.currency || "USD",
+    paperUrl,
+  });
+
+  await updateLastReminderSentRepo(paperId);
+
+  return { authorEmail: payment.author_email };
 };

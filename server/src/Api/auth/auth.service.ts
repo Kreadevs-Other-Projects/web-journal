@@ -48,7 +48,7 @@ export const createUserProfile = async (userId: string) => {
 export const getUserRoles = async (
   userId: string,
   primaryRole: string,
-): Promise<{ role: string; journal_id: string | null }[]> => {
+): Promise<{ role: string; journal_id: string | null; journal_name: string | null }[]> => {
   const rows = await getUserRolesRepo(userId);
 
   // Ensure primary role is always present
@@ -57,7 +57,7 @@ export const getUserRoles = async (
   );
 
   if (!hasPrimary) {
-    return [{ role: primaryRole, journal_id: null }, ...rows];
+    return [{ role: primaryRole, journal_id: null, journal_name: null }, ...rows];
   }
 
   return rows;

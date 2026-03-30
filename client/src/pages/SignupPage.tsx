@@ -496,8 +496,8 @@ export default function SignupPage() {
                     Select Your Role
                   </Label>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["publisher", "author", "reviewer"] as UserRole[]).map((role) => {
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["publisher", "author"] as UserRole[]).map((role) => {
                       const config = roleConfig[role];
                       const Icon = config.icon;
                       const isSelected = selectedRole === role;

@@ -29,6 +29,8 @@ interface InvitationInfo {
   journal_name: string;
   invited_by_name: string;
   expires_at: string;
+  is_existing_user: boolean;
+  existing_username: string | null;
 }
 
 type PageState = "loading" | "valid" | "error" | "success";
@@ -75,6 +77,8 @@ export default function AcceptInvitation() {
     verifyInvitation();
   }, [token]);
 
+  const isExistingUser = invitation?.is_existing_user ?? false;
+
   const handleAccept = async () => {
     if (password.length < 8) {
       toast({
@@ -84,7 +88,8 @@ export default function AcceptInvitation() {
       });
       return;
     }
-    if (password !== confirmPassword) {
+    // Only validate confirm password for new users
+    if (!isExistingUser && password !== confirmPassword) {
       toast({
         title: "Passwords don't match",
         description: "Please confirm your password.",
@@ -195,23 +200,32 @@ export default function AcceptInvitation() {
         <CardContent className="space-y-4">
           <div className="rounded-md bg-muted px-4 py-3 space-y-1 text-sm">
             <p>
-              <span className="text-muted-foreground">Name:</span>{" "}
-              {invitation?.name}
-            </p>
-            <p>
               <span className="text-muted-foreground">Email:</span>{" "}
               {invitation?.email}
             </p>
           </div>
 
+          {isExistingUser ? (
+            /* Existing user — just verify their password */
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400 space-y-1">
+              <p className="font-semibold">Existing Account Detected</p>
+              <p>
+                We found an existing account for this email
+                {invitation?.existing_username ? ` (${invitation.existing_username})` : ""}.
+                Enter your current password to add the new role to your account.
+              </p>
+            </div>
+          ) : null}
+
           <div className="space-y-1">
             <Label>
-              Set Your Password <span className="text-destructive">*</span>
+              {isExistingUser ? "Your Current Password" : "Set Your Password"}{" "}
+              <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
               <Input
                 type={showPw ? "text" : "password"}
-                placeholder="Min. 8 characters"
+                placeholder={isExistingUser ? "Your existing password" : "Min. 8 characters"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-10"
@@ -222,37 +236,42 @@ export default function AcceptInvitation() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
               >
-                {showPw ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label>
-              Confirm Password <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              type="password"
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </div>
+          {/* Confirm password only for new users */}
+          {!isExistingUser && (
+            <div className="space-y-1">
+              <Label>
+                Confirm Password <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="password"
+                placeholder="Repeat your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          )}
 
           <Button
             className="w-full"
             onClick={handleAccept}
-            disabled={submitting || !password || !confirmPassword}
+            disabled={
+              submitting ||
+              !password ||
+              (!isExistingUser && !confirmPassword)
+            }
           >
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Setting up
-                account...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isExistingUser ? "Adding role..." : "Setting up account..."}
               </>
+            ) : isExistingUser ? (
+              "Add Role to My Account"
             ) : (
               "Accept & Create Account"
             )}
@@ -260,10 +279,11 @@ export default function AcceptInvitation() {
 
           <p className="text-xs text-center text-muted-foreground">
             Invitation expires{" "}
-            {new Date(invitation?.expires_at ?? "").toLocaleDateString(
-              "en-GB",
-              { day: "2-digit", month: "short", year: "numeric" },
-            )}
+            {new Date(invitation?.expires_at ?? "").toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
           </p>
         </CardContent>
       </Card>

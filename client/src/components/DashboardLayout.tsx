@@ -143,11 +143,12 @@ export function DashboardLayout({
     }
   };
 
-  const handleSwitchRole = async (newRole: UserRole) => {
-    if (newRole === role || switchingRole) return;
+  const handleSwitchRole = async (newRole: UserRole, journalId?: string | null) => {
+    const isAlreadyActive = newRole === role && journalId === user?.active_journal_id;
+    if (isAlreadyActive || switchingRole) return;
     try {
       setSwitchingRole(true);
-      await switchRole(newRole, null);
+      await switchRole(newRole, journalId ?? null);
       const target = roleConfig[newRole]?.route ?? "/";
       navigate(target);
     } catch (err: any) {
@@ -366,40 +367,46 @@ export function DashboardLayout({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 text-sm"
+                      className="gap-1.5 text-sm max-w-[260px]"
                       disabled={switchingRole || !user.roles || user.roles.length <= 1}
                     >
-                      <Shield className={cn("h-3.5 w-3.5", config.color)} />
-                      {config.label}
+                      <Shield className={cn("h-3.5 w-3.5 flex-shrink-0", config.color)} />
+                      <span className="truncate">
+                        {config.label}
+                        {user.active_journal_name && (
+                          <span className="text-muted-foreground"> — {user.active_journal_name}</span>
+                        )}
+                      </span>
                       {user.roles && user.roles.length > 1 && (
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                       )}
                     </Button>
                   </DropdownMenuTrigger>
                   {user.roles && user.roles.length > 1 && (
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
                         Switch Role
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {user.roles.map((r) => {
-                        const rc = roleConfig[r as UserRole];
+                      {user.roles.map((r, idx) => {
+                        const rc = roleConfig[r.role as UserRole];
                         if (!rc) return null;
+                        const label = r.journal_name
+                          ? `${rc.label} — ${r.journal_name}`
+                          : rc.label;
+                        const isActive =
+                          r.role === role &&
+                          r.journal_id === user.active_journal_id;
                         return (
                           <DropdownMenuItem
-                            key={r}
-                            onClick={() => handleSwitchRole(r as UserRole)}
-                            className={cn(
-                              "gap-2 cursor-pointer",
-                              r === role && "font-semibold",
-                            )}
+                            key={`${r.role}-${r.journal_id ?? idx}`}
+                            onClick={() => handleSwitchRole(r.role as UserRole, r.journal_id)}
+                            className={cn("gap-2 cursor-pointer", isActive && "font-semibold")}
                           >
-                            <rc.icon className={cn("h-4 w-4", rc.color)} />
-                            {rc.label}
-                            {r === role && (
-                              <span className="ml-auto text-xs text-muted-foreground">
-                                Active
-                              </span>
+                            <rc.icon className={cn("h-4 w-4 flex-shrink-0", rc.color)} />
+                            <span className="flex-1 truncate">{label}</span>
+                            {isActive && (
+                              <span className="text-xs text-muted-foreground">Active</span>
                             )}
                           </DropdownMenuItem>
                         );

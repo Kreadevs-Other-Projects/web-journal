@@ -1,14 +1,21 @@
 import jwt from "jsonwebtoken";
 import { env } from "../configs/envs";
 
+export interface RoleEntry {
+  role: string;
+  journal_id: string | null;
+  journal_name: string | null;
+}
+
 export const generateAccessToken = async (
   userId: string,
   role: string = "user",
   email?: string,
   username?: string,
-  roles?: string[],
+  roles?: RoleEntry[],
   active_role?: string,
   active_journal_id?: string | null,
+  active_journal_name?: string | null,
 ) => {
   return jwt.sign(
     {
@@ -16,9 +23,10 @@ export const generateAccessToken = async (
       role,
       email,
       username,
-      roles: roles ?? [role],
+      roles: roles ?? [{ role, journal_id: null, journal_name: null }],
       active_role: active_role ?? role,
       active_journal_id: active_journal_id ?? null,
+      active_journal_name: active_journal_name ?? null,
     },
     env.JWT_SECRET,
     { expiresIn: env.JWT_SHORT_EXPIRY },
@@ -44,8 +52,9 @@ export const verifyAccessToken = (token: string) => {
     role: string;
     email: string;
     username: string;
-    roles: string[];
+    roles: RoleEntry[];
     active_role: string;
     active_journal_id: string | null;
+    active_journal_name: string | null;
   };
 };

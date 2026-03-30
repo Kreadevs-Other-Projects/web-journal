@@ -50,6 +50,7 @@ import {
   FileEdit,
   Send,
   BarChart3,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -118,6 +119,9 @@ export default function SubEditorDashboard() {
 
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState(false);
+
+  // ── NEW: view mode toggle ─────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<"pdf" | "web">("pdf");
 
   const [openDecisionDialog, setOpenDecisionDialog] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
@@ -224,10 +228,8 @@ export default function SubEditorDashboard() {
       });
       return;
     }
-
     try {
       setAssignLoading(true);
-
       const res = await fetch(
         `${url}/subEditor/assignReviewer/${selectedPaper.id}`,
         {
@@ -242,12 +244,10 @@ export default function SubEditorDashboard() {
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.message || "Failed to assign reviewer.");
-
       toast({
         title: "Reviewer Assigned",
         description: "Reviewer assigned successfully.",
       });
-
       setSelectedReviewerId("");
       setOpenAssignReviewerDialog(false);
       fetchReviewers(selectedPaper.id);
@@ -285,10 +285,8 @@ export default function SubEditorDashboard() {
 
   const inviteReviewerByEmail = async () => {
     if (!reviewerEmail) return;
-
     try {
       setInviteLoading(true);
-
       const res = await fetch(`${url}/subEditor/inviteReviewer`, {
         method: "POST",
         headers: {
@@ -297,15 +295,12 @@ export default function SubEditorDashboard() {
         },
         body: JSON.stringify({ email: reviewerEmail }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-
       toast({
         title: "Invitation Sent",
         description: `Reviewer invited successfully to ${reviewerEmail}`,
       });
-
       setReviewerEmail("");
       fetchAllReviewers();
     } catch (err) {
@@ -430,9 +425,8 @@ export default function SubEditorDashboard() {
   };
 
   const createAndAssignReviewer = async () => {
-    if (!newReviewer.name || !newReviewer.email || !newReviewer.password) {
+    if (!newReviewer.name || !newReviewer.email || !newReviewer.password)
       return;
-    }
     if (!selectedPaper) return;
     try {
       setCreatingReviewer(true);
@@ -453,7 +447,6 @@ export default function SubEditorDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
 
-      // Assign the new reviewer to the paper
       const assignRes = await fetch(
         `${url}/subEditor/assignReviewer/${selectedPaper.id}`,
         {
@@ -560,9 +553,13 @@ export default function SubEditorDashboard() {
     }
   }, [selectedVersion, selectedPaper, fetchDocxHtml]);
 
+  // Reset view mode when switching papers
+  useEffect(() => {
+    setViewMode("pdf");
+  }, [selectedPaper?.id]);
+
   useEffect(() => {
     let filtered = papers;
-
     if (searchQuery) {
       filtered = filtered.filter(
         (paper) =>
@@ -573,7 +570,6 @@ export default function SubEditorDashboard() {
           paper.abstract?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-
     if (activeTab !== "all") {
       const statusMap: Record<string, string> = {
         under_review: "under_review",
@@ -585,7 +581,6 @@ export default function SubEditorDashboard() {
         (paper) => paper.status === statusMap[activeTab],
       );
     }
-
     setFilteredPapers(filtered);
   }, [searchQuery, activeTab, papers]);
 
@@ -626,6 +621,288 @@ export default function SubEditorDashboard() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  // ── Web View renderer ──────────────────────────────────────────────────────
+  const renderWebView = () => {
+    if (docxLoading) {
+      return (
+        <div className="rounded-xl border border-border bg-background overflow-hidden">
+          <div className="border-b border-border px-8 py-4 bg-muted/30">
+            <div className="h-4 w-1/3 bg-muted animate-pulse rounded" />
+          </div>
+          <div className="px-10 py-8 space-y-3">
+            <div className="h-5 w-2/3 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-1/4 bg-muted animate-pulse rounded mb-6" />
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="h-3 bg-muted animate-pulse rounded"
+                style={{ width: `${70 + Math.random() * 30}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (docxHtml) {
+      return (
+        <div className="rounded-xl border border-border bg-white dark:bg-[#141414] overflow-hidden shadow-sm">
+          {/* Sticky toolbar */}
+          <div className="flex items-center justify-between px-5 py-2.5 border-b border-border bg-muted/40 sticky top-0 z-10 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+              <Globe className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="font-medium text-foreground truncate max-w-[320px]">
+                {selectedPaper?.title}
+              </span>
+              <span className="shrink-0">·</span>
+              <span className="shrink-0 text-xs">
+                v{selectedVersion?.version_number}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs shrink-0"
+              onClick={() =>
+                window.open(`${url}${selectedVersion?.file_url}`, "_blank")
+              }
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download
+            </Button>
+          </div>
+
+          {/* Document body */}
+          <ScrollArea className="h-[580px]">
+            <div className="max-w-[72ch] mx-auto px-10 py-10">
+              <div
+                className={cn(
+                  "text-[15px] leading-[1.85] text-gray-800 dark:text-gray-200",
+                  // Headings
+                  "[&_h1]:text-[1.6rem] [&_h1]:font-bold [&_h1]:mt-10 [&_h1]:mb-4 [&_h1]:text-gray-900 dark:[&_h1]:text-gray-50 [&_h1]:border-b [&_h1]:border-border [&_h1]:pb-3 [&_h1]:tracking-tight",
+                  "[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-gray-900 dark:[&_h2]:text-gray-50 [&_h2]:tracking-tight",
+                  "[&_h3]:text-[1rem] [&_h3]:font-semibold [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-gray-800 dark:[&_h3]:text-gray-100",
+                  "[&_h4]:text-[0.95rem] [&_h4]:font-semibold [&_h4]:mt-4 [&_h4]:mb-1.5 [&_h4]:text-gray-700 dark:[&_h4]:text-gray-200",
+                  // Paragraphs
+                  "[&_p]:mb-4 [&_p]:text-justify [&_p]:hyphens-auto",
+                  // Inline formatting
+                  "[&_strong]:font-semibold [&_b]:font-semibold",
+                  "[&_em]:italic [&_i]:italic",
+                  "[&_u]:underline [&_u]:underline-offset-2",
+                  "[&_sub]:text-xs [&_sup]:text-xs",
+                  // Lists
+                  "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-1.5",
+                  "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_ol]:space-y-1.5",
+                  "[&_li]:leading-relaxed",
+                  // Nested lists
+                  "[&_ul_ul]:list-[circle] [&_ul_ul]:mt-1.5",
+                  "[&_ol_ol]:list-[lower-alpha] [&_ol_ol]:mt-1.5",
+                  // Tables
+                  "[&_table]:w-full [&_table]:border-collapse [&_table]:my-6 [&_table]:text-sm [&_table]:rounded-lg [&_table]:overflow-hidden",
+                  "[&_thead]:bg-muted",
+                  "[&_th]:font-semibold [&_th]:text-left [&_th]:px-4 [&_th]:py-2.5 [&_th]:border [&_th]:border-border [&_th]:text-foreground",
+                  "[&_td]:px-4 [&_td]:py-2.5 [&_td]:border [&_td]:border-border [&_td]:align-top [&_td]:text-foreground",
+                  "[&_tr:nth-child(even)_td]:bg-muted/30",
+                  "[&_tr:hover_td]:bg-muted/50",
+                  // Blockquote
+                  "[&_blockquote]:border-l-[3px] [&_blockquote]:border-primary/50 [&_blockquote]:pl-5 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-5 [&_blockquote]:py-1",
+                  // Code
+                  "[&_pre]:bg-muted [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:text-sm [&_pre]:my-4 [&_pre]:border [&_pre]:border-border",
+                  "[&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:rounded [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:text-[0.85em] [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:border [&_:not(pre)>code]:border-border",
+                  // Images
+                  "[&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-5 [&_img]:mx-auto [&_img]:block [&_img]:shadow-sm [&_img]:border [&_img]:border-border",
+                  // Links
+                  "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:opacity-75 [&_a]:transition-opacity",
+                  // HR divider
+                  "[&_hr]:border-border [&_hr]:my-8",
+                  // Figure / caption
+                  "[&_figure]:my-6 [&_figure]:text-center",
+                  "[&_figcaption]:text-xs [&_figcaption]:text-muted-foreground [&_figcaption]:mt-2 [&_figcaption]:italic",
+                  // First paragraph lead
+                  "[&>p:first-of-type]:text-base [&>p:first-of-type]:leading-[1.9] [&>p:first-of-type]:text-foreground/90",
+                )}
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(docxHtml),
+                }}
+              />
+            </div>
+          </ScrollArea>
+        </div>
+      );
+    }
+
+    // Fallback — no HTML (e.g. PDF file or failed conversion)
+    return (
+      <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
+        {/* Article header */}
+        <div className="px-8 pt-10 pb-7 border-b border-border bg-gradient-to-b from-muted/30 to-transparent">
+          <div className="max-w-[68ch] mx-auto">
+            <div className="text-xs font-semibold uppercase tracking-widest text-primary/70 mb-3">
+              {selectedPaper?.category || "Research Article"}
+            </div>
+            <h1 className="text-2xl font-bold text-foreground leading-tight mb-4 tracking-tight">
+              {selectedPaper?.title}
+            </h1>
+            {selectedPaper?.authors && selectedPaper.authors.length > 0 && (
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground mb-4">
+                {selectedPaper.authors.map((author, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    <span className="h-1 w-1 rounded-full bg-primary/60 inline-block" />
+                    {author}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {formatDate(selectedPaper?.submitted_at)}
+              </span>
+              <span>·</span>
+              <Badge variant="outline" className="text-xs h-5 px-2">
+                Version {selectedVersion?.version_number}
+              </Badge>
+              <span>·</span>
+              <Badge
+                className={cn(
+                  "text-xs h-5 px-2",
+                  getStatusColor(selectedPaper?.status || ""),
+                )}
+              >
+                {selectedPaper?.status?.replace(/_/g, " ")}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Abstract */}
+        <div className="px-8 py-8">
+          <div className="max-w-[68ch] mx-auto space-y-6">
+            {selectedPaper?.abstract && (
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                  Abstract
+                </h2>
+                <p className="text-sm leading-[1.85] text-foreground/90 text-justify border-l-2 border-primary/30 pl-4">
+                  {selectedPaper.abstract}
+                </p>
+              </div>
+            )}
+
+            {/* Full-text unavailable notice */}
+            <div className="rounded-lg border border-dashed border-border p-6 text-center space-y-3 bg-muted/20">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Full text not renderable
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This file type cannot be displayed inline. Switch to PDF View
+                  or download the file.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setViewMode("pdf")}
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  Switch to PDF View
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    window.open(`${url}${selectedVersion?.file_url}`, "_blank")
+                  }
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download File
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── PDF View renderer ──────────────────────────────────────────────────────
+  const renderPdfView = () => {
+    const ext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
+
+    if (ext === "pdf") {
+      return (
+        <div className="rounded-lg overflow-hidden border border-border">
+          <iframe
+            src={`${url}${selectedVersion?.file_url}`}
+            className="w-full h-[600px]"
+            title="Paper Preview"
+          />
+        </div>
+      );
+    }
+
+    if (ext === "docx") {
+      return (
+        <div className="rounded-lg border border-border p-10 text-center space-y-4 bg-muted/20">
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <FileText className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              PDF view unavailable for DOCX
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Switch to Web View to read this document inline.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setViewMode("web")}
+            >
+              <Globe className="h-3.5 w-3.5 mr-1.5" />
+              Switch to Web View
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                window.open(`${url}${selectedVersion?.file_url}`, "_blank")
+              }
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download DOCX
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-lg border border-border p-10 text-center space-y-3 bg-muted/20">
+        <p className="text-sm text-muted-foreground">
+          Preview not available for this file type.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            window.open(`${url}${selectedVersion?.file_url}`, "_blank")
+          }
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download File
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -719,7 +996,6 @@ export default function SubEditorDashboard() {
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select version" />
                         </SelectTrigger>
-
                         <SelectContent>
                           {selectedPaper?.versions.map((v) => (
                             <SelectItem key={v.id} value={v.id}>
@@ -758,83 +1034,52 @@ export default function SubEditorDashboard() {
                         </TabsTrigger>
                       </TabsList>
 
+                      {/* ── PREVIEW TAB ──────────────────────────────────── */}
                       <TabsContent value="preview" className="mt-4">
-                        {(() => {
-                          const ext = selectedVersion?.file_url
-                            ?.split(".")
-                            .pop()
-                            ?.toLowerCase();
-                          if (ext === "pdf") {
-                            return (
-                              <div className="rounded-lg overflow-hidden border border-border">
-                                <iframe
-                                  src={`${url}${selectedVersion?.file_url}`}
-                                  className="w-full h-[600px]"
-                                  title="Paper Preview"
-                                />
-                              </div>
-                            );
-                          }
-                          if (ext === "docx") {
-                            if (docxLoading) {
-                              return (
-                                <div className="rounded-lg border border-border p-8 text-center text-muted-foreground">
-                                  Converting document…
-                                </div>
-                              );
-                            }
-                            if (docxHtml) {
-                              return (
-                                <div
-                                  className="rounded-lg border border-border p-6 bg-white text-black overflow-y-auto max-h-[600px] prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{
-                                    __html: DOMPurify.sanitize(docxHtml),
-                                  }}
-                                />
-                              );
-                            }
-                            return (
-                              <div className="rounded-lg border border-border p-8 text-center space-y-3">
-                                <p className="text-muted-foreground">
-                                  Could not render document preview.
-                                </p>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    window.open(
-                                      `${url}${selectedVersion?.file_url}`,
-                                      "_blank",
-                                    )
-                                  }
-                                >
-                                  <Download className="h-4 w-4 mr-2" /> Download
-                                  DOCX
-                                </Button>
-                              </div>
-                            );
-                          }
-                          return (
-                            <div className="rounded-lg border border-border p-8 text-center space-y-3">
-                              <p className="text-muted-foreground">
-                                Preview not available for this file type.
-                              </p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  window.open(
-                                    `${url}${selectedVersion?.file_url}`,
-                                    "_blank",
-                                  )
-                                }
-                              >
-                                <Download className="h-4 w-4 mr-2" /> Download
-                                File
-                              </Button>
-                            </div>
-                          );
-                        })()}
+                        <div className="space-y-3">
+                          {/* Toggle bar */}
+                          <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/60 border border-border w-fit">
+                            <button
+                              onClick={() => setViewMode("pdf")}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                                viewMode === "pdf"
+                                  ? "bg-background shadow-sm text-foreground border border-border"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              PDF View
+                            </button>
+                            <button
+                              onClick={() => setViewMode("web")}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                                viewMode === "web"
+                                  ? "bg-background shadow-sm text-foreground border border-border"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <Globe className="h-3.5 w-3.5" />
+                              Web View
+                            </button>
+                          </div>
+
+                          {/* Rendered view */}
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={viewMode}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              transition={{ duration: 0.18 }}
+                            >
+                              {viewMode === "pdf"
+                                ? renderPdfView()
+                                : renderWebView()}
+                            </motion.div>
+                          </AnimatePresence>
+                        </div>
                       </TabsContent>
 
                       <TabsContent value="abstract" className="mt-4">
@@ -971,7 +1216,6 @@ export default function SubEditorDashboard() {
                   <CardHeader>
                     <CardTitle className="text-sm">Paper Information</CardTitle>
                   </CardHeader>
-
                   <CardContent className="space-y-3 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Category:</span>
@@ -1257,6 +1501,8 @@ export default function SubEditorDashboard() {
         )}
       </AnimatePresence>
 
+      {/* ── Dialogs (unchanged) ─────────────────────────────────────────────── */}
+
       <Dialog open={openReviewersDialog} onOpenChange={setOpenReviewersDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1342,7 +1588,7 @@ export default function SubEditorDashboard() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="">Select Reviewer</Label>
+              <Label>Select Reviewer</Label>
               <Select
                 value={selectedReviewerId}
                 onValueChange={setSelectedReviewerId}
@@ -1386,7 +1632,7 @@ export default function SubEditorDashboard() {
 
               <div className="relative space-y-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t"></div>
+                  <div className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
@@ -1593,7 +1839,13 @@ export default function SubEditorDashboard() {
               Cancel
             </Button>
             <Button
-              className={`flex-1 ${decisionAction === "approve" ? "bg-green-600 hover:bg-green-700" : decisionAction === "revision" ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"}`}
+              className={`flex-1 ${
+                decisionAction === "approve"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : decisionAction === "revision"
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : "bg-red-600 hover:bg-red-700"
+              }`}
               onClick={submitDecision}
               disabled={submittingDecision}
             >
@@ -1617,7 +1869,7 @@ export default function SubEditorDashboard() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="">
+              <Label>
                 Full Name <span className="text-red-400">*</span>
               </Label>
               <Input
@@ -1633,7 +1885,7 @@ export default function SubEditorDashboard() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="">
+              <Label>
                 Email <span className="text-red-400">*</span>
               </Label>
               <Input
@@ -1650,30 +1902,28 @@ export default function SubEditorDashboard() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="">Keywords (press Enter to add)</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g. machine learning"
-                  value={suggestForm.keywordInput}
-                  onChange={(e) =>
+              <Label>Keywords (press Enter to add)</Label>
+              <Input
+                placeholder="e.g. machine learning"
+                value={suggestForm.keywordInput}
+                onChange={(e) =>
+                  setSuggestForm((p) => ({
+                    ...p,
+                    keywordInput: e.target.value,
+                  }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && suggestForm.keywordInput.trim()) {
+                    e.preventDefault();
                     setSuggestForm((p) => ({
                       ...p,
-                      keywordInput: e.target.value,
-                    }))
+                      keywords: [...p.keywords, p.keywordInput.trim()],
+                      keywordInput: "",
+                    }));
                   }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && suggestForm.keywordInput.trim()) {
-                      e.preventDefault();
-                      setSuggestForm((p) => ({
-                        ...p,
-                        keywords: [...p.keywords, p.keywordInput.trim()],
-                        keywordInput: "",
-                      }));
-                    }
-                  }}
-                  className="placeholder:text-muted-foreground"
-                />
-              </div>
+                }}
+                className="placeholder:text-muted-foreground"
+              />
               {suggestForm.keywords.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {suggestForm.keywords.map((kw, i) => (
@@ -1695,30 +1945,25 @@ export default function SubEditorDashboard() {
               )}
             </div>
             <div className="space-y-1">
-              <Label className="">Degrees (press Enter to add)</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g. PhD Computer Science"
-                  value={suggestForm.degreeInput}
-                  onChange={(e) =>
+              <Label>Degrees (press Enter to add)</Label>
+              <Input
+                placeholder="e.g. PhD Computer Science"
+                value={suggestForm.degreeInput}
+                onChange={(e) =>
+                  setSuggestForm((p) => ({ ...p, degreeInput: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && suggestForm.degreeInput.trim()) {
+                    e.preventDefault();
                     setSuggestForm((p) => ({
                       ...p,
-                      degreeInput: e.target.value,
-                    }))
+                      degrees: [...p.degrees, p.degreeInput.trim()],
+                      degreeInput: "",
+                    }));
                   }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && suggestForm.degreeInput.trim()) {
-                      e.preventDefault();
-                      setSuggestForm((p) => ({
-                        ...p,
-                        degrees: [...p.degrees, p.degreeInput.trim()],
-                        degreeInput: "",
-                      }));
-                    }
-                  }}
-                  className="placeholder:text-muted-foreground"
-                />
-              </div>
+                }}
+                className="placeholder:text-muted-foreground"
+              />
               {suggestForm.degrees.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {suggestForm.degrees.map((deg, i) => (

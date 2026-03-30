@@ -96,18 +96,24 @@ export default function RevisionPaper() {
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [selectedSignature, setSelectedSignature] = useState<string | null>(null);
+  const [selectedSignature, setSelectedSignature] = useState<string | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<string>("all");
 
   // Decision state
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [activePaperId, setActivePaperId] = useState<string | null>(null);
-  const [pendingDecision, setPendingDecision] = useState<"approve" | "revision" | "reject" | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<
+    "approve" | "revision" | null
+  >(null);
   const [decisionComments, setDecisionComments] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
-  const [existingDecisions, setExistingDecisions] = useState<Record<string, ExistingDecision | null>>({});
+  const [existingDecisions, setExistingDecisions] = useState<
+    Record<string, ExistingDecision | null>
+  >({});
 
   const fetchPapers = async () => {
     try {
@@ -143,9 +149,12 @@ export default function RevisionPaper() {
     await Promise.all(
       uniqueIds.map(async (paperId) => {
         try {
-          const res = await fetch(`${url}/subEditor/existingDecision/${paperId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await fetch(
+            `${url}/subEditor/existingDecision/${paperId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
           const data = await res.json();
           results[paperId] = data.data || null;
         } catch {
@@ -181,13 +190,10 @@ export default function RevisionPaper() {
 
   const submitDecision = async () => {
     if (!activePaperId || !pendingDecision) return;
-    if (
-      (pendingDecision === "revision" || pendingDecision === "reject") &&
-      !decisionComments.trim()
-    ) {
+    if (pendingDecision === "revision" && !decisionComments.trim()) {
       toast({
         title: "Comments required",
-        description: `Please provide comments when requesting ${pendingDecision === "revision" ? "a revision" : "rejection"}.`,
+        description: `Please provide comments when requesting a revision.`,
         variant: "destructive",
       });
       return;
@@ -225,9 +231,7 @@ export default function RevisionPaper() {
         description:
           pendingDecision === "approve"
             ? "Paper has been approved."
-            : pendingDecision === "revision"
-              ? "Revision has been requested."
-              : "Paper has been rejected.",
+            : "Revision has been requested.",
       });
 
       setExistingDecisions((prev) => ({
@@ -248,7 +252,11 @@ export default function RevisionPaper() {
 
       fetchPapers();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSubmittingDecision(false);
     }
@@ -691,7 +699,8 @@ export default function RevisionPaper() {
                                     <p className="text-xs text-muted-foreground">
                                       Submitted:{" "}
                                       {formatDate(
-                                        existingDecisions[r.paperId]!.decided_at,
+                                        existingDecisions[r.paperId]!
+                                          .decided_at,
                                       )}
                                     </p>
                                     <p className="text-xs text-muted-foreground italic">
@@ -728,20 +737,6 @@ export default function RevisionPaper() {
                                   >
                                     <RotateCcw className="h-3.5 w-3.5" />
                                     Revision
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="flex-1 gap-1.5"
-                                    onClick={() => {
-                                      setActivePaperId(r.paperId);
-                                      setPendingDecision("reject");
-                                      setDecisionModalOpen(true);
-                                    }}
-                                    disabled={r.paperStatus === "published"}
-                                  >
-                                    <XCircle className="h-3.5 w-3.5" />
-                                    Reject
                                   </Button>
                                 </div>
                               )}
@@ -975,7 +970,12 @@ export default function RevisionPaper() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={decisionModalOpen} onOpenChange={(open) => { if (!open) closeDecisionModal(); }}>
+        <Dialog
+          open={decisionModalOpen}
+          onOpenChange={(open) => {
+            if (!open) closeDecisionModal();
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2">
@@ -985,14 +985,9 @@ export default function RevisionPaper() {
                 {pendingDecision === "revision" && (
                   <RotateCcw className="h-5 w-5 text-amber-400" />
                 )}
-                {pendingDecision === "reject" && (
-                  <XCircle className="h-5 w-5 text-red-400" />
-                )}
                 {pendingDecision === "approve"
                   ? "Approve Paper"
-                  : pendingDecision === "revision"
-                    ? "Request Revision"
-                    : "Reject Paper"}
+                  : "Request Revision"}
               </DialogTitle>
               {activePaperId && (
                 <p className="text-sm text-muted-foreground">
@@ -1005,8 +1000,7 @@ export default function RevisionPaper() {
               <div className="space-y-2">
                 <Label>
                   Comments{" "}
-                  {(pendingDecision === "revision" ||
-                    pendingDecision === "reject") && (
+                  {pendingDecision === "revision" && (
                     <span className="text-red-400">*</span>
                   )}
                 </Label>
@@ -1063,9 +1057,7 @@ export default function RevisionPaper() {
                   submittingDecision ||
                   !confirmEmail ||
                   !confirmPassword ||
-                  ((pendingDecision === "revision" ||
-                    pendingDecision === "reject") &&
-                    !decisionComments.trim())
+                  (pendingDecision === "revision" && !decisionComments.trim())
                 }
                 className={
                   pendingDecision === "approve"
@@ -1082,10 +1074,8 @@ export default function RevisionPaper() {
                   </div>
                 ) : pendingDecision === "approve" ? (
                   "Confirm Approval"
-                ) : pendingDecision === "revision" ? (
-                  "Request Revision"
                 ) : (
-                  "Confirm Rejection"
+                  "Request Revision"
                 )}
               </Button>
             </DialogFooter>

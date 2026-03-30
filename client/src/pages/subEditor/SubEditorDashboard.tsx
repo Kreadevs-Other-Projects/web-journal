@@ -108,7 +108,11 @@ export default function SubEditorDashboard() {
   );
   const [assignLoading, setAssignLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [newReviewer, setNewReviewer] = useState({ name: "", email: "", password: "" });
+  const [newReviewer, setNewReviewer] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
   const [showRevPassword, setShowRevPassword] = useState(false);
   const [creatingReviewer, setCreatingReviewer] = useState(false);
 
@@ -117,13 +121,18 @@ export default function SubEditorDashboard() {
 
   const [openDecisionDialog, setOpenDecisionDialog] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
-  const [decisionAction, setDecisionAction] = useState<"approve" | "revision" | "reject" | null>(null);
+  const [decisionAction, setDecisionAction] = useState<
+    "approve" | "revision" | null
+  >(null);
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [decisionEmail, setDecisionEmail] = useState("");
   const [decisionPassword, setDecisionPassword] = useState("");
   const [showDecisionPassword, setShowDecisionPassword] = useState(false);
   const [paperReviews, setPaperReviews] = useState<any[]>([]);
-  const [lastDecision, setLastDecision] = useState<{ action: string; date: string } | null>(null);
+  const [lastDecision, setLastDecision] = useState<{
+    action: string;
+    date: string;
+  } | null>(null);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
@@ -219,16 +228,20 @@ export default function SubEditorDashboard() {
     try {
       setAssignLoading(true);
 
-      const res = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${url}/subEditor/assignReviewer/${selectedPaper.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reviewerId: selectedReviewerId }),
         },
-        body: JSON.stringify({ reviewerId: selectedReviewerId }),
-      });
+      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to assign reviewer.");
+      if (!res.ok)
+        throw new Error(data.message || "Failed to assign reviewer.");
 
       toast({
         title: "Reviewer Assigned",
@@ -328,9 +341,12 @@ export default function SubEditorDashboard() {
 
   const fetchPaperReviews = async (paperId: string) => {
     try {
-      const res = await fetch(`${url}/subEditor/getReviewsForPaper/${paperId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${url}/subEditor/getReviewsForPaper/${paperId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       const data = await res.json();
       setPaperReviews(data.reviews || []);
     } catch {
@@ -341,31 +357,49 @@ export default function SubEditorDashboard() {
   const submitDecision = async () => {
     if (!selectedPaper || !decisionAction) return;
     if (!decisionEmail || !decisionPassword) {
-      toast({ title: "Credentials required", description: "Enter your email and password to confirm this decision.", variant: "destructive" });
+      toast({
+        title: "Credentials required",
+        description: "Enter your email and password to confirm this decision.",
+        variant: "destructive",
+      });
       return;
     }
-    if ((decisionAction === "revision" || decisionAction === "reject") && !decisionNote.trim()) {
-      toast({ title: "Comments required", description: `Comments are required when requesting ${decisionAction === "revision" ? "a revision" : "rejection"}.`, variant: "destructive" });
+    if (decisionAction === "revision" && !decisionNote.trim()) {
+      toast({
+        title: "Comments required",
+        description: `Comments are required when requesting a revision.`,
+        variant: "destructive",
+      });
       return;
     }
     try {
       setSubmittingDecision(true);
       const res = await fetch(`${url}/subEditor/decision/${selectedPaper.id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: decisionAction, comments: decisionNote, email: decisionEmail, password: decisionPassword }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: decisionAction,
+          comments: decisionNote,
+          email: decisionEmail,
+          password: decisionPassword,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to submit decision");
       const actionStatusMap: Record<string, string> = {
         approve: "sub_editor_approved",
         revision: "pending_revision",
-        reject: "rejected",
       };
       const newStatus = actionStatusMap[decisionAction!];
       toast({
         title: "Decision Submitted",
-        description: decisionAction === "approve" ? "Paper forwarded to Chief Editor." : decisionAction === "revision" ? "Revision requested from author." : "Paper rejected.",
+        description:
+          decisionAction === "approve"
+            ? "Paper forwarded to Chief Editor."
+            : "Revision requested from author.",
       });
       setOpenDecisionDialog(false);
       setDecisionNote("");
@@ -373,13 +407,23 @@ export default function SubEditorDashboard() {
       setDecisionPassword("");
       setLastDecision({
         action: decisionAction!,
-        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        date: new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
       });
       setDecisionAction(null);
-      setSelectedPaper((prev) => prev ? { ...prev, status: newStatus } : null);
+      setSelectedPaper((prev) =>
+        prev ? { ...prev, status: newStatus } : null,
+      );
       fetchPapers();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSubmittingDecision(false);
     }
@@ -394,7 +438,10 @@ export default function SubEditorDashboard() {
       setCreatingReviewer(true);
       const res = await fetch(`${url}/auth/create-staff`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: newReviewer.name,
           email: newReviewer.email,
@@ -407,20 +454,34 @@ export default function SubEditorDashboard() {
       if (!res.ok) throw new Error(data.message || "Failed to create reviewer");
 
       // Assign the new reviewer to the paper
-      const assignRes = await fetch(`${url}/subEditor/assignReviewer/${selectedPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reviewerId: data.user.id }),
-      });
+      const assignRes = await fetch(
+        `${url}/subEditor/assignReviewer/${selectedPaper.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reviewerId: data.user.id }),
+        },
+      );
       const assignData = await assignRes.json();
-      if (!assignRes.ok) throw new Error(assignData.message || "Failed to assign reviewer");
+      if (!assignRes.ok)
+        throw new Error(assignData.message || "Failed to assign reviewer");
 
-      toast({ title: "Success", description: `${newReviewer.name} created and assigned as reviewer` });
+      toast({
+        title: "Success",
+        description: `${newReviewer.name} created and assigned as reviewer`,
+      });
       setNewReviewer({ name: "", email: "", password: "" });
       setOpenAssignReviewerDialog(false);
       fetchAllReviewers();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCreatingReviewer(false);
     }
@@ -429,28 +490,54 @@ export default function SubEditorDashboard() {
   const suggestReviewer = async () => {
     if (!selectedPaper) return;
     if (!suggestForm.suggested_name || !suggestForm.suggested_email) {
-      toast({ title: "Missing fields", description: "Name and email are required.", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required.",
+        variant: "destructive",
+      });
       return;
     }
     try {
       setSuggestLoading(true);
-      const res = await fetch(`${url}/subEditor/suggestReviewer/${selectedPaper.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          suggested_name: suggestForm.suggested_name,
-          suggested_email: suggestForm.suggested_email,
-          keywords: suggestForm.keywords,
-          degrees: suggestForm.degrees,
-        }),
-      });
+      const res = await fetch(
+        `${url}/subEditor/suggestReviewer/${selectedPaper.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            suggested_name: suggestForm.suggested_name,
+            suggested_email: suggestForm.suggested_email,
+            keywords: suggestForm.keywords,
+            degrees: suggestForm.degrees,
+          }),
+        },
+      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to suggest reviewer");
-      toast({ title: "Suggestion Sent", description: "Your reviewer suggestion has been sent to the Chief Editor for approval." });
-      setSuggestForm({ suggested_name: "", suggested_email: "", keywordInput: "", keywords: [], degreeInput: "", degrees: [] });
+      if (!res.ok)
+        throw new Error(data.message || "Failed to suggest reviewer");
+      toast({
+        title: "Suggestion Sent",
+        description:
+          "Your reviewer suggestion has been sent to the Chief Editor for approval.",
+      });
+      setSuggestForm({
+        suggested_name: "",
+        suggested_email: "",
+        keywordInput: "",
+        keywords: [],
+        degreeInput: "",
+        degrees: [],
+      });
       setOpenSuggestReviewer(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSuggestLoading(false);
     }
@@ -558,7 +645,10 @@ export default function SubEditorDashboard() {
                   variant="ghost"
                   size="icon"
                   className="rounded-full hover:bg-white/10 transition-colors"
-                  onClick={() => { setSelectedPaper(null); setLastDecision(null); }}
+                  onClick={() => {
+                    setSelectedPaper(null);
+                    setLastDecision(null);
+                  }}
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -670,7 +760,10 @@ export default function SubEditorDashboard() {
 
                       <TabsContent value="preview" className="mt-4">
                         {(() => {
-                          const ext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
+                          const ext = selectedVersion?.file_url
+                            ?.split(".")
+                            .pop()
+                            ?.toLowerCase();
                           if (ext === "pdf") {
                             return (
                               <div className="rounded-lg overflow-hidden border border-border">
@@ -694,24 +787,50 @@ export default function SubEditorDashboard() {
                               return (
                                 <div
                                   className="rounded-lg border border-border p-6 bg-white text-black overflow-y-auto max-h-[600px] prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docxHtml) }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(docxHtml),
+                                  }}
                                 />
                               );
                             }
                             return (
                               <div className="rounded-lg border border-border p-8 text-center space-y-3">
-                                <p className="text-muted-foreground">Could not render document preview.</p>
-                                <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
-                                  <Download className="h-4 w-4 mr-2" /> Download DOCX
+                                <p className="text-muted-foreground">
+                                  Could not render document preview.
+                                </p>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    window.open(
+                                      `${url}${selectedVersion?.file_url}`,
+                                      "_blank",
+                                    )
+                                  }
+                                >
+                                  <Download className="h-4 w-4 mr-2" /> Download
+                                  DOCX
                                 </Button>
                               </div>
                             );
                           }
                           return (
                             <div className="rounded-lg border border-border p-8 text-center space-y-3">
-                              <p className="text-muted-foreground">Preview not available for this file type.</p>
-                              <Button size="sm" variant="outline" onClick={() => window.open(`${url}${selectedVersion?.file_url}`, "_blank")}>
-                                <Download className="h-4 w-4 mr-2" /> Download File
+                              <p className="text-muted-foreground">
+                                Preview not available for this file type.
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  window.open(
+                                    `${url}${selectedVersion?.file_url}`,
+                                    "_blank",
+                                  )
+                                }
+                              >
+                                <Download className="h-4 w-4 mr-2" /> Download
+                                File
                               </Button>
                             </div>
                           );
@@ -792,53 +911,60 @@ export default function SubEditorDashboard() {
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center gap-2 text-green-400">
                         <CheckCircle className="h-5 w-5" />
-                        <span className="font-semibold">Decision Submitted</span>
+                        <span className="font-semibold">
+                          Decision Submitted
+                        </span>
                       </div>
                       <p className="text-sm text-foreground">
-                        {lastDecision.action === "approve" ? "Approved" : lastDecision.action === "revision" ? "Revision Requested" : "Rejected"} on {lastDecision.date}
+                        {lastDecision.action === "approve"
+                          ? "Approved"
+                          : "Revision Requested"}{" "}
+                        on {lastDecision.date}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        A new decision can only be made after the author uploads a revised version.
+                        A new decision can only be made after the author uploads
+                        a revised version.
                       </p>
                     </CardContent>
                   </Card>
-                ) : selectedPaper.status === "reviewed" && (
-                  <Card className="glass-card border-0 bg-gradient-to-br from-orange-900/20 to-orange-800/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-orange-400">
-                        <AlertCircle className="h-5 w-5" />
-                        Needs Your Decision
-                      </CardTitle>
-                      <CardDescription>
-                        Review has been submitted. Make your decision.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button
-                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                        onClick={() => { setDecisionAction("approve"); fetchPaperReviews(selectedPaper.id); setOpenDecisionDialog(true); }}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve & Forward to Chief Editor
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full hover:bg-amber-500/10 hover:border-amber-500/50"
-                        onClick={() => { setDecisionAction("revision"); setOpenDecisionDialog(true); }}
-                      >
-                        <AlertCircle className="h-4 w-4 mr-2" />
-                        Request Revision from Author
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full hover:bg-red-500/10 hover:border-red-500/50 text-red-400"
-                        onClick={() => { setDecisionAction("reject"); setOpenDecisionDialog(true); }}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Reject Paper
-                      </Button>
-                    </CardContent>
-                  </Card>
+                ) : (
+                  selectedPaper.status === "reviewed" && (
+                    <Card className="glass-card border-0 bg-gradient-to-br from-orange-900/20 to-orange-800/10">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-orange-400">
+                          <AlertCircle className="h-5 w-5" />
+                          Needs Your Decision
+                        </CardTitle>
+                        <CardDescription>
+                          Review has been submitted. Make your decision.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Button
+                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                          onClick={() => {
+                            setDecisionAction("approve");
+                            fetchPaperReviews(selectedPaper.id);
+                            setOpenDecisionDialog(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve & Forward to Chief Editor
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full hover:bg-amber-500/10 hover:border-amber-500/50"
+                          onClick={() => {
+                            setDecisionAction("revision");
+                            setOpenDecisionDialog(true);
+                          }}
+                        >
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          Request Revision from Author
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
                 )}
 
                 <Card className="glass-card border-0 bg-gradient-to-br from-gray-900/30 to-gray-800/20">
@@ -970,7 +1096,9 @@ export default function SubEditorDashboard() {
                         <p className="text-sm font-medium text-muted-foreground">
                           Needs Decision
                         </p>
-                        <p className="text-2xl font-bold mt-2 text-orange-400">{stats.needsDecision}</p>
+                        <p className="text-2xl font-bold mt-2 text-orange-400">
+                          {stats.needsDecision}
+                        </p>
                       </div>
                       <div className="h-12 w-12 rounded-full bg-orange-500/20 flex items-center justify-center">
                         <AlertCircle className="h-6 w-6 text-orange-400" />
@@ -1025,11 +1153,16 @@ export default function SubEditorDashboard() {
                     <Button
                       variant={activeTab === "reviewed" ? "default" : "outline"}
                       size="sm"
-                      className={activeTab !== "reviewed" && stats.needsDecision > 0 ? "border-orange-500/50 text-orange-400" : ""}
+                      className={
+                        activeTab !== "reviewed" && stats.needsDecision > 0
+                          ? "border-orange-500/50 text-orange-400"
+                          : ""
+                      }
                       onClick={() => setActiveTab("reviewed")}
                     >
                       <AlertCircle className="h-4 w-4 mr-2" />
-                      Needs Decision {stats.needsDecision > 0 && `(${stats.needsDecision})`}
+                      Needs Decision{" "}
+                      {stats.needsDecision > 0 && `(${stats.needsDecision})`}
                     </Button>
                   </div>
                 </div>
@@ -1145,10 +1278,7 @@ export default function SubEditorDashboard() {
             ) : (
               <div className="space-y-3">
                 {reviewers.map((reviewer) => (
-                  <Card
-                    key={reviewer.id}
-                    className="bg-muted/50 border-border"
-                  >
+                  <Card key={reviewer.id} className="bg-muted/50 border-border">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
@@ -1272,14 +1402,18 @@ export default function SubEditorDashboard() {
                 <Input
                   placeholder="Full Name"
                   value={newReviewer.name}
-                  onChange={(e) => setNewReviewer((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) =>
+                    setNewReviewer((p) => ({ ...p, name: e.target.value }))
+                  }
                   className="placeholder:text-muted-foreground"
                 />
                 <Input
                   type="email"
                   placeholder="Email address"
                   value={newReviewer.email}
-                  onChange={(e) => setNewReviewer((p) => ({ ...p, email: e.target.value }))}
+                  onChange={(e) =>
+                    setNewReviewer((p) => ({ ...p, email: e.target.value }))
+                  }
                   className="placeholder:text-muted-foreground"
                 />
                 <div className="relative">
@@ -1287,7 +1421,12 @@ export default function SubEditorDashboard() {
                     type={showRevPassword ? "text" : "password"}
                     placeholder="Temporary password (min. 6 chars)"
                     value={newReviewer.password}
-                    onChange={(e) => setNewReviewer((p) => ({ ...p, password: e.target.value }))}
+                    onChange={(e) =>
+                      setNewReviewer((p) => ({
+                        ...p,
+                        password: e.target.value,
+                      }))
+                    }
                     className="placeholder:text-muted-foreground pr-10"
                   />
                   <button
@@ -1296,7 +1435,11 @@ export default function SubEditorDashboard() {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     tabIndex={-1}
                   >
-                    {showRevPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showRevPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -1305,7 +1448,12 @@ export default function SubEditorDashboard() {
             <Button
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
               onClick={createAndAssignReviewer}
-              disabled={creatingReviewer || !newReviewer.name || !newReviewer.email || !newReviewer.password}
+              disabled={
+                creatingReviewer ||
+                !newReviewer.name ||
+                !newReviewer.email ||
+                !newReviewer.password
+              }
             >
               <UserCheck className="h-4 w-4 mr-2" />
               {creatingReviewer ? "Creating..." : "Create & Assign Reviewer"}
@@ -1318,27 +1466,43 @@ export default function SubEditorDashboard() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {decisionAction === "approve" && <><CheckCircle className="h-5 w-5 text-green-400" /> Approve & Forward to Chief Editor</>}
-              {decisionAction === "revision" && <><AlertCircle className="h-5 w-5 text-amber-400" /> Request Revision from Author</>}
-              {decisionAction === "reject" && <><Send className="h-5 w-5 text-red-400" /> Reject Paper</>}
+              {decisionAction === "approve" && (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-400" /> Approve &
+                  Forward to Chief Editor
+                </>
+              )}
+              {decisionAction === "revision" && (
+                <>
+                  <AlertCircle className="h-5 w-5 text-amber-400" /> Request
+                  Revision from Author
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
               {decisionAction === "approve"
                 ? "The paper will be forwarded to the Chief Editor for final approval."
-                : decisionAction === "revision"
-                ? "The author will be notified to upload a revised version."
-                : "The author will be notified that their paper was not accepted."}
+                : "The author will be notified to upload a revised version."}
             </DialogDescription>
           </DialogHeader>
 
           {decisionAction === "approve" && paperReviews.length > 0 && (
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Reviewer Feedback</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Reviewer Feedback
+              </p>
               {paperReviews.map((r, i) => (
-                <div key={r.assignment_id} className="bg-muted rounded-lg p-3 text-sm">
+                <div
+                  key={r.assignment_id}
+                  className="bg-muted rounded-lg p-3 text-sm"
+                >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Reviewer {i + 1}</span>
-                    <Badge variant="outline" className="text-xs">{r.decision}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Reviewer {i + 1}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      {r.decision}
+                    </Badge>
                   </div>
                   <p className="text-xs line-clamp-2">{r.comments}</p>
                 </div>
@@ -1348,22 +1512,37 @@ export default function SubEditorDashboard() {
 
           <div className="space-y-2">
             <Label>
-              Comments {decisionAction !== "approve" && <span className="text-red-400">*</span>}
-              {decisionAction === "approve" && <span className="text-muted-foreground text-xs ml-1">(optional)</span>}
+              Comments{" "}
+              {decisionAction !== "approve" && (
+                <span className="text-red-400">*</span>
+              )}
+              {decisionAction === "approve" && (
+                <span className="text-muted-foreground text-xs ml-1">
+                  (optional)
+                </span>
+              )}
             </Label>
             <textarea
               className="w-full rounded-md bg-background border border-border text-foreground p-3 text-sm resize-none focus:outline-none focus:border-primary"
               rows={3}
-              placeholder={decisionAction === "revision" ? "Describe what needs to be revised..." : decisionAction === "reject" ? "Provide reason for rejection (required)..." : "Additional notes for Chief Editor..."}
+              placeholder={
+                decisionAction === "revision"
+                  ? "Describe what needs to be revised..."
+                  : "Additional notes for Chief Editor..."
+              }
               value={decisionNote}
               onChange={(e) => setDecisionNote(e.target.value)}
             />
           </div>
 
           <div className="border-t border-border pt-3 space-y-2">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Verify your identity</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              Verify your identity
+            </p>
             <div className="space-y-1">
-              <Label className="text-xs">Email <span className="text-red-400">*</span></Label>
+              <Label className="text-xs">
+                Email <span className="text-red-400">*</span>
+              </Label>
               <Input
                 type="email"
                 placeholder="your@email.com"
@@ -1373,7 +1552,9 @@ export default function SubEditorDashboard() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Password <span className="text-red-400">*</span></Label>
+              <Label className="text-xs">
+                Password <span className="text-red-400">*</span>
+              </Label>
               <div className="relative">
                 <Input
                   type={showDecisionPassword ? "text" : "password"}
@@ -1382,15 +1563,33 @@ export default function SubEditorDashboard() {
                   onChange={(e) => setDecisionPassword(e.target.value)}
                   className="h-8 text-sm pr-8"
                 />
-                <button type="button" onClick={() => setShowDecisionPassword(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {showDecisionPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                <button
+                  type="button"
+                  onClick={() => setShowDecisionPassword((p) => !p)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showDecisionPassword ? (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => { setOpenDecisionDialog(false); setDecisionNote(""); setDecisionAction(null); setDecisionEmail(""); setDecisionPassword(""); }}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setOpenDecisionDialog(false);
+                setDecisionNote("");
+                setDecisionAction(null);
+                setDecisionEmail("");
+                setDecisionPassword("");
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1412,26 +1611,41 @@ export default function SubEditorDashboard() {
               Suggest Reviewer
             </DialogTitle>
             <DialogDescription>
-              Suggest a reviewer for Chief Editor approval. They will be notified and can approve or reject.
+              Suggest a reviewer for Chief Editor approval. They will be
+              notified and can approve or reject.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="">Full Name <span className="text-red-400">*</span></Label>
+              <Label className="">
+                Full Name <span className="text-red-400">*</span>
+              </Label>
               <Input
                 placeholder="Dr. Jane Smith"
                 value={suggestForm.suggested_name}
-                onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_name: e.target.value }))}
+                onChange={(e) =>
+                  setSuggestForm((p) => ({
+                    ...p,
+                    suggested_name: e.target.value,
+                  }))
+                }
                 className="placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-1">
-              <Label className="">Email <span className="text-red-400">*</span></Label>
+              <Label className="">
+                Email <span className="text-red-400">*</span>
+              </Label>
               <Input
                 type="email"
                 placeholder="reviewer@university.edu"
                 value={suggestForm.suggested_email}
-                onChange={(e) => setSuggestForm((p) => ({ ...p, suggested_email: e.target.value }))}
+                onChange={(e) =>
+                  setSuggestForm((p) => ({
+                    ...p,
+                    suggested_email: e.target.value,
+                  }))
+                }
                 className="placeholder:text-muted-foreground"
               />
             </div>
@@ -1441,11 +1655,20 @@ export default function SubEditorDashboard() {
                 <Input
                   placeholder="e.g. machine learning"
                   value={suggestForm.keywordInput}
-                  onChange={(e) => setSuggestForm((p) => ({ ...p, keywordInput: e.target.value }))}
+                  onChange={(e) =>
+                    setSuggestForm((p) => ({
+                      ...p,
+                      keywordInput: e.target.value,
+                    }))
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && suggestForm.keywordInput.trim()) {
                       e.preventDefault();
-                      setSuggestForm((p) => ({ ...p, keywords: [...p.keywords, p.keywordInput.trim()], keywordInput: "" }));
+                      setSuggestForm((p) => ({
+                        ...p,
+                        keywords: [...p.keywords, p.keywordInput.trim()],
+                        keywordInput: "",
+                      }));
                     }
                   }}
                   className="placeholder:text-muted-foreground"
@@ -1454,7 +1677,17 @@ export default function SubEditorDashboard() {
               {suggestForm.keywords.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {suggestForm.keywords.map((kw, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => setSuggestForm((p) => ({ ...p, keywords: p.keywords.filter((_, idx) => idx !== i) }))}>
+                    <Badge
+                      key={i}
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setSuggestForm((p) => ({
+                          ...p,
+                          keywords: p.keywords.filter((_, idx) => idx !== i),
+                        }))
+                      }
+                    >
                       {kw} ×
                     </Badge>
                   ))}
@@ -1467,11 +1700,20 @@ export default function SubEditorDashboard() {
                 <Input
                   placeholder="e.g. PhD Computer Science"
                   value={suggestForm.degreeInput}
-                  onChange={(e) => setSuggestForm((p) => ({ ...p, degreeInput: e.target.value }))}
+                  onChange={(e) =>
+                    setSuggestForm((p) => ({
+                      ...p,
+                      degreeInput: e.target.value,
+                    }))
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && suggestForm.degreeInput.trim()) {
                       e.preventDefault();
-                      setSuggestForm((p) => ({ ...p, degrees: [...p.degrees, p.degreeInput.trim()], degreeInput: "" }));
+                      setSuggestForm((p) => ({
+                        ...p,
+                        degrees: [...p.degrees, p.degreeInput.trim()],
+                        degreeInput: "",
+                      }));
                     }
                   }}
                   className="placeholder:text-muted-foreground"
@@ -1480,7 +1722,17 @@ export default function SubEditorDashboard() {
               {suggestForm.degrees.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {suggestForm.degrees.map((deg, i) => (
-                    <Badge key={i} variant="outline" className="cursor-pointer" onClick={() => setSuggestForm((p) => ({ ...p, degrees: p.degrees.filter((_, idx) => idx !== i) }))}>
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setSuggestForm((p) => ({
+                          ...p,
+                          degrees: p.degrees.filter((_, idx) => idx !== i),
+                        }))
+                      }
+                    >
                       {deg} ×
                     </Badge>
                   ))}
@@ -1490,10 +1742,16 @@ export default function SubEditorDashboard() {
             <Button
               className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
               onClick={suggestReviewer}
-              disabled={suggestLoading || !suggestForm.suggested_name || !suggestForm.suggested_email}
+              disabled={
+                suggestLoading ||
+                !suggestForm.suggested_name ||
+                !suggestForm.suggested_email
+              }
             >
               <Send className="h-4 w-4 mr-2" />
-              {suggestLoading ? "Sending..." : "Send Suggestion to Chief Editor"}
+              {suggestLoading
+                ? "Sending..."
+                : "Send Suggestion to Chief Editor"}
             </Button>
           </div>
         </DialogContent>

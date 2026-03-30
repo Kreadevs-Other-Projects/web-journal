@@ -2,7 +2,11 @@ import {
   createPaperVersion,
   getPaperVersions,
 } from "./paperVersion.repository";
-import { getPaperById, setCurrentVersion, insertStatusLog } from "../paper/paper.repository";
+import {
+  getPaperById,
+  setCurrentVersion,
+  insertStatusLog,
+} from "../paper/paper.repository";
 import { pool } from "../../configs/db";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
@@ -54,7 +58,7 @@ export const uploadPaperVersionService = async (
   await setCurrentVersion(paper_id, version.id);
 
   // If paper was in pending_revision → mark as resubmitted, reset reviewer decisions, notify team
-  if (paper.status === "pending_revision") {
+  if (paper.status === "rejected") {
     await pool.query(
       `UPDATE papers SET status = 'resubmitted', updated_at = NOW() WHERE id = $1`,
       [paper_id],
@@ -87,12 +91,14 @@ export const uploadPaperVersionService = async (
     );
 
     for (const member of teamRes.rows) {
-      transporter.sendMail({
-        from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-        to: member.email,
-        subject: `Revised Version Uploaded — "${paper.title}"`,
-        text: `Hi ${member.username},\n\nThe author has uploaded a revised version (v${version.version_number}) of the paper "${paper.title}".\n\nPlease log in to review the new version.`,
-      }).catch(() => {});
+      transporter
+        .sendMail({
+          from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+          to: member.email,
+          subject: `Revised Version Uploaded — "${paper.title}"`,
+          text: `Hi ${member.username},\n\nThe author has uploaded a revised version (v${version.version_number}) of the paper "${paper.title}".\n\nPlease log in to review the new version.`,
+        })
+        .catch(() => {});
     }
   }
 

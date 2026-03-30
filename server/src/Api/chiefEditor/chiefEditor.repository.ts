@@ -285,10 +285,12 @@ export const getSubmittedReviewsByChiefEditor = async (
       ra.reviewer_id,
       u.username AS reviewer_name,
       ra.submitted_at,
+      se.username AS sub_editor_name,
 
-      r.id AS review_id,
-      r.decision,
-      r.comments
+      sed.id AS sub_editor_decision_id,
+      sed.decision AS sub_editor_decision,
+      sed.comments AS sub_editor_comments,
+      sed.decided_at AS sub_editor_decided_at
 
     FROM review_assignments ra
     JOIN papers p
@@ -297,14 +299,19 @@ export const getSubmittedReviewsByChiefEditor = async (
       ON j.id = p.journal_id
     JOIN paper_versions pv
       ON pv.id = p.current_version_id
-    JOIN reviews r
-      ON r.review_assignment_id = ra.id
+
+    LEFT JOIN sub_editor_decisions sed
+      ON sed.paper_id = p.id
+      AND sed.paper_version_id = pv.id
+
     JOIN editor_assignments ea
       ON p.id = ea.paper_id
     JOIN users u
       ON u.id = ra.reviewer_id
+    LEFT JOIN users se
+      ON se.id = ea.sub_editor_id
 
-    WHERE 
+    WHERE
       j.chief_editor_id = $1
       AND ra.status = 'submitted'
       AND ea.status = 'accepted'
@@ -421,7 +428,10 @@ export const getPaperDecisionHistoryRepo = async (paperId: string) => {
   return result.rows;
 };
 
-export const getJournalDetailsRepo = async (journalId: string, chiefEditorId: string) => {
+export const getJournalDetailsRepo = async (
+  journalId: string,
+  chiefEditorId: string,
+) => {
   const journalRes = await pool.query(
     `SELECT * FROM journals WHERE id = $1 AND chief_editor_id = $2`,
     [journalId, chiefEditorId],

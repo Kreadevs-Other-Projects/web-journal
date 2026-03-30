@@ -49,6 +49,7 @@ interface SubmittedReview {
   paperStatus: string;
   reviewerId: string;
   reviewerName: string;
+  subEditorName: string;
   submittedAt: string;
 }
 
@@ -69,11 +70,18 @@ export default function ChiefEditorSubmittedReviews() {
 
   const [cEModalOpen, setCEModalOpen] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
-  const [cePendingDecision, setCePendingDecision] = useState<"accepted" | "revision" | "rejected" | null>(null);
+  const [cePendingDecision, setCePendingDecision] = useState<
+    "accepted" | "revision" | "rejected" | null
+  >(null);
   const [ceDecisionNote, setCeDecisionNote] = useState("");
   const [ceConfirmEmail, setCeConfirmEmail] = useState("");
   const [ceConfirmPassword, setCeConfirmPassword] = useState("");
-  const [paperDecisions, setPaperDecisions] = useState<Record<string, { decision: string; decision_note: string; decided_at: string }>>({});
+  const [paperDecisions, setPaperDecisions] = useState<
+    Record<
+      string,
+      { decision: string; decision_note: string; decided_at: string }
+    >
+  >({});
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -89,8 +97,8 @@ export default function ChiefEditorSubmittedReviews() {
             paperId: r.paper_id,
             reviewId: r.review_id,
             title: r.title,
-            comments: r.comments,
-            decision: r.decision,
+            comments: r.sub_editor_comments,
+            decision: r.sub_editor_decision,
             assignmentStatus: r.assignment_status,
             fileUrl: r.file_url,
             versionNumber: r.version_number,
@@ -98,14 +106,27 @@ export default function ChiefEditorSubmittedReviews() {
             paperStatus: r.paper_status,
             reviewerId: r.reviewer_id,
             reviewerName: r.reviewer_name || "",
+            subEditorName: r.sub_editor_name || "",
             submittedAt: r.submitted_at,
           }));
           setReviews(mapped);
           setFilteredReviews(mapped);
-          const decided: Record<string, { decision: string; decision_note: string; decided_at: string }> = {};
+          const decided: Record<
+            string,
+            { decision: string; decision_note: string; decided_at: string }
+          > = {};
           mapped.forEach((r: any) => {
-            if (["accepted", "rejected", "pending_revision"].includes(r.paperStatus) && !decided[r.paperId]) {
-              decided[r.paperId] = { decision: r.paperStatus, decision_note: "", decided_at: "" };
+            if (
+              ["accepted", "rejected", "pending_revision"].includes(
+                r.paperStatus,
+              ) &&
+              !decided[r.paperId]
+            ) {
+              decided[r.paperId] = {
+                decision: r.paperStatus,
+                decision_note: "",
+                decided_at: "",
+              };
             }
           });
           setPaperDecisions(decided);
@@ -207,7 +228,10 @@ export default function ChiefEditorSubmittedReviews() {
     }
   };
 
-  const openCEModal = (paperId: string, decision: "accepted" | "revision" | "rejected") => {
+  const openCEModal = (
+    paperId: string,
+    decision: "accepted" | "revision" | "rejected",
+  ) => {
     setSelectedPaperId(paperId);
     setCePendingDecision(decision);
     setCeDecisionNote("");
@@ -228,7 +252,8 @@ export default function ChiefEditorSubmittedReviews() {
     if (!ceConfirmEmail || !ceConfirmPassword) {
       toast({
         title: "Credentials required",
-        description: "Email and password are required to confirm this decision.",
+        description:
+          "Email and password are required to confirm this decision.",
         variant: "destructive",
       });
       return;
@@ -255,7 +280,9 @@ export default function ChiefEditorSubmittedReviews() {
         if (data.errors && Array.isArray(data.errors)) {
           toast({
             title: "Validation Error",
-            description: data.errors.map((e: { message: string }) => e.message).join(", "),
+            description: data.errors
+              .map((e: { message: string }) => e.message)
+              .join(", "),
             variant: "destructive",
           });
         } else {
@@ -476,7 +503,8 @@ export default function ChiefEditorSubmittedReviews() {
                                   </Badge>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Reviewer: {review.reviewerName || review.reviewerId}
+                                  Sub Editor:{" "}
+                                  {review.subEditorName || "—"}
                                 </div>
                               </div>
 
@@ -487,7 +515,7 @@ export default function ChiefEditorSubmittedReviews() {
                               <div className="bg-muted/30 rounded-lg p-4 mb-4">
                                 <p className="text-sm text-foreground">
                                   <span className="font-semibold">
-                                    Reviewer Comments:
+                                    Sub Editor Comments:
                                   </span>{" "}
                                   {review.comments || "No comments provided"}
                                 </p>
@@ -545,23 +573,41 @@ export default function ChiefEditorSubmittedReviews() {
                                 if (review.paperStatus === "published") {
                                   return (
                                     <div className="flex flex-col gap-1 text-center">
-                                      {["Decision Made", "Published"].map((label) => (
-                                        <Badge key={label} className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
-                                          <CheckCircle className="h-3 w-3 mr-1" />
-                                          {label}
-                                        </Badge>
-                                      ))}
+                                      {["Decision Made", "Published"].map(
+                                        (label) => (
+                                          <Badge
+                                            key={label}
+                                            className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"
+                                          >
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            {label}
+                                          </Badge>
+                                        ),
+                                      )}
                                     </div>
                                   );
                                 }
                                 if (decided) {
                                   return (
                                     <div className="mt-1 p-3 bg-muted rounded-lg border">
-                                      <p className="text-sm font-semibold">Final Decision: {decided.decision.replace("_", " ")}</p>
-                                      <p className="text-sm text-muted-foreground mt-1">{decided.decision_note || "No notes added"}</p>
+                                      <p className="text-sm font-semibold">
+                                        Final Decision:{" "}
+                                        {decided.decision.replace("_", " ")}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {decided.decision_note ||
+                                          "No notes added"}
+                                      </p>
                                       {decided.decided_at && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                          Decided on {new Date(decided.decided_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                          Decided on{" "}
+                                          {new Date(
+                                            decided.decided_at,
+                                          ).toLocaleDateString("en-GB", {
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric",
+                                          })}
                                         </p>
                                       )}
                                     </div>
@@ -572,7 +618,9 @@ export default function ChiefEditorSubmittedReviews() {
                                     <Button
                                       size="sm"
                                       className="bg-green-600 hover:bg-green-700 text-white"
-                                      onClick={() => openCEModal(review.paperId, "accepted")}
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "accepted")
+                                      }
                                     >
                                       Accept Paper
                                     </Button>
@@ -580,14 +628,18 @@ export default function ChiefEditorSubmittedReviews() {
                                       size="sm"
                                       variant="outline"
                                       className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
-                                      onClick={() => openCEModal(review.paperId, "revision")}
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "revision")
+                                      }
                                     >
                                       Request Revision
                                     </Button>
                                     <Button
                                       size="sm"
                                       variant="destructive"
-                                      onClick={() => openCEModal(review.paperId, "rejected")}
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "rejected")
+                                      }
                                     >
                                       Reject Paper
                                     </Button>
@@ -765,8 +817,8 @@ export default function ChiefEditorSubmittedReviews() {
                   {cePendingDecision === "accepted"
                     ? "Accept Paper"
                     : cePendingDecision === "revision"
-                    ? "Request Revision"
-                    : "Reject Paper"}
+                      ? "Request Revision"
+                      : "Reject Paper"}
                 </DialogTitle>
                 <DialogDescription>
                   This decision is final and cannot be changed.
@@ -777,7 +829,9 @@ export default function ChiefEditorSubmittedReviews() {
                   <label className="text-sm font-medium">
                     Decision Notes{" "}
                     <span className="text-muted-foreground text-xs">
-                      {cePendingDecision !== "accepted" ? "(required)" : "(optional)"}
+                      {cePendingDecision !== "accepted"
+                        ? "(required)"
+                        : "(optional)"}
                     </span>
                   </label>
                   <textarea
@@ -786,15 +840,17 @@ export default function ChiefEditorSubmittedReviews() {
                       cePendingDecision === "accepted"
                         ? "Add any notes for the editorial team..."
                         : cePendingDecision === "revision"
-                        ? "Explain what revisions are required..."
-                        : "Provide detailed rejection reason..."
+                          ? "Explain what revisions are required..."
+                          : "Provide detailed rejection reason..."
                     }
                     value={ceDecisionNote}
                     onChange={(e) => setCeDecisionNote(e.target.value)}
                   />
                 </div>
                 <div className="border-t pt-4">
-                  <p className="text-sm font-semibold mb-3">VERIFY YOUR IDENTITY</p>
+                  <p className="text-sm font-semibold mb-3">
+                    VERIFY YOUR IDENTITY
+                  </p>
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium">Your Email</label>
@@ -807,7 +863,9 @@ export default function ChiefEditorSubmittedReviews() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Your Password</label>
+                      <label className="text-sm font-medium">
+                        Your Password
+                      </label>
                       <Input
                         type="password"
                         className="mt-1"
@@ -818,7 +876,10 @@ export default function ChiefEditorSubmittedReviews() {
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setCEModalOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCEModalOpen(false)}
+                  >
                     Cancel
                   </Button>
                   <Button
@@ -827,16 +888,16 @@ export default function ChiefEditorSubmittedReviews() {
                       cePendingDecision === "accepted"
                         ? "bg-green-600 hover:bg-green-700"
                         : cePendingDecision === "revision"
-                        ? "bg-yellow-600 hover:bg-yellow-700"
-                        : "bg-red-600 hover:bg-red-700"
+                          ? "bg-yellow-600 hover:bg-yellow-700"
+                          : "bg-red-600 hover:bg-red-700"
                     }
                   >
                     Confirm{" "}
                     {cePendingDecision === "accepted"
                       ? "Acceptance"
                       : cePendingDecision === "revision"
-                      ? "Revision Request"
-                      : "Rejection"}
+                        ? "Revision Request"
+                        : "Rejection"}
                   </Button>
                 </div>
               </div>

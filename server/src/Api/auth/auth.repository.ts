@@ -34,13 +34,10 @@ export const deleteAllUserRefreshTokens = async (userId: string) => {
 
 export const getUserRoles = async (userId: string) => {
   const result = await pool.query(
-    `SELECT ur.role, ur.journal_id, j.title AS journal_name
-     FROM user_roles ur
-     LEFT JOIN journals j ON j.id = ur.journal_id
-     WHERE ur.user_id = $1 AND ur.is_active = TRUE`,
+    "SELECT role, journal_id FROM user_roles WHERE user_id = $1 AND is_active = TRUE",
     [userId],
   );
-  return result.rows as { role: string; journal_id: string | null; journal_name: string | null }[];
+  return result.rows as { role: string; journal_id: string | null }[];
 };
 
 export const insertUserRole = async (

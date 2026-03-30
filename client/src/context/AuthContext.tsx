@@ -3,20 +3,13 @@ import { jwtDecode } from "jwt-decode";
 import type { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 
-export interface RoleEntry {
-  role: UserRole;
-  journal_id: string | null;
-  journal_name: string | null;
-}
-
 export interface AuthUser {
   id: string;
   role: UserRole;
   email?: string;
   username?: string;
-  roles: RoleEntry[];
+  roles: UserRole[];
   active_journal_id: string | null;
-  active_journal_name: string | null;
 }
 
 export interface UserProfile {
@@ -42,11 +35,9 @@ interface JwtPayload {
   role: UserRole;
   email?: string;
   username?: string;
-  // New format: RoleEntry[]; Old format: string[] — handled in decodeAuthUser
-  roles?: any[];
+  roles?: UserRole[];
   active_role?: UserRole;
   active_journal_id?: string | null;
-  active_journal_name?: string | null;
   exp: number;
 }
 
@@ -59,39 +50,19 @@ interface AuthContextType {
   login: (token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole, journalId?: string | null) => Promise<void>;
-  hasRole: (role: UserRole) => boolean;
-  isActiveRole: (role: UserRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function decodeAuthUser(token: string): AuthUser {
   const decoded = jwtDecode<JwtPayload>(token);
-
-  // Handle both old JWT format (roles: string[]) and new (roles: RoleEntry[])
-  let roles: RoleEntry[];
-  if (!decoded.roles || decoded.roles.length === 0) {
-    roles = [{ role: decoded.active_role ?? decoded.role, journal_id: null, journal_name: null }];
-  } else if (typeof decoded.roles[0] === "string") {
-    // Old format: string[] — upgrade to RoleEntry[]
-    roles = (decoded.roles as string[]).map((r) => ({
-      role: r as UserRole,
-      journal_id: null,
-      journal_name: null,
-    }));
-  } else {
-    // New format: RoleEntry[]
-    roles = decoded.roles as RoleEntry[];
-  }
-
   return {
     id: decoded.id,
     role: decoded.active_role ?? decoded.role,
     email: decoded.email,
     username: decoded.username,
-    roles,
+    roles: decoded.roles ?? [decoded.role],
     active_journal_id: decoded.active_journal_id ?? null,
-    active_journal_name: decoded.active_journal_name ?? null,
   };
 }
 
@@ -164,11 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     login(data.token);
   };
 
-  const hasRole = (role: UserRole) =>
-    user?.roles.some((r) => r.role === role) ?? false;
-
-  const isActiveRole = (role: UserRole) => user?.role === role;
-
   useEffect(() => {
     if (!token) return;
 
@@ -221,8 +187,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         logout,
         switchRole,
-        hasRole,
-        isActiveRole,
       }}
     >
       {children}

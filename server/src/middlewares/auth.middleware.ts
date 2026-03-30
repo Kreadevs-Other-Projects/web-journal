@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { env } from "../configs/envs";
-import type { RoleEntry } from "../utils/jwt";
 
 const ACCESS_TOKEN = env.JWT_SECRET as string;
 
@@ -11,7 +10,7 @@ export interface AuthUser extends Request {
     username: string;
     email: string;
     role: string;
-    roles: RoleEntry[];
+    roles: string[];
     active_journal_id: string | null;
   };
   file?: Express.Multer.File;
@@ -22,7 +21,7 @@ interface TokenPayload extends JwtPayload {
   email: string;
   username: string;
   role: string;
-  roles?: RoleEntry[];
+  roles?: string[];
   active_role?: string;
   active_journal_id?: string | null;
 }
@@ -54,7 +53,7 @@ export const authMiddleware = (
       username: payload.username,
       // active_role is the session role; fall back to primary role for old tokens
       role: payload.active_role ?? payload.role,
-      roles: payload.roles ?? [{ role: payload.role, journal_id: null, journal_name: null }],
+      roles: payload.roles ?? [payload.role],
       active_journal_id: payload.active_journal_id ?? null,
     };
 

@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
+  User,
+  Users,
+  UserCheck,
+  Shield,
   Eye,
   EyeOff,
-  Shield,
-  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,40 +17,54 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
-import type { RoleEntry } from "@/context/AuthContext";
 import { url } from "../url";
 import Navbar from "@/components/navbar";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
 
-  // Role picker — shown after successful credential verification if multi-role
-  const [showRolePicker, setShowRolePicker] = useState(false);
-  const [availableRoles, setAvailableRoles] = useState<RoleEntry[]>([]);
-  const [pickingRole, setPickingRole] = useState(false);
-
-  const { login, switchRole } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [tempUser, setTempUser] = useState<any>(null);
+  const [tempRole, setTempRole] = useState<UserRole | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email.trim() || !password.trim()) {
-      toast({ title: "Missing credentials", description: "Enter email and password", variant: "destructive" });
+      toast({
+        title: "Missing credentials",
+        description: "Enter email and password",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       setIsLoading(true);
 
+      // TEMP: Call the normal login endpoint but skip OTP handling in frontend
       const response = await fetch(`${url}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password.trim(),
+          role: selectedRole,
+          purpose: "login",
+        }),
       });
 
       const result = await response.json();
@@ -57,43 +73,122 @@ export default function LoginPage() {
         throw new Error(result.message || "Login failed");
       }
 
-      // Always store the initial token and refresh token
-      login(result.token);
+      // TEMP: Directly consider login successful, skip OTP
+      login(result.token); // your auth context
       localStorage.setItem("user", JSON.stringify(result.user));
       localStorage.setItem("refreshToken", result.refreshToken);
 
-      if (result.needs_role_selection && result.user?.roles?.length > 1) {
-        // Multi-role: show picker modal
-        setAvailableRoles(result.user.roles as RoleEntry[]);
-        setShowRolePicker(true);
-      } else {
-        // Single role: redirect immediately
-        const activeRole = (result.active_role ?? result.user?.role) as UserRole;
-        const route = roleConfig[activeRole]?.route ?? "/";
-        navigate(route, { replace: true });
-        toast({ title: "Login Successful", description: `Welcome, ${result.user?.username}!` });
-      }
+      // Use active_role from JWT (the role the user logged in as)
+      const activeRole = selectedRole as UserRole;
+      navigate(roleConfig[activeRole].route, { replace: true });
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome ${roleConfig[activeRole].label}!`,
+        variant: "default",
+      });
+
+      // Skip OTP step
+      // setOtpSent(true);
+      // setStep("otp");
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRolePick = async (roleEntry: RoleEntry) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!otp.trim() || otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Enter a 6-digit OTP",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      setPickingRole(true);
-      await switchRole(roleEntry.role, roleEntry.journal_id);
-      const route = roleConfig[roleEntry.role]?.route ?? "/";
-      navigate(route, { replace: true });
-      const label = roleEntry.journal_name
-        ? `${roleConfig[roleEntry.role]?.label} — ${roleEntry.journal_name}`
-        : roleConfig[roleEntry.role]?.label;
-      toast({ title: "Login Successful", description: `Signed in as ${label}` });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to switch role", variant: "destructive" });
+      setIsLoading(true);
+
+      const response = await fetch(`${url}/auth/verifyLoginOTP`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "OTP verification failed");
+      }
+
+      login(result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
+      localStorage.setItem("refreshToken", result.refreshToken);
+
+      const userRole = result.user.role as UserRole;
+      navigate(roleConfig[userRole].route, { replace: true });
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome ${roleConfig[userRole].label}!`,
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
-      setPickingRole(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      const response = await fetch(`${url}/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpEmail }),
+      });
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("Failed to resend OTP:", error);
+      return false;
+    }
+  };
+
+  const handleVerificationSuccess = () => {
+    if (tempToken && tempRole) {
+      login(tempToken);
+
+      if (tempUser) {
+        localStorage.setItem("user", JSON.stringify(tempUser));
+      }
+
+      const config = roleConfig[tempRole];
+      if (config) {
+        toast({
+          title: "Login Successful!",
+          description: `Welcome back! Redirecting to ${config.label} dashboard...`,
+          variant: "default",
+          duration: 3000,
+        });
+
+        setTimeout(() => {
+          navigate(config.route, { replace: true });
+        }, 1500);
+      }
     }
   };
 
@@ -118,7 +213,6 @@ export default function LoginPage() {
       </div>
 
       <div className="relative z-10 min-h-screen flex">
-        {/* Left panel — static platform info */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -139,30 +233,101 @@ export default function LoginPage() {
               Welcome Back
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              Sign in to continue managing your academic research and publications.
+              Sign in to continue managing your academic research and
+              publications.
             </p>
 
-            <div className="glass-card p-6 text-left space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-primary" />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedRole}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="glass-card p-6 text-left"
+              >
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className={cn(
+                      "h-12 w-12 rounded-xl flex items-center justify-center",
+                      "bg-gradient-to-br from-primary/20 to-primary/5",
+                    )}
+                  >
+                    {(() => {
+                      const Icon = roleConfig[selectedRole].icon;
+                      return (
+                        <Icon
+                          className={cn(
+                            "h-6 w-6",
+                            roleConfig[selectedRole].color,
+                          )}
+                        />
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <h3
+                      className={cn(
+                        "font-semibold",
+                        roleConfig[selectedRole].color,
+                      )}
+                    >
+                      {roleConfig[selectedRole].label} Portal
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {roleConfig[selectedRole].description}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Multi-Role Support</p>
-                  <p className="text-xs text-muted-foreground">Switch between roles after signing in</p>
+
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {selectedRole === "author" && (
+                    <>
+                      <p>✓ Submit new research papers</p>
+                      <p>✓ Track submission status</p>
+                      <p>✓ View reviewer feedback</p>
+                    </>
+                  )}
+                  {selectedRole === "reviewer" && (
+                    <>
+                      <p>✓ View assigned papers</p>
+                      <p>✓ Submit reviews and decisions</p>
+                      <p>✓ Track review deadlines</p>
+                    </>
+                  )}
+                  {selectedRole === "chief_editor" && (
+                    <>
+                      <p>✓ Manage paper assignments</p>
+                      <p>✓ Coordinate the review process</p>
+                      <p>✓ Open and close submission calls</p>
+                    </>
+                  )}
+                  {selectedRole === "sub_editor" && (
+                    <>
+                      <p>✓ Manage revisions and edits</p>
+                      <p>✓ Coordinate with authors</p>
+                      <p>✓ Prepare papers for publication</p>
+                    </>
+                  )}
+                  {selectedRole === "journal_manager" && (
+                    <>
+                      <p>✓ Manage journal issues</p>
+                      <p>✓ Oversee editorial board</p>
+                      <p>✓ Publish accepted articles</p>
+                    </>
+                  )}
+                  {selectedRole === "publisher" && (
+                    <>
+                      <p>✓ Create and manage journals</p>
+                      <p>✓ Oversee all publications</p>
+                      <p>✓ Configure journal settings</p>
+                    </>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-2 text-sm text-muted-foreground pt-2">
-                <p>✓ Submit and track research papers</p>
-                <p>✓ Manage peer review workflows</p>
-                <p>✓ Oversee editorial decisions</p>
-                <p>✓ Publish accepted manuscripts</p>
-              </div>
-            </div>
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
         </div>
 
-        {/* Right panel — login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -174,120 +339,154 @@ export default function LoginPage() {
               <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
                 <BookOpen className="h-6 w-6 text-primary-foreground" />
               </div>
-              <span className="font-serif-roboto text-2xl font-bold">JournalHub</span>
+              <span className="font-serif-roboto text-2xl font-bold">
+                JournalHub
+              </span>
             </div>
 
             <div className="glass-card p-8">
-              <h2 className="font-serif-outfit text-2xl font-bold text-foreground mb-2">Sign In</h2>
-              <p className="text-muted-foreground mb-6">Enter your credentials to continue</p>
+              <h2 className="font-serif-outfit text-2xl font-bold text-foreground mb-2">
+                Sign In
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Choose your role and enter your credentials
+              </p>
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="pl-5 pr-10 input-glow text-muted-foreground"
-                  required
-                />
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password"
-                    className="pl-5 pr-10 input-glow text-muted-foreground"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {(["publisher", "journal_manager", "chief_editor", "sub_editor", "reviewer", "author"] as UserRole[]).map((role) => {
+                  const config = roleConfig[role];
+                  const Icon = config.icon;
+                  const isSelected = selectedRole === role;
+
+                  return (
+                    <motion.button
+                      key={role}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedRole(role)}
+                      className={cn(
+                        "relative p-3 rounded-xl flex flex-col items-center gap-1 transition-all duration-200",
+                        isSelected
+                          ? "bg-primary text-primary-foreground shadow-glow"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider">
+                        {role === "sub_editor" ? "Assoc. Editor" : config.label}
+                      </span>
+                      {isSelected && (
+                        <motion.div
+                          layoutId="roleIndicator"
+                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-6 rounded-full bg-primary"
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <form
+                onSubmit={
+                  step === "credentials" ? handleLogin : handleVerifyOtp
+                }
+                className="space-y-4"
+              >
+                {step === "credentials" && (
+                  <>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="pl-5 pr-10 input-glow text-muted-foreground"
+                      required
+                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        className="pl-5 pr-10 input-glow text-muted-foreground"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {/* {step === "otp" && (
+                  <>
+                    <p className="text-sm input-glow text-muted-foreground">
+                      Enter the OTP sent to <strong>{email}</strong>
+                    </p>
+                    <Input
+                      id="otp"
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
+                      required
+                      className="pl-5 pr-10 input-glow text-muted-foreground"
+                    />
+                  </>
+                )} */}
 
                 <Button type="submit" disabled={isLoading} className="w-full">
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
+
+                {step === "otp" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setStep("credentials")}
+                  >
+                    Change Email
+                  </Button>
+                )}
               </form>
 
               <div className="mt-6 pt-6 border-t border-border/50 text-center">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <a href="/signup" className="text-primary font-medium hover:underline">
+                  <a
+                    href="/signup"
+                    className="text-primary font-medium hover:underline"
+                  >
                     Register here
                   </a>
                 </p>
               </div>
             </div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-6 text-center"
+            >
+              <p className="text-xs text-muted-foreground">
+                Demo: Use any email and password to explore
+              </p>
+            </motion.div>
           </motion.div>
         </div>
       </div>
-
-      {/* Role picker modal — shown after credentials verified if multiple roles */}
-      {showRolePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6"
-          >
-            <div className="text-center mb-6">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-3">
-                <Shield className="h-6 w-6 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">Select Your Role</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                You have multiple roles. Choose how you'd like to sign in:
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {availableRoles.map((r, idx) => {
-                const rc = roleConfig[r.role];
-                if (!rc) return null;
-                const label = r.journal_name ? `${rc.label} — ${r.journal_name}` : rc.label;
-                const Icon = rc.icon;
-                return (
-                  <motion.button
-                    key={`${r.role}-${r.journal_id ?? idx}`}
-                    whileHover={{ x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleRolePick(r)}
-                    disabled={pickingRole}
-                    className={cn(
-                      "w-full flex items-center gap-3 rounded-xl border border-border p-4",
-                      "bg-muted/50 hover:bg-muted hover:border-primary/40 transition-all duration-200",
-                      "disabled:opacity-50 disabled:cursor-not-allowed text-left",
-                    )}
-                  >
-                    <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center bg-primary/10 flex-shrink-0")}>
-                      <Icon className={cn("h-4 w-4", rc.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{label}</p>
-                      <p className="text-xs text-muted-foreground">{rc.description}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </motion.button>
-                );
-              })}
-            </div>
-
-            {pickingRole && (
-              <div className="mt-4 flex justify-center">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
     </PageTransition>
   );
 }

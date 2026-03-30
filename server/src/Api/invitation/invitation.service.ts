@@ -135,11 +135,6 @@ export const verifyInvitationService = async (token: string) => {
     });
   }
 
-  const existingUserCheck = await pool.query(
-    `SELECT id, username FROM users WHERE email = $1 AND deleted_at IS NULL`,
-    [inv.email],
-  );
-
   return {
     name: inv.name,
     email: inv.email,
@@ -148,8 +143,6 @@ export const verifyInvitationService = async (token: string) => {
     journal_name: inv.journal_name,
     invited_by_name: inv.invited_by_name,
     expires_at: inv.expires_at,
-    is_existing_user: existingUserCheck.rows.length > 0,
-    existing_username: existingUserCheck.rows[0]?.username ?? null,
   };
 };
 
@@ -185,13 +178,8 @@ export const acceptInvitationService = async (
   let userRole: string = inv.role;
 
   if (existingUser.rows.length) {
-    // User exists — verify their existing password (don't change it)
-    const isValidPassword = await bcrypt.compare(password, existingUser.rows[0].password);
-    if (!isValidPassword) {
-      throw Object.assign(new Error("Incorrect password for existing account"), { statusCode: 401 });
-    }
+    // User exists — just add the new role
     userId = existingUser.rows[0].id;
-    userRole = existingUser.rows[0].role; // Keep their primary role
   } else {
     // Create new user account
     const newUser = await createUser({
@@ -255,26 +243,19 @@ export const acceptInvitationService = async (
   ]);
   const user = userRow.rows[0];
 
-  // Collect all roles with journal context for the token
+  // Collect all roles for this user so the token carries them all
   const userRoleRows = await getUserRoles(userId);
-  const hasPrimary = userRoleRows.some((r) => r.role === user.role && r.journal_id === null);
-  if (!hasPrimary) {
-    userRoleRows.unshift({ role: user.role, journal_id: null, journal_name: null });
-  }
-
-  // Resolve journal name for the newly accepted role
-  const journalRes = await pool.query(`SELECT title FROM journals WHERE id = $1`, [inv.journal_id]);
-  const activeJournalName = journalRes.rows[0]?.title ?? inv.journal_name ?? null;
+  const allRoles = userRoleRows.map((r) => r.role);
+  if (!allRoles.includes(user.role)) allRoles.unshift(user.role);
 
   const accessToken = await generateAccessToken(
     user.id,
     user.role,
     user.email,
     user.username,
-    userRoleRows,
+    allRoles,
     inv.role,
     inv.journal_id ?? null,
-    activeJournalName,
   );
 
   return {
@@ -287,7 +268,6 @@ export const acceptInvitationService = async (
     },
     journal_name: inv.journal_name,
     role: inv.role,
-    is_existing_user: existingUser.rows.length > 0,
   };
 };
 

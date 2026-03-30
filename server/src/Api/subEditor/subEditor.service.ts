@@ -21,10 +21,9 @@ export const assignReviewer = async (
   reviewerId: string,
   assignedBy: string,
 ) => {
-  const { rows } = await pool.query(
-    "SELECT status FROM papers WHERE id = $1",
-    [paperId],
-  );
+  const { rows } = await pool.query("SELECT status FROM papers WHERE id = $1", [
+    paperId,
+  ]);
   if (rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
   }
@@ -36,10 +35,9 @@ export const setSubEditorPaperStatus = async (
   paperId: string,
   status: string,
 ) => {
-  const { rows } = await pool.query(
-    "SELECT status FROM papers WHERE id = $1",
-    [paperId],
-  );
+  const { rows } = await pool.query("SELECT status FROM papers WHERE id = $1", [
+    paperId,
+  ]);
   if (rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
   }
@@ -67,7 +65,7 @@ export const subEditorDecisionService = async (
   subEditorEmail: string,
   password: string,
   paperId: string,
-  action: "approve" | "revision" | "reject",
+  action: "approve" | "revision",
   comments?: string,
 ) => {
   // Credential verification
@@ -78,7 +76,10 @@ export const subEditorDecisionService = async (
   if (!userRes.rows.length) {
     throw new Error("Email does not match your account");
   }
-  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  const passwordValid = await bcrypt.compare(
+    password,
+    userRes.rows[0].password,
+  );
   if (!passwordValid) {
     throw new Error("Incorrect password");
   }
@@ -107,11 +108,18 @@ export const subEditorDecisionService = async (
     );
   }
 
-  if ((action === "revision" || action === "reject") && !comments?.trim()) {
-    throw new Error(`Comments are required when requesting ${action === "revision" ? "a revision" : "rejection"}.`);
+  if (action === "revision" && !comments?.trim()) {
+    throw new Error(
+      `Comments are required when requesting ${action === "revision" ? "a revision" : "rejection"}.`,
+    );
   }
 
-  const paper = await repo.subEditorDecision(paperId, subEditorId, action, comments);
+  const paper = await repo.subEditorDecision(
+    paperId,
+    subEditorId,
+    action,
+    comments,
+  );
 
   // Email notifications to author
   const authorRes = await pool.query(
@@ -131,13 +139,13 @@ export const subEditorDecisionService = async (
           text: `Hi ${username},\n\nYour paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Revision Required\n\nAssociate Editor Comments:\n${comments}\n\nPlease log in and upload a revised version of your paper to continue the review process.`,
         })
         .catch(() => {});
-    } else if (action === "reject") {
+    } else {
       transporter
         .sendMail({
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Paper Decision — "${title}"`,
-          text: `Hi ${username},\n\nWe regret to inform you that your paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Rejected\n\nAssociate Editor Comments:\n${comments}\n\nThank you for your submission. You are welcome to submit to a future issue.`,
+          text: `Hi ${username},\n\nWe regret to inform you that your paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Require Revision\n\nAssociate Editor Comments:\n${comments}\n\nThank you for your submission. You are welcome to submit to a future issue.`,
         })
         .catch(() => {});
     }

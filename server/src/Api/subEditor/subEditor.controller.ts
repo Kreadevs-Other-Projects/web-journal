@@ -104,18 +104,38 @@ export const subEditorDecision = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
     const { action, comments, email, password } = req.body;
-    if (!["approve", "revision", "reject"].includes(action)) {
-      return res.status(400).json({ success: false, message: "Invalid action. Must be approve, revision, or reject" });
+
+    console.log({ Req: req.body });
+
+    if (!["approve", "revision"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Must be approve or revision",
+      });
     }
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password are required to submit a decision" });
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required to submit a decision",
+      });
     }
     const paper = await service.subEditorDecisionService(
-      req.user!.id, email, password, paperId, action, comments,
+      req.user!.id,
+      email,
+      password,
+      paperId,
+      action,
+      comments,
     );
     res.json({ success: true, paper });
   } catch (e: any) {
-    res.status(e.message.includes("Email does not match") || e.message.includes("Incorrect password") ? 401 : 400)
+    res
+      .status(
+        e.message.includes("Email does not match") ||
+          e.message.includes("Incorrect password")
+          ? 401
+          : 400,
+      )
       .json({ success: false, message: e.message });
   }
 };
@@ -123,7 +143,10 @@ export const subEditorDecision = async (req: AuthUser, res: Response) => {
 export const getExistingDecision = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const data = await service.getExistingDecisionService(paperId, req.user!.id);
+    const data = await service.getExistingDecisionService(
+      paperId,
+      req.user!.id,
+    );
     res.json({ success: true, data });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
@@ -133,16 +156,25 @@ export const getExistingDecision = async (req: AuthUser, res: Response) => {
 export const suggestReviewer = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const result = await service.suggestReviewerService(req.user!.id, paperId, req.body);
+    const result = await service.suggestReviewerService(
+      req.user!.id,
+      paperId,
+      req.body,
+    );
     res.status(201).json({ success: true, request: result });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
   }
 };
 
-export const getPendingReviewerRequests = async (req: AuthUser, res: Response) => {
+export const getPendingReviewerRequests = async (
+  req: AuthUser,
+  res: Response,
+) => {
   try {
-    const requests = await service.getPendingReviewerRequestsService(req.user!.id);
+    const requests = await service.getPendingReviewerRequestsService(
+      req.user!.id,
+    );
     res.json({ success: true, requests });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
@@ -154,9 +186,15 @@ export const reviewReviewerRequest = async (req: AuthUser, res: Response) => {
     const { requestId } = req.params;
     const { action } = req.body;
     if (!["approved", "rejected"].includes(action)) {
-      return res.status(400).json({ success: false, message: "Invalid action" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid action" });
     }
-    const result = await service.reviewReviewerRequestService(req.user!, requestId, action);
+    const result = await service.reviewReviewerRequestService(
+      req.user!,
+      requestId,
+      action,
+    );
     res.json({ success: true, request: result });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });

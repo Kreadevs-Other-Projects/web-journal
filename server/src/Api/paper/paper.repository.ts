@@ -250,12 +250,24 @@ export const getPaperTracking = async (paperId: string, authorId: string) => {
     [paperId],
   );
 
+  // Latest AE decision (for showing revision comments to author)
+  const aeDecisionRes = await pool.query(
+    `SELECT sed.decision, sed.comments, sed.decided_at, u.username AS ae_name
+     FROM sub_editor_decisions sed
+     JOIN users u ON u.id = sed.sub_editor_id
+     WHERE sed.paper_id = $1
+     ORDER BY sed.decided_at DESC
+     LIMIT 1`,
+    [paperId],
+  );
+
   return {
     paper: paperRes.rows[0],
     status_log: logRes.rows,
     reviews: reviewRes.rows,
     publication: pubRes.rows[0] || null,
     latest_version_number: versionRes.rows[0]?.version_number || 1,
+    ae_decision: aeDecisionRes.rows[0] || null,
   };
 };
 

@@ -12,6 +12,7 @@ import {
   getPaperTrackingService,
   getPaperMetadataCheckService,
 } from "./paper.service";
+import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
@@ -160,6 +161,26 @@ export const getPaperTrackingController = async (req: AuthUser, res: Response) =
     res.json({ success: true, data });
   } catch (e: any) {
     res.status(404).json({ success: false, message: e.message });
+  }
+};
+
+export const uploadRevisionController = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "Manuscript file is required." });
+  }
+  try {
+    const versionNumber = parseInt(req.body.version_number, 10) || 2;
+    const version = await uploadPaperVersionService(req.user, paperId, {
+      version_label: `v${versionNumber}`,
+      file_url: `/uploads/${req.file.filename}`,
+      file_size: req.file.size,
+      file_type: req.file.mimetype,
+    });
+    return res.status(201).json({ success: true, version });
+  } catch (err: any) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ success: false, message: err.message || "Upload failed." });
   }
 };
 

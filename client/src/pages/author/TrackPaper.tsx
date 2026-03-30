@@ -59,6 +59,12 @@ interface TrackingData {
     year?: number;
   } | null;
   latest_version_number: number;
+  ae_decision?: {
+    decision: string;
+    comments: string;
+    ae_name: string;
+    decided_at: string;
+  } | null;
 }
 
 function formatDate(d?: string) {
@@ -203,7 +209,7 @@ export default function TrackPaper() {
     );
   }
 
-  const { paper, status_log, reviews, publication } = data;
+  const { paper, status_log, reviews, publication, ae_decision } = data;
   const currentStageIdx = getStageIndex(paper.status);
 
   return (
@@ -428,9 +434,16 @@ export default function TrackPaper() {
           {/* Upload Revision */}
           {paper.status === "pending_revision" && (
             <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
-              <CardHeader><CardTitle className="text-base text-amber-700 dark:text-amber-400">Revision Required</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base text-amber-700 dark:text-amber-400 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />Revision Required</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">The editors have requested a revision. Please address the review comments and upload a revised manuscript.</p>
+                {ae_decision?.comments && (
+                  <div className="rounded-md border border-amber-200 dark:border-amber-800/40 bg-white dark:bg-muted/20 p-3 space-y-1">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Associate Editor Comments</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{ae_decision.comments}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{ae_decision.ae_name} · {formatDate(ae_decision.decided_at)}</p>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">Please address the comments above and upload a revised manuscript.</p>
                 <div>
                   <Button
                     onClick={() => fileRef.current?.click()}
@@ -438,10 +451,11 @@ export default function TrackPaper() {
                     className="gap-2"
                   >
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    {uploading ? "Uploading…" : "Upload Revision"}
+                    {uploading ? "Uploading…" : "Upload Revised Manuscript"}
                   </Button>
                   <input ref={fileRef} type="file" className="hidden" accept=".docx,.pdf,.tex,.latex" onChange={handleRevisionUpload} />
                 </div>
+                <p className="text-xs text-muted-foreground">Accepted formats: .docx, .pdf, .tex, .latex · max 10MB</p>
               </CardContent>
             </Card>
           )}

@@ -11,6 +11,7 @@ import {
   extractMetadata,
   getPaperTrackingController,
   getMetadataCheck,
+  uploadRevisionController,
 } from "./paper.controller";
 import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -68,6 +69,14 @@ router.get(
   authMiddleware,
   authorize("author"),
   getPaperTrackingController,
+);
+
+router.post(
+  "/:paperId/revision",
+  authMiddleware,
+  authorize("author"),
+  manuscriptUpload.single("manuscript"),
+  uploadRevisionController,
 );
 
 router.get(

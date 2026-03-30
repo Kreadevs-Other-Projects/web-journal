@@ -13,6 +13,7 @@ import {
   getPaperMetadataCheckService,
 } from "./paper.service";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
+import { getPublicPaperHtmlService } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
@@ -161,6 +162,16 @@ export const getPaperTrackingController = async (req: AuthUser, res: Response) =
     res.json({ success: true, data });
   } catch (e: any) {
     res.status(404).json({ success: false, message: e.message });
+  }
+};
+
+export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  try {
+    const html = await getPublicPaperHtmlService(paperId);
+    res.json({ success: true, html: html || null });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to get paper HTML" });
   }
 };
 

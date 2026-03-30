@@ -37,7 +37,10 @@ import {
   RotateCcw,
   Maximize2,
   ArrowLeft,
+  AlignLeft,
+  FileX,
 } from "lucide-react";
+import DOMPurify from "dompurify";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +78,9 @@ export default function ReviewerDashboard() {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
+  const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
 
   const fetchPapers = async () => {
     if (!token) return;
@@ -319,6 +325,31 @@ export default function ReviewerDashboard() {
     }).length;
   };
 
+  // Auto-switch to text view for docx
+  useEffect(() => {
+    setHtmlContent(null);
+    if (!selectedPaper?.file_url) return;
+    const ext = selectedPaper.file_url.split(".").pop()?.toLowerCase();
+    if (ext === "docx") {
+      setViewMode("text");
+    } else {
+      setViewMode("pdf");
+    }
+  }, [selectedPaper?.paper_id]);
+
+  // Fetch HTML when switching to text view
+  useEffect(() => {
+    if (viewMode !== "text" || !selectedPaper?.paper_id || htmlContent) return;
+    setHtmlLoading(true);
+    fetch(`${url}/papers/${selectedPaper.paper_id}/html`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => setHtmlContent(d.success && d.html ? d.html : null))
+      .catch(() => setHtmlContent(null))
+      .finally(() => setHtmlLoading(false));
+  }, [viewMode, selectedPaper?.paper_id]);
+
   useEffect(() => {
     if (token) fetchPapers();
   }, [token]);
@@ -366,53 +397,47 @@ export default function ReviewerDashboard() {
                       Paper Document
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPdfZoom(Math.max(50, pdfZoom - 10))}
-                      >
-                        <ZoomOut className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm text-muted-foreground w-12 text-center">
-                        {pdfZoom}%
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPdfZoom(Math.min(200, pdfZoom + 10))}
-                      >
-                        <ZoomIn className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPdfZoom(100)}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          window.open(
-                            `${url}${selectedPaper.file_url}`,
-                            "_blank",
-                          )
-                        }
-                      >
+                      {/* View mode toggle */}
+                      <div className="flex items-center border border-border rounded-md overflow-hidden">
+                        <button
+                          onClick={() => setViewMode("pdf")}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                            viewMode === "pdf"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          PDF
+                        </button>
+                        <button
+                          onClick={() => setViewMode("text")}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                            viewMode === "text"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <AlignLeft className="h-3.5 w-3.5" />
+                          Text
+                        </button>
+                      </div>
+                      {viewMode === "pdf" && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(Math.max(50, pdfZoom - 10))}>
+                            <ZoomOut className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-muted-foreground w-12 text-center">{pdfZoom}%</span>
+                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(Math.min(200, pdfZoom + 10))}>
+                            <ZoomIn className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(100)}>
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => window.open(`${url}${selectedPaper.file_url}`, "_blank")}>
                         <Maximize2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          window.open(
-                            `${url}${selectedPaper.file_url}`,
-                            "_blank",
-                          )
-                        }
-                      >
-                        <Eye className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -432,16 +457,65 @@ export default function ReviewerDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="aspect-[3/4] bg-muted/30 flex items-center justify-center relative overflow-hidden">
-                    <iframe
-                      src={`${url}${selectedPaper.file_url}#view=FitH`}
-                      className="w-full h-full border-0"
-                      style={{
-                        transform: `scale(${pdfZoom / 100})`,
-                        transformOrigin: "top center",
-                      }}
-                      title="Paper PDF"
-                    />
+                  <div className="aspect-[3/4] bg-muted/30 relative overflow-hidden">
+                    {viewMode === "pdf" ? (
+                      (() => {
+                        const ext = selectedPaper.file_url?.split(".").pop()?.toLowerCase();
+                        if (ext === "docx") {
+                          return (
+                            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
+                              <FileX className="h-10 w-10" />
+                              <p className="text-sm">PDF view is not available for Word documents.</p>
+                              <button onClick={() => setViewMode("text")} className="text-sm text-primary underline">Switch to Text view</button>
+                            </div>
+                          );
+                        }
+                        return (
+                          <iframe
+                            src={`${url}${selectedPaper.file_url}#view=FitH`}
+                            className="w-full h-full border-0"
+                            style={{ transform: `scale(${pdfZoom / 100})`, transformOrigin: "top center" }}
+                            title="Paper PDF"
+                          />
+                        );
+                      })()
+                    ) : (
+                      <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
+                        {htmlLoading ? (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+                              <p className="text-sm text-muted-foreground">Converting document to text...</p>
+                            </div>
+                          </div>
+                        ) : htmlContent ? (
+                          <div className="max-w-[700px] mx-auto px-8 py-10">
+                            <div className="mb-8 pb-6 border-b">
+                              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">{selectedPaper.title}</h1>
+                              {selectedPaper.abstract && (
+                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedPaper.abstract}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div
+                              className="paper-webview-content"
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center p-8">
+                              <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                              <p className="text-sm font-medium">Text view unavailable</p>
+                              <p className="text-xs text-muted-foreground mt-1">Could not convert this document to text format.</p>
+                              <button onClick={() => setViewMode("pdf")} className="mt-3 text-xs text-primary underline">Switch to PDF view</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

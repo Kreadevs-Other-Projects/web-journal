@@ -39,6 +39,8 @@ import {
   RotateCcw,
   XCircle,
   Lock,
+  AlignLeft,
+  FileX,
 } from "lucide-react";
 
 import { Worker, Viewer } from "@react-pdf-viewer/core";
@@ -93,6 +95,7 @@ export default function RevisionPaper() {
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
   const [viewerHtmlLoading, setViewerHtmlLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
@@ -281,24 +284,38 @@ export default function RevisionPaper() {
     }
   }, [reviews]);
 
+  // Auto-switch to text view for docx files
   useEffect(() => {
     setViewerHtml(null);
     if (!viewPdf?.fileUrl) return;
     const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
-    if (ext !== "docx") return;
+    if (ext === "docx") {
+      setViewMode("text");
+    } else {
+      setViewMode("pdf");
+    }
+  }, [viewPdf?.paperId]);
+
+  // Fetch HTML when switching to text view
+  useEffect(() => {
+    if (viewMode !== "text" || !viewPdf?.paperId || viewerHtml) return;
     setViewerHtmlLoading(true);
     const fetchHtml = async () => {
       try {
-        const r = await fetch(`${url}/browse/paper/${viewPdf.paperId}/html`);
+        const r = await fetch(`${url}/papers/${viewPdf.paperId}/html`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const d = await r.json();
         if (d.success && d.html) setViewerHtml(d.html);
+        else setViewerHtml(null);
       } catch (_) {
+        setViewerHtml(null);
       } finally {
         setViewerHtmlLoading(false);
       }
     };
     fetchHtml();
-  }, [viewPdf?.paperId]);
+  }, [viewMode, viewPdf?.paperId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -790,6 +807,32 @@ export default function RevisionPaper() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* View mode toggle */}
+                    <div className="flex items-center border border-border rounded-md overflow-hidden">
+                      <button
+                        onClick={() => setViewMode("pdf")}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                          viewMode === "pdf"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => setViewMode("text")}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                          viewMode === "text"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <AlignLeft className="h-3.5 w-3.5" />
+                        Text
+                      </button>
+                    </div>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -832,75 +875,73 @@ export default function RevisionPaper() {
                 </div>
 
                 <div className="flex-1 relative overflow-hidden">
-                  {(() => {
-                    const ext = viewPdf.fileUrl
-                      ?.split(".")
-                      .pop()
-                      ?.toLowerCase();
-                    if (ext === "pdf") {
+                  {viewMode === "pdf" ? (
+                    (() => {
+                      const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                      if (ext === "pdf") {
+                        return (
+                          <Worker workerUrl="/pdf.worker.min.js">
+                            <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                          </Worker>
+                        );
+                      }
+                      if (ext === "tex" || ext === "latex") {
+                        return (
+                          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+                            <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
+                            <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
+                              <Download className="h-4 w-4" />Download Manuscript
+                            </Button>
+                          </div>
+                        );
+                      }
+                      // docx in PDF mode — suggest switching
                       return (
-                        <Worker workerUrl="/pdf.worker.min.js">
-                          <Viewer
-                            fileUrl={`${url}${viewPdf.fileUrl}`}
-                            theme="dark"
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
+                          <FileX className="h-10 w-10" />
+                          <p className="text-sm">PDF view is not available for Word documents.</p>
+                          <button onClick={() => setViewMode("text")} className="text-sm text-primary underline">
+                            Switch to Text view
+                          </button>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    // Text view
+                    <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
+                      {viewerHtmlLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+                            <p className="text-sm text-muted-foreground">Converting document to text...</p>
+                          </div>
+                        </div>
+                      ) : viewerHtml ? (
+                        <div className="max-w-[700px] mx-auto px-8 py-10">
+                          <div className="mb-8 pb-6 border-b">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+                              {viewPdf.title}
+                            </h1>
+                          </div>
+                          <div
+                            className="paper-webview-content"
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
                           />
-                        </Worker>
-                      );
-                    }
-                    if (ext === "tex" || ext === "latex") {
-                      return (
-                        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                          <p className="text-sm">
-                            LaTeX files cannot be previewed. Please download to
-                            view.
-                          </p>
-                          <Button
-                            onClick={() =>
-                              window.open(`${url}${viewPdf.fileUrl}`, "_blank")
-                            }
-                            className="gap-2"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download Manuscript
-                          </Button>
                         </div>
-                      );
-                    }
-                    if (viewerHtmlLoading) {
-                      return (
-                        <div className="flex items-center justify-center h-full gap-2 text-muted-foreground text-sm">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
-                          Loading document…
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center p-8">
+                            <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-sm font-medium">Text view unavailable</p>
+                            <p className="text-xs text-muted-foreground mt-1">Could not convert this document to text format.</p>
+                            <button onClick={() => setViewMode("pdf")} className="mt-3 text-xs text-primary underline">
+                              Switch to PDF view
+                            </button>
+                          </div>
                         </div>
-                      );
-                    }
-                    if (viewerHtml) {
-                      return (
-                        <div
-                          className="paper-content h-full overflow-y-auto p-6 bg-white text-gray-900"
-                          dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(viewerHtml),
-                          }}
-                        />
-                      );
-                    }
-                    return (
-                      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                        <p className="text-sm">
-                          Document preview not available.
-                        </p>
-                        <Button
-                          onClick={() =>
-                            window.open(`${url}${viewPdf.fileUrl}`, "_blank")
-                          }
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </Button>
-                      </div>
-                    );
-                  })()}
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 bg-muted border-t border-border">

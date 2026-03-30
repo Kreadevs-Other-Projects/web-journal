@@ -83,7 +83,7 @@ router.post(
 router.get(
   "/:paperId/html",
   authMiddleware,
-  authorize("sub_editor", "reviewer", "chief_editor", "author"),
+  authorize("sub_editor", "reviewer", "chief_editor", "author", "publisher"),
   getPaperHtmlController,
 );
 

@@ -167,10 +167,14 @@ export const getPaperTrackingController = async (req: AuthUser, res: Response) =
 
 export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
   const { paperId } = req.params;
+  console.log("HTML endpoint called by role:", req.user?.role);
+  console.log("Paper ID:", paperId);
   try {
     const html = await getPublicPaperHtmlService(paperId);
+    console.log("html_content exists:", !!html, "length:", html?.length ?? 0);
     res.json({ success: true, html: html || null });
-  } catch {
+  } catch (err) {
+    console.error("getPaperHtmlController error:", err);
     res.status(500).json({ success: false, message: "Failed to get paper HTML" });
   }
 };

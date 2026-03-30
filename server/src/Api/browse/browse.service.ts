@@ -44,27 +44,33 @@ export const getPublicPaperService = async (paperId: string) => {
 };
 
 function pdfTextToHtml(rawText: string): string {
-  // Normalise line endings, collapse 3+ blank lines to 2
-  const normalised = rawText.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n");
-  const blocks = normalised.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+  const lines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  let html = "";
 
-  const parts: string[] = [];
-  for (const block of blocks) {
-    // Single line, short, ALL-CAPS → heading
-    const lines = block.split("\n");
-    const singleLine = lines.length === 1;
-    const isAllCaps = singleLine && block === block.toUpperCase() && /[A-Z]/.test(block) && block.length < 120;
-    const isNumberedSection = singleLine && /^\d+[\.\s]+[A-Z]/.test(block) && block.length < 120;
+  for (const line of lines) {
+    const wordCount = line.split(" ").length;
+    const isAllCaps = line === line.toUpperCase() && /[A-Z]/.test(line) && line.length > 3;
+    const isShortLine = wordCount <= 8 && line.length < 80;
+    const endsWithColon = line.endsWith(":");
+    const startsWithNumber = /^\d+[\.\s]+[A-Z]/.test(line);
+    const isCommonSection = /^(abstract|introduction|conclusion|discussion|methods|results|references|background|related work|acknowledgements?|keywords?)/i.test(line);
+    const isLikelyHeading = isShortLine && (isAllCaps || endsWithColon || isCommonSection);
 
-    if (isAllCaps || isNumberedSection) {
-      parts.push(`<h2>${escapeHtml(block)}</h2>`);
+    if (isLikelyHeading || (startsWithNumber && isShortLine)) {
+      if (isCommonSection || (isAllCaps && line.length < 50)) {
+        html += `<h2>${escapeHtml(line)}</h2>\n`;
+      } else {
+        html += `<h3>${escapeHtml(line)}</h3>\n`;
+      }
     } else {
-      // Join wrapped lines within a paragraph back into one string
-      const text = block.replace(/\n/g, " ").replace(/\s{2,}/g, " ").trim();
-      if (text) parts.push(`<p>${escapeHtml(text)}</p>`);
+      html += `<p>${escapeHtml(line)}</p>\n`;
     }
   }
-  return parts.join("\n");
+
+  // Merge consecutive short <p> lines that are likely wrapped sentence continuations
+  html = html.replace(/<\/p>\n<p>(?=[a-z,;])/g, " ").replace(/<p>\s*<\/p>\n?/g, "");
+
+  return html || "<p>Text content could not be extracted from this PDF.</p>";
 }
 
 function escapeHtml(s: string): string {
@@ -77,17 +83,26 @@ function escapeHtml(s: string): string {
 
 export const getPublicPaperHtmlService = async (paperId: string): Promise<string | null> => {
   const version = await getPaperVersionForHtmlRepo(paperId);
-  if (!version) return null;
+  if (!version) {
+    console.log("getPublicPaperHtmlService: no version found for paperId", paperId);
+    return null;
+  }
 
   // Return cached HTML if available
   if (version.html_content) return version.html_content;
 
-  if (!version.file_url) return null;
+  if (!version.file_url) {
+    console.log("getPublicPaperHtmlService: version has no file_url");
+    return null;
+  }
 
   const filename = path.basename(version.file_url);
-  // Use __dirname-relative path so it works regardless of cwd at startup
   const filePath = path.resolve(__dirname, "../../../uploads", filename);
   const lowerUrl = version.file_url.toLowerCase();
+
+  console.log("Looking for file at:", filePath);
+  const fsSync = await import("fs");
+  console.log("File exists:", fsSync.default.existsSync(filePath));
 
   // .docx → mammoth
   if (lowerUrl.endsWith(".docx")) {
@@ -105,7 +120,7 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
     return null;
   }
 
-  // .pdf → pdf-parse → plain HTML paragraphs
+  // .pdf → pdf-parse → structured HTML
   if (lowerUrl.endsWith(".pdf")) {
     try {
       const fs = await import("fs/promises");

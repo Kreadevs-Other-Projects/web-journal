@@ -379,6 +379,52 @@ export const inviteApplication = async (req: AuthUser, res: Response) => {
   }
 };
 
+export const getCEStats = async (req: AuthUser, res: Response) => {
+  try {
+    const data = await service.getCEStatsService(req.user!.id);
+    res.json({ success: true, data });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const overridePaperStatus = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { status, reason, email, password } = req.body;
+    if (!status || !reason || !email || !password) {
+      return res.status(400).json({ success: false, message: "status, reason, email, and password are required" });
+    }
+    const result = await service.overridePaperStatusService(
+      paperId, req.user!.id, email, password, status, reason,
+    );
+    res.json({ success: true, message: "Paper status overridden successfully", data: result });
+  } catch (e: any) {
+    const code = e.message.includes("Email does not match") || e.message.includes("Incorrect password") ? 401 : 400;
+    res.status(code).json({ success: false, message: e.message });
+  }
+};
+
+export const remindAE = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const result = await service.remindAEService(paperId, req.user!.id);
+    res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const remindReviewer = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId, reviewerId } = req.params;
+    const result = await service.remindReviewerService(paperId, reviewerId, req.user!.id);
+    res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
 export const declineApplication = async (req: AuthUser, res: Response) => {
   try {
     const ceId = req.user!.id;

@@ -428,6 +428,76 @@ export const getPaperDecisionHistoryRepo = async (paperId: string) => {
   return result.rows;
 };
 
+export const getCEStatsRepo = async (chiefEditorId: string) => {
+  const aeStats = await pool.query(
+    `SELECT
+       u.id AS ae_id,
+       u.username AS ae_name,
+       u.email AS ae_email,
+       COUNT(DISTINCT ea.paper_id)::int AS total_assigned,
+       COUNT(DISTINCT ea.paper_id) FILTER (WHERE ea.status NOT IN ('reassigned', 'rejected', 'completed'))::int AS pending,
+       COUNT(DISTINCT ea.paper_id) FILTER (WHERE sed.decision = 'approve')::int AS approved,
+       COUNT(DISTINCT ea.paper_id) FILTER (WHERE sed.decision = 'reject')::int AS rejected,
+       COUNT(DISTINCT ea.paper_id) FILTER (WHERE sed.decision = 'revision')::int AS revision
+     FROM editor_assignments ea
+     JOIN users u ON u.id = ea.sub_editor_id
+     JOIN papers p ON p.id = ea.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN sub_editor_decisions sed ON sed.paper_id = ea.paper_id AND sed.sub_editor_id = ea.sub_editor_id
+     WHERE j.chief_editor_id = $1
+     GROUP BY u.id, u.username, u.email
+     ORDER BY u.username ASC`,
+    [chiefEditorId],
+  );
+
+  const reviewerStats = await pool.query(
+    `SELECT
+       u.id AS reviewer_id,
+       u.username AS reviewer_name,
+       u.email AS reviewer_email,
+       COUNT(DISTINCT ra.paper_id)::int AS total_assigned,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE ra.status = 'assigned')::int AS pending,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE ra.status = 'submitted')::int AS completed,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE r.decision = 'accepted')::int AS accepted,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE r.decision = 'rejected')::int AS rejected,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE r.decision = 'minor_revision')::int AS minor_revision,
+       COUNT(DISTINCT ra.paper_id) FILTER (WHERE r.decision = 'major_revision')::int AS major_revision
+     FROM review_assignments ra
+     JOIN users u ON u.id = ra.reviewer_id
+     JOIN papers p ON p.id = ra.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+     WHERE j.chief_editor_id = $1
+     GROUP BY u.id, u.username, u.email
+     ORDER BY u.username ASC`,
+    [chiefEditorId],
+  );
+
+  return { ae_stats: aeStats.rows, reviewer_stats: reviewerStats.rows };
+};
+
+export const getLastReminderRepo = async (paperId: string, sentTo: string) => {
+  const result = await pool.query(
+    `SELECT sent_at FROM paper_reminders
+     WHERE paper_id = $1 AND sent_to = $2
+     ORDER BY sent_at DESC LIMIT 1`,
+    [paperId, sentTo],
+  );
+  return result.rows[0] || null;
+};
+
+export const insertReminderRepo = async (
+  paperId: string,
+  sentTo: string,
+  sentBy: string,
+  role: string,
+) => {
+  await pool.query(
+    `INSERT INTO paper_reminders (paper_id, sent_to, sent_by, role) VALUES ($1, $2, $3, $4)`,
+    [paperId, sentTo, sentBy, role],
+  );
+};
+
 export const getJournalDetailsRepo = async (
   journalId: string,
   chiefEditorId: string,

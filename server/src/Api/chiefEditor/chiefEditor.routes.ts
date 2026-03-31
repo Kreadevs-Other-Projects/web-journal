@@ -21,6 +21,10 @@ import {
   declineApplication,
   replaceSubEditor,
   getPaperDecisionHistory,
+  getCEStats,
+  overridePaperStatus,
+  remindAE,
+  remindReviewer,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -139,6 +143,32 @@ router.get(
   authMiddleware,
   authorize("chief_editor", "sub_editor", "author"),
   getPaperDecisionHistory,
+);
+
+// Stats
+router.get("/stats", authMiddleware, authorize("chief_editor"), getCEStats);
+
+// Override paper status
+router.post(
+  "/papers/:paperId/override-status",
+  authMiddleware,
+  authorize("chief_editor"),
+  overridePaperStatus,
+);
+
+// Reminders
+router.post(
+  "/papers/:paperId/remind-ae",
+  authMiddleware,
+  authorize("chief_editor"),
+  remindAE,
+);
+
+router.post(
+  "/papers/:paperId/remind-reviewer/:reviewerId",
+  authMiddleware,
+  authorize("chief_editor"),
+  remindReviewer,
 );
 
 // Reviewer applications

@@ -291,6 +291,154 @@ export const getJournalDetailsService = async (journalId: string, chiefEditorId:
   return data;
 };
 
+export const getCEStatsService = async (chiefEditorId: string) => {
+  return repo.getCEStatsRepo(chiefEditorId);
+};
+
+export const overridePaperStatusService = async (
+  paperId: string,
+  chiefEditorId: string,
+  editorEmail: string,
+  password: string,
+  newStatus: string,
+  reason: string,
+) => {
+  // Credential verification
+  const userRes = await pool.query(
+    `SELECT * FROM users WHERE id = $1 AND email = $2`,
+    [chiefEditorId, editorEmail],
+  );
+  if (!userRes.rows.length) throw new Error("Email does not match your account");
+  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  if (!passwordValid) throw new Error("Incorrect password");
+
+  // Verify paper belongs to CE's journal
+  const paperRes = await pool.query(
+    `SELECT p.*, u.email AS author_email, u.username AS author_name
+     FROM papers p
+     JOIN journals j ON j.id = p.journal_id
+     JOIN users u ON u.id = p.author_id
+     WHERE p.id = $1 AND j.chief_editor_id = $2`,
+    [paperId, chiefEditorId],
+  );
+  if (!paperRes.rows.length) throw new Error("Paper not found or access denied");
+  if (paperRes.rows[0].status === "published") throw new Error("Cannot override status of a published paper");
+
+  const paper = paperRes.rows[0];
+
+  await pool.query(`UPDATE papers SET status = $1, updated_at = NOW() WHERE id = $2`, [newStatus, paperId]);
+
+  await insertStatusLog({
+    paper_id: paperId,
+    status: newStatus,
+    changed_by: chiefEditorId,
+    note: `Status overridden by Chief Editor. Reason: ${reason}`,
+  });
+
+  // Email author
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: paper.author_email,
+    subject: `Status update for your paper: "${paper.title}"`,
+    html: `<p>Dear ${paper.author_name},</p>
+<p>The status of your paper <strong>"${paper.title}"</strong> has been updated to <strong>${newStatus.replace(/_/g, " ")}</strong> by the Chief Editor.</p>
+<p><strong>Reason:</strong> ${reason}</p>
+<p>Please log in to your dashboard for more details.</p>
+<p>Best regards,<br/>GIKI JournalHub</p>`,
+  }).catch(console.error);
+
+  return { success: true };
+};
+
+export const remindAEService = async (paperId: string, chiefEditorId: string) => {
+  // Get current AE for this paper
+  const aeRes = await pool.query(
+    `SELECT u.id, u.email, u.username, p.title
+     FROM editor_assignments ea
+     JOIN users u ON u.id = ea.sub_editor_id
+     JOIN papers p ON p.id = ea.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     WHERE ea.paper_id = $1 AND j.chief_editor_id = $2
+       AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+     ORDER BY ea.assigned_at DESC LIMIT 1`,
+    [paperId, chiefEditorId],
+  );
+  if (!aeRes.rows.length) throw new Error("No active associate editor found for this paper");
+
+  const ae = aeRes.rows[0];
+
+  // 24-hour cooldown check
+  const lastReminder = await repo.getLastReminderRepo(paperId, ae.id);
+  if (lastReminder) {
+    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    if (hoursSince < 24) {
+      const hoursLeft = Math.ceil(24 - hoursSince);
+      throw new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`);
+    }
+  }
+
+  await repo.insertReminderRepo(paperId, ae.id, chiefEditorId, "sub_editor");
+
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: ae.email,
+    subject: `Reminder: Action required for paper "${ae.title}"`,
+    html: `<p>Dear ${ae.username},</p>
+<p>This is a friendly reminder that your review and decision is pending for the paper:</p>
+<p><strong>"${ae.title}"</strong></p>
+<p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
+<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+  }).catch(console.error);
+
+  return { message: `Reminder sent to ${ae.username}` };
+};
+
+export const remindReviewerService = async (
+  paperId: string,
+  reviewerId: string,
+  chiefEditorId: string,
+) => {
+  // Verify paper belongs to CE's journal and reviewer is assigned
+  const res = await pool.query(
+    `SELECT u.id, u.email, u.username, p.title
+     FROM review_assignments ra
+     JOIN users u ON u.id = ra.reviewer_id
+     JOIN papers p ON p.id = ra.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     WHERE ra.paper_id = $1 AND ra.reviewer_id = $2 AND j.chief_editor_id = $3
+       AND ra.status = 'assigned'
+     ORDER BY ra.assigned_at DESC LIMIT 1`,
+    [paperId, reviewerId, chiefEditorId],
+  );
+  if (!res.rows.length) throw new Error("Reviewer not found or not actively assigned to this paper");
+
+  const reviewer = res.rows[0];
+
+  const lastReminder = await repo.getLastReminderRepo(paperId, reviewer.id);
+  if (lastReminder) {
+    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    if (hoursSince < 24) {
+      const hoursLeft = Math.ceil(24 - hoursSince);
+      throw new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`);
+    }
+  }
+
+  await repo.insertReminderRepo(paperId, reviewer.id, chiefEditorId, "reviewer");
+
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: reviewer.email,
+    subject: `Reminder: Review pending for paper "${reviewer.title}"`,
+    html: `<p>Dear ${reviewer.username},</p>
+<p>This is a friendly reminder that your peer review is pending for the paper:</p>
+<p><strong>"${reviewer.title}"</strong></p>
+<p>Please log in to your Reviewer dashboard to complete your review at your earliest convenience. Your timely review is critical to the publication process.</p>
+<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+  }).catch(console.error);
+
+  return { message: `Reminder sent to ${reviewer.username}` };
+};
+
 export const updateIssueStatusService = async (
   issueId: string,
   status: "open" | "closed",

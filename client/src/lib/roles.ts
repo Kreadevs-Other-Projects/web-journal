@@ -7,6 +7,7 @@ import {
   BarChart3,
   CreditCard,
   Tag,
+  TrendingUp,
 } from "lucide-react";
 
 export type UserRole =
@@ -85,6 +86,7 @@ export const roleConfig: Record<
       { label: "Team", path: "/chief-editor/team", icon: Users },
       { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: UserCheck },
       { label: "Applications", path: "/chief-editor/applications", icon: UserCheck },
+      { label: "Stats", path: "/chief-editor/stats", icon: TrendingUp },
     ],
   },
 

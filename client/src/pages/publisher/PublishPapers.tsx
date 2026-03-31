@@ -15,9 +15,9 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  User,
   Eye,
   X,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -28,58 +28,79 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface Review {
+interface Paper {
   paperId: string;
-  reviewId: string;
   title: string;
   journalId: string;
   issueId: string;
-  comments: string;
-  decision: string;
-  fileUrl: string;
-  versionNumber: number;
-  versionCreatedAt: string;
   paperStatus: string;
-  reviewerId: string;
-  reviewerName?: string;
-  submittedAt: string;
+  submittedAt: string | null;
+  acceptedAt: string | null;
+  authorName: string | null;
+  journalName: string | null;
+  journalAcronym: string | null;
+  issueLabel: string | null;
+  aeName: string | null;
+  fileUrl: string | null;
+  fileType: string | null;
+  reviewerNames: string[];
+  doi: string | null;
 }
 
+const ACCEPTED_STATUSES = new Set([
+  "accepted",
+  "awaiting_payment",
+  "payment_review",
+  "ready_for_publication",
+]);
+
 type StatusFilter = "accepted" | "published";
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "N/A";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function PublisherPapersDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
 
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("accepted");
 
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [viewPaper, setViewPaper] = useState<Paper | null>(null);
+
+  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [openPublish, setOpenPublish] = useState(false);
   const [doi, setDoi] = useState("");
   const [doiLoading, setDoiLoading] = useState(false);
   const [yearLabel, setYearLabel] = useState("");
   const [publishing, setPublishing] = useState(false);
 
-  const fetchReviews = async () => {
+  const fetchPapers = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${url}/publication/getSubmittedReviews`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+
       if (data.success) {
-        const normalized = data.data.map((r: any) => ({
-          ...r,
-          issueId: r.issueid,
-          journalId: r.journalid,
+        const normalized = (data.data as any[]).map((p) => ({
+          ...p,
+          reviewerNames: Array.isArray(p.reviewerNames) ? p.reviewerNames : [],
         }));
-        setReviews(normalized);
+        setPapers(normalized);
       } else {
         throw new Error("Failed to fetch papers");
       }
@@ -94,15 +115,15 @@ export default function PublisherPapersDashboard() {
     }
   };
 
-  const handleOpenPublish = async (review: Review) => {
-    setSelectedReview(review);
+  const handleOpenPublish = async (paper: Paper) => {
+    setSelectedPaper(paper);
     setDoi("");
     setYearLabel("");
     setOpenPublish(true);
 
     try {
       setDoiLoading(true);
-      const res = await fetch(`${url}/papers/${review.paperId}/suggest-doi`, {
+      const res = await fetch(`${url}/papers/${paper.paperId}/suggest-doi`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -117,7 +138,7 @@ export default function PublisherPapersDashboard() {
   };
 
   const publishPaper = async () => {
-    if (!selectedReview) return;
+    if (!selectedPaper) return;
     if (!doi.trim()) {
       toast({
         title: "DOI required",
@@ -126,7 +147,7 @@ export default function PublisherPapersDashboard() {
       });
       return;
     }
-    if (!selectedReview.issueId) {
+    if (!selectedPaper.issueId) {
       toast({
         title: "Issue ID missing",
         description: "This paper has no issue assigned",
@@ -137,7 +158,7 @@ export default function PublisherPapersDashboard() {
     try {
       setPublishing(true);
       const res = await fetch(
-        `${url}/publication/publishPaper/${selectedReview.paperId}`,
+        `${url}/publication/publishPaper/${selectedPaper.paperId}`,
         {
           method: "PUT",
           headers: {
@@ -146,7 +167,7 @@ export default function PublisherPapersDashboard() {
           },
           body: JSON.stringify({
             year_label: yearLabel || undefined,
-            issueId: selectedReview.issueId || undefined,
+            issueId: selectedPaper.issueId || undefined,
             doi: doi.trim() || undefined,
           }),
         },
@@ -154,19 +175,19 @@ export default function PublisherPapersDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to publish paper");
 
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.paperId === selectedReview.paperId
-            ? { ...r, paperStatus: "published" }
-            : r,
+      setPapers((prev) =>
+        prev.map((p) =>
+          p.paperId === selectedPaper.paperId
+            ? { ...p, paperStatus: "published" }
+            : p,
         ),
       );
       toast({
         title: "Paper Published",
-        description: `"${selectedReview.title}" published successfully`,
+        description: `"${selectedPaper.title}" published successfully`,
       });
       setOpenPublish(false);
-      setSelectedReview(null);
+      setSelectedPaper(null);
     } catch (err: any) {
       toast({
         title: "Publish failed",
@@ -179,35 +200,38 @@ export default function PublisherPapersDashboard() {
   };
 
   useEffect(() => {
-    if (user && token) fetchReviews();
+    if (user && token) fetchPapers();
   }, [user, token]);
 
-  const filteredReviews = reviews.filter((r) => r.paperStatus === statusFilter);
+  const filteredPapers = papers.filter((p) =>
+    statusFilter === "published"
+      ? p.paperStatus === "published"
+      : ACCEPTED_STATUSES.has(p.paperStatus),
+  );
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "published":
-        return (
-          <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Published
-          </Badge>
-        );
-      case "accepted":
-        return (
-          <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Accepted
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-muted text-muted-foreground">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            {status}
-          </Badge>
-        );
+    if (status === "published") {
+      return (
+        <Badge className="bg-green-500/20 text-green-600 border-green-500/30 shrink-0">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Published
+        </Badge>
+      );
     }
+    if (ACCEPTED_STATUSES.has(status)) {
+      return (
+        <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30 shrink-0">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Accepted
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-muted text-muted-foreground shrink-0">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        {status.replace(/_/g, " ")}
+      </Badge>
+    );
   };
 
   return (
@@ -223,7 +247,7 @@ export default function PublisherPapersDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <Button onClick={fetchReviews} variant="outline" size="sm">
+            <Button onClick={fetchPapers} variant="outline" size="sm">
               Refresh
             </Button>
             <Tabs
@@ -231,7 +255,14 @@ export default function PublisherPapersDashboard() {
               onValueChange={(v) => setStatusFilter(v as StatusFilter)}
             >
               <TabsList>
-                <TabsTrigger value="accepted">Accepted</TabsTrigger>
+                <TabsTrigger value="accepted">
+                  Accepted
+                  {papers.filter((p) => ACCEPTED_STATUSES.has(p.paperStatus)).length > 0 && (
+                    <span className="ml-1.5 text-xs bg-blue-500/20 text-blue-600 px-1.5 py-0.5 rounded-full">
+                      {papers.filter((p) => ACCEPTED_STATUSES.has(p.paperStatus)).length}
+                    </span>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="published">Published</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -242,7 +273,7 @@ export default function PublisherPapersDashboard() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-12 w-12 text-primary animate-spin" />
           </div>
-        ) : filteredReviews.length === 0 ? (
+        ) : filteredPapers.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -255,58 +286,133 @@ export default function PublisherPapersDashboard() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredReviews.map((review) => (
+            {filteredPapers.map((paper) => (
               <Card
-                key={`${review.paperId}-${review.reviewId}`}
-                className="border hover:border-blue-500/50 hover:shadow-md transition-all duration-300"
+                key={paper.paperId}
+                className="border hover:border-blue-500/50 hover:shadow-md transition-all duration-300 flex flex-col"
               >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-base font-semibold line-clamp-2 text-foreground">
-                      {review.title}
+                      {paper.title}
                     </CardTitle>
-                    {getStatusBadge(review.paperStatus)}
+                    {getStatusBadge(paper.paperStatus)}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5" />
-                    <span>
-                      Reviewer:{" "}
-                      {review.reviewerName ||
-                        review.reviewerId.slice(0, 12) + "..."}
-                    </span>
+
+                <CardContent className="space-y-2 text-sm text-muted-foreground flex-1">
+                  {/* Author · Journal · Issue */}
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
+                    {paper.authorName && (
+                      <span className="font-medium text-foreground">{paper.authorName}</span>
+                    )}
+                    {paper.journalName && (
+                      <>
+                        <span>·</span>
+                        <span>{paper.journalName}</span>
+                      </>
+                    )}
+                    {paper.issueLabel && (
+                      <>
+                        <span>·</span>
+                        <span>{paper.issueLabel}</span>
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>Version {review.versionNumber}</span>
+
+                  {/* Submitted · Accepted */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span>Submitted: {formatDate(paper.submittedAt)}</span>
+                    </div>
+                    {paper.acceptedAt && (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 shrink-0 text-green-500" />
+                        <span>Accepted: {formatDate(paper.acceptedAt)}</span>
+                      </div>
+                    )}
                   </div>
-                  {review.decision && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      <span>
-                        Decision:{" "}
-                        <span className="capitalize font-medium text-foreground">
-                          {review.decision}
-                        </span>
+
+                  {/* AE · Reviewers */}
+                  <div className="text-xs space-y-0.5">
+                    <div className="flex items-start gap-1">
+                      <span className="text-muted-foreground shrink-0">AE:</span>
+                      <span className="font-medium text-foreground">
+                        {paper.aeName || "Unassigned"}
                       </span>
+                    </div>
+                    {paper.reviewerNames.length > 0 && (
+                      <div className="flex items-start gap-1">
+                        <span className="text-muted-foreground shrink-0">Reviewers:</span>
+                        <span className="font-medium text-foreground">
+                          {paper.reviewerNames.join(", ")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* DOI (published papers) */}
+                  {paper.doi && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">DOI: </span>
+                      <span className="font-mono text-foreground">{paper.doi}</span>
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="border-t pt-4 flex gap-2">
-                  {review.paperStatus !== "published" ? (
+
+                <CardFooter className="border-t pt-3 flex flex-wrap gap-2">
+                  {/* View Paper */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setViewPaper(paper)}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    View
+                  </Button>
+
+                  {/* Download */}
+                  {paper.fileUrl && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        title={
+                          paper.fileType === "docx"
+                            ? "Word file — download as Word"
+                            : "Download file"
+                        }
+                        onClick={() =>
+                          window.open(`${url}/${paper.fileUrl}`, "_blank")
+                        }
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                        {paper.fileType
+                          ? paper.fileType.replace(".", "").toUpperCase()
+                          : "FILE"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Publish / Published badge */}
+                  {paper.paperStatus !== "published" ? (
                     <Button
                       size="sm"
-                      className="flex-1"
-                      onClick={() => handleOpenPublish(review)}
+                      className="h-7 text-xs gap-1 ml-auto"
+                      onClick={() => handleOpenPublish(paper)}
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <CheckCircle className="h-3.5 w-3.5" />
                       Publish
                     </Button>
                   ) : (
                     <Badge
                       variant="default"
-                      className="flex-1 justify-center py-2 cursor-default"
+                      className="ml-auto px-2 py-1 cursor-default text-xs"
                     >
                       ✓ Published
                     </Badge>
@@ -316,6 +422,83 @@ export default function PublisherPapersDashboard() {
             ))}
           </div>
         )}
+
+        {/* View Paper Modal */}
+        <Dialog open={!!viewPaper} onOpenChange={(open) => !open && setViewPaper(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Paper Details
+              </DialogTitle>
+              <DialogDescription>Full paper information</DialogDescription>
+            </DialogHeader>
+            {viewPaper && (
+              <div className="space-y-4 py-2 text-sm">
+                <p className="font-semibold text-base leading-snug">{viewPaper.title}</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Status</p>
+                    {getStatusBadge(viewPaper.paperStatus)}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Author</p>
+                    <p className="font-medium">{viewPaper.authorName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Journal</p>
+                    <p className="font-medium">{viewPaper.journalName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Issue</p>
+                    <p className="font-medium">{viewPaper.issueLabel || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Submitted</p>
+                    <p className="font-medium">{formatDate(viewPaper.submittedAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Accepted</p>
+                    <p className="font-medium">{formatDate(viewPaper.acceptedAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Associate Editor</p>
+                    <p className="font-medium">{viewPaper.aeName || "Unassigned"}</p>
+                  </div>
+                  {viewPaper.doi && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">DOI</p>
+                      <p className="font-mono text-xs">{viewPaper.doi}</p>
+                    </div>
+                  )}
+                </div>
+                {viewPaper.reviewerNames.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Reviewers</p>
+                    <p className="font-medium">{viewPaper.reviewerNames.join(", ")}</p>
+                  </div>
+                )}
+                {viewPaper.fileUrl && (
+                  <div className="border-t pt-3 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">File:</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => window.open(`${url}/${viewPaper.fileUrl}`, "_blank")}
+                    >
+                      <Download className="h-3 w-3" />
+                      Download {viewPaper.fileType?.replace(".", "").toUpperCase() || "File"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewPaper(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Publish Dialog */}
         <Dialog open={openPublish} onOpenChange={setOpenPublish}>
@@ -339,17 +522,14 @@ export default function PublisherPapersDashboard() {
             <div className="space-y-4 py-2">
               <div className="bg-muted/50 p-4 rounded-lg border">
                 <p className="text-sm font-medium text-foreground line-clamp-2">
-                  {selectedReview?.title}
+                  {selectedPaper?.title}
                 </p>
-                <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                  <span>v{selectedReview?.versionNumber}</span>
-                  <span>•</span>
-                  <span>
-                    Reviewer:{" "}
-                    {selectedReview?.reviewerName ||
-                      selectedReview?.reviewerId?.slice(0, 8) + "..."}
-                  </span>
-                </div>
+                {selectedPaper?.authorName && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedPaper.authorName}
+                    {selectedPaper.journalName && ` · ${selectedPaper.journalName}`}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -387,12 +567,11 @@ export default function PublisherPapersDashboard() {
                 />
               </div>
 
-              {selectedReview?.issueId && (
+              {selectedPaper?.issueId && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                   <Eye className="h-3.5 w-3.5" />
                   <span>
-                    Will be assigned to issue:{" "}
-                    {selectedReview.issueId.slice(0, 8)}…
+                    Issue: {selectedPaper.issueLabel || selectedPaper.issueId.slice(0, 8) + "…"}
                   </span>
                 </div>
               )}

@@ -10,7 +10,8 @@ export const getSubmittedReviewsService = async (
   req: AuthUser,
   res: Response,
 ) => {
-  const reviews = await getSubmittedReviews();
+  const ownerId = req.user!.id;
+  const reviews = await getSubmittedReviews(ownerId);
 
   return res.status(200).json({
     success: true,

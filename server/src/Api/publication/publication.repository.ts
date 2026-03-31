@@ -1,52 +1,49 @@
 import { pool } from "../../configs/db";
 
-export const getPaperForPublish = async () => {
-  const result = await pool.query(`
-    SELECT 
-      ea.id AS "editorAssignmentId",
-      ea.status AS "editorAssignmentStatus",
-      ea.assigned_at AS "editorAssignedAt",
-
+export const getPaperForPublish = async (ownerId: string) => {
+  const result = await pool.query(
+    `
+    SELECT
       p.id AS "paperId",
       p.title AS "title",
-      p.journal_id AS journalId,
-      p.issue_id As issueId,
+      p.journal_id AS "journalId",
+      p.issue_id AS "issueId",
       p.status AS "paperStatus",
-
-      pv.id AS "paperVersionId",
-      pv.version_number AS "versionNumber",
+      p.submitted_at AS "submittedAt",
+      p.accepted_at AS "acceptedAt",
+      u.username AS "authorName",
+      j.title AS "journalName",
+      j.acronym AS "journalAcronym",
+      ji.label AS "issueLabel",
+      ae.username AS "aeName",
       pv.file_url AS "fileUrl",
-      pv.created_at AS "versionCreatedAt",
-
-      ra.id AS "reviewAssignmentId",
-      ra.reviewer_id AS "reviewerId",
-      ru.username AS "reviewerName",
-      ra.status AS "reviewAssignmentStatus",
-      ra.submitted_at AS "submittedAt",
-
-      r.id AS "reviewId",
-      r.decision AS "decision",
-      r.comments AS "comments",
-      r.signature_url AS "signatureUrl",
-      r.signed_at AS "signedAt"
-
-    FROM editor_assignments ea
-
-    JOIN papers p ON p.id = ea.paper_id
-
+      pv.file_type AS "fileType",
+      COALESCE(
+        json_agg(DISTINCT rv.username) FILTER (WHERE rv.id IS NOT NULL),
+        '[]'
+      ) AS "reviewerNames",
+      pub.doi AS "doi"
+    FROM papers p
+    JOIN users u ON u.id = p.author_id
+    JOIN journals j ON j.id = p.journal_id
+    LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+    LEFT JOIN editor_assignments ea_join
+      ON ea_join.paper_id = p.id
+      AND ea_join.status NOT IN ('reassigned', 'rejected', 'completed')
+    LEFT JOIN users ae ON ae.id = ea_join.sub_editor_id
+    LEFT JOIN review_assignments ra ON ra.paper_id = p.id
+    LEFT JOIN users rv ON rv.id = ra.reviewer_id
     LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
-
-    LEFT JOIN review_assignments ra
-      ON ra.paper_id = ea.paper_id
-      AND ra.status = 'submitted'
-
-    LEFT JOIN reviews r ON r.review_assignment_id = ra.id
-    LEFT JOIN users ru ON ru.id = ra.reviewer_id
-
-    WHERE p.status IN ('accepted', 'ready_for_publication', 'published')
-
-    ORDER BY ra.submitted_at DESC NULLS LAST
-  `);
+    LEFT JOIN publications pub ON pub.paper_id = p.id
+    WHERE j.owner_id = $1
+      AND p.status IN ('accepted', 'awaiting_payment', 'payment_review', 'ready_for_publication', 'published')
+    GROUP BY
+      p.id, u.username, j.title, j.acronym, ji.label,
+      ae.username, pv.file_url, pv.file_type, pub.doi
+    ORDER BY p.accepted_at DESC NULLS LAST, p.submitted_at DESC NULLS LAST
+    `,
+    [ownerId],
+  );
 
   return result.rows;
 };

@@ -39,8 +39,8 @@ export const suggestDoiService = async (paperId: string): Promise<string> => {
   return generateDOI(acronym || "jnl", year, nextIndex);
 };
 
-export const getSubmittedReviews = async () => {
-  return getPaperForPublish();
+export const getSubmittedReviews = async (ownerId: string) => {
+  return getPaperForPublish(ownerId);
 };
 
 export const setPaperPublished = async (

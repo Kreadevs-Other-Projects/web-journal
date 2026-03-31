@@ -425,6 +425,36 @@ export const remindReviewer = async (req: AuthUser, res: Response) => {
   }
 };
 
+export const remindAllReviewers = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const result = await service.remindAllReviewersService(paperId, req.user!.id);
+    res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const remindAEBulk = async (req: AuthUser, res: Response) => {
+  try {
+    const { aeId } = req.params;
+    const result = await service.remindAEBulkService(aeId, req.user!.id);
+    res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const remindReviewerBulk = async (req: AuthUser, res: Response) => {
+  try {
+    const { reviewerId } = req.params;
+    const result = await service.remindReviewerBulkService(reviewerId, req.user!.id);
+    res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
 export const declineApplication = async (req: AuthUser, res: Response) => {
   try {
     const ceId = req.user!.id;

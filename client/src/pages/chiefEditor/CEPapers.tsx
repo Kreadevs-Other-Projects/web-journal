@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,18 +27,31 @@ import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 
+interface Reviewer {
+  id: string;
+  name: string;
+  status: string;
+  decision: string | null;
+}
+
 interface Paper {
   id: string;
   title: string;
   status: string;
   author_name: string;
   journal_name: string;
+  journal_id: string;
   issue_label: string | null;
-  editor_decision: string | null;
   created_at: string;
   submitted_at: string;
+  published_at: string | null;
   current_ae_id: string | null;
   current_ae_name: string | null;
+  current_ae_email: string | null;
+  ae_assignment_status: string | null;
+  ae_decision: string | null;
+  ae_decided_at: string | null;
+  reviewers: Reviewer[];
 }
 
 const OVERRIDE_STATUSES = [
@@ -58,31 +72,81 @@ const STATUS_COLORS: Record<string, string> = {
   under_review: "bg-purple-500/10 text-purple-600 border-purple-500/30",
   pending_revision: "bg-orange-500/10 text-orange-600 border-orange-500/30",
   resubmitted: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30",
+  reviewed: "bg-indigo-500/10 text-indigo-600 border-indigo-500/30",
+  sub_editor_approved: "bg-teal-500/10 text-teal-600 border-teal-500/30",
   accepted: "bg-green-500/10 text-green-600 border-green-500/30",
   awaiting_payment: "bg-yellow-500/10 text-yellow-700 border-yellow-500/30",
+  payment_review: "bg-lime-500/10 text-lime-700 border-lime-500/30",
+  ready_for_publication: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   rejected: "bg-red-500/10 text-red-600 border-red-500/30",
   published: "bg-teal-500/10 text-teal-600 border-teal-500/30",
 };
 
+const AE_DECISION_COLORS: Record<string, string> = {
+  approve: "bg-green-500/10 text-green-600 border-green-500/30",
+  reject: "bg-red-500/10 text-red-600 border-red-500/30",
+  revision: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
+};
+
+type TabKey =
+  | "all"
+  | "submitted"
+  | "assigned"
+  | "under_review"
+  | "reviewed"
+  | "needs_decision"
+  | "accepted"
+  | "rejected"
+  | "published";
+
+const TABS: { key: TabKey; label: string; statuses: string[] }[] = [
+  { key: "all", label: "All", statuses: [] },
+  { key: "submitted", label: "Submitted", statuses: ["submitted"] },
+  { key: "assigned", label: "Assigned to AE", statuses: ["assigned_to_sub_editor"] },
+  { key: "under_review", label: "Under Review", statuses: ["under_review"] },
+  { key: "reviewed", label: "Reviewed", statuses: ["reviewed"] },
+  { key: "needs_decision", label: "Needs Decision", statuses: ["sub_editor_approved"] },
+  {
+    key: "accepted",
+    label: "Accepted",
+    statuses: ["accepted", "awaiting_payment", "payment_review", "ready_for_publication"],
+  },
+  { key: "rejected", label: "Rejected", statuses: ["rejected"] },
+  { key: "published", label: "Published", statuses: ["published"] },
+];
+
+function timeAgo(dateStr: string) {
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 3600000;
+  if (diff < 1) return "just now";
+  if (diff < 24) return `${Math.floor(diff)}h ago`;
+  return `${Math.floor(diff / 24)}d ago`;
+}
+
 export default function CEPapers() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const aeIdFilter = searchParams.get("ae_id");
+  const reviewerIdFilter = searchParams.get("reviewer_id");
+
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [journalFilter, setJournalFilter] = useState("all");
 
-  // Override modal state
+  // Reminder state: maps paperId → timestamp of last reminder sent this session
+  const [remindingAE, setRemindingAE] = useState<string | null>(null);
+  const [remindingReviewer, setRemindingReviewer] = useState<string | null>(null);
+  const [recentReminders, setRecentReminders] = useState<Record<string, string>>({});
+
+  // Override modal
   const [overridePaper, setOverridePaper] = useState<Paper | null>(null);
   const [overrideStatus, setOverrideStatus] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [overrideEmail, setOverrideEmail] = useState("");
   const [overridePassword, setOverridePassword] = useState("");
   const [overrideLoading, setOverrideLoading] = useState(false);
-
-  // Remind state
-  const [remindingAE, setRemindingAE] = useState<string | null>(null);
 
   const fetchPapers = () => {
     if (!token) return;
@@ -92,10 +156,20 @@ export default function CEPapers() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setPapers(data.data || []);
-        else throw new Error(data.message);
+        if (data.success) {
+          const rows = (data.data || []).map((p: any) => ({
+            ...p,
+            reviewers:
+              typeof p.reviewers === "string" ? JSON.parse(p.reviewers) : p.reviewers || [],
+          }));
+          setPapers(rows);
+        } else {
+          throw new Error(data.message);
+        }
       })
-      .catch((e) => toast({ variant: "destructive", title: "Error", description: e.message }))
+      .catch((e) =>
+        toast({ variant: "destructive", title: "Error", description: e.message })
+      )
       .finally(() => setLoading(false));
   };
 
@@ -103,21 +177,34 @@ export default function CEPapers() {
     fetchPapers();
   }, [token]);
 
+  // Apply URL-param filters for AE/reviewer drill-down from stats page
+  const preFiltered = useMemo(() => {
+    if (aeIdFilter) return papers.filter((p) => p.current_ae_id === aeIdFilter);
+    if (reviewerIdFilter)
+      return papers.filter((p) => p.reviewers.some((r) => r.id === reviewerIdFilter));
+    return papers;
+  }, [papers, aeIdFilter, reviewerIdFilter]);
+
   const journals = useMemo(() => {
     const seen = new Set<string>();
-    return papers
+    return preFiltered
       .filter((p) => p.journal_name && !seen.has(p.journal_name) && seen.add(p.journal_name))
       .map((p) => p.journal_name);
-  }, [papers]);
+  }, [preFiltered]);
 
-  const statuses = useMemo(() => {
-    const seen = new Set<string>();
-    return papers.filter((p) => !seen.has(p.status) && seen.add(p.status)).map((p) => p.status);
-  }, [papers]);
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: preFiltered.length };
+    for (const tab of TABS.slice(1)) {
+      counts[tab.key] = preFiltered.filter((p) => tab.statuses.includes(p.status)).length;
+    }
+    return counts;
+  }, [preFiltered]);
 
   const filtered = useMemo(() => {
-    return papers.filter((p) => {
-      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    return preFiltered.filter((p) => {
+      const tab = TABS.find((t) => t.key === activeTab);
+      if (tab && tab.statuses.length > 0 && !tab.statuses.includes(p.status)) return false;
       if (journalFilter !== "all" && p.journal_name !== journalFilter) return false;
       if (
         search &&
@@ -127,7 +214,7 @@ export default function CEPapers() {
         return false;
       return true;
     });
-  }, [papers, search, statusFilter, journalFilter]);
+  }, [preFiltered, activeTab, journalFilter, search]);
 
   const openOverrideModal = (paper: Paper) => {
     setOverridePaper(paper);
@@ -159,7 +246,10 @@ export default function CEPapers() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      toast({ title: "Status overridden", description: `Paper status updated to "${overrideStatus.replace(/_/g, " ")}"` });
+      toast({
+        title: "Status overridden",
+        description: `Paper status updated to "${overrideStatus.replace(/_/g, " ")}"`,
+      });
       setOverridePaper(null);
       fetchPapers();
     } catch (e: any) {
@@ -178,6 +268,7 @@ export default function CEPapers() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
+      setRecentReminders((prev) => ({ ...prev, [`ae-${paperId}`]: new Date().toISOString() }));
       toast({ title: "Reminder sent", description: data.message });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Could not send reminder", description: e.message });
@@ -186,15 +277,61 @@ export default function CEPapers() {
     }
   };
 
+  const handleRemindReviewer = async (paperId: string) => {
+    setRemindingReviewer(paperId);
+    try {
+      const res = await fetch(`${url}/chiefEditor/papers/${paperId}/remind-reviewer`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      setRecentReminders((prev) => ({ ...prev, [`rv-${paperId}`]: new Date().toISOString() }));
+      toast({ title: "Reminder sent", description: data.message });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Could not send reminder", description: e.message });
+    } finally {
+      setRemindingReviewer(null);
+    }
+  };
+
+  const getReminderLabel = (key: string) => {
+    const ts = recentReminders[key];
+    if (!ts) return null;
+    return `Reminded ${timeAgo(ts)}`;
+  };
+
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Papers</h1>
           <p className="text-muted-foreground mt-1">All papers across your journals</p>
+          {aeIdFilter && (
+            <p className="text-xs text-blue-600 mt-1">
+              Filtered by Associate Editor ·{" "}
+              <button
+                className="underline"
+                onClick={() => window.location.assign("/chief-editor/papers")}
+              >
+                Clear filter
+              </button>
+            </p>
+          )}
+          {reviewerIdFilter && (
+            <p className="text-xs text-blue-600 mt-1">
+              Filtered by Reviewer ·{" "}
+              <button
+                className="underline"
+                onClick={() => window.location.assign("/chief-editor/papers")}
+              >
+                Clear filter
+              </button>
+            </p>
+          )}
         </div>
 
-        {/* Filters */}
+        {/* Filter bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -205,19 +342,6 @@ export default function CEPapers() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {statuses.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s.replace(/_/g, " ")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={journalFilter} onValueChange={setJournalFilter}>
             <SelectTrigger className="w-full sm:w-52">
               <SelectValue placeholder="All journals" />
@@ -231,6 +355,34 @@ export default function CEPapers() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-1 border-b border-border pb-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-3 py-1.5 rounded-t text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeTab === tab.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              {tab.label}
+              {tabCounts[tab.key] > 0 && (
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                    activeTab === tab.key
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted-foreground/20 text-muted-foreground"
+                  }`}
+                >
+                  {tabCounts[tab.key]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -247,11 +399,33 @@ export default function CEPapers() {
         ) : (
           <Card>
             <CardContent className="p-0 divide-y divide-border">
-              {filtered.map((paper) => (
-                <div key={paper.id} className="px-4 py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{paper.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
+              {filtered.map((paper) => {
+                const pendingReviewers = paper.reviewers.filter(
+                  (r) => r.status === "assigned"
+                );
+                const aeNeedsReminder = paper.current_ae_id && !paper.ae_decision;
+                const rvNeedsReminder = pendingReviewers.length > 0;
+                const aeReminderLabel = getReminderLabel(`ae-${paper.id}`);
+                const rvReminderLabel = getReminderLabel(`rv-${paper.id}`);
+
+                return (
+                  <div key={paper.id} className="px-4 py-4 space-y-2">
+                    {/* Row 1: Title + Status */}
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground leading-snug flex-1 min-w-0">
+                        {paper.title}
+                      </p>
+                      <Badge
+                        className={`shrink-0 ${
+                          STATUS_COLORS[paper.status] || "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {paper.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+
+                    {/* Row 2: Meta */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                       <span>{paper.author_name || "—"}</span>
                       <span>·</span>
                       <span>{paper.journal_name}</span>
@@ -277,56 +451,99 @@ export default function CEPapers() {
                             })
                           : "—"}
                       </span>
-                      {paper.current_ae_name && (
-                        <>
-                          <span>·</span>
-                          <span>AE: {paper.current_ae_name}</span>
-                        </>
-                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      className={
-                        STATUS_COLORS[paper.status] || "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {paper.status.replace(/_/g, " ")}
-                    </Badge>
-                    {paper.current_ae_id && (
+
+                    {/* Row 3: AE + Reviewer info */}
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">AE:</span>
+                        <span className="font-medium">
+                          {paper.current_ae_name || "Unassigned"}
+                        </span>
+                        {paper.ae_decision && (
+                          <Badge
+                            className={`text-[10px] h-4 px-1 ${
+                              AE_DECISION_COLORS[paper.ae_decision] ||
+                              "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {paper.ae_decision}
+                          </Badge>
+                        )}
+                        {paper.current_ae_id && !paper.ae_decision && (
+                          <span className="text-muted-foreground italic">pending decision</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Reviewers:</span>
+                        {paper.reviewers.length === 0 ? (
+                          <span className="text-muted-foreground italic">None assigned</span>
+                        ) : (
+                          <span className="font-medium">
+                            {paper.reviewers.map((r) => r.name).join(", ")}
+                          </span>
+                        )}
+                        {paper.reviewers.length > 0 && (
+                          <span className="text-muted-foreground">
+                            ({pendingReviewers.length} pending)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Row 4: Action buttons */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {aeNeedsReminder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          disabled={remindingAE === paper.id || !!aeReminderLabel}
+                          onClick={() => handleRemindAE(paper.id)}
+                        >
+                          {remindingAE === paper.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Bell className="h-3 w-3" />
+                          )}
+                          {aeReminderLabel ? aeReminderLabel : "Remind AE"}
+                        </Button>
+                      )}
+                      {rvNeedsReminder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          disabled={remindingReviewer === paper.id || !!rvReminderLabel}
+                          onClick={() => handleRemindReviewer(paper.id)}
+                        >
+                          {remindingReviewer === paper.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Bell className="h-3 w-3" />
+                          )}
+                          {rvReminderLabel ? rvReminderLabel : "Remind Reviewer"}
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs gap-1"
-                        disabled={remindingAE === paper.id}
-                        onClick={() => handleRemindAE(paper.id)}
+                        className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                        onClick={() => openOverrideModal(paper)}
                       >
-                        {remindingAE === paper.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Bell className="h-3 w-3" />
-                        )}
-                        Remind AE
+                        <ShieldAlert className="h-3 w-3" />
+                        Override
                       </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => openOverrideModal(paper)}
-                    >
-                      <ShieldAlert className="h-3 w-3" />
-                      Override
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}
 
         <p className="text-xs text-muted-foreground">
-          Showing {filtered.length} of {papers.length} papers
+          Showing {filtered.length} of {preFiltered.length} papers
         </p>
       </div>
 
@@ -339,7 +556,7 @@ export default function CEPapers() {
               Override Paper Status
             </DialogTitle>
             <DialogDescription>
-              This action will forcefully change the paper status and notify the author.
+              Forcefully change the paper status. The author will be notified.
               Credential verification is required.
             </DialogDescription>
           </DialogHeader>
@@ -349,7 +566,7 @@ export default function CEPapers() {
               <div className="rounded-md bg-muted/50 p-3 text-sm">
                 <p className="font-medium truncate">{overridePaper.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Current status: {overridePaper.status.replace(/_/g, " ")}
+                  Current: {overridePaper.status.replace(/_/g, " ")}
                 </p>
               </div>
 
@@ -379,7 +596,7 @@ export default function CEPapers() {
                 />
               </div>
 
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-3 border-t pt-4">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   Verify your credentials
                 </p>

@@ -25,6 +25,9 @@ import {
   overridePaperStatus,
   remindAE,
   remindReviewer,
+  remindAllReviewers,
+  remindAEBulk,
+  remindReviewerBulk,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -169,6 +172,27 @@ router.post(
   authMiddleware,
   authorize("chief_editor"),
   remindReviewer,
+);
+
+router.post(
+  "/papers/:paperId/remind-reviewer",
+  authMiddleware,
+  authorize("chief_editor"),
+  remindAllReviewers,
+);
+
+router.post(
+  "/ae/:aeId/remind",
+  authMiddleware,
+  authorize("chief_editor"),
+  remindAEBulk,
+);
+
+router.post(
+  "/reviewer/:reviewerId/remind",
+  authMiddleware,
+  authorize("chief_editor"),
+  remindReviewerBulk,
 );
 
 // Reviewer applications

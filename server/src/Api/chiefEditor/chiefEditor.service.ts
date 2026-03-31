@@ -393,6 +393,156 @@ export const remindAEService = async (paperId: string, chiefEditorId: string) =>
   return { message: `Reminder sent to ${ae.username}` };
 };
 
+export const remindAllReviewersService = async (paperId: string, chiefEditorId: string) => {
+  // Get all pending (assigned, not submitted) reviewers for this paper under CE's journals
+  const res = await pool.query(
+    `SELECT u.id, u.email, u.username, p.title
+     FROM review_assignments ra
+     JOIN users u ON u.id = ra.reviewer_id
+     JOIN papers p ON p.id = ra.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     WHERE ra.paper_id = $1 AND j.chief_editor_id = $2
+       AND ra.status = 'assigned'`,
+    [paperId, chiefEditorId],
+  );
+  if (!res.rows.length) throw new Error("No pending reviewers found for this paper");
+
+  const reminded: string[] = [];
+  const skipped: string[] = [];
+
+  for (const reviewer of res.rows) {
+    const lastReminder = await repo.getLastReminderRepo(paperId, reviewer.id);
+    if (lastReminder) {
+      const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+      if (hoursSince < 24) {
+        skipped.push(reviewer.username);
+        continue;
+      }
+    }
+
+    await repo.insertReminderRepo(paperId, reviewer.id, chiefEditorId, "reviewer");
+
+    transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: reviewer.email,
+      subject: `Reminder: Review pending for paper "${reviewer.title}"`,
+      html: `<p>Dear ${reviewer.username},</p>
+<p>This is a friendly reminder that your peer review is pending for the paper:</p>
+<p><strong>"${reviewer.title}"</strong></p>
+<p>Please log in to your Reviewer dashboard to complete your review at your earliest convenience. Your timely review is critical to the publication process.</p>
+<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+    }).catch(console.error);
+
+    reminded.push(reviewer.username);
+  }
+
+  if (reminded.length === 0) {
+    const minHours = Math.ceil(24);
+    throw new Error(`All reviewers were reminded recently. Please wait before sending another reminder.`);
+  }
+
+  return {
+    message: `Reminder sent to ${reminded.join(", ")}${skipped.length ? `. Skipped (cooldown): ${skipped.join(", ")}` : ""}`,
+  };
+};
+
+export const remindAEBulkService = async (aeId: string, chiefEditorId: string) => {
+  // Get all pending papers for this AE under CE's journals
+  const res = await pool.query(
+    `SELECT p.id AS paper_id, p.title
+     FROM editor_assignments ea
+     JOIN papers p ON p.id = ea.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN sub_editor_decisions sd ON sd.paper_id = p.id AND sd.sub_editor_id = ea.sub_editor_id
+     WHERE ea.sub_editor_id = $1
+       AND j.chief_editor_id = $2
+       AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+       AND sd.id IS NULL`,
+    [aeId, chiefEditorId],
+  );
+  if (!res.rows.length) throw new Error("No pending papers found for this associate editor");
+
+  const aeRes = await pool.query(`SELECT email, username FROM users WHERE id = $1`, [aeId]);
+  if (!aeRes.rows.length) throw new Error("Associate editor not found");
+  const ae = aeRes.rows[0];
+
+  // Check cooldown against the first pending paper
+  const firstPaperId = res.rows[0].paper_id;
+  const lastReminder = await repo.getLastReminderRepo(firstPaperId, aeId);
+  if (lastReminder) {
+    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    if (hoursSince < 24) {
+      const hoursLeft = Math.ceil(24 - hoursSince);
+      throw new Error(`Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`);
+    }
+  }
+
+  for (const row of res.rows) {
+    await repo.insertReminderRepo(row.paper_id, aeId, chiefEditorId, "sub_editor");
+  }
+
+  const paperList = res.rows.map((r: any, i: number) => `${i + 1}. ${r.title}`).join("<br/>");
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: ae.email,
+    subject: `Follow-up: ${res.rows.length} paper(s) awaiting your decision`,
+    html: `<p>Dear ${ae.username},</p>
+<p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your decision:</p>
+<p>${paperList}</p>
+<p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
+<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+  }).catch(console.error);
+
+  return { message: `Reminder sent for ${res.rows.length} pending paper(s)` };
+};
+
+export const remindReviewerBulkService = async (reviewerId: string, chiefEditorId: string) => {
+  // Get all pending review assignments for this reviewer
+  const res = await pool.query(
+    `SELECT p.id AS paper_id, p.title
+     FROM review_assignments ra
+     JOIN papers p ON p.id = ra.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     WHERE ra.reviewer_id = $1
+       AND j.chief_editor_id = $2
+       AND ra.status = 'assigned'`,
+    [reviewerId, chiefEditorId],
+  );
+  if (!res.rows.length) throw new Error("No pending reviews found for this reviewer");
+
+  const rvRes = await pool.query(`SELECT email, username FROM users WHERE id = $1`, [reviewerId]);
+  if (!rvRes.rows.length) throw new Error("Reviewer not found");
+  const reviewer = rvRes.rows[0];
+
+  const firstPaperId = res.rows[0].paper_id;
+  const lastReminder = await repo.getLastReminderRepo(firstPaperId, reviewerId);
+  if (lastReminder) {
+    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    if (hoursSince < 24) {
+      const hoursLeft = Math.ceil(24 - hoursSince);
+      throw new Error(`Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`);
+    }
+  }
+
+  for (const row of res.rows) {
+    await repo.insertReminderRepo(row.paper_id, reviewerId, chiefEditorId, "reviewer");
+  }
+
+  const paperList = res.rows.map((r: any, i: number) => `${i + 1}. ${r.title}`).join("<br/>");
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: reviewer.email,
+    subject: `Follow-up: ${res.rows.length} review(s) awaiting your submission`,
+    html: `<p>Dear ${reviewer.username},</p>
+<p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your review:</p>
+<p>${paperList}</p>
+<p>Please log in to your Reviewer dashboard to complete your reviews at your earliest convenience.</p>
+<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+  }).catch(console.error);
+
+  return { message: `Reminder sent for ${res.rows.length} pending review(s)` };
+};
+
 export const remindReviewerService = async (
   paperId: string,
   reviewerId: string,

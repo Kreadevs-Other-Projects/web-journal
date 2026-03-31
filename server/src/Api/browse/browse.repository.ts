@@ -89,7 +89,7 @@ export const getBrowseDataRepo = async (filters: any) => {
       ORDER BY pv2.version_number DESC
       LIMIT 1
   ) pv ON true
-  WHERE j.status = 'active'
+  WHERE (j.status = 'active' OR j.status IS NULL)
     AND (j.is_taken_down IS NULL OR j.is_taken_down = false)
     AND (ji.is_taken_down IS NULL OR ji.is_taken_down = false)
 `;

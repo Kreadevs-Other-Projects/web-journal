@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"E:\\\\coding\\\\Kreadevs-Other-Projects\\\\web-journal\\\\server\\\\src\\\\Api\\\\journal\\\\journal.service.ts\")"
+    ]
+  }
+}

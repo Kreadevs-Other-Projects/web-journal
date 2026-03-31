@@ -6,6 +6,7 @@ import {
 } from "../../utils/emails/paymentEmails";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
 
 export type Journal = {
   journalId: string;
@@ -254,7 +255,13 @@ export const takedownJournalService = async (
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: (ceRow as any).email,
       subject: `Journal Taken Down — ${(ceRow as any).journal_title}`,
-      html: `<p>Dear Chief Editor,</p><p>The journal <strong>${(ceRow as any).journal_title}</strong> has been taken down by the Publisher.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the Publisher for more information.</p>`,
+      html: baseEmailTemplate(
+      "Journal Taken Down",
+      `<p>Dear Chief Editor,</p>
+       <p>The journal <strong>${(ceRow as any).journal_title}</strong> has been taken down by the Publisher.</p>
+       <p><strong>Reason:</strong> ${reason}</p>
+       <p>Please contact the Publisher for more information.</p>`,
+    ),
       text: `Journal "${(ceRow as any).journal_title}" has been taken down. Reason: ${reason}`,
     }).catch(() => {});
   }

@@ -10,6 +10,7 @@ import {
   uploadJournalLogo,
   getEditorialBoard,
   getAuthorGuidelines,
+  updateJournalAPC,
 } from "./journal.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { validate } from "../../middlewares/validate.middleware";
@@ -82,6 +83,13 @@ router.post(
   authorize("publisher", "journal_manager"),
   logoUpload.single("logo"),
   uploadJournalLogo,
+);
+
+router.patch(
+  "/:journalId/apc",
+  authMiddleware,
+  authorize("publisher"),
+  updateJournalAPC,
 );
 
 router.get("/:id/editorial-board", getEditorialBoard);

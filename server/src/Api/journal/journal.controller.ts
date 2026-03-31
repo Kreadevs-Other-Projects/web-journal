@@ -10,6 +10,7 @@ import {
   publisherCreateJournalService,
   updateJournalLogoService,
   getEditorialBoardService,
+  updateJournalAPCService,
 } from "./journal.service";
 import { findJournalById } from "./journal.repository";
 
@@ -102,7 +103,9 @@ export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
   try {
     const { id } = req.params;
     if (!req.file)
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded" });
     const logo_url = `uploads/${req.file.filename}`;
     await updateJournalLogoService(id, logo_url);
     res.json({ success: true, logo_url });
@@ -124,10 +127,33 @@ export const getAuthorGuidelines = async (req: Request, res: Response) => {
   try {
     const journal = await findJournalById(req.params.id);
     if (!journal)
-      return res.status(404).json({ success: false, message: "Journal not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Journal not found" });
     res.json({ success: true, guidelines: journal.author_guidelines || "" });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const updateJournalAPC = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { publication_fee, currency } = req.body;
+    const fee = Number(publication_fee);
+    if (isNaN(fee))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid fee value" });
+    const updated = await updateJournalAPCService(
+      journalId,
+      req.user!.id,
+      fee,
+      currency,
+    );
+    return res.json({ success: true, journal: updated });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, message: e.message });
   }
 };
 
@@ -138,7 +164,11 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
     }
 
     const logo_url = req.file ? `uploads/${req.file.filename}` : null;
-    const journal = await publisherCreateJournalService(req.user.id, req.user.username, { ...req.body, logo_url });
+    const journal = await publisherCreateJournalService(
+      req.user.id,
+      req.user.username,
+      { ...req.body, logo_url },
+    );
 
     return res.status(201).json({
       success: true,

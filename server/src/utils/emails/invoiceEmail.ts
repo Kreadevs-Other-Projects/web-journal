@@ -1,5 +1,6 @@
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "./baseEmailTemplate";
 
 export function generateInvoiceEmailHtml(data: {
   authorName: string;
@@ -176,7 +177,16 @@ export const sendReceiptNotificationEmail = async (data: {
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: data.publisherEmail,
     subject: `Receipt Uploaded — ${data.invoiceNumber} | "${data.paperTitle}"`,
-    html: `<p>The author <strong>${data.authorName}</strong> has uploaded a payment receipt for paper <strong>"${data.paperTitle}"</strong> (${data.invoiceNumber}).</p><p><a href="${data.paperUrl}">Review in Publisher Dashboard</a></p>`,
+    html: baseEmailTemplate(
+      "Payment Receipt Uploaded",
+      `
+        <p>A payment receipt has been uploaded and requires your review.</p>
+        <p><strong>Author:</strong> ${data.authorName}</p>
+        <p><strong>Paper:</strong> "${data.paperTitle}"</p>
+        <p><strong>Invoice #:</strong> ${data.invoiceNumber}</p>
+        <a href="${data.paperUrl}" class="button">Review in Dashboard →</a>
+      `,
+    ),
     text: `Receipt uploaded for "${data.paperTitle}" by ${data.authorName}. Invoice: ${data.invoiceNumber}.`,
   });
 };
@@ -194,55 +204,28 @@ export const sendPaymentReminderEmail = async (data: {
 }) => {
   const { authorName, authorEmail, paperTitle, journalName, invoiceNumber, invoiceDate, totalAmount, currency, paperUrl } = data;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"/><title>Payment Reminder</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#f0f4f8;font-family:Arial,sans-serif;color:#1a202c}
-  .wrapper{max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
-  .header{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:24px 32px;color:#fff}
-  .header h1{font-size:20px;font-weight:800}
-  .header p{font-size:12px;color:#bfdbfe;margin-top:4px}
-  .body{padding:28px 32px}
-  .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0}
-  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;color:#374151}
-  .row .val{font-weight:600;color:#1a202c}
-  .status-unpaid{display:inline-block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700}
-  .cta{display:inline-block;background:#2563eb;color:#fff!important;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;margin-top:12px}
-  .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;font-size:12px;color:#94a3b8}
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="header">
-    <h1>Payment Reminder</h1>
-    <p>GIKI JournalHub — Action Required</p>
-  </div>
-  <div class="body">
-    <p style="font-size:14px;margin-bottom:12px">Dear <strong>${authorName}</strong>,</p>
-    <p style="font-size:14px;color:#374151">This is a friendly reminder that your publication fee for the following paper is still outstanding:</p>
-    <div class="box">
-      <div class="row"><span>Paper Title</span><span class="val" style="max-width:60%;text-align:right">${paperTitle}</span></div>
-      <div class="row"><span>Journal</span><span class="val">${journalName}</span></div>
-      <div class="row"><span>Invoice #</span><span class="val">${invoiceNumber}</span></div>
-      <div class="row"><span>Amount Due</span><span class="val">${currency} ${Number(totalAmount).toFixed(2)}</span></div>
-      <div class="row"><span>Invoice Date</span><span class="val">${invoiceDate}</span></div>
-      <div class="row"><span>Status</span><span class="status-unpaid">UNPAID</span></div>
-    </div>
-    <p style="font-size:14px;color:#374151">Please complete payment and upload your receipt at:</p>
-    <a href="${paperUrl}" class="cta">Upload Receipt →</a>
-    <p style="font-size:13px;color:#64748b;margin-top:16px">If you have already made payment, please upload your receipt so we can verify and proceed.</p>
-  </div>
-  <div class="footer">GIKI JournalHub — Automated Reminder &nbsp;·&nbsp; &copy; ${new Date().getFullYear()}</div>
-</div>
-</body></html>`;
-
   await transporter.sendMail({
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: authorEmail,
     subject: `Payment Reminder — Invoice #${invoiceNumber} for "${paperTitle}"`,
-    html,
+    html: baseEmailTemplate(
+      "Payment Reminder",
+      `
+        <p>Dear <strong>${authorName}</strong>,</p>
+        <p>This is a friendly reminder that your publication fee for the following paper is still outstanding:</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Paper Title</span><span style="font-weight:600;">${paperTitle}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Journal</span><span style="font-weight:600;">${journalName}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Invoice #</span><span style="font-weight:600;">${invoiceNumber}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Amount Due</span><span style="font-weight:600;">${currency} ${Number(totalAmount).toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Invoice Date</span><span style="font-weight:600;">${invoiceDate}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Status</span><span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;">UNPAID</span></div>
+        </div>
+        <p>Please complete payment and upload your receipt:</p>
+        <a href="${paperUrl}" class="button">Upload Receipt →</a>
+        <p style="font-size:13px;color:#64748b;margin-top:16px;">If you have already made payment, please upload your receipt so we can verify and proceed.</p>
+      `,
+    ),
     text: `Payment Reminder | Invoice ${invoiceNumber} | ${currency} ${totalAmount} | Paper: "${paperTitle}"`,
   });
 };
@@ -258,15 +241,26 @@ export const sendPaymentApprovalEmail = async (data: {
     ? `Payment Approved — "${data.paperTitle}"`
     : `Payment Receipt Rejected — "${data.paperTitle}"`;
 
-  const body = data.approved
-    ? `<p>Dear <strong>${data.authorName}</strong>,</p><p>Your payment for the paper <strong>"${data.paperTitle}"</strong> has been <strong style="color:#16a34a">approved</strong>. Your submission is now under editorial review.</p><p>Thank you for your payment.</p>`
-    : `<p>Dear <strong>${data.authorName}</strong>,</p><p>Your payment receipt for the paper <strong>"${data.paperTitle}"</strong> has been <strong style="color:#dc2626">rejected</strong>.</p><p><strong>Reason:</strong> ${data.rejectionReason || "No reason provided."}</p><p>Please upload a valid receipt to proceed. Log in to your dashboard to re-upload.</p>`;
+  const content = data.approved
+    ? `
+        <p>Dear <strong>${data.authorName}</strong>,</p>
+        <p>Your payment for the paper <strong>"${data.paperTitle}"</strong> has been <strong style="color:#16a34a;">approved</strong>.</p>
+        <p>Your submission is now proceeding through the editorial workflow. Thank you for your payment.</p>
+        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">View Submission →</a>
+      `
+    : `
+        <p>Dear <strong>${data.authorName}</strong>,</p>
+        <p>Your payment receipt for the paper <strong>"${data.paperTitle}"</strong> has been <strong style="color:#dc2626;">rejected</strong>.</p>
+        <p><strong>Reason:</strong> ${data.rejectionReason || "No reason provided."}</p>
+        <p>Please upload a valid receipt to proceed with publication.</p>
+        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">Upload Receipt →</a>
+      `;
 
   await transporter.sendMail({
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: data.authorEmail,
     subject,
-    html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:560px;margin:40px auto;color:#1a202c">${body}<hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0"/><p style="font-size:12px;color:#94a3b8">GIKI JournalHub — Automated Notification</p></body></html>`,
+    html: baseEmailTemplate(data.approved ? "Payment Approved" : "Payment Receipt Rejected", content),
     text: subject,
   });
 };

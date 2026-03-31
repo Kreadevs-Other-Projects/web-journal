@@ -45,6 +45,8 @@ interface JournalFields {
   author_guidelines: string;
   aims_and_scope: string;
   journal_category_id: string;
+  publication_fee: string;
+  currency: string;
 }
 
 interface JournalCategory {
@@ -70,6 +72,8 @@ const defaultJournal: JournalFields = {
   author_guidelines: "",
   aims_and_scope: "",
   journal_category_id: "",
+  publication_fee: "",
+  currency: "USD",
 };
 
 const defaultStaff: StaffFields = { name: "", email: "" };
@@ -223,6 +227,11 @@ export default function CreateJournal() {
       formData.append("author_guidelines", journal.author_guidelines);
       if (journal.aims_and_scope)
         formData.append("aims_and_scope", journal.aims_and_scope);
+      if (journal.publication_fee !== "" && journal.publication_fee !== undefined) {
+        const fee = parseFloat(journal.publication_fee);
+        if (!isNaN(fee)) formData.append("publication_fee", String(fee));
+      }
+      if (journal.currency) formData.append("currency", journal.currency);
       if (journal.journal_category_id)
         formData.append("journal_category_id", journal.journal_category_id);
       formData.append("chief_editor", JSON.stringify(chiefEditor));
@@ -435,6 +444,35 @@ export default function CreateJournal() {
                     <SelectContent>
                       <SelectItem value="open_access">Open Access</SelectItem>
                       <SelectItem value="subscription">Subscription</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Publication Fee per Page</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={journal.publication_fee}
+                    onChange={(e) => updateJournal("publication_fee", e.target.value)}
+                    placeholder="e.g. 50"
+                  />
+                  <p className="text-xs text-muted-foreground">Leave blank if no fee (Open Access). Used to calculate APC for authors.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Currency</Label>
+                  <Select
+                    value={journal.currency}
+                    onValueChange={(v) => updateJournal("currency", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="PKR">PKR</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

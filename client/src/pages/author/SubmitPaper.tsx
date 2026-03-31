@@ -76,7 +76,9 @@ export default function SubmitPaper() {
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState(true);
-  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<
+    { id: string; name: string; slug: string }[]
+  >([]);
 
   // Form state
   const [journalId, setJournalId] = useState("");
@@ -114,6 +116,11 @@ export default function SubmitPaper() {
     oa_policy: null,
     peer_review_policy: null,
   });
+
+  // APC info
+  const [apcFee, setApcFee] = useState<number | null>(null);
+  const [apcCurrency, setApcCurrency] = useState<string>("USD");
+  const [apcAgreed, setApcAgreed] = useState(false);
   // Additional information (collapsible)
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [articleType, setArticleType] = useState("");
@@ -146,7 +153,9 @@ export default function SubmitPaper() {
   useEffect(() => {
     fetch(`${url}/categories`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setAvailableCategories(d.categories || []); })
+      .then((d) => {
+        if (d.success) setAvailableCategories(d.categories || []);
+      })
       .catch(() => {});
   }, []);
 
@@ -201,6 +210,10 @@ export default function SubmitPaper() {
             oa_policy: j.oa_policy || null,
             peer_review_policy: j.peer_review_policy || null,
           });
+          setApcFee(
+            j.publication_fee != null ? Number(j.publication_fee) : null,
+          );
+          setApcCurrency(j.currency || "USD");
         }
       } catch (_) {}
     };
@@ -209,6 +222,9 @@ export default function SubmitPaper() {
     setGuidelinesRead(false);
     setOaPolicyRead(false);
     setPeerReviewRead(false);
+    setApcFee(null);
+    setApcCurrency("USD");
+    setApcAgreed(false);
   }, [journalId, token]);
 
   const addKeyword = (kw: string) => {
@@ -321,6 +337,8 @@ export default function SubmitPaper() {
       return "Please confirm you have read the Open Access (OA) Policy.";
     if (journalPolicies.peer_review_policy && !peerReviewRead)
       return "Please confirm you have read the Peer Review Policy.";
+    if (apcFee != null && apcFee > 0 && !apcAgreed)
+      return "Please acknowledge the article processing charge (APC) before submitting.";
     if (!title.trim()) return "Title is required.";
     if (title.length > 200) return "Title cannot exceed 200 characters.";
     if (!abstract.trim()) return "Abstract is required.";
@@ -408,6 +426,7 @@ export default function SubmitPaper() {
       formData.append("preprint_available", String(preprintAvailable));
       formData.append("human_subjects", String(humanSubjects));
       formData.append("other_journal_submission", otherJournalSubmission);
+      formData.append("apc_agreed", String(apcAgreed));
 
       const res = await fetch(`${url}/papers/createPaper`, {
         method: "POST",
@@ -566,8 +585,23 @@ export default function SubmitPaper() {
                   Loading journals…
                 </p>
               ) : (
-                <Select value={journalId} onValueChange={(v) => { setJournalId(v); if (fieldErrors["journal_id"]) setFieldErrors((p) => { const n = {...p}; delete n["journal_id"]; return n; }); }}>
-                  <SelectTrigger className={fieldErrors["journal_id"] ? "border-destructive" : ""}>
+                <Select
+                  value={journalId}
+                  onValueChange={(v) => {
+                    setJournalId(v);
+                    if (fieldErrors["journal_id"])
+                      setFieldErrors((p) => {
+                        const n = { ...p };
+                        delete n["journal_id"];
+                        return n;
+                      });
+                  }}
+                >
+                  <SelectTrigger
+                    className={
+                      fieldErrors["journal_id"] ? "border-destructive" : ""
+                    }
+                  >
                     <SelectValue placeholder="Choose a journal with open submissions" />
                   </SelectTrigger>
                   <SelectContent>
@@ -592,9 +626,76 @@ export default function SubmitPaper() {
                 </Select>
               )}
               {fieldErrors["journal_id"] && (
-                <p className="text-xs text-destructive mt-1">{fieldErrors["journal_id"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {fieldErrors["journal_id"]}
+                </p>
               )}
             </div>
+
+            {/* APC Info Box */}
+            {journalId && apcFee !== null && (
+              <div
+                className={`rounded-lg border p-4 space-y-3 ${
+                  apcFee > 0
+                    ? "border-amber-500/40 bg-amber-500/5"
+                    : "border-green-500/40 bg-green-500/5"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle
+                    className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                      apcFee > 0 ? "text-amber-400" : "text-green-400"
+                    }`}
+                  />
+                  <div className="space-y-1">
+                    {apcFee > 0 ? (
+                      <>
+                        <p className="text-sm font-medium text-amber-300">
+                          Publication Fee (APC)
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This journal charges{" "}
+                          <strong>
+                            {apcCurrency} {apcFee.toFixed(2)}
+                          </strong>{" "}
+                          per paper. Total cost for this paper:{" "}
+                          <strong>
+                            {apcCurrency} {apcFee.toFixed(2)}
+                          </strong>
+                          .
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-green-300">
+                          No Publication Fee (Open Access)
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This journal has no article processing charge.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {apcFee > 0 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Checkbox
+                      id="apc-agreed"
+                      checked={apcAgreed}
+                      onCheckedChange={(checked) => setApcAgreed(!!checked)}
+                    />
+                    <label
+                      htmlFor="apc-agreed"
+                      className="text-sm cursor-pointer"
+                    >
+                      I understand and agree to the publication fee for this
+                      journal
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Policy Acceptance Checkboxes */}
             {journalId &&
@@ -701,13 +802,23 @@ export default function SubmitPaper() {
               </div>
               <Input
                 value={title}
-                onChange={(e) => { setTitle(e.target.value); if (fieldErrors["title"]) setFieldErrors((p) => { const n = {...p}; delete n["title"]; return n; }); }}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (fieldErrors["title"])
+                    setFieldErrors((p) => {
+                      const n = { ...p };
+                      delete n["title"];
+                      return n;
+                    });
+                }}
                 maxLength={200}
                 placeholder="Enter paper title"
                 className={fieldErrors["title"] ? "border-destructive" : ""}
               />
               {fieldErrors["title"] && (
-                <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {fieldErrors["title"]}
+                </p>
               )}
             </div>
 
@@ -1047,7 +1158,9 @@ export default function SubmitPaper() {
                 </div>
               )}
               {fieldErrors["keywords"] && (
-                <p className="text-xs text-destructive mt-1">{fieldErrors["keywords"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {fieldErrors["keywords"]}
+                </p>
               )}
             </div>
 
@@ -1159,7 +1272,9 @@ export default function SubmitPaper() {
                       </SelectTrigger>
                       <SelectContent>
                         {availableCategories.map((c) => (
-                          <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.slug}>
+                            {c.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

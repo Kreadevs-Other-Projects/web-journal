@@ -96,6 +96,8 @@ interface Journal {
   issues: JournalIssue[];
   is_taken_down?: boolean;
   takedown_reason?: string;
+  publication_fee?: number | null;
+  currency?: string | null;
 
   // These fields are populated by the new LEFT JOIN subquery
   chief_editor_invitation_status?:
@@ -161,8 +163,18 @@ export default function PublisherDashboard() {
   const [replacingCE, setReplacingCE] = useState(false);
   const [invitingCE, setInvitingCE] = useState(false);
   const [newCEForm, setNewCEForm] = useState({ name: "", email: "" });
-  const [issuePreview, setIssuePreview] = useState<{ label: string; volume: number; issue: number; year: number } | null>(null);
+  const [issuePreview, setIssuePreview] = useState<{
+    label: string;
+    volume: number;
+    issue: number;
+    year: number;
+  } | null>(null);
   const [creatingIssue, setCreatingIssue] = useState(false);
+
+  // APC Settings
+  const [apcFee, setApcFee] = useState<string>("");
+  const [apcCurrency, setApcCurrency] = useState<string>("USD");
+  const [savingAPC, setSavingAPC] = useState(false);
 
   const statusMap: Record<string, string[]> = {
     all: ["draft", "active", "suspended", "archived"],
@@ -232,9 +244,12 @@ export default function PublisherDashboard() {
 
   const fetchIssuePreview = async (journalId: string) => {
     try {
-      const res = await fetch(`${url}/journal-issue/${journalId}/next-issue-preview`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${url}/journal-issue/${journalId}/next-issue-preview`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       const data = await res.json();
       if (data.success) setIssuePreview(data.preview);
     } catch {}
@@ -253,12 +268,19 @@ export default function PublisherDashboard() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create issue");
-      toast({ title: "Success", description: `Issue created: ${data.issue?.label}` });
+      toast({
+        title: "Success",
+        description: `Issue created: ${data.issue?.label}`,
+      });
       setCreateIssueOpen(false);
       setIssuePreview(null);
       fetchJournals();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
     } finally {
       setCreatingIssue(false);
     }
@@ -448,7 +470,11 @@ export default function PublisherDashboard() {
 
   // Takedown state
   const [takedownModalOpen, setTakedownModalOpen] = useState(false);
-  const [takedownTarget, setTakedownTarget] = useState<{ type: "journal"; id: string; title: string } | null>(null);
+  const [takedownTarget, setTakedownTarget] = useState<{
+    type: "journal";
+    id: string;
+    title: string;
+  } | null>(null);
   const [takedownReason, setTakedownReason] = useState("");
   const [takedownProcessing, setTakedownProcessing] = useState(false);
 
@@ -502,7 +528,12 @@ export default function PublisherDashboard() {
 
   const handleIssueReset = async () => {
     if (resetingIssues) return;
-    if (!window.confirm("This will close ALL open journal issues platform-wide. Continue?")) return;
+    if (
+      !window.confirm(
+        "This will close ALL open journal issues platform-wide. Continue?",
+      )
+    )
+      return;
     setResetingIssues(true);
     try {
       const res = await fetch(`${url}/publisher/issues/reset-all`, {
@@ -524,37 +555,63 @@ export default function PublisherDashboard() {
     if (!takedownTarget || !takedownReason.trim()) return;
     setTakedownProcessing(true);
     try {
-      const res = await fetch(`${url}/publisher/journals/${takedownTarget.id}/takedown`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: takedownReason }),
-      });
+      const res = await fetch(
+        `${url}/publisher/journals/${takedownTarget.id}/takedown`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason: takedownReason }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast({ title: "Journal taken down", description: `"${takedownTarget.title}" is now hidden from public view.` });
+      toast({
+        title: "Journal taken down",
+        description: `"${takedownTarget.title}" is now hidden from public view.`,
+      });
       setTakedownModalOpen(false);
       setTakedownReason("");
       setTakedownTarget(null);
       fetchJournals();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
     } finally {
       setTakedownProcessing(false);
     }
   };
 
-  const handleRestoreJournal = async (journalId: string, journalTitle: string) => {
+  const handleRestoreJournal = async (
+    journalId: string,
+    journalTitle: string,
+  ) => {
     try {
-      const res = await fetch(`${url}/publisher/journals/${journalId}/restore`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${url}/publisher/journals/${journalId}/restore`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast({ title: "Journal restored", description: `"${journalTitle}" is now visible to the public.` });
+      toast({
+        title: "Journal restored",
+        description: `"${journalTitle}" is now visible to the public.`,
+      });
       fetchJournals();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
     }
   };
 
@@ -610,8 +667,66 @@ export default function PublisherDashboard() {
   useEffect(() => {
     if (!detailsModalOpen) {
       setSelectedIssue(null);
+    } else if (selectedJournal) {
+      setApcFee(
+        selectedJournal.publication_fee != null
+          ? String(selectedJournal.publication_fee)
+          : "",
+      );
+      setApcCurrency(selectedJournal.currency || "USD");
     }
-  }, [detailsModalOpen]);
+  }, [detailsModalOpen, selectedJournal]);
+
+  const handleSaveAPC = async () => {
+    if (!selectedJournal) return;
+    const fee = apcFee === "" ? 0 : parseFloat(apcFee);
+    if (isNaN(fee) || fee < 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid fee",
+        description: "Fee must be a non-negative number.",
+      });
+      return;
+    }
+    try {
+      setSavingAPC(true);
+      const res = await fetch(`${url}/journal/${selectedJournal.id}/apc`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          publication_fee: fee,
+          currency: apcCurrency,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "APC Settings Saved",
+        description: `Fee set to ${fee} ${apcCurrency} per page.`,
+      });
+      setJournals((prev) =>
+        prev.map((j) =>
+          j.id === selectedJournal.id
+            ? { ...j, publication_fee: fee, currency: apcCurrency }
+            : j,
+        ),
+      );
+      setSelectedJournal((j) =>
+        j ? { ...j, publication_fee: fee, currency: apcCurrency } : j,
+      );
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setSavingAPC(false);
+    }
+  };
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
@@ -772,35 +887,57 @@ export default function PublisherDashboard() {
                         <div className="flex items-center gap-1 shrink-0">
                           {journal.is_taken_down ? (
                             <Badge className="border text-xs bg-red-100 text-red-800 border-red-300 hover:bg-red-100">
-                              <ShieldOff className="h-3 w-3 mr-1" />Taken Down
+                              <ShieldOff className="h-3 w-3 mr-1" />
+                              Taken Down
                             </Badge>
                           ) : (
                             getStatusBadge(journal.status)
                           )}
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                            <DropdownMenuTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                              >
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuContent
+                              align="end"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {journal.is_taken_down ? (
                                 <DropdownMenuItem
                                   className="text-green-600 gap-2"
-                                  onClick={() => handleRestoreJournal(journal.id, journal.title)}
+                                  onClick={() =>
+                                    handleRestoreJournal(
+                                      journal.id,
+                                      journal.title,
+                                    )
+                                  }
                                 >
-                                  <ShieldCheck className="h-4 w-4" /> Restore Journal
+                                  <ShieldCheck className="h-4 w-4" /> Restore
+                                  Journal
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
                                   className="text-red-600 gap-2"
                                   onClick={() => {
-                                    setTakedownTarget({ type: "journal", id: journal.id, title: journal.title });
+                                    setTakedownTarget({
+                                      type: "journal",
+                                      id: journal.id,
+                                      title: journal.title,
+                                    });
                                     setTakedownReason("");
                                     setTakedownModalOpen(true);
                                   }}
                                 >
-                                  <ShieldOff className="h-4 w-4" /> Take Down Journal
+                                  <ShieldOff className="h-4 w-4" /> Take Down
+                                  Journal
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
@@ -1045,7 +1182,8 @@ export default function PublisherDashboard() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setCreateIssueOpen(true);
-                          if (selectedJournal) fetchIssuePreview(selectedJournal.id);
+                          if (selectedJournal)
+                            fetchIssuePreview(selectedJournal.id);
                         }}
                       >
                         <Plus className="h-3.5 w-3.5" /> Create New Issue
@@ -1141,6 +1279,55 @@ export default function PublisherDashboard() {
                     </div>
                   </CardContent>
                 </Card>
+                {/* APC Settings */}
+                <Card className="glass-card border-blue-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      Article Processing Charge (APC) Settings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-1 block">
+                        Publication Fee per Page
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={apcFee}
+                          onChange={(e) => setApcFee(e.target.value)}
+                          placeholder="0"
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <select
+                          value={apcCurrency}
+                          onChange={(e) => setApcCurrency(e.target.value)}
+                          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="USD">USD</option>
+                          <option value="PKR">PKR</option>
+                          <option value="EUR">EUR</option>
+                          <option value="GBP">GBP</option>
+                        </select>
+                      </div>
+                      {apcFee && parseFloat(apcFee) > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          e.g. Total for 10 pages = {apcCurrency}{" "}
+                          {(parseFloat(apcFee) * 10).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={handleSaveAPC}
+                      disabled={savingAPC}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      {savingAPC ? "Saving..." : "Save APC Settings"}
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
@@ -1154,7 +1341,13 @@ export default function PublisherDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <Dialog open={createIssueOpen} onOpenChange={(open) => { setCreateIssueOpen(open); if (!open) setIssuePreview(null); }}>
+        <Dialog
+          open={createIssueOpen}
+          onOpenChange={(open) => {
+            setCreateIssueOpen(open);
+            if (!open) setIssuePreview(null);
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1166,9 +1359,15 @@ export default function PublisherDashboard() {
             <div className="py-4">
               {issuePreview ? (
                 <div className="rounded-lg border bg-muted/40 p-4 text-center space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Next issue</p>
-                  <p className="text-xl font-semibold text-foreground">{issuePreview.label}</p>
-                  <p className="text-sm text-muted-foreground">{issuePreview.year}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Next issue
+                  </p>
+                  <p className="text-xl font-semibold text-foreground">
+                    {issuePreview.label}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {issuePreview.year}
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-lg border bg-muted/40 p-4 text-center text-sm text-muted-foreground">
@@ -1177,7 +1376,10 @@ export default function PublisherDashboard() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateIssueOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setCreateIssueOpen(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={createIssue} disabled={creatingIssue}>
@@ -1390,19 +1592,31 @@ export default function PublisherDashboard() {
       </Dialog>
 
       {/* Takedown confirmation modal */}
-      <Dialog open={takedownModalOpen} onOpenChange={(open) => { if (!open) { setTakedownModalOpen(false); setTakedownReason(""); setTakedownTarget(null); } }}>
+      <Dialog
+        open={takedownModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTakedownModalOpen(false);
+            setTakedownReason("");
+            setTakedownTarget(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <ShieldOff className="h-5 w-5" /> Take Down Journal
             </DialogTitle>
             <DialogDescription>
-              This will hide <strong>{takedownTarget?.title}</strong> and all its issues and papers from public view. You can restore it later.
+              This will hide <strong>{takedownTarget?.title}</strong> and all
+              its issues and papers from public view. You can restore it later.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
-              <Label className="text-sm mb-1.5 block">Reason for Takedown <span className="text-red-500">*</span></Label>
+              <Label className="text-sm mb-1.5 block">
+                Reason for Takedown <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 value={takedownReason}
                 onChange={(e) => setTakedownReason(e.target.value)}
@@ -1412,13 +1626,26 @@ export default function PublisherDashboard() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setTakedownModalOpen(false); setTakedownReason(""); setTakedownTarget(null); }}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTakedownModalOpen(false);
+                setTakedownReason("");
+                setTakedownTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
               onClick={handleTakedown}
               disabled={!takedownReason.trim() || takedownProcessing}
             >
-              {takedownProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+              {takedownProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldOff className="h-4 w-4" />
+              )}
               Confirm Takedown
             </Button>
           </DialogFooter>

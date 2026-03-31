@@ -14,10 +14,88 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Users, UserCheck, Loader2, UserPlus, X, Clock, XCircle } from "lucide-react";
+import { Users, UserCheck, Loader2, UserPlus, Clock, XCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+
+interface InviteDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  role: "sub_editor" | "reviewer";
+  inviteForm: { name: string; email: string };
+  setInviteForm: React.Dispatch<React.SetStateAction<{ name: string; email: string }>>;
+  inviteFieldErrors: Record<string, string>;
+  setInviteFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  inviting: boolean;
+  onSubmit: (role: "sub_editor" | "reviewer") => void;
+}
+
+function InviteDialog({
+  open,
+  onOpenChange,
+  role,
+  inviteForm,
+  setInviteForm,
+  inviteFieldErrors,
+  setInviteFieldErrors,
+  inviting,
+  onSubmit,
+}: InviteDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Invite {role === "sub_editor" ? "Associate Editor" : "Reviewer"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-muted-foreground">
+            An invitation email will be sent. They will set their own password when they accept.
+          </p>
+          <div className="space-y-1">
+            <Label>Full Name *</Label>
+            <Input
+              placeholder="Full name"
+              value={inviteForm.name}
+              onChange={(e) => {
+                setInviteForm((p) => ({ ...p, name: e.target.value }));
+                if (inviteFieldErrors.name) setInviteFieldErrors((p) => { const n = { ...p }; delete n.name; return n; });
+              }}
+              className={inviteFieldErrors.name ? "border-destructive" : ""}
+            />
+            {inviteFieldErrors.name && <p className="text-xs text-destructive">{inviteFieldErrors.name}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Email *</Label>
+            <Input
+              type="email"
+              placeholder="email@example.com"
+              value={inviteForm.email}
+              onChange={(e) => {
+                setInviteForm((p) => ({ ...p, email: e.target.value }));
+                if (inviteFieldErrors.email) setInviteFieldErrors((p) => { const n = { ...p }; delete n.email; return n; });
+              }}
+              className={inviteFieldErrors.email ? "border-destructive" : ""}
+            />
+            {inviteFieldErrors.email && <p className="text-xs text-destructive">{inviteFieldErrors.email}</p>}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={() => { onOpenChange(false); setInviteForm({ name: "", email: "" }); setInviteFieldErrors({}); }}>
+            Cancel
+          </Button>
+          <Button onClick={() => onSubmit(role)} disabled={inviting || !inviteForm.name || !inviteForm.email}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            {inviting ? "Sending..." : "Send Invitation"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface TeamMember {
   id: string;
@@ -209,61 +287,6 @@ export default function CETeam() {
     </div>
   );
 
-  const InviteDialog = ({
-    open,
-    onOpenChange,
-    role,
-  }: {
-    open: boolean;
-    onOpenChange: (v: boolean) => void;
-    role: "sub_editor" | "reviewer";
-  }) => (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Invite {role === "sub_editor" ? "Associate Editor" : "Reviewer"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <p className="text-sm text-muted-foreground">
-            An invitation email will be sent. They will set their own password when they accept.
-          </p>
-          <div className="space-y-1">
-            <Label>Full Name *</Label>
-            <Input
-              placeholder="Full name"
-              value={inviteForm.name}
-              onChange={(e) => { setInviteForm((p) => ({ ...p, name: e.target.value })); if (inviteFieldErrors.name) setInviteFieldErrors((p) => { const n = {...p}; delete n.name; return n; }); }}
-              className={inviteFieldErrors.name ? "border-destructive" : ""}
-            />
-            {inviteFieldErrors.name && <p className="text-xs text-destructive">{inviteFieldErrors.name}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label>Email *</Label>
-            <Input
-              type="email"
-              placeholder="email@example.com"
-              value={inviteForm.email}
-              onChange={(e) => { setInviteForm((p) => ({ ...p, email: e.target.value })); if (inviteFieldErrors.email) setInviteFieldErrors((p) => { const n = {...p}; delete n.email; return n; }); }}
-              className={inviteFieldErrors.email ? "border-destructive" : ""}
-            />
-            {inviteFieldErrors.email && <p className="text-xs text-destructive">{inviteFieldErrors.email}</p>}
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => { onOpenChange(false); setInviteForm({ name: "", email: "" }); setInviteFieldErrors({}); }}>
-            Cancel
-          </Button>
-          <Button onClick={() => handleInvite(role)} disabled={inviting || !inviteForm.name || !inviteForm.email}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            {inviting ? "Sending..." : "Send Invitation"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 
   const pendingSE = invitations.filter((i) => i.role === "sub_editor");
   const pendingRev = invitations.filter((i) => i.role === "reviewer");
@@ -374,8 +397,8 @@ export default function CETeam() {
         )}
       </div>
 
-      <InviteDialog open={openInviteSE} onOpenChange={setOpenInviteSE} role="sub_editor" />
-      <InviteDialog open={openInviteRev} onOpenChange={setOpenInviteRev} role="reviewer" />
+      <InviteDialog open={openInviteSE} onOpenChange={setOpenInviteSE} role="sub_editor" inviteForm={inviteForm} setInviteForm={setInviteForm} inviteFieldErrors={inviteFieldErrors} setInviteFieldErrors={setInviteFieldErrors} inviting={inviting} onSubmit={handleInvite} />
+      <InviteDialog open={openInviteRev} onOpenChange={setOpenInviteRev} role="reviewer" inviteForm={inviteForm} setInviteForm={setInviteForm} inviteFieldErrors={inviteFieldErrors} setInviteFieldErrors={setInviteFieldErrors} inviting={inviting} onSubmit={handleInvite} />
     </DashboardLayout>
   );
 }

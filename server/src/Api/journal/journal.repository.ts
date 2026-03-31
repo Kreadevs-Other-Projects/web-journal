@@ -71,6 +71,21 @@ export const updateJournalById = async (id: string, data: Journal) => {
   return result.rows[0];
 };
 
+export const updateJournalAPC = async (
+  journalId: string,
+  fee: number,
+  currency: string,
+) => {
+  const result = await pool.query(
+    `UPDATE journals
+     SET publication_fee = $1, currency = $2, updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, publication_fee, currency`,
+    [fee, currency, journalId],
+  );
+  return result.rows[0];
+};
+
 export const delteJournalById = async (id: string) => {
   await pool.query("DELETE FROM journals WHERE id = $1", [id]);
   return true;

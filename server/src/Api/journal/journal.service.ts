@@ -8,6 +8,7 @@ import {
   delteJournalById,
   createJournalByPublisher,
   findEditorialBoard,
+  updateJournalAPC,
 } from "./journal.repository";
 import { insertUserRole } from "../auth/auth.repository";
 import { sendInvitationEmail } from "../../utils/emails/userEmails";
@@ -262,4 +263,21 @@ export const publisherCreateJournalService = async (
   }).catch(console.error);
 
   return journal;
+};
+
+const VALID_CURRENCIES = ["USD", "PKR", "EUR", "GBP"];
+
+export const updateJournalAPCService = async (
+  journalId: string,
+  ownerId: string,
+  fee: number,
+  currency: string,
+) => {
+  if (fee < 0) throw new Error("Fee must be >= 0");
+  if (!VALID_CURRENCIES.includes(currency))
+    throw new Error(`Currency must be one of: ${VALID_CURRENCIES.join(", ")}`);
+  const journal = await findJournalById(journalId);
+  if (!journal) throw new Error("Journal not found");
+  if (journal.owner_id !== ownerId) throw new Error("Access denied");
+  return updateJournalAPC(journalId, fee, currency);
 };

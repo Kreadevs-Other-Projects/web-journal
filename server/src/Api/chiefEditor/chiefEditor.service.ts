@@ -5,6 +5,7 @@ import { insertStatusLog } from "../paper/paper.repository";
 import { initiatePaperPaymentService } from "../paperPayment/paperPayment.service";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
 import bcrypt from "bcrypt";
 
 export const getChiefEditorJournalsService = async (chiefEditorId: string) => {
@@ -195,7 +196,12 @@ export const replaceSubEditorService = async (
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: old_ae_email,
       subject: `You have been removed from paper "${title}"`,
-      text: `Hi ${old_ae_name},\n\nYou have been removed as Associate Editor for the paper "${title}". Another editor has been assigned to this paper.`,
+      html: baseEmailTemplate(
+        "Editor Assignment Update",
+        `<p>Dear <strong>${old_ae_name}</strong>,</p>
+         <p>You have been removed as Associate Editor for the paper <strong>"${title}"</strong>.</p>
+         <p>Another editor has been assigned to this paper.</p>`,
+      ),
     }).catch(() => {});
   }
 
@@ -207,7 +213,14 @@ export const replaceSubEditorService = async (
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: newAE.email,
     subject: `You have been assigned to paper "${title}"`,
-    text: `Hi ${newAE.username},\n\nYou have been assigned as Associate Editor for the paper "${title}". Please log in to review the manuscript.`,
+    html: baseEmailTemplate(
+      "New Paper Assignment",
+      `<p>Dear <strong>${newAE.username}</strong>,</p>
+       <p>You have been assigned as Associate Editor for the paper:</p>
+       <p><strong>"${title}"</strong></p>
+       <p>Please log in to review the manuscript and take appropriate action.</p>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
+    ),
   }).catch(() => {});
 
   return { success: true };
@@ -340,11 +353,13 @@ export const overridePaperStatusService = async (
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: paper.author_email,
     subject: `Status update for your paper: "${paper.title}"`,
-    html: `<p>Dear ${paper.author_name},</p>
-<p>The status of your paper <strong>"${paper.title}"</strong> has been updated to <strong>${newStatus.replace(/_/g, " ")}</strong> by the Chief Editor.</p>
-<p><strong>Reason:</strong> ${reason}</p>
-<p>Please log in to your dashboard for more details.</p>
-<p>Best regards,<br/>GIKI JournalHub</p>`,
+    html: baseEmailTemplate(
+      "Paper Status Updated",
+      `<p>Dear <strong>${paper.author_name}</strong>,</p>
+       <p>The status of your paper <strong>"${paper.title}"</strong> has been updated to <strong>${newStatus.replace(/_/g, " ")}</strong> by the Chief Editor.</p>
+       <p><strong>Reason:</strong> ${reason}</p>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">View Submission →</a>`,
+    ),
   }).catch(console.error);
 
   return { success: true };
@@ -383,11 +398,14 @@ export const remindAEService = async (paperId: string, chiefEditorId: string) =>
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: ae.email,
     subject: `Reminder: Action required for paper "${ae.title}"`,
-    html: `<p>Dear ${ae.username},</p>
-<p>This is a friendly reminder that your review and decision is pending for the paper:</p>
-<p><strong>"${ae.title}"</strong></p>
-<p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
-<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+    html: baseEmailTemplate(
+      "Action Required",
+      `<p>Dear <strong>${ae.username}</strong>,</p>
+       <p>This is a friendly reminder that your review and decision is pending for the paper:</p>
+       <p><strong>"${ae.title}"</strong></p>
+       <p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
+    ),
   }).catch(console.error);
 
   return { message: `Reminder sent to ${ae.username}` };
@@ -426,11 +444,14 @@ export const remindAllReviewersService = async (paperId: string, chiefEditorId: 
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: reviewer.email,
       subject: `Reminder: Review pending for paper "${reviewer.title}"`,
-      html: `<p>Dear ${reviewer.username},</p>
-<p>This is a friendly reminder that your peer review is pending for the paper:</p>
-<p><strong>"${reviewer.title}"</strong></p>
-<p>Please log in to your Reviewer dashboard to complete your review at your earliest convenience. Your timely review is critical to the publication process.</p>
-<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+      html: baseEmailTemplate(
+        "Review Reminder",
+        `<p>Dear <strong>${reviewer.username}</strong>,</p>
+         <p>This is a friendly reminder that your peer review is pending for the paper:</p>
+         <p><strong>"${reviewer.title}"</strong></p>
+         <p>Your timely review is critical to the publication process.</p>
+         <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
+      ),
     }).catch(console.error);
 
     reminded.push(reviewer.username);
@@ -481,16 +502,18 @@ export const remindAEBulkService = async (aeId: string, chiefEditorId: string) =
     await repo.insertReminderRepo(row.paper_id, aeId, chiefEditorId, "sub_editor");
   }
 
-  const paperList = res.rows.map((r: any, i: number) => `${i + 1}. ${r.title}`).join("<br/>");
+  const paperList = res.rows.map((r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`).join("");
   transporter.sendMail({
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: ae.email,
     subject: `Follow-up: ${res.rows.length} paper(s) awaiting your decision`,
-    html: `<p>Dear ${ae.username},</p>
-<p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your decision:</p>
-<p>${paperList}</p>
-<p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
-<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+    html: baseEmailTemplate(
+      "Papers Awaiting Your Decision",
+      `<p>Dear <strong>${ae.username}</strong>,</p>
+       <p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your decision:</p>
+       <ol style="margin:16px 0;padding-left:20px;">${paperList}</ol>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
+    ),
   }).catch(console.error);
 
   return { message: `Reminder sent for ${res.rows.length} pending paper(s)` };
@@ -528,16 +551,18 @@ export const remindReviewerBulkService = async (reviewerId: string, chiefEditorI
     await repo.insertReminderRepo(row.paper_id, reviewerId, chiefEditorId, "reviewer");
   }
 
-  const paperList = res.rows.map((r: any, i: number) => `${i + 1}. ${r.title}`).join("<br/>");
+  const paperList = res.rows.map((r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`).join("");
   transporter.sendMail({
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: reviewer.email,
     subject: `Follow-up: ${res.rows.length} review(s) awaiting your submission`,
-    html: `<p>Dear ${reviewer.username},</p>
-<p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your review:</p>
-<p>${paperList}</p>
-<p>Please log in to your Reviewer dashboard to complete your reviews at your earliest convenience.</p>
-<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+    html: baseEmailTemplate(
+      "Reviews Awaiting Your Submission",
+      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+       <p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your review:</p>
+       <ol style="margin:16px 0;padding-left:20px;">${paperList}</ol>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Reviews →</a>`,
+    ),
   }).catch(console.error);
 
   return { message: `Reminder sent for ${res.rows.length} pending review(s)` };
@@ -579,11 +604,14 @@ export const remindReviewerService = async (
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: reviewer.email,
     subject: `Reminder: Review pending for paper "${reviewer.title}"`,
-    html: `<p>Dear ${reviewer.username},</p>
-<p>This is a friendly reminder that your peer review is pending for the paper:</p>
-<p><strong>"${reviewer.title}"</strong></p>
-<p>Please log in to your Reviewer dashboard to complete your review at your earliest convenience. Your timely review is critical to the publication process.</p>
-<p>Best regards,<br/>GIKI JournalHub Editorial Team</p>`,
+    html: baseEmailTemplate(
+      "Review Reminder",
+      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+       <p>This is a friendly reminder that your peer review is pending for the paper:</p>
+       <p><strong>"${reviewer.title}"</strong></p>
+       <p>Your timely review is critical to the publication process.</p>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
+    ),
   }).catch(console.error);
 
   return { message: `Reminder sent to ${reviewer.username}` };

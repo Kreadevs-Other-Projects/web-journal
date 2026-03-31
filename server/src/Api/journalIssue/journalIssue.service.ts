@@ -15,6 +15,7 @@ import {
 import { pool } from "../../configs/db";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
 
 export type { JournalIssueData };
 
@@ -125,7 +126,13 @@ export const requestNewIssueService = async (
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: publisher_email,
       subject: `New Issue Request — ${title}`,
-      text: `Hi ${publisher_name},\n\n${user.username} (Journal Manager) has requested a new issue for "${title}".\n\nRequesting: ${serial.label} (${serial.year}).\n\nPlease log in to review this request.`,
+      html: baseEmailTemplate(
+        "New Issue Request",
+        `<p>Dear <strong>${publisher_name}</strong>,</p>
+         <p><strong>${user.username}</strong> (Journal Manager) has requested a new issue for <strong>"${title}"</strong>.</p>
+         <p><strong>Requesting:</strong> ${serial.label} (${serial.year})</p>
+         <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/publisher" class="button">Review Request →</a>`,
+      ),
     }).catch(() => {});
   }
 
@@ -176,7 +183,13 @@ export const reviewIssueRequestService = async (
         from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
         to: email,
         subject: "Your Issue Request Has Been Approved",
-        text: `Hi ${username},\n\nYour request has been approved. Issue created: ${serial.label} (${serial.year}).`,
+        html: baseEmailTemplate(
+          "Issue Request Approved",
+          `<p>Dear <strong>${username}</strong>,</p>
+           <p>Your issue request has been approved.</p>
+           <p><strong>Issue Created:</strong> ${serial.label} (${serial.year})</p>
+           <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/journal-manager" class="button">View Issues →</a>`,
+        ),
       }).catch(() => {});
     }
   }

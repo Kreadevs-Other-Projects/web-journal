@@ -6,6 +6,7 @@ import {
 import { pool } from "../../configs/db";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
 import bcrypt from "bcrypt";
 
 export const fetchSubEditorPapers = async (subEditorId: string) => {
@@ -136,7 +137,15 @@ export const subEditorDecisionService = async (
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Revision Required — "${title}"`,
-          text: `Hi ${username},\n\nYour paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Revision Required\n\nAssociate Editor Comments:\n${comments}\n\nPlease log in and upload a revised version of your paper to continue the review process.`,
+          html: baseEmailTemplate(
+            "Revision Required",
+            `<p>Dear <strong>${username}</strong>,</p>
+             <p>Your paper <strong>"${title}"</strong> has been reviewed by our Associate Editor.</p>
+             <p><strong>Decision:</strong> Revision Required</p>
+             ${comments ? `<p><strong>Associate Editor Comments:</strong></p><p style="background:#0B1220;padding:12px;border-radius:8px;border-left:3px solid #2563EB;">${comments}</p>` : ""}
+             <p>Please log in and upload a revised version of your paper to continue the review process.</p>
+             <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">Submit Revision →</a>`,
+          ),
         })
         .catch(() => {});
     } else {
@@ -145,7 +154,15 @@ export const subEditorDecisionService = async (
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Paper Decision — "${title}"`,
-          text: `Hi ${username},\n\nWe regret to inform you that your paper "${title}" has been reviewed by our Associate Editor.\n\nDecision: Require Revision\n\nAssociate Editor Comments:\n${comments}\n\nThank you for your submission. You are welcome to submit to a future issue.`,
+          html: baseEmailTemplate(
+            "Paper Decision",
+            `<p>Dear <strong>${username}</strong>,</p>
+             <p>Your paper <strong>"${title}"</strong> has been reviewed by our Associate Editor.</p>
+             <p><strong>Decision:</strong> Revision Required</p>
+             ${comments ? `<p><strong>Associate Editor Comments:</strong></p><p style="background:#0B1220;padding:12px;border-radius:8px;border-left:3px solid #2563EB;">${comments}</p>` : ""}
+             <p>Thank you for your submission. You are welcome to submit to a future issue.</p>
+             <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">View Submission →</a>`,
+          ),
         })
         .catch(() => {});
     }
@@ -200,7 +217,15 @@ export const suggestReviewerService = async (
         from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
         to: email,
         subject: `Reviewer Suggestion for "${paper_title}"`,
-        text: `Hi ${username},\n\n${subName} has suggested a reviewer for "${paper_title}".\n\nSuggested reviewer: ${data.suggested_name} <${data.suggested_email}>\nKeywords: ${(data.keywords || []).join(", ")}\n\nPlease log in to approve or reject this suggestion.`,
+        html: baseEmailTemplate(
+          "New Reviewer Suggestion",
+          `<p>Dear <strong>${username}</strong>,</p>
+           <p><strong>${subName}</strong> has suggested a reviewer for <strong>"${paper_title}"</strong>.</p>
+           <p><strong>Suggested Reviewer:</strong> ${data.suggested_name} &lt;${data.suggested_email}&gt;</p>
+           ${data.keywords?.length ? `<p><strong>Keywords:</strong> ${data.keywords.join(", ")}</p>` : ""}
+           <p>Please log in to approve or reject this suggestion.</p>
+           <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/chief-editor" class="button">Review Suggestion →</a>`,
+        ),
       })
       .catch(() => {});
   }
@@ -268,7 +293,11 @@ export const reviewReviewerRequestService = async (
           from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
           to: seRes.rows[0].email,
           subject: "Your Reviewer Suggestion Has Been Approved",
-          text: `Hi ${seRes.rows[0].username},\n\nYour suggestion for reviewer "${req.suggested_name}" has been approved and they have been assigned to the paper.`,
+          html: baseEmailTemplate(
+            "Reviewer Suggestion Approved",
+            `<p>Dear <strong>${seRes.rows[0].username}</strong>,</p>
+             <p>Your suggestion for reviewer <strong>"${req.suggested_name}"</strong> has been approved and they have been assigned to the paper.</p>`,
+          ),
         })
         .catch(() => {});
     }

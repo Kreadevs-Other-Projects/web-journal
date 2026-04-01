@@ -61,8 +61,8 @@ export const setPaperPublished = async (
     throw new Error("Paper already published");
   }
 
-  if (paperRes.rows[0].status !== "accepted") {
-    throw new Error("Paper must be accepted before publishing");
+  if (paperRes.rows[0].status !== "ready_for_publication") {
+    throw new Error("Paper must be ready before publishing");
   }
 
   // ✅ Payment check

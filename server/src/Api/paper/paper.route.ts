@@ -26,7 +26,6 @@ router.get("/keyword-suggestions", authMiddleware, getKeywordSuggestions);
 router.post(
   "/extract-metadata",
   authMiddleware,
-  authorize("author"),
   manuscriptUpload.single("file"),
   extractMetadata,
 );
@@ -34,7 +33,6 @@ router.post(
 router.post(
   "/createPaper",
   authMiddleware,
-  authorize("author"),
   manuscriptUpload.single("manuscript"),
   createPaper,
 );
@@ -53,7 +51,6 @@ router.get("/getAllPapers", authMiddleware, getAllPapers);
 router.get(
   "/getPapersByAuthor",
   authMiddleware,
-  authorize("author"),
   getPapersByAuthor,
 );
 
@@ -68,14 +65,12 @@ router.put(
 router.get(
   "/:paperId/tracking",
   authMiddleware,
-  authorize("author"),
   getPaperTrackingController,
 );
 
 router.post(
   "/:paperId/revision",
   authMiddleware,
-  authorize("author"),
   manuscriptUpload.single("manuscript"),
   uploadRevisionController,
 );

@@ -98,7 +98,21 @@ const App = () => (
                     element={<AcceptInvitation />}
                   />
                   <Route path="/unauthorized" element={<Unauthorized />} />
-                  <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
+                  <Route
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={[
+                          "author",
+                          "chief_editor",
+                          "sub_editor",
+                          "reviewer",
+                          "publisher",
+                          "journal_manager",
+                          "owner",
+                        ]}
+                      />
+                    }
+                  >
                     <Route path="/author" element={<AuthorDashboard />} />
                     <Route path="/author/submit" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />

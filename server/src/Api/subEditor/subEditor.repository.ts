@@ -62,12 +62,13 @@ export const assignReviewer = async (
   assignedBy: string,
 ) => {
   const statusCheck = await pool.query(
-    "SELECT status FROM papers WHERE id = $1",
+    "SELECT status, journal_id FROM papers WHERE id = $1",
     [paperId],
   );
   if (statusCheck.rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
   }
+  const journalId = statusCheck.rows[0]?.journal_id ?? null;
 
   const client = await pool.connect();
 
@@ -94,6 +95,16 @@ export const assignReviewer = async (
       `,
       [paperId],
     );
+
+    // Ensure reviewer role is tracked in user_roles for this journal
+    if (journalId) {
+      await client.query(
+        `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+         VALUES ($1, 'reviewer', $2, $3, true)
+         ON CONFLICT (user_id, role, journal_id) DO UPDATE SET is_active = true`,
+        [reviewerId, journalId, assignedBy],
+      );
+    }
 
     await client.query("COMMIT");
 

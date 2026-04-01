@@ -48,6 +48,17 @@ export const createPaperService = async (
 ) => {
   const paper = await createPaper(data);
 
+  // Grant 'author' role in user_roles so multi-role switcher picks it up.
+  // Uses WHERE NOT EXISTS to handle NULL journal_id (ON CONFLICT won't match NULLs).
+  await pool.query(
+    `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+     SELECT $1, 'author', NULL, $1, true
+     WHERE NOT EXISTS (
+       SELECT 1 FROM user_roles WHERE user_id = $1 AND role = 'author' AND journal_id IS NULL
+     )`,
+    [data.author_id],
+  );
+
   // Create version 1 if a manuscript was uploaded
   if (data.manuscript_url) {
     const version = await createPaperVersion(paper.id, data.author_id, {

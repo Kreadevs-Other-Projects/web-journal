@@ -3,12 +3,18 @@ import { jwtDecode } from "jwt-decode";
 import type { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 
+export interface UserRoleContext {
+  role: string;
+  journal_id: string | null;
+  journal_name: string | null;
+}
+
 export interface AuthUser {
   id: string;
   role: UserRole;
   email?: string;
   username?: string;
-  roles: UserRole[];
+  roles: UserRoleContext[];
   active_journal_id: string | null;
 }
 
@@ -35,7 +41,7 @@ interface JwtPayload {
   role: UserRole;
   email?: string;
   username?: string;
-  roles?: UserRole[];
+  roles?: (UserRoleContext | string)[];
   active_role?: UserRole;
   active_journal_id?: string | null;
   exp: number;
@@ -50,18 +56,38 @@ interface AuthContextType {
   login: (token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole, journalId?: string | null) => Promise<void>;
+  hasAnyRole: (roles: string[]) => boolean;
+  currentRoleLabel: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const ROLE_LABELS: Record<string, string> = {
+  chief_editor: "Chief Editor",
+  sub_editor: "Associate Editor",
+  reviewer: "Reviewer",
+  author: "Author",
+  publisher: "Publisher",
+  journal_manager: "Journal Manager",
+  owner: "Owner",
+};
+
+function normalizeRoles(raw: (UserRoleContext | string)[] | undefined, fallback: string): UserRoleContext[] {
+  if (!raw || raw.length === 0) return [{ role: fallback, journal_id: null, journal_name: null }];
+  return raw.map((r) =>
+    typeof r === "string" ? { role: r, journal_id: null, journal_name: null } : r,
+  );
+}
+
 function decodeAuthUser(token: string): AuthUser {
   const decoded = jwtDecode<JwtPayload>(token);
+  const activeRole = decoded.active_role ?? decoded.role;
   return {
     id: decoded.id,
-    role: decoded.active_role ?? decoded.role,
+    role: activeRole,
     email: decoded.email,
     username: decoded.username,
-    roles: decoded.roles ?? [decoded.role],
+    roles: normalizeRoles(decoded.roles, activeRole),
     active_journal_id: decoded.active_journal_id ?? null,
   };
 }
@@ -115,6 +141,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     setToken(null);
   };
+
+  const hasAnyRole = (roles: string[]) =>
+    user?.roles?.some((r) => roles.includes(r.role)) ?? false;
+
+  const currentRoleLabel = () => ROLE_LABELS[user?.role ?? ""] ?? user?.role ?? "";
 
   const switchRole = async (role: UserRole, journalId?: string | null) => {
     const storedToken = localStorage.getItem("accessToken");
@@ -187,6 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         logout,
         switchRole,
+        hasAnyRole,
+        currentRoleLabel,
       }}
     >
       {children}

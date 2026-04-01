@@ -233,13 +233,13 @@ export default function ChiefEditor() {
     if (token) {
       fetchPapers();
       fetchJournals();
-      if (user?.roles?.includes("sub_editor")) {
+      if (user?.roles?.some((r) => r.role === "sub_editor")) {
         fetch(`${url}/subEditor/getAssignedPapers`, { headers: { Authorization: `Bearer ${token}` } })
           .then((r) => r.json())
           .then((d) => setMyAssignedPapers(d.papers || d.data || []))
           .catch(() => {});
       }
-      if (user?.roles?.includes("reviewer")) {
+      if (user?.roles?.some((r) => r.role === "reviewer")) {
         fetch(`${url}/reviewer/getAssignedPapers`, { headers: { Authorization: `Bearer ${token}` } })
           .then((r) => r.json())
           .then((d) => setMyReviewAssignments(d.papers || d.data || []))
@@ -1163,7 +1163,7 @@ export default function ChiefEditor() {
             </div>
 
             {/* Multi-role: Sub-Editor section */}
-            {user?.roles?.includes("sub_editor") && (
+            {user?.roles?.some((r) => r.role === "sub_editor") && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <FileEdit className="h-4 w-4 text-orange-500" />
@@ -1195,7 +1195,7 @@ export default function ChiefEditor() {
             )}
 
             {/* Multi-role: Reviewer section */}
-            {user?.roles?.includes("reviewer") && (
+            {user?.roles?.some((r) => r.role === "reviewer") && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <UserCheck className="h-4 w-4 text-purple-500" />

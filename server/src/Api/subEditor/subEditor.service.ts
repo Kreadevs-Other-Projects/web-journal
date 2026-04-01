@@ -275,6 +275,21 @@ export const reviewReviewerRequestService = async (
       [req.paper_id, newUser.id],
     );
 
+    // Ensure reviewer role is tracked in user_roles for this journal
+    const paperJRes = await pool.query(
+      `SELECT journal_id FROM papers WHERE id = $1`,
+      [req.paper_id],
+    );
+    const reqJournalId = paperJRes.rows[0]?.journal_id;
+    if (reqJournalId) {
+      await pool.query(
+        `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+         VALUES ($1, 'reviewer', $2, $3, true)
+         ON CONFLICT (user_id, role, journal_id) DO UPDATE SET is_active = true`,
+        [newUser.id, reqJournalId, user.id],
+      );
+    }
+
     // Send welcome email
     sendWelcomeEmail(
       req.suggested_email,

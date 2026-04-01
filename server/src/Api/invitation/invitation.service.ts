@@ -245,8 +245,10 @@ export const acceptInvitationService = async (
 
   // Collect all roles for this user so the token carries them all
   const userRoleRows = await getUserRoles(userId);
-  const allRoles = userRoleRows.map((r) => r.role);
-  if (!allRoles.includes(user.role)) allRoles.unshift(user.role);
+  const allRoles = [...userRoleRows];
+  if (!allRoles.some((r) => r.role === user.role && r.journal_id === null)) {
+    allRoles.unshift({ role: user.role, journal_id: null, journal_name: null });
+  }
 
   const accessToken = await generateAccessToken(
     user.id,

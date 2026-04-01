@@ -74,7 +74,6 @@ export const login = async (req: Request, res: Response) => {
   // DEV: Skip OTP, return token directly
   // ========================
   const userRoleRows = await getUserRoles(user.id, user.role);
-  const roles = userRoleRows.map((r) => r.role);
 
   // Validate the requested role: check user_roles table first, then fall back to users.role
   const requestedRole = role || user.role;
@@ -96,7 +95,7 @@ export const login = async (req: Request, res: Response) => {
     user.role,
     user.email,
     user.username,
-    roles,
+    userRoleRows,
     requestedRole,
     activeJournalId,
   );
@@ -134,7 +133,7 @@ export const login = async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       username: user.username,
-      roles,
+      roles: userRoleRows.map((r) => r.role),
     },
   });
 
@@ -235,6 +234,9 @@ export const signup = async (req: Request, res: Response) => {
 
   await createUserProfile(newUser.id);
 
+  // Add primary role to user_roles so multi-role system tracks it
+  await insertUserRole(newUser.id, role, null, null);
+
   await deleteOTP(email);
 
   return res.status(201).json({ success: true, message: "Signup successful" });
@@ -319,14 +321,13 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
     await deleteOTP(email);
 
     const userRoleRows = await getUserRoles(user.id, user.role);
-    const roles = userRoleRows.map((r) => r.role);
 
     const accessToken = await generateAccessToken(
       user.id,
       user.role,
       user.email,
       user.username,
-      roles,
+      userRoleRows,
       user.role,
       null,
     );
@@ -363,7 +364,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        roles,
+        roles: userRoleRows.map((r) => r.role),
       },
     });
   } catch (error: any) {
@@ -458,9 +459,22 @@ export const switchRole = async (req: Request, res: Response) => {
     const userRoleRows = await getUserRolesRepo(payload.id);
     const primaryRole = payload.role;
 
-    // Build the full set of roles (including primary)
-    const allRoles = userRoleRows.map((r) => r.role);
-    if (!allRoles.includes(primaryRole)) allRoles.unshift(primaryRole);
+    // Build the full set of roles (including primary) as structured objects.
+    // Only add the primary as a generic null-journal entry if no user_roles row
+    // exists for that role at all — avoids duplicates for journal-scoped roles.
+    const allRoles = [...userRoleRows];
+    if (!allRoles.some((r) => r.role === primaryRole)) {
+      allRoles.unshift({ role: primaryRole, journal_id: null, journal_name: null });
+    }
+
+    // Deduplicate by role+journal_id
+    const seenKeys = new Set<string>();
+    const uniqueRoles = allRoles.filter((r) => {
+      const key = `${r.role}-${r.journal_id ?? "null"}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
 
     const hasRole = userRoleRows.some(
       (r) =>
@@ -492,7 +506,7 @@ export const switchRole = async (req: Request, res: Response) => {
       user.role,
       user.email,
       user.username,
-      allRoles,
+      uniqueRoles,
       role,
       effectiveJournalId,
     );

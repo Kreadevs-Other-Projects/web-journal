@@ -1,12 +1,18 @@
 import jwt from "jsonwebtoken";
 import { env } from "../configs/envs";
 
+export interface UserRoleContext {
+  role: string;
+  journal_id: string | null;
+  journal_name: string | null;
+}
+
 export const generateAccessToken = async (
   userId: string,
   role: string = "user",
   email?: string,
   username?: string,
-  roles?: string[],
+  roles?: UserRoleContext[],
   active_role?: string,
   active_journal_id?: string | null,
 ) => {
@@ -16,7 +22,7 @@ export const generateAccessToken = async (
       role,
       email,
       username,
-      roles: roles ?? [role],
+      roles: roles ?? [{ role, journal_id: null, journal_name: null }],
       active_role: active_role ?? role,
       active_journal_id: active_journal_id ?? null,
     },
@@ -44,7 +50,7 @@ export const verifyAccessToken = (token: string) => {
     role: string;
     email: string;
     username: string;
-    roles: string[];
+    roles: UserRoleContext[];
     active_role: string;
     active_journal_id: string | null;
   };

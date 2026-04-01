@@ -143,11 +143,14 @@ export function DashboardLayout({
     }
   };
 
-  const handleSwitchRole = async (newRole: UserRole) => {
-    if (newRole === role || switchingRole) return;
+  const handleSwitchRole = async (newRole: UserRole, journalId?: string | null) => {
+    const sameContext =
+      newRole === role &&
+      (journalId ?? null) === (user?.active_journal_id ?? null);
+    if (sameContext || switchingRole) return;
     try {
       setSwitchingRole(true);
-      await switchRole(newRole, null);
+      await switchRole(newRole, journalId);
       const target = roleConfig[newRole]?.route ?? "/";
       navigate(target);
     } catch (err: any) {
@@ -360,54 +363,98 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {user && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-sm"
-                      disabled={switchingRole || !user.roles || user.roles.length <= 1}
-                    >
-                      <Shield className={cn("h-3.5 w-3.5", config.color)} />
-                      {config.label}
-                      {user.roles && user.roles.length > 1 && (
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  {user.roles && user.roles.length > 1 && (
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Switch Role
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {user.roles.map((r) => {
-                        const rc = roleConfig[r as UserRole];
-                        if (!rc) return null;
-                        return (
-                          <DropdownMenuItem
-                            key={r}
-                            onClick={() => handleSwitchRole(r as UserRole)}
-                            className={cn(
-                              "gap-2 cursor-pointer",
-                              r === role && "font-semibold",
-                            )}
-                          >
-                            <rc.icon className={cn("h-4 w-4", rc.color)} />
-                            {rc.label}
-                            {r === role && (
-                              <span className="ml-auto text-xs text-muted-foreground">
-                                Active
-                              </span>
-                            )}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  )}
-                </DropdownMenu>
-              )}
+              {user && (() => {
+                // Roles the user can switch TO (exclude currently active role+journal)
+                const roleOrder = ["publisher", "journal_manager", "chief_editor", "sub_editor", "reviewer", "author", "owner"];
+                const switchableRoles = (user.roles ?? [])
+                  .filter(
+                    (r) =>
+                      !(
+                        r.role === role &&
+                        (r.journal_id ?? null) === (user.active_journal_id ?? null)
+                      ),
+                  )
+                  .sort(
+                    (a, b) =>
+                      roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
+                  );
+
+                // Journal name for the currently active context
+                const activeJournalName =
+                  user.roles?.find(
+                    (r) =>
+                      r.role === role &&
+                      (r.journal_id ?? null) === (user.active_journal_id ?? null),
+                  )?.journal_name ?? null;
+
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 max-w-[220px] h-auto py-1.5 px-3"
+                        disabled={switchingRole || switchableRoles.length === 0}
+                      >
+                        <Shield className={cn("h-3.5 w-3.5 flex-shrink-0", config.color)} />
+                        <div className="flex flex-col items-start text-left min-w-0">
+                          <span className="text-xs font-semibold leading-none">
+                            {config.label}
+                          </span>
+                          {activeJournalName && (
+                            <span className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate max-w-[140px]">
+                              {activeJournalName}
+                            </span>
+                          )}
+                        </div>
+                        {switchableRoles.length > 0 && (
+                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    {switchableRoles.length > 0 && (
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Switch Role
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {(() => {
+                          let lastRole = "";
+                          return switchableRoles.map((r, i) => {
+                            const rc = roleConfig[r.role as UserRole];
+                            if (!rc) return null;
+                            const showDivider = lastRole !== "" && lastRole !== r.role;
+                            lastRole = r.role;
+                            return (
+                              <div key={r.role + (r.journal_id ?? "") + i}>
+                                {showDivider && <DropdownMenuSeparator />}
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleSwitchRole(r.role as UserRole, r.journal_id)
+                                  }
+                                  className="gap-3 cursor-pointer py-2.5"
+                                >
+                                  <rc.icon className={cn("h-4 w-4 flex-shrink-0", rc.color)} />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-medium leading-none">
+                                      {rc.label}
+                                    </span>
+                                    {r.journal_name && (
+                                      <span className="text-xs text-muted-foreground leading-none mt-1 truncate max-w-[160px]">
+                                        {r.journal_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </DropdownMenuItem>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </DropdownMenuContent>
+                    )}
+                  </DropdownMenu>
+                );
+              })()}
               <ThemeToggle />
               {/* <Button
                 variant="ghost"

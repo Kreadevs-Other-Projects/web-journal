@@ -181,6 +181,21 @@ export const replaceSubEditorService = async (
       [paperId, newSubEditorId, chiefEditorId],
     );
 
+    // Ensure new AE's sub_editor role is tracked in user_roles
+    const paperJournalRes = await client.query(
+      `SELECT journal_id FROM papers WHERE id = $1`,
+      [paperId],
+    );
+    const journalId = paperJournalRes.rows[0]?.journal_id;
+    if (journalId) {
+      await client.query(
+        `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+         VALUES ($1, 'sub_editor', $2, $3, true)
+         ON CONFLICT (user_id, role, journal_id) DO UPDATE SET is_active = true`,
+        [newSubEditorId, journalId, chiefEditorId],
+      );
+    }
+
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK");

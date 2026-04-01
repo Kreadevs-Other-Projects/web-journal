@@ -430,11 +430,11 @@ export function DashboardLayout({
                             <span className="text-xs font-semibold leading-none">
                               {config.label}
                             </span>
-                            {activeJournalName && (
+                            {/* {activeJournalName && (
                               <span className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate max-w-[140px]">
                                 {activeJournalName}
                               </span>
-                            )}
+                            )} */}
                           </div>
                           {switchableRoles.length > 0 && (
                             <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
@@ -477,11 +477,11 @@ export function DashboardLayout({
                                       <span className="text-sm font-medium leading-none">
                                         {rc.label}
                                       </span>
-                                      {r.journal_name && (
+                                      {/* {r.journal_name && (
                                         <span className="text-xs text-muted-foreground leading-none mt-1 truncate max-w-[160px]">
                                           {r.journal_name}
                                         </span>
-                                      )}
+                                      )} */}
                                     </div>
                                   </DropdownMenuItem>
                                 </div>

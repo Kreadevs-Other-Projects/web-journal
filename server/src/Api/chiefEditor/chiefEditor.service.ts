@@ -3,6 +3,7 @@ import { sendSubEditorInviteEmail } from "../../utils/emails/userEmails";
 import { pool } from "../../configs/db";
 import { insertStatusLog } from "../paper/paper.repository";
 import { initiatePaperPaymentService } from "../paperPayment/paperPayment.service";
+import { getPaymentByPaperIdRepo } from "../paperPayment/paperPayment.repository";
 import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
 import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
@@ -354,7 +355,10 @@ export const overridePaperStatusService = async (
 
   const paper = paperRes.rows[0];
 
-  await pool.query(`UPDATE papers SET status = $1, updated_at = NOW() WHERE id = $2`, [newStatus, paperId]);
+  await pool.query(
+    `UPDATE papers SET status = $1, updated_at = NOW(), ce_override = TRUE, ce_override_at = NOW(), ce_override_by = $2 WHERE id = $3`,
+    [newStatus, chiefEditorId, paperId],
+  );
 
   await insertStatusLog({
     paper_id: paperId,
@@ -362,6 +366,36 @@ export const overridePaperStatusService = async (
     changed_by: chiefEditorId,
     note: `Status overridden by Chief Editor. Reason: ${reason}`,
   });
+
+  // If accepted, trigger payment (or move directly to ready_for_publication if no fee)
+  if (newStatus === "accepted") {
+    const existingPayment = await getPaymentByPaperIdRepo(paperId);
+    if (!existingPayment) {
+      const feeRes = await pool.query(
+        `SELECT j.publication_fee FROM papers p JOIN journals j ON j.id = p.journal_id WHERE p.id = $1`,
+        [paperId],
+      );
+      const fee = feeRes.rows[0]?.publication_fee;
+      if (fee != null && parseFloat(fee) > 0) {
+        await initiatePaperPaymentService(paperId, paper.author_id, paper.author_email, paper.author_name);
+        await pool.query(`UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`, [paperId]);
+        await insertStatusLog({
+          paper_id: paperId,
+          status: "awaiting_payment",
+          changed_by: chiefEditorId,
+          note: "Payment invoice generated after CE acceptance override",
+        });
+      } else {
+        await pool.query(`UPDATE papers SET status = 'ready_for_publication', updated_at = NOW() WHERE id = $1`, [paperId]);
+        await insertStatusLog({
+          paper_id: paperId,
+          status: "ready_for_publication",
+          changed_by: chiefEditorId,
+          note: "No publication fee — moved to ready for publication after CE acceptance override",
+        });
+      }
+    }
+  }
 
   // Email author
   transporter.sendMail({

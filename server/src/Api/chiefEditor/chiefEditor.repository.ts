@@ -38,12 +38,13 @@ export const getChiefEditorJournals = async (chiefEditorId: string) => {
 
 export const getPapersByJournalId = async (journalId: string) => {
   const result = await pool.query(
-    `SELECT 
+    `SELECT
     p.id,
     p.title,
     p.status,
     p.journal_id,
     p.created_at,
+    p.ce_override,
     pv.id AS version_id,
     pv.version_number,
     pv.file_url,
@@ -84,6 +85,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
       p.published_at,
       p.created_at,
       p.updated_at,
+      p.ce_override,
       author.username AS author_name,
       j.title AS journal_name,
       j.id AS journal_id,

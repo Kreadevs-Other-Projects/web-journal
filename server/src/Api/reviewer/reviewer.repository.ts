@@ -23,7 +23,9 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       ra.status AS assignment_status,
       ra.assigned_at,
-      
+
+      p.ce_override,
+
       r.decision AS review_decision,
       r.comments,
       r.signed_at AS review_submitted_at

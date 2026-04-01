@@ -63,6 +63,7 @@ interface Paper {
   priority?: "high" | "medium" | "low";
   review_decision?: string;
   comments?: string;
+  ce_override?: boolean;
 }
 
 export default function ReviewerDashboard() {
@@ -520,7 +521,19 @@ export default function ReviewerDashboard() {
                 </CardContent>
               </Card>
 
-              {selectedPaper.assignment_status === "submitted" ? (
+              {selectedPaper.ce_override ? (
+                <Card className="glass-card border-0 bg-gradient-to-br from-red-900/20 to-red-800/10">
+                  <CardHeader className="border-b border-border/50">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-400" />
+                      Status Locked by Chief Editor
+                    </CardTitle>
+                    <CardDescription>
+                      The Chief Editor has overridden this paper's status. No further reviews can be submitted.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : selectedPaper.assignment_status === "submitted" ? (
                 <Card className="glass-card">
                   <CardHeader className="border-b border-border/50">
                     <CardTitle className="text-lg flex items-center gap-2">

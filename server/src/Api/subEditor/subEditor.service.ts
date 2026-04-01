@@ -87,11 +87,14 @@ export const subEditorDecisionService = async (
 
   // Get current paper version and status
   const paperInfo = await pool.query(
-    "SELECT current_version_id, status FROM papers WHERE id = $1",
+    "SELECT current_version_id, status, ce_override FROM papers WHERE id = $1",
     [paperId],
   );
   if (paperInfo.rows[0]?.status === "published") {
     throw new Error("Cannot change the status of a published paper.");
+  }
+  if (paperInfo.rows[0]?.ce_override) {
+    throw new Error("This paper's status has been overridden by the Chief Editor and cannot be changed.");
   }
   const currentVersionId = paperInfo.rows[0]?.current_version_id;
 

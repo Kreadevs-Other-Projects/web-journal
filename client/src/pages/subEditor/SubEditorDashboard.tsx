@@ -75,6 +75,7 @@ interface Paper {
   submitted_at?: string;
   deadline?: string;
   versions: PaperVersion[];
+  ce_override?: boolean;
 }
 
 interface Reviewer {
@@ -1171,6 +1172,18 @@ export default function SubEditorDashboard() {
                         a revised version.
                       </p>
                     </CardContent>
+                  </Card>
+                ) : selectedPaper.ce_override ? (
+                  <Card className="glass-card border-0 bg-gradient-to-br from-red-900/20 to-red-800/10">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-red-400">
+                        <AlertCircle className="h-5 w-5" />
+                        Status Locked by Chief Editor
+                      </CardTitle>
+                      <CardDescription>
+                        The Chief Editor has overridden this paper's status. No further decisions can be made.
+                      </CardDescription>
+                    </CardHeader>
                   </Card>
                 ) : (
                   selectedPaper.status === "reviewed" && (

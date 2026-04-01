@@ -65,19 +65,6 @@ export const setPaperPublished = async (
     throw new Error("Paper must be accepted before publishing");
   }
 
-  const decisionRes = await pool.query(
-    `SELECT decision FROM editor_decisions WHERE paper_id = $1`,
-    [paperId],
-  );
-
-  if (!decisionRes.rows.length) {
-    throw new Error("Editor decision not found");
-  }
-
-  if (decisionRes.rows[0].decision !== "accepted") {
-    throw new Error("Editor decision must be accept before publishing");
-  }
-
   // ✅ Payment check
   const paymentRes = await pool.query(
     `SELECT status FROM paper_payments WHERE paper_id = $1`,

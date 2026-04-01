@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Send,
   UserCheck,
+  CreditCard,
 } from "lucide-react";
 import { cn, getFileUrl } from "@/lib/utils";
 import { url } from "@/url";
@@ -37,6 +38,8 @@ interface JournalData {
   aims_and_scope?: string;
   logo_url?: string;
   status?: string;
+  publication_fee?: number | null;
+  currency?: string;
 }
 
 interface Paper {
@@ -174,6 +177,7 @@ const TABS = [
   { key: "oa-policy", label: "OA Policy" },
   { key: "peer-review", label: "Peer Review Policy" },
   { key: "guidelines", label: "Author Guidelines" },
+  { key: "apc-fees", label: "APC / Fees" },
   { key: "articles", label: "Articles" },
 ] as const;
 
@@ -343,13 +347,18 @@ export default function JournalDetail() {
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=reviewer`}>
+                <Link
+                  to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=reviewer`}
+                >
                   <UserCheck className="h-4 w-4 mr-2" /> Apply as Reviewer
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=associate_editor`}>
-                  <UserCheck className="h-4 w-4 mr-2" /> Apply as Associate Editor
+                <Link
+                  to={`/apply-reviewer?journalId=${journal.id}&journal=${journal.acronym || ""}&role=associate_editor`}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" /> Apply as Associate
+                  Editor
                 </Link>
               </Button>
             </div>
@@ -630,6 +639,114 @@ export default function JournalDetail() {
                 <p className="text-muted-foreground italic">
                   No author guidelines published yet.
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* APC / Fees */}
+          {activeTab === "apc-fees" && (
+            <div className="max-w-3xl space-y-8">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-foreground">
+                  Article Processing Charges (APC)
+                </h2>
+              </div>
+
+              {!journal.publication_fee ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground leading-relaxed">
+                    This journal charges no article processing fee.
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">
+                      {journal.title}
+                    </span>{" "}
+                    is a fully open access journal with no charges to authors or
+                    readers.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <p className="text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">
+                      {journal.title}
+                    </span>{" "}
+                    charges a publication fee to cover the costs of open access
+                    publishing.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="glass-card p-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Publication Fee
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {journal.publication_fee}{" "}
+                        <span className="text-base font-normal text-muted-foreground">
+                          {journal.currency}
+                        </span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        per page
+                      </p>
+                    </div>
+                    <div className="glass-card p-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Estimated Cost
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {journal.publication_fee * 10}{" "}
+                        <span className="text-base font-normal text-muted-foreground">
+                          {journal.currency}
+                        </span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        based on avg. 10-page manuscript
+                      </p>
+                    </div>
+                  </div>
+
+                  <section className="space-y-3">
+                    <h3 className="text-base font-semibold text-foreground">
+                      Payment Policy
+                    </h3>
+                    <ul className="space-y-2 text-muted-foreground text-sm">
+                      {[
+                        "Payment is only required after your paper has been accepted for publication.",
+                        "Authors will receive a formal invoice by email upon acceptance.",
+                        "Payment must be completed within 7 days of invoice date.",
+                        "Accepted payment methods: Bank transfer (receipt upload required).",
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base font-semibold text-foreground">
+                      Fee Waivers
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      Authors from low-income countries or with demonstrated
+                      financial hardship may apply for a full or partial fee
+                      waiver. Contact the editorial office for more information.
+                    </p>
+                  </section>
+
+                  <p className="text-sm text-muted-foreground border-t border-border/50 pt-6">
+                    For queries regarding APC, contact:{" "}
+                    <a
+                      href="mailto:support@journalhub.com"
+                      className="text-primary hover:underline"
+                    >
+                      support@journalhub.com
+                    </a>
+                  </p>
+                </div>
               )}
             </div>
           )}

@@ -76,7 +76,10 @@ export function DashboardLayout({
     const interval = setInterval(fetchCount, 60000);
     const onFocus = () => fetchCount();
     window.addEventListener("focus", onFocus);
-    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [role, token]);
 
   const { toast } = useToast();
@@ -143,7 +146,10 @@ export function DashboardLayout({
     }
   };
 
-  const handleSwitchRole = async (newRole: UserRole, journalId?: string | null) => {
+  const handleSwitchRole = async (
+    newRole: UserRole,
+    journalId?: string | null,
+  ) => {
     const sameContext =
       newRole === role &&
       (journalId ?? null) === (user?.active_journal_id ?? null);
@@ -266,7 +272,9 @@ export function DashboardLayout({
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   {sidebarOpen && (
-                    <span className="text-sm font-medium flex-1">{item.label}</span>
+                    <span className="text-sm font-medium flex-1">
+                      {item.label}
+                    </span>
                   )}
                   {sidebarOpen && badge ? (
                     <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">
@@ -363,98 +371,128 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              {user && (() => {
-                // Roles the user can switch TO (exclude currently active role+journal)
-                const roleOrder = ["publisher", "journal_manager", "chief_editor", "sub_editor", "reviewer", "author", "owner"];
-                const switchableRoles = (user.roles ?? [])
-                  .filter(
-                    (r) =>
-                      !(
+              <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground border">
+                Switch Role
+              </span>
+              {user &&
+                (() => {
+                  // Roles the user can switch TO (exclude currently active role+journal)
+                  const roleOrder = [
+                    "publisher",
+                    "journal_manager",
+                    "chief_editor",
+                    "sub_editor",
+                    "reviewer",
+                    "author",
+                    "owner",
+                  ];
+                  const switchableRoles = (user.roles ?? [])
+                    .filter(
+                      (r) =>
+                        !(
+                          r.role === role &&
+                          (r.journal_id ?? null) ===
+                            (user.active_journal_id ?? null)
+                        ),
+                    )
+                    .sort(
+                      (a, b) =>
+                        roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
+                    );
+
+                  // Journal name for the currently active context
+                  const activeJournalName =
+                    user.roles?.find(
+                      (r) =>
                         r.role === role &&
-                        (r.journal_id ?? null) === (user.active_journal_id ?? null)
-                      ),
-                  )
-                  .sort(
-                    (a, b) =>
-                      roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
-                  );
+                        (r.journal_id ?? null) ===
+                          (user.active_journal_id ?? null),
+                    )?.journal_name ?? null;
 
-                // Journal name for the currently active context
-                const activeJournalName =
-                  user.roles?.find(
-                    (r) =>
-                      r.role === role &&
-                      (r.journal_id ?? null) === (user.active_journal_id ?? null),
-                  )?.journal_name ?? null;
-
-                return (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 max-w-[220px] h-auto py-1.5 px-3"
-                        disabled={switchingRole || switchableRoles.length === 0}
-                      >
-                        <Shield className={cn("h-3.5 w-3.5 flex-shrink-0", config.color)} />
-                        <div className="flex flex-col items-start text-left min-w-0">
-                          <span className="text-xs font-semibold leading-none">
-                            {config.label}
-                          </span>
-                          {activeJournalName && (
-                            <span className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate max-w-[140px]">
-                              {activeJournalName}
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 max-w-[220px] h-auto py-1.5 px-3"
+                          disabled={
+                            switchingRole || switchableRoles.length === 0
+                          }
+                        >
+                          <Shield
+                            className={cn(
+                              "h-3.5 w-3.5 flex-shrink-0",
+                              config.color,
+                            )}
+                          />
+                          <div className="flex flex-col items-start text-left min-w-0">
+                            <span className="text-xs font-semibold leading-none">
+                              {config.label}
                             </span>
+                            {activeJournalName && (
+                              <span className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate max-w-[140px]">
+                                {activeJournalName}
+                              </span>
+                            )}
+                          </div>
+                          {switchableRoles.length > 0 && (
+                            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                           )}
-                        </div>
-                        {switchableRoles.length > 0 && (
-                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    {switchableRoles.length > 0 && (
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          Switch Role
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {(() => {
-                          let lastRole = "";
-                          return switchableRoles.map((r, i) => {
-                            const rc = roleConfig[r.role as UserRole];
-                            if (!rc) return null;
-                            const showDivider = lastRole !== "" && lastRole !== r.role;
-                            lastRole = r.role;
-                            return (
-                              <div key={r.role + (r.journal_id ?? "") + i}>
-                                {showDivider && <DropdownMenuSeparator />}
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleSwitchRole(r.role as UserRole, r.journal_id)
-                                  }
-                                  className="gap-3 cursor-pointer py-2.5"
-                                >
-                                  <rc.icon className={cn("h-4 w-4 flex-shrink-0", rc.color)} />
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-medium leading-none">
-                                      {rc.label}
-                                    </span>
-                                    {r.journal_name && (
-                                      <span className="text-xs text-muted-foreground leading-none mt-1 truncate max-w-[160px]">
-                                        {r.journal_name}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      {switchableRoles.length > 0 && (
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            Switch Role
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {(() => {
+                            let lastRole = "";
+                            return switchableRoles.map((r, i) => {
+                              const rc = roleConfig[r.role as UserRole];
+                              if (!rc) return null;
+                              const showDivider =
+                                lastRole !== "" && lastRole !== r.role;
+                              lastRole = r.role;
+                              return (
+                                <div key={r.role + (r.journal_id ?? "") + i}>
+                                  {showDivider && <DropdownMenuSeparator />}
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleSwitchRole(
+                                        r.role as UserRole,
+                                        r.journal_id,
+                                      )
+                                    }
+                                    className="gap-3 cursor-pointer py-2.5"
+                                  >
+                                    <rc.icon
+                                      className={cn(
+                                        "h-4 w-4 flex-shrink-0",
+                                        rc.color,
+                                      )}
+                                    />
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-sm font-medium leading-none">
+                                        {rc.label}
                                       </span>
-                                    )}
-                                  </div>
-                                </DropdownMenuItem>
-                              </div>
-                            );
-                          });
-                        })()}
-                      </DropdownMenuContent>
-                    )}
-                  </DropdownMenu>
-                );
-              })()}
+                                      {r.journal_name && (
+                                        <span className="text-xs text-muted-foreground leading-none mt-1 truncate max-w-[160px]">
+                                          {r.journal_name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </DropdownMenuItem>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </DropdownMenuContent>
+                      )}
+                    </DropdownMenu>
+                  );
+                })()}
               <ThemeToggle />
               {/* <Button
                 variant="ghost"
@@ -468,7 +506,6 @@ export function DashboardLayout({
                   <Moon className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button> */}
-
               {/* <Button
                 variant="ghost"
                 size="sm"

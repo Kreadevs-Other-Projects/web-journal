@@ -43,6 +43,18 @@ export const getUserRoles = async (userId: string) => {
   return result.rows as { role: string; journal_id: string | null; journal_name: string | null }[];
 };
 
+export const upsertAuthorRole = async (userId: string) => {
+  await pool.query(
+    `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+     SELECT $1, 'author', NULL, $1, true
+     WHERE NOT EXISTS (
+       SELECT 1 FROM user_roles
+       WHERE user_id = $1 AND role = 'author' AND journal_id IS NULL
+     )`,
+    [userId],
+  );
+};
+
 export const insertUserRole = async (
   userId: string,
   role: string,

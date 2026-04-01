@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import Navbar from "@/components/navbar";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -44,11 +45,13 @@ export default function SignupPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSignInLink, setShowSignInLink] = useState(false);
   const [step, setStep] = useState<"FORM" | "OTP">("FORM");
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -60,6 +63,7 @@ export default function SignupPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+    if (name === "email") setShowSignInLink(false);
   };
 
   const handleRoleSelect = (role: UserRole) => {
@@ -105,34 +109,12 @@ export default function SignupPage() {
 
     setIsLoading(true);
     setErrors({});
+    setShowSignInLink(false);
 
     try {
       // =========================
       // TEMPORARY: Skip OTP step
       // =========================
-      /*
-    const response = await fetch(`${url}/auth/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: formData.email,
-        purpose: "signup",
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to send OTP");
-    }
-
-    toast({
-      title: "OTP Sent",
-      description: "Please check your email for OTP",
-    });
-
-    setStep("OTP");
-    */
 
       // Direct signup call
       const signupRes = await fetch(`${url}/auth/signup`, {
@@ -148,6 +130,17 @@ export default function SignupPage() {
 
       const signupResult = await signupRes.json();
 
+      // Existing account + author role: server returns 200 with a JWT
+      if (signupRes.ok && signupResult.token) {
+        login(signupResult.token);
+        toast({
+          title: "Author role added!",
+          description: signupResult.message || "You can now submit papers.",
+        });
+        navigate("/author");
+        return;
+      }
+
       if (!signupRes.ok) {
         if (signupResult.errors && Array.isArray(signupResult.errors)) {
           const map: Record<string, string> = {};
@@ -155,6 +148,7 @@ export default function SignupPage() {
             map[e.field] = e.message;
           });
           setErrors(map);
+          setShowSignInLink(true);
           return;
         }
         throw new Error(signupResult.message || "Signup failed");
@@ -389,10 +383,22 @@ export default function SignupPage() {
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      {errors.email}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        {errors.email}
+                      </p>
+                      {showSignInLink && (
+                        <p className="text-xs text-muted-foreground">
+                          <Link
+                            to="/login"
+                            className="text-primary font-medium hover:underline"
+                          >
+                            Sign in instead →
+                          </Link>
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 

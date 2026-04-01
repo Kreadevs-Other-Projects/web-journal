@@ -26,6 +26,7 @@ import {
   saveRefreshToken,
   getUserRoles as getUserRolesRepo,
   insertUserRole,
+  upsertAuthorRole,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
@@ -218,9 +219,45 @@ export const signup = async (req: Request, res: Response) => {
   const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
-    return res
-      .status(409)
-      .json({ success: false, message: "User already exists" });
+    // Special case: existing user wants to add Author role — no new account needed
+    if (role === "author") {
+      await upsertAuthorRole(existingUser.id);
+
+      const userRoleRows = await getUserRoles(existingUser.id, existingUser.role);
+
+      const accessToken = await generateAccessToken(
+        existingUser.id,
+        existingUser.role,
+        existingUser.email,
+        existingUser.username,
+        userRoleRows,
+        "author",
+        null,
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Author role added to your existing account",
+        token: accessToken,
+        user: {
+          id: existingUser.id,
+          username: existingUser.username,
+          email: existingUser.email,
+          active_role: "author",
+        },
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "An account with this email already exists. Please sign in instead.",
+      errors: [
+        {
+          field: "email",
+          message: "Email already registered. Sign in to your existing account.",
+        },
+      ],
+    });
   }
 
   const hashedPassword = await hashPassword(password);

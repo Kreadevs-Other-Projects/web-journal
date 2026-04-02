@@ -18,21 +18,26 @@ WHERE publications.id = sub.id;
 -- Format: {doi-prefix-dots-as-hyphens}-{acronym}-{year}-{article_index}-{paper_index}
 -- Uses journal_issues.article_index as issue_index (already populated sequentially per journal)
 UPDATE publications
-SET url_slug =
-  REPLACE(
-    COALESCE(NULLIF(SPLIT_PART(COALESCE(publications.doi, ''), '/', 1), ''), '10-00000'),
-    '.', '-'
-  ) || '-' ||
-  LOWER(REGEXP_REPLACE(j.acronym, '[^a-zA-Z0-9]', '', 'g')) || '-' ||
-  EXTRACT(YEAR FROM publications.published_at)::TEXT || '-' ||
-  ji.article_index::TEXT || '-' ||
-  publications.paper_index::TEXT
-FROM papers p
-JOIN journals j ON j.id = p.journal_id
-JOIN journal_issues ji ON ji.id = publications.issue_id
-WHERE publications.paper_id = p.id
-  AND publications.paper_index IS NOT NULL
-  AND ji.article_index IS NOT NULL;
+SET url_slug = sub.new_slug
+FROM (
+  SELECT
+    pub.id,
+    LOWER(REGEXP_REPLACE(j.acronym, '[^a-zA-Z0-9]', '', 'g')) || '-' ||
+    REPLACE(
+      COALESCE(NULLIF(SPLIT_PART(COALESCE(pub.doi, ''), '/', 1), ''), '10-00000'),
+      '.', '-'
+    ) || '-' ||
+    EXTRACT(YEAR FROM pub.published_at)::TEXT || '-' ||
+    ji.article_index::TEXT || '-' ||
+    pub.paper_index::TEXT AS new_slug
+  FROM publications pub
+  JOIN papers p ON p.id = pub.paper_id
+  JOIN journals j ON j.id = p.journal_id
+  JOIN journal_issues ji ON ji.id = pub.issue_id
+  WHERE ji.article_index IS NOT NULL
+    AND pub.paper_index IS NOT NULL
+) sub
+WHERE publications.id = sub.id;
 
 -- Add unique constraint after data is populated
 DO $$

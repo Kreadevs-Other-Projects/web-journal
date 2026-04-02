@@ -19,6 +19,7 @@ import {
   signupSchema,
   createOTPSchema,
   verifyOTPSchema,
+  verifyLoginOTPSchema,
   resendOTPSchema,
   refreshTokenSchema,
   logoutSchema,
@@ -34,7 +35,7 @@ router.post("/create", validate(createOTPSchema), asyncHandler(requestOTP));
 router.post("/verifysignup", validate(verifyOTPSchema), asyncHandler(verify));
 router.post(
   "/verifyLoginOTP",
-  validate(verifyOTPSchema),
+  validate(verifyLoginOTPSchema),
   asyncHandler(verifyLoginOTP),
 );
 router.post("/resend", validate(resendOTPSchema), asyncHandler(resendOTP));

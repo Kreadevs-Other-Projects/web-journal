@@ -7,20 +7,29 @@ export const sendOTPEmail = async (email: string, otpCode: string) => {
     await transporter.sendMail({
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Your OTP Code",
+      subject: `Your verification code — ${otpCode}`,
       html: baseEmailTemplate(
-        "OTP Verification",
+        "Verification Code",
         `
-          <p>Hello,</p>
-          <p>Please use the following code to verify your email:</p>
-          <div class="code">${otpCode}</div>
-          <p>This code will expire in <strong>10 minutes</strong>.</p>
-          <p>If you didn't request this, you can safely ignore this email.</p>
+          <p>Dear User,</p>
+          <p>Use the following code to verify your identity on GIKI JournalHub:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="display: inline-block; background: #0B1220; border: 2px dashed #2563eb; border-radius: 12px; padding: 20px 40px;">
+              <span style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #2563eb; font-family: monospace;">
+                ${otpCode}
+              </span>
+            </div>
+          </div>
+
+          <p style="text-align: center; color: #9CA3AF; font-size: 14px;">
+            This code expires in <strong style="color: #E5E7EB;">10 minutes</strong>
+          </p>
+          <p>If you did not request this code, please ignore this email.</p>
         `,
       ),
-      text: `Your OTP code is ${otpCode}. It will expire in 10 minutes.`,
+      text: `Your verification code is ${otpCode}. It expires in 10 minutes.`,
     });
-    console.log("OTP email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send OTP email:", error);

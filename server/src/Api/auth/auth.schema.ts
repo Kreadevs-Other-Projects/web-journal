@@ -30,6 +30,7 @@ export const loginSchema = z.object({
 export const createOTPSchema = z.object({
   body: z.object({
     email: z.string().email("Invalid email format"),
+    purpose: z.enum(["signup", "login", "reset"]).optional(),
   }),
 });
 
@@ -67,6 +68,24 @@ export const createStaffSchema = z.object({
     journal_id: z.string().uuid("Valid journal ID is required").optional().nullable(),
     keywords: z.array(z.string()).max(5).optional(),
     degrees: z.array(z.string()).optional(),
+  }),
+});
+
+export const verifyLoginOTPSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email format"),
+    otp: z.string().length(6, "OTP must be 6 digits"),
+    role: z
+      .enum([
+        "author",
+        "reviewer",
+        "publisher",
+        "journal_manager",
+        "chief_editor",
+        "sub_editor",
+        "owner",
+      ])
+      .optional(),
   }),
 });
 

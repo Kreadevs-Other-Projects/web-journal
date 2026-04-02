@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"E:\\\\coding\\\\Kreadevs-Other-Projects\\\\web-journal\\\\server\\\\src\\\\Api\\\\journal\\\\journal.service.ts\")"
+      "Bash(\"E:\\\\coding\\\\Kreadevs-Other-Projects\\\\web-journal\\\\server\\\\src\\\\Api\\\\journal\\\\journal.service.ts\")",
+      "Bash(npx tsc:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bun run:*)",
+      "Bash(where bun:*)",
+      "Read(//c/Users/Saad/AppData/Roaming/bun/**)",
+      "Read(//c/Users/Saad/.bun/bin/**)"
     ]
   }
 }

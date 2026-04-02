@@ -71,12 +71,8 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  // ========================
-  // DEV: Skip OTP, return token directly
-  // ========================
+  // Validate the requested role exists for this user
   const userRoleRows = await getUserRoles(user.id, user.role);
-
-  // Validate the requested role: check user_roles table first, then fall back to users.role
   const requestedRole = role || user.role;
   const matchingUserRole = userRoleRows.find((r) => r.role === requestedRole);
   const hasPrimaryRole = user.role === requestedRole;
@@ -88,125 +84,16 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  // For journal-scoped roles, pick the first matching journal_id
-  const activeJournalId = matchingUserRole?.journal_id ?? null;
-
-  const accessToken = await generateAccessToken(
-    user.id,
-    user.role,
-    user.email,
-    user.username,
-    userRoleRows,
-    requestedRole,
-    activeJournalId,
-  );
-  const refreshToken = await generateRefreshToken(user.id, user.role);
-
-  const expires_at = new Date();
-  expires_at.setDate(expires_at.getDate() + 7);
-
-  const savedTokenId = await saveRefreshToken(
-    user.id,
-    refreshToken,
-    expires_at,
-  );
-  if (!savedTokenId) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to save refresh token",
-    });
-  }
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  // Credentials valid — send OTP. JWT is issued only after OTP is verified via /auth/verifyLoginOTP
+  const otpRecord = await createOTP(email, "login");
+  await sendOTPEmail(email, otpRecord.otp_code);
 
   return res.status(200).json({
     success: true,
-    message: "Login successful (DEV MODE)",
-    token: accessToken,
-    refreshToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      username: user.username,
-      roles: userRoleRows.map((r) => r.role),
-    },
+    requires_otp: true,
+    message: "A verification code has been sent to your email",
   });
-
-  // ====== Comment out OTP logic ======
-  /*
-  const otp = await createOTP(email, purpose);
-  await sendOTPEmail(email, otp.otp_code);
-  return res.status(200).json({
-    success: true,
-    message: "OTP sent successfully",
-    expiresAt: otp.expiry_at,
-  });
-  */
 };
-
-// export const login = async (req: Request, res: Response) => {
-//   const { email, password, role, purpose } = req.body;
-
-//   if (!email || !password || !role || !purpose) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Email, password, role and purpose are required",
-//     });
-//   }
-
-//   if (!["login", "signup", "reset"].includes(purpose)) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Invalid purpose",
-//     });
-//   }
-
-//   const user = await findUserByEmail(email);
-//   if (!user) {
-//     return res.status(404).json({
-//       success: false,
-//       message: "Account not found!",
-//     });
-//   }
-
-//   if (user.status !== "active") {
-//     return res.status(403).json({
-//       success: false,
-//       message: "Account is not active. Please contact support.",
-//     });
-//   }
-
-//   const isValid = await validatePassword(password, user.password);
-//   if (!isValid) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Invalid password!",
-//     });
-//   }
-
-//   if (user.role !== role) {
-//     return res.status(403).json({
-//       success: false,
-//       message: "Invalid role selected for this account",
-//     });
-//   }
-
-//   const otp = await createOTP(email, purpose);
-
-//   await sendOTPEmail(email, otp.otp_code);
-
-//   return res.status(200).json({
-//     success: true,
-//     message: "OTP sent successfully",
-//     expiresAt: otp.expiry_at,
-//   });
-// };
 
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
@@ -214,6 +101,15 @@ export const signup = async (req: Request, res: Response) => {
   const BLOCKED_ROLES = ["owner", "chief_editor", "sub_editor", "journal_manager"];
   if (BLOCKED_ROLES.includes(role)) {
     return res.status(400).json({ success: false, message: "Invalid role" });
+  }
+
+  // Require OTP verification before creating any account
+  const otpVerified = await checkOTPVerified(email);
+  if (!otpVerified) {
+    return res.status(400).json({
+      success: false,
+      message: "Email not verified. Please complete OTP verification.",
+    });
   }
 
   const existingUser = await findUserByEmail(email);
@@ -234,6 +130,8 @@ export const signup = async (req: Request, res: Response) => {
         "author",
         null,
       );
+
+      await deleteOTP(email);
 
       return res.status(200).json({
         success: true,
@@ -330,14 +228,7 @@ export const requestOTP = async (req: Request, res: Response) => {
 
 export const verifyLoginOTP = async (req: Request, res: Response) => {
   try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and OTP are required",
-      });
-    }
+    const { email, otp, role: requestedRole } = req.body;
 
     const otpRecord = await verifyOTP(email, otp);
     if (!otpRecord) {
@@ -359,25 +250,26 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     const userRoleRows = await getUserRoles(user.id, user.role);
 
+    // Use the role the user selected at login; fall back to primary role
+    const activeRole = requestedRole || user.role;
+    const matchingRow = userRoleRows.find((r) => r.role === activeRole);
+    const activeJournalId = matchingRow?.journal_id ?? null;
+
     const accessToken = await generateAccessToken(
       user.id,
       user.role,
       user.email,
       user.username,
       userRoleRows,
-      user.role,
-      null,
+      activeRole,
+      activeJournalId,
     );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
     const expires_at = new Date();
     expires_at.setDate(expires_at.getDate() + 7);
 
-    const savedTokenId = await saveRefreshToken(
-      user.id,
-      refreshToken,
-      expires_at,
-    );
+    const savedTokenId = await saveRefreshToken(user.id, refreshToken, expires_at);
     if (!savedTokenId) {
       return res.status(500).json({
         success: false,
@@ -401,6 +293,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        username: user.username,
         roles: userRoleRows.map((r) => r.role),
       },
     });

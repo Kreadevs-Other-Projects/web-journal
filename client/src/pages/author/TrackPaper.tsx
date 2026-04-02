@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getPaperUrl } from "@/lib/utils";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,8 @@ interface TrackingData {
     issue_label?: string;
     volume?: number;
     year?: number;
+    url_slug?: string;
+    acronym?: string;
   } | null;
   latest_version_number: number;
   ae_decision?: {
@@ -476,7 +479,7 @@ export default function TrackPaper() {
                   )}
                 </div>
                 {paper.status === "published" && (
-                  <Link to={`/articles/${paper.id}`}>
+                  <Link to={getPaperUrl({ id: paper.id, acronym: publication?.acronym, url_slug: publication?.url_slug })}>
                     <Button className="gap-2 w-full sm:w-auto">
                       <FileText className="h-4 w-4" /> View Published Article
                     </Button>
@@ -489,7 +492,7 @@ export default function TrackPaper() {
           {/* Published but no publication record yet */}
           {paper.status === "published" && !publication && (
             <div className="mt-4">
-              <Link to={`/articles/${paper.id}`}>
+              <Link to={getPaperUrl({ id: paper.id })}>
                 <Button className="gap-2">
                   <FileText className="h-4 w-4" /> View Published Article
                 </Button>

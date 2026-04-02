@@ -1,5 +1,17 @@
 import { pool } from "../../configs/db";
 
+function generatePaperSlug(
+  journalAcronym: string,
+  doi: string | null,
+  year: number,
+  issueIndex: number,
+  paperIndex: number,
+): string {
+  const acronym = journalAcronym.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const doiPrefix = doi ? doi.split("/")[0].replace(/\./g, "-") : "10-00000";
+  return `${doiPrefix}-${acronym}-${year}-${issueIndex}-${paperIndex}`;
+}
+
 export const getPaperForPublish = async (ownerId: string) => {
   const result = await pool.query(
     `
@@ -70,29 +82,48 @@ export const publishPaper = async (
     const acronym = journal.rows[0]?.acronym || "JNL";
     const year = new Date().getFullYear();
 
+    // Legacy article_index (keep for backward compat)
     const serialRes = await client.query(
       `SELECT COUNT(*)::int + 1 AS serial
        FROM publications
        WHERE issue_id = $1`,
       [issueId],
     );
-
     const serial = serialRes.rows[0].serial.toString().padStart(2, "0");
     const articleIndex = `${acronym}-${year}-${issueId.slice(0, 8)}-${serial}`;
 
+    // New: paper_index = sequential position within this issue
+    const paperIndexRes = await client.query(
+      `SELECT COALESCE(MAX(paper_index), 0) + 1 AS next_index
+       FROM publications WHERE issue_id = $1`,
+      [issueId],
+    );
+    const paperIndex = paperIndexRes.rows[0].next_index as number;
+
+    // New: issue_index = journal_issues.article_index (sequential per journal)
+    const issueRes = await client.query(
+      `SELECT article_index AS issue_index FROM journal_issues WHERE id = $1`,
+      [issueId],
+    );
+    const issueIndex = (issueRes.rows[0]?.issue_index as number) ?? 1;
+
+    const urlSlug = generatePaperSlug(acronym, doi, year, issueIndex, paperIndex);
+
     const publication = await client.query(
       `INSERT INTO publications
-       (paper_id, published_by, published_at, issue_id, article_index, doi)
-       VALUES ($1, $2, NOW(), $3, $4, $5)
+       (paper_id, published_by, published_at, issue_id, article_index, doi, paper_index, url_slug)
+       VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7)
        ON CONFLICT (paper_id)
        DO UPDATE SET
          published_by = $2,
          published_at = NOW(),
          issue_id = $3,
          article_index = $4,
-         doi = $5
+         doi = $5,
+         paper_index = $6,
+         url_slug = $7
        RETURNING *`,
-      [paperId, editorId, issueId, articleIndex, doi],
+      [paperId, editorId, issueId, articleIndex, doi, paperIndex, urlSlug],
     );
 
     await client.query(

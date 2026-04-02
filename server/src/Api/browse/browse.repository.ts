@@ -20,6 +20,7 @@ export const getPublicPaperRepo = async (paperId: string) => {
 
       j.id AS journal_id,
       j.title AS journal_title,
+      j.acronym,
       j.issn,
 
       ji.volume,
@@ -29,6 +30,8 @@ export const getPublicPaperRepo = async (paperId: string) => {
 
       pub.doi,
       pub.article_index,
+      pub.url_slug,
+      pub.paper_index,
       pub.published_at AS publication_date,
       pub.html_url,
       pub.pdf_url,
@@ -46,6 +49,79 @@ export const getPublicPaperRepo = async (paperId: string) => {
     WHERE p.id = $1
       AND (p.is_taken_down IS NULL OR p.is_taken_down = false)
     `,
+    [paperId],
+  );
+  return result.rows[0] || null;
+};
+
+export const getPublicPaperBySlugRepo = async (acronym: string, slug: string) => {
+  const result = await pool.query(
+    `
+    SELECT
+      p.id,
+      p.title,
+      p.abstract,
+      p.keywords,
+      p.author_names,
+      p.corresponding_authors,
+      p.paper_references,
+      p.submitted_at,
+      p.accepted_at,
+      p.published_at,
+      p.status,
+      p.article_type,
+      p.conflict_of_interest,
+      p.funding_info,
+      p.data_availability,
+      p.ethical_approval,
+      p.author_contributions,
+
+      u.username AS author_username,
+
+      j.id AS journal_id,
+      j.title AS journal_title,
+      j.acronym,
+      j.issn,
+
+      ji.volume,
+      ji.issue,
+      ji.year,
+      ji.label AS issue_label,
+
+      pub.doi,
+      pub.article_index,
+      pub.url_slug,
+      pub.paper_index,
+      pub.published_at AS publication_date,
+      pub.html_url,
+      pub.pdf_url,
+      pub.xml_url,
+
+      pv.file_url,
+      pv.version_number,
+      pv.html_content
+    FROM publications pub
+    JOIN papers p ON p.id = pub.paper_id
+    JOIN journals j ON j.id = p.journal_id
+    JOIN journal_issues ji ON ji.id = pub.issue_id
+    LEFT JOIN users u ON u.id = p.author_id
+    LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
+    WHERE LOWER(j.acronym) = LOWER($1)
+      AND pub.url_slug = $2
+      AND (p.is_taken_down IS NULL OR p.is_taken_down = false)
+    `,
+    [acronym, slug],
+  );
+  return result.rows[0] || null;
+};
+
+export const getPaperSlugRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT j.acronym, pub.url_slug
+     FROM publications pub
+     JOIN papers p ON p.id = pub.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     WHERE pub.paper_id = $1`,
     [paperId],
   );
   return result.rows[0] || null;
@@ -73,8 +149,10 @@ export const getBrowseDataRepo = async (filters: any) => {
     p.id as paper_id,
     p.title as paper_title,
     p.abstract,
+    j.acronym,
     pv.file_url,
-    pv.version_number
+    pv.version_number,
+    pub.url_slug
   FROM journals j
   LEFT JOIN journal_categories jc ON jc.id = j.journal_category_id
   LEFT JOIN journal_issues ji
@@ -82,6 +160,7 @@ export const getBrowseDataRepo = async (filters: any) => {
   LEFT JOIN papers p
       ON p.issue_id = ji.id
       AND p.status = 'published'
+  LEFT JOIN publications pub ON pub.paper_id = p.id
   LEFT JOIN LATERAL (
       SELECT *
       FROM paper_versions pv2
@@ -253,9 +332,12 @@ export const getLatestPublishedPapersRepo = async (filters: {
        p.published_at,
        p.updated_at,
        j.title AS journal_title,
-       j.id AS journal_id
+       j.id AS journal_id,
+       j.acronym,
+       pub.url_slug
      FROM papers p
      LEFT JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
      WHERE ${conds.join(" AND ")}
      ORDER BY COALESCE(p.published_at, p.updated_at) DESC NULLS LAST
      LIMIT $${values.length - 1} OFFSET $${values.length}`,

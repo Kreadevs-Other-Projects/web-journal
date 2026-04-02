@@ -144,10 +144,12 @@ export const getAllPapers = async () => {
 
 export const getPapersByAuthor = async (author_id: string) => {
   const result = await pool.query(
-    `SELECT p.*, j.title AS journal_title, pp.status AS payment_status
+    `SELECT p.*, j.title AS journal_title, j.acronym, pp.status AS payment_status,
+            pub.url_slug
      FROM papers p
      LEFT JOIN journals j ON j.id = p.journal_id
      LEFT JOIN paper_payments pp ON pp.paper_id = p.id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
      WHERE p.author_id = $1
      ORDER BY p.created_at DESC`,
     [author_id],
@@ -237,9 +239,13 @@ export const getPaperTracking = async (paperId: string, authorId: string) => {
   );
 
   const pubRes = await pool.query(
-    `SELECT pub.doi, pub.published_at, ji.label as issue_label, ji.volume, ji.year
+    `SELECT pub.doi, pub.published_at, pub.url_slug,
+            j.acronym,
+            ji.label as issue_label, ji.volume, ji.year
      FROM publications pub
      LEFT JOIN journal_issues ji ON ji.id = pub.issue_id
+     LEFT JOIN papers p2 ON p2.id = pub.paper_id
+     LEFT JOIN journals j ON j.id = p2.journal_id
      WHERE pub.paper_id = $1`,
     [paperId],
   );

@@ -73,22 +73,31 @@ function formatDate(d?: string) {
 }
 
 export default function ArticlePage() {
-  const { paperId } = useParams<{ paperId: string }>();
+  const { paperId, acronym, slug } = useParams<{
+    paperId?: string;
+    acronym?: string;
+    slug?: string;
+  }>();
   const { toast } = useToast();
   const [article, setArticle] = useState<ArticleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [htmlLoading, setHtmlLoading] = useState(false);
   const [showArticleInfo, setShowArticleInfo] = useState(false);
+  const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPaper = async () => {
       try {
-        const r = await fetch(`${url}/browse/paper/${paperId}`);
+        const apiUrl =
+          acronym && slug
+            ? `${url}/browse/article/${acronym}/${slug}`
+            : `${url}/browse/paper/${paperId}`;
+        const r = await fetch(apiUrl);
         const data = await r.json();
-        console.log("Article data:", data);
         if (data.success) {
           setArticle(data.paper);
+          setResolvedPaperId(data.paper?.id ?? paperId ?? null);
           if (data.paper?.html_content) {
             setHtmlContent(data.paper.html_content);
           }
@@ -100,17 +109,17 @@ export default function ArticlePage() {
       }
     };
     fetchPaper();
-  }, [paperId]);
+  }, [paperId, acronym, slug]);
 
   // Option B: fetch HTML on-demand for papers without cached html_content
   useEffect(() => {
-    if (!article || htmlContent !== null) return;
+    if (!article || htmlContent !== null || !resolvedPaperId) return;
     const ext = article.file_url?.toLowerCase();
     if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf"))) return;
     setHtmlLoading(true);
     const fetchHtml = async () => {
       try {
-        const r = await fetch(`${url}/browse/paper/${paperId}/html`);
+        const r = await fetch(`${url}/browse/paper/${resolvedPaperId}/html`);
         const data = await r.json();
         if (data.success && data.html) setHtmlContent(data.html);
       } catch (_) {
@@ -119,7 +128,7 @@ export default function ArticlePage() {
       }
     };
     fetchHtml();
-  }, [article, paperId, htmlContent]);
+  }, [article, resolvedPaperId, htmlContent]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);

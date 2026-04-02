@@ -14,6 +14,26 @@ export function cn(...inputs: ClassValue[]) {
  *   "file.jpg"            → "http://localhost:5000/api/uploads/file.jpg"
  *   "http://..."          → returned as-is
  */
+/**
+ * Returns the canonical URL for a published paper.
+ * Uses the new /:acronym/:slug format when available,
+ * falls back to /articles/:id for backward compatibility.
+ */
+export function getPaperUrl(paper: {
+  id?: string;
+  paper_id?: string;
+  acronym?: string;
+  journal_acronym?: string;
+  url_slug?: string;
+}): string {
+  const id = paper.id || paper.paper_id;
+  const acronym = (paper.acronym || paper.journal_acronym || "").toLowerCase();
+  if (acronym && paper.url_slug) {
+    return `/${acronym}/${paper.url_slug}`;
+  }
+  return `/articles/${id}`;
+}
+
 export function getFileUrl(filePath: string | null | undefined): string {
   if (!filePath) return "";
   if (filePath.startsWith("http")) return filePath;

@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import { url } from "@/url";
-import { getFileUrl } from "@/lib/utils";
+import { getFileUrl, getPaperUrl } from "@/lib/utils";
 
 interface SearchFilters {
   query: string;
@@ -837,7 +837,7 @@ export default function LandingPage() {
                         })}
                       </span>
                     )}
-                    <Link to={`/articles/${p.id}`}>
+                    <Link to={getPaperUrl(p)}>
                       <Button
                         variant="link"
                         size="sm"

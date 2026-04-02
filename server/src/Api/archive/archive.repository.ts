@@ -47,6 +47,7 @@ export const getArchiveRepo = async (filters: {
       p.published_at,
       j.id as journal_id,
       j.title as journal_title,
+      j.acronym,
       j.issn,
       ji.id as issue_id,
       ji.year,
@@ -55,6 +56,7 @@ export const getArchiveRepo = async (filters: {
       ji.label as issue_label,
       pub.doi,
       pub.article_index,
+      pub.url_slug,
       pv.file_url
     FROM papers p
     JOIN publications pub ON pub.paper_id = p.id

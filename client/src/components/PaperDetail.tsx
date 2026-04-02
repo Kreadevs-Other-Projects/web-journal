@@ -16,7 +16,7 @@ import {
   UserCheck,
   CreditCard,
 } from "lucide-react";
-import { cn, getFileUrl } from "@/lib/utils";
+import { cn, getFileUrl, getPaperUrl } from "@/lib/utils";
 import { url } from "@/url";
 import Navbar from "./navbar";
 import DOMPurify from "dompurify";
@@ -792,7 +792,7 @@ export default function JournalDetail() {
                             <FileText className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <Link
-                                to={`/articles/${paper.id}`}
+                                to={getPaperUrl(paper)}
                                 className="font-medium text-foreground hover:text-primary transition-colors line-clamp-2"
                               >
                                 {paper.title}
@@ -824,7 +824,7 @@ export default function JournalDetail() {
                                 asChild
                                 className="text-primary h-8 px-2"
                               >
-                                <Link to={`/articles/${paper.id}`}>
+                                <Link to={getPaperUrl(paper)}>
                                   <ExternalLink className="h-3 w-3 mr-1" /> View
                                 </Link>
                               </Button>

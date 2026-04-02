@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getPaperUrl } from "@/lib/utils";
 
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -388,7 +389,7 @@ export default function Archive() {
                                         className="border rounded-lg p-3 hover:bg-muted/30 transition-colors"
                                       >
                                         <Link
-                                          to={`/articles/${p.paper_id}`}
+                                          to={getPaperUrl(p)}
                                           className="font-medium text-sm hover:text-primary leading-snug block mb-1"
                                         >
                                           {p.paper_title}
@@ -418,7 +419,7 @@ export default function Archive() {
                                           )}
 
                                           <Link
-                                            to={`/articles/${p.paper_id}`}
+                                            to={getPaperUrl(p)}
                                             className="text-xs text-primary hover:underline flex items-center gap-0.5"
                                           >
                                             Read Article{" "}

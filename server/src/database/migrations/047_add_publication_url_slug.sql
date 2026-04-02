@@ -35,4 +35,11 @@ WHERE publications.paper_id = p.id
   AND ji.article_index IS NOT NULL;
 
 -- Add unique constraint after data is populated
-ALTER TABLE publications ADD CONSTRAINT IF NOT EXISTS uq_publications_url_slug UNIQUE (url_slug);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_publications_url_slug'
+  ) THEN
+    ALTER TABLE publications ADD CONSTRAINT uq_publications_url_slug UNIQUE (url_slug);
+  END IF;
+END $$;

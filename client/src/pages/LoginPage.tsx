@@ -136,7 +136,10 @@ export default function LoginPage() {
       throw new Error(result.message || "Failed to resend OTP");
     }
     setOtpError("");
-    toast({ title: "Code resent", description: "Check your email for a new code" });
+    toast({
+      title: "Code resent",
+      description: "Check your email for a new code",
+    });
   };
 
   return (
@@ -287,7 +290,7 @@ export default function LoginPage() {
                 <BookOpen className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="font-serif-roboto text-2xl font-bold">
-                JournalHub
+                GIKI Journal
               </span>
             </div>
 
@@ -300,7 +303,16 @@ export default function LoginPage() {
               </p>
 
               <div className="grid grid-cols-3 gap-2 mb-6">
-                {(["publisher", "journal_manager", "chief_editor", "sub_editor", "reviewer", "author"] as UserRole[]).map((role) => {
+                {(
+                  [
+                    "publisher",
+                    "journal_manager",
+                    "chief_editor",
+                    "sub_editor",
+                    "reviewer",
+                    "author",
+                  ] as UserRole[]
+                ).map((role) => {
                   const config = roleConfig[role];
                   const Icon = config.icon;
                   const isSelected = selectedRole === role;
@@ -376,7 +388,10 @@ export default function LoginPage() {
                   email={email}
                   onComplete={handleVerifyOtp}
                   onResend={handleResendOtp}
-                  onBack={() => { setStep("credentials"); setOtpError(""); }}
+                  onBack={() => {
+                    setStep("credentials");
+                    setOtpError("");
+                  }}
                   isLoading={isLoading}
                   error={otpError}
                 />

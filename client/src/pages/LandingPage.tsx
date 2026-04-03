@@ -100,7 +100,7 @@ const testimonials = [
   },
   {
     quote:
-      "Our conference proceedings have never been more organized. JournalHub transformed our workflow.",
+      "Our conference proceedings have never been more organized. GIKI Journal transformed our workflow.",
     author: "Dr. Maria Santos",
     role: "Conference Chair, ICML 2025",
   },
@@ -132,15 +132,27 @@ export default function LandingPage() {
   const [openJournalsLoading, setOpenJournalsLoading] = useState(true);
 
   // Inline section filters
-  const [journalFilters, setJournalFilters] = useState({ q: "", type: "", category_id: "" });
-  const [paperFilters, setPaperFilters] = useState({ q: "", category: "", year: "" });
+  const [journalFilters, setJournalFilters] = useState({
+    q: "",
+    type: "",
+    category_id: "",
+  });
+  const [paperFilters, setPaperFilters] = useState({
+    q: "",
+    category: "",
+    year: "",
+  });
 
   // Journal categories for filter chips
-  const [journalCategoryChips, setJournalCategoryChips] = useState<{ id: string; name: string }[]>([]);
+  const [journalCategoryChips, setJournalCategoryChips] = useState<
+    { id: string; name: string }[]
+  >([]);
   useEffect(() => {
     fetch(`${url}/journal-categories`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setJournalCategoryChips(d.categories || []); })
+      .then((d) => {
+        if (d.success) setJournalCategoryChips(d.categories || []);
+      })
       .catch(() => {});
   }, []);
 
@@ -152,7 +164,8 @@ export default function LandingPage() {
         const params = new URLSearchParams({ limit: "6" });
         if (journalFilters.q) params.set("q", journalFilters.q);
         if (journalFilters.type) params.set("type", journalFilters.type);
-        if (journalFilters.category_id) params.set("category_id", journalFilters.category_id);
+        if (journalFilters.category_id)
+          params.set("category_id", journalFilters.category_id);
         const r = await fetch(`${url}/browse/home/journals?${params}`);
         const d = await r.json();
         if (d.success) setHomeJournals(d.journals || []);
@@ -171,7 +184,8 @@ export default function LandingPage() {
       try {
         const params = new URLSearchParams({ limit: "6" });
         if (paperFilters.q) params.set("q", paperFilters.q);
-        if (paperFilters.category) params.set("category", paperFilters.category);
+        if (paperFilters.category)
+          params.set("category", paperFilters.category);
         if (paperFilters.year) params.set("year", paperFilters.year);
         const r = await fetch(`${url}/browse/home/publications?${params}`);
         const d = await r.json();
@@ -188,19 +202,25 @@ export default function LandingPage() {
   useEffect(() => {
     fetch(`${url}/browse/home/open-journals`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setOpenJournals(d.journals || []); })
+      .then((d) => {
+        if (d.success) setOpenJournals(d.journals || []);
+      })
       .catch(() => {})
       .finally(() => setOpenJournalsLoading(false));
   }, []);
 
   // Dynamic categories from API
-  const [dynamicCategories, setDynamicCategories] = useState<{ value: string; label: string }[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<
+    { value: string; label: string }[]
+  >([]);
   useEffect(() => {
     fetch(`${url}/categories`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.categories) {
-          setDynamicCategories(d.categories.map((c: any) => ({ value: c.slug, label: c.name })));
+          setDynamicCategories(
+            d.categories.map((c: any) => ({ value: c.slug, label: c.name })),
+          );
         }
       })
       .catch(() => {});
@@ -483,7 +503,9 @@ export default function LandingPage() {
           {journalCategoryChips.length > 0 && (
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
               <button
-                onClick={() => setJournalFilters((p) => ({ ...p, category_id: "" }))}
+                onClick={() =>
+                  setJournalFilters((p) => ({ ...p, category_id: "" }))
+                }
                 className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
                   !journalFilters.category_id
                     ? "bg-primary text-primary-foreground border-primary"
@@ -495,7 +517,12 @@ export default function LandingPage() {
               {journalCategoryChips.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setJournalFilters((p) => ({ ...p, category_id: p.category_id === cat.id ? "" : cat.id }))}
+                  onClick={() =>
+                    setJournalFilters((p) => ({
+                      ...p,
+                      category_id: p.category_id === cat.id ? "" : cat.id,
+                    }))
+                  }
                   className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
                     journalFilters.category_id === cat.id
                       ? "bg-primary text-primary-foreground border-primary"
@@ -516,22 +543,30 @@ export default function LandingPage() {
                 type="text"
                 placeholder="Search journals..."
                 value={journalFilters.q}
-                onChange={(e) => setJournalFilters((p) => ({ ...p, q: e.target.value }))}
+                onChange={(e) =>
+                  setJournalFilters((p) => ({ ...p, q: e.target.value }))
+                }
                 className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
               />
             </div>
             <select
               value={journalFilters.type}
-              onChange={(e) => setJournalFilters((p) => ({ ...p, type: e.target.value }))}
+              onChange={(e) =>
+                setJournalFilters((p) => ({ ...p, type: e.target.value }))
+              }
               className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[160px]"
             >
               <option value="">All Types</option>
               <option value="open_access">Open Access</option>
               <option value="subscription">Subscription</option>
             </select>
-            {(journalFilters.q || journalFilters.type || journalFilters.category_id) && (
+            {(journalFilters.q ||
+              journalFilters.type ||
+              journalFilters.category_id) && (
               <button
-                onClick={() => setJournalFilters({ q: "", type: "", category_id: "" })}
+                onClick={() =>
+                  setJournalFilters({ q: "", type: "", category_id: "" })
+                }
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Clear
@@ -555,7 +590,11 @@ export default function LandingPage() {
             </div>
           ) : homeJournals.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              {(journalFilters.q || journalFilters.type || journalFilters.category_id) ? "No journals match your filters." : "No journals available yet."}
+              {journalFilters.q ||
+              journalFilters.type ||
+              journalFilters.category_id
+                ? "No journals match your filters."
+                : "No journals available yet."}
             </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -568,9 +607,36 @@ export default function LandingPage() {
                   className="glass-card flex flex-col group overflow-hidden"
                 >
                   {(() => {
-                    const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
-                    const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
-                    const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0, 3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
+                    const placeholderColors = [
+                      "bg-blue-500",
+                      "bg-purple-500",
+                      "bg-green-500",
+                      "bg-red-500",
+                      "bg-orange-500",
+                      "bg-pink-500",
+                    ];
+                    const bg =
+                      placeholderColors[
+                        (j.title?.charCodeAt(0) ?? 0) % placeholderColors.length
+                      ];
+                    const initials =
+                      j.title
+                        ?.split(" ")
+                        .filter(
+                          (w: string) =>
+                            ![
+                              "of",
+                              "the",
+                              "and",
+                              "for",
+                              "in",
+                              "a",
+                              "an",
+                            ].includes(w.toLowerCase()),
+                        )
+                        .slice(0, 3)
+                        .map((w: string) => w[0]?.toUpperCase() ?? "")
+                        .join("") ?? "J";
                     return (
                       <div className="h-[200px] w-full overflow-hidden bg-muted shrink-0">
                         {j.logo_url ? (
@@ -580,9 +646,13 @@ export default function LandingPage() {
                             className="w-full h-full object-cover object-top"
                           />
                         ) : (
-                          <div className={`w-full h-full flex flex-col items-center justify-center font-bold text-white ${bg}`}>
+                          <div
+                            className={`w-full h-full flex flex-col items-center justify-center font-bold text-white ${bg}`}
+                          >
                             <span className="text-4xl">{initials}</span>
-                            <span className="text-xs text-white/60 mt-1">No Cover</span>
+                            <span className="text-xs text-white/60 mt-1">
+                              No Cover
+                            </span>
                           </div>
                         )}
                       </div>
@@ -608,7 +678,10 @@ export default function LandingPage() {
                         </Badge>
                       )}
                       {j.category_name && (
-                        <Badge variant="outline" className="text-xs border-primary/30 text-primary/80">
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-primary/30 text-primary/80"
+                        >
                           {j.category_name}
                         </Badge>
                       )}
@@ -644,7 +717,8 @@ export default function LandingPage() {
                   Open for Submissions
                 </h2>
                 <p className="text-muted-foreground mt-1">
-                  Submit your research to these journals currently accepting manuscripts
+                  Submit your research to these journals currently accepting
+                  manuscripts
                 </p>
               </div>
             </div>
@@ -652,7 +726,10 @@ export default function LandingPage() {
             {openJournalsLoading ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="rounded-xl border border-border p-5 space-y-3">
+                  <div
+                    key={i}
+                    className="rounded-xl border border-border p-5 space-y-3"
+                  >
                     <Skeleton className="h-5 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-8 w-full" />
@@ -662,9 +739,36 @@ export default function LandingPage() {
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {openJournals.map((j) => {
-                  const placeholderColors = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-red-500", "bg-orange-500", "bg-pink-500"];
-                  const bg = placeholderColors[(j.title?.charCodeAt(0) ?? 0) % placeholderColors.length];
-                  const initials = j.title?.split(" ").filter((w: string) => !["of","the","and","for","in","a","an"].includes(w.toLowerCase())).slice(0,3).map((w: string) => w[0]?.toUpperCase() ?? "").join("") ?? "J";
+                  const placeholderColors = [
+                    "bg-blue-500",
+                    "bg-purple-500",
+                    "bg-green-500",
+                    "bg-red-500",
+                    "bg-orange-500",
+                    "bg-pink-500",
+                  ];
+                  const bg =
+                    placeholderColors[
+                      (j.title?.charCodeAt(0) ?? 0) % placeholderColors.length
+                    ];
+                  const initials =
+                    j.title
+                      ?.split(" ")
+                      .filter(
+                        (w: string) =>
+                          ![
+                            "of",
+                            "the",
+                            "and",
+                            "for",
+                            "in",
+                            "a",
+                            "an",
+                          ].includes(w.toLowerCase()),
+                      )
+                      .slice(0, 3)
+                      .map((w: string) => w[0]?.toUpperCase() ?? "")
+                      .join("") ?? "J";
                   return (
                     <motion.div
                       key={j.id}
@@ -676,17 +780,31 @@ export default function LandingPage() {
                       <div className="flex items-center gap-3">
                         {j.logo_url ? (
                           <div className="w-[45px] h-[60px] rounded-lg overflow-hidden shrink-0">
-                            <img src={getFileUrl(j.logo_url)} alt={j.title} className="w-full h-full object-cover object-top" />
+                            <img
+                              src={getFileUrl(j.logo_url)}
+                              alt={j.title}
+                              className="w-full h-full object-cover object-top"
+                            />
                           </div>
                         ) : (
-                          <div className={`w-[45px] h-[60px] rounded-lg flex flex-col items-center justify-center font-bold text-white shrink-0 ${bg}`}>
+                          <div
+                            className={`w-[45px] h-[60px] rounded-lg flex flex-col items-center justify-center font-bold text-white shrink-0 ${bg}`}
+                          >
                             <span className="text-base">{initials}</span>
-                            <span className="text-[8px] text-white/60">No Cover</span>
+                            <span className="text-[8px] text-white/60">
+                              No Cover
+                            </span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{j.title}</h3>
-                          {j.issn && <p className="text-xs text-muted-foreground mt-0.5">ISSN: {j.issn}</p>}
+                          <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">
+                            {j.title}
+                          </h3>
+                          {j.issn && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              ISSN: {j.issn}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -694,14 +812,22 @@ export default function LandingPage() {
                           Open
                         </Badge>
                         {j.open_issue_label && (
-                          <span className="text-xs text-muted-foreground">{j.open_issue_label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {j.open_issue_label}
+                          </span>
                         )}
-                        {j.slots_remaining !== undefined && j.slots_remaining > 0 && (
-                          <span className="text-xs text-muted-foreground">{j.slots_remaining} slots remaining</span>
-                        )}
+                        {j.slots_remaining !== undefined &&
+                          j.slots_remaining > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {j.slots_remaining} slots remaining
+                            </span>
+                          )}
                       </div>
                       <Link to={`/author/submit?journal=${j.id}`}>
-                        <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-auto">
+                        <Button
+                          size="sm"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-auto"
+                        >
                           Submit Now <ArrowRight className="ml-2 h-3.5 w-3.5" />
                         </Button>
                       </Link>
@@ -741,32 +867,44 @@ export default function LandingPage() {
                 type="text"
                 placeholder="Search by title or keyword..."
                 value={paperFilters.q}
-                onChange={(e) => setPaperFilters((p) => ({ ...p, q: e.target.value }))}
+                onChange={(e) =>
+                  setPaperFilters((p) => ({ ...p, q: e.target.value }))
+                }
                 className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
               />
             </div>
             <select
               value={paperFilters.category}
-              onChange={(e) => setPaperFilters((p) => ({ ...p, category: e.target.value }))}
+              onChange={(e) =>
+                setPaperFilters((p) => ({ ...p, category: e.target.value }))
+              }
               className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[170px]"
             >
               <option value="">All Categories</option>
               {categories.slice(1).map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
               ))}
             </select>
             <select
               value={paperFilters.year}
-              onChange={(e) => setPaperFilters((p) => ({ ...p, year: e.target.value }))}
+              onChange={(e) =>
+                setPaperFilters((p) => ({ ...p, year: e.target.value }))
+              }
               className="py-2 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer min-w-[120px]"
             >
               {years.slice(0, 6).map((y) => (
-                <option key={y.value} value={y.value}>{y.label}</option>
+                <option key={y.value} value={y.value}>
+                  {y.label}
+                </option>
               ))}
             </select>
             {(paperFilters.q || paperFilters.category || paperFilters.year) && (
               <button
-                onClick={() => setPaperFilters({ q: "", category: "", year: "" })}
+                onClick={() =>
+                  setPaperFilters({ q: "", category: "", year: "" })
+                }
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Clear filters
@@ -789,7 +927,9 @@ export default function LandingPage() {
             </div>
           ) : homePapers.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              {(paperFilters.q || paperFilters.category || paperFilters.year) ? "No papers match your filters." : "No publications yet."}
+              {paperFilters.q || paperFilters.category || paperFilters.year
+                ? "No papers match your filters."
+                : "No publications yet."}
             </p>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -865,7 +1005,7 @@ export default function LandingPage() {
           >
             <h2 className="font-serif-outfit text-4xl md:text-5xl font-bold text-foreground mb-4">
               Why Choose{" "}
-              <span className="text-gradient-accent">JournalHub</span>
+              <span className="text-gradient-accent">GIKI Journal</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Built by researchers, for researchers. Experience the future of
@@ -979,7 +1119,7 @@ export default function LandingPage() {
               <span className="text-gradient-accent">Researchers</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of academics who trust JournalHub for their
+              Join thousands of academics who trust GIKI Journal for their
               publishing needs.
             </p>
           </motion.div>
@@ -1059,7 +1199,7 @@ export default function LandingPage() {
                   <BookOpen className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <span className="font-serif-roboto text-lg font-semibold">
-                  JournalHub
+                  GIKI Journal
                 </span>
               </Link>
               <p className="text-sm text-muted-foreground">
@@ -1130,7 +1270,7 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-foreground mb-4">Contact</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>support@journalhub.com</li>
+                <li>support@giki.com</li>
                 <li>+1 (555) 123-4567</li>
               </ul>
             </div>
@@ -1138,7 +1278,7 @@ export default function LandingPage() {
 
           <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2026 JournalHub. All rights reserved.
+              © {new Date().getFullYear()} GIKI Journal. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link

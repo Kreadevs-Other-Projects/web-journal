@@ -210,7 +210,7 @@ export function DashboardLayout({
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="font-serif text-lg font-semibold">
-                JournalHub
+                GIKI Journal
               </span>
             </motion.div>
           )}

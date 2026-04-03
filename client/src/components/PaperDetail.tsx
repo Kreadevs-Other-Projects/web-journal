@@ -740,10 +740,10 @@ export default function JournalDetail() {
                   <p className="text-sm text-muted-foreground border-t border-border/50 pt-6">
                     For queries regarding APC, contact:{" "}
                     <a
-                      href="mailto:support@journalhub.com"
+                      href="mailto:support@giki.com"
                       className="text-primary hover:underline"
                     >
-                      support@journalhub.com
+                      support@giki.com
                     </a>
                   </p>
                 </div>

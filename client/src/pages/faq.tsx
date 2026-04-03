@@ -40,16 +40,16 @@ export default function FAQPage() {
       color: "from-blue-500 to-cyan-500",
       questions: [
         {
-          q: "What is JournalHub GIKI?",
-          a: "JournalHub GIKI is the official academic journal platform of the Ghulam Ishaq Khan Institute of Engineering Sciences and Technology. It serves as a digital repository for research papers, scholarly articles, theses, and academic publications from GIKI's faculty, researchers, and students.",
+          q: "What is GIKI Journal?",
+          a: "GIKI Journal is the official academic journal platform of the Ghulam Ishaq Khan Institute of Engineering Sciences and Technology. It serves as a digital repository for research papers, scholarly articles, theses, and academic publications from GIKI's faculty, researchers, and students.",
         },
         {
-          q: "Who can publish on JournalHub?",
-          a: "JournalHub is primarily for GIKI faculty members, researchers, PhD scholars, and graduate students. Undergraduate students can also submit their research projects under faculty supervision. External collaborators working with GIKI researchers may also be eligible to publish.",
+          q: "Who can publish on GIKI Journal?",
+          a: "GIKI Journal is primarily for GIKI faculty members, researchers, PhD scholars, and graduate students. Undergraduate students can also submit their research projects under faculty supervision. External collaborators working with GIKI researchers may also be eligible to publish.",
         },
         {
-          q: "Is JournalHub open access?",
-          a: "Yes, JournalHub follows an open access model. All published papers are freely available to read, download, and share, promoting the global dissemination of knowledge from GIKI to the world.",
+          q: "Is GIKI Journal open access?",
+          a: "Yes, GIKI Journal follows an open access model. All published papers are freely available to read, download, and share, promoting the global dissemination of knowledge from GIKI to the world.",
         },
         {
           q: "How do I create an account?",
@@ -117,11 +117,11 @@ export default function FAQPage() {
         },
         {
           q: "Can I get print copies of papers?",
-          a: "JournalHub is primarily a digital platform. However, authors can request high-quality PDFs suitable for printing. For official print copies, please contact the GIKI library.",
+          a: "GIKI Journal is primarily a digital platform. However, authors can request high-quality PDFs suitable for printing. For official print copies, please contact the GIKI library.",
         },
         {
           q: "Are there mobile apps available?",
-          a: "Currently, JournalHub is optimized for mobile browsers. Native iOS and Android apps are under development and expected to launch in late 2024.",
+          a: "Currently, GIKI Journal is optimized for mobile browsers. Native iOS and Android apps are under development and expected to launch in late 2024.",
         },
       ],
     },
@@ -161,7 +161,7 @@ export default function FAQPage() {
         },
         {
           q: "What browsers are supported?",
-          a: "JournalHub works best with the latest versions of Chrome, Firefox, Safari, and Edge. Internet Explorer is not supported. Enable JavaScript and cookies for full functionality.",
+          a: "GIKI Journal works best with the latest versions of Chrome, Firefox, Safari, and Edge. Internet Explorer is not supported. Enable JavaScript and cookies for full functionality.",
         },
         {
           q: "How do I update my profile information?",
@@ -223,7 +223,7 @@ export default function FAQPage() {
 
             <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
               Find answers to common questions about publishing, accessing
-              papers, and using JournalHub GIKI's academic platform.
+              papers, and using GIKI Journal academic platform.
             </p>
 
             <div className="relative mx-auto max-w-2xl">

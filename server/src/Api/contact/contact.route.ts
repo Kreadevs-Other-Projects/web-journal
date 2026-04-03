@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { applyAsReviewer } from "./contact.controller";
+import { applyAsReviewer, sendContactMessage } from "./contact.controller";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -25,6 +25,7 @@ const profilePicUpload = multer({
 
 const router = Router();
 
+router.post("/", sendContactMessage);
 router.post("/apply-reviewer", profilePicUpload.single("profile_pic"), applyAsReviewer);
 
 export default router;

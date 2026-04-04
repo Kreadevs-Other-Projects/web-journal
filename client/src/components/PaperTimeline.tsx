@@ -1,15 +1,15 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { StatusBadge, PaperStatus } from "./StatusBadge";
-import { 
-  FileText, 
-  UserCheck, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  FileText,
+  UserCheck,
+  Clock,
+  CheckCircle2,
+  XCircle,
   Edit3,
   Send,
-  BookOpen
+  BookOpen,
 } from "lucide-react";
 
 interface TimelineEvent {
@@ -26,13 +26,19 @@ interface PaperTimelineProps {
   className?: string;
 }
 
-const statusIcons: Record<PaperStatus, React.ElementType> = {
+const statusIcons: Record<string, React.ElementType> = {
   submitted: Send,
   assigned: UserCheck,
+  assigned_to_sub_editor: UserCheck,
   under_review: Clock,
+  reviewed: Clock,
   pending_revision: Edit3,
   resubmitted: FileText,
+  sub_editor_approved: CheckCircle2,
   accepted: CheckCircle2,
+  awaiting_payment: Clock,
+  payment_review: Clock,
+  ready_for_publication: BookOpen,
   published: BookOpen,
   rejected: XCircle,
 };
@@ -46,7 +52,7 @@ export function PaperTimeline({ events, className }: PaperTimelineProps) {
       <div className="space-y-0">
         {events.map((event, index) => {
           const Icon = statusIcons[event.status];
-          
+
           return (
             <motion.div
               key={event.id}
@@ -55,7 +61,7 @@ export function PaperTimeline({ events, className }: PaperTimelineProps) {
               transition={{ delay: index * 0.1 }}
               className={cn(
                 "relative pl-16 py-4",
-                index !== events.length - 1 && "pb-8"
+                index !== events.length - 1 && "pb-8",
               )}
             >
               {/* Icon node */}
@@ -67,20 +73,26 @@ export function PaperTimeline({ events, className }: PaperTimelineProps) {
                   "absolute left-2 top-4 h-8 w-8 rounded-full flex items-center justify-center border-2",
                   event.isCurrent
                     ? "bg-primary border-primary text-primary-foreground glow-primary"
-                    : "bg-card border-border text-muted-foreground"
+                    : "bg-card border-border text-muted-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
               </motion.div>
 
               {/* Content */}
-              <div className={cn(
-                "glass-card p-4",
-                event.isCurrent && "border-primary/30"
-              )}>
+              <div
+                className={cn(
+                  "glass-card p-4",
+                  event.isCurrent && "border-primary/30",
+                )}
+              >
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <div>
-                    <StatusBadge status={event.status} size="sm" animated={event.isCurrent} />
+                    <StatusBadge
+                      status={event.status}
+                      size="sm"
+                      animated={event.isCurrent}
+                    />
                     <p className="mt-2 text-sm text-foreground font-medium">
                       {event.description}
                     </p>
@@ -89,7 +101,7 @@ export function PaperTimeline({ events, className }: PaperTimelineProps) {
                     {event.date}
                   </span>
                 </div>
-                
+
                 {event.actor && (
                   <p className="text-xs text-muted-foreground">
                     by {event.actor}

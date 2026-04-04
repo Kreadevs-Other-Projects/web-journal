@@ -165,10 +165,18 @@ export default function CEPapers() {
   const [viewPaperLog, setViewPaperLog] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!viewPaper) { setViewPaperLog([]); return; }
+    if (!viewPaper) {
+      setViewPaperLog([]);
+      return;
+    }
     fetch(`${url}/papers/${viewPaper.id}/status-log`, {
       headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()).then(d => { if (d.success) setViewPaperLog(d.log || []); }).catch(() => {});
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setViewPaperLog(d.log || []);
+      })
+      .catch(() => {});
   }, [viewPaper?.id]);
 
   // Override modal
@@ -694,7 +702,7 @@ export default function CEPapers() {
         open={!!viewPaper}
         onOpenChange={(open) => !open && setViewPaper(null)}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
@@ -765,7 +773,10 @@ export default function CEPapers() {
                       Accepted
                     </p>
                     <p className="font-medium">
-                      {new Date(viewPaper.accepted_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      {new Date(viewPaper.accepted_at).toLocaleDateString(
+                        "en-GB",
+                        { day: "2-digit", month: "short", year: "numeric" },
+                      )}
                     </p>
                   </div>
                 )}
@@ -849,14 +860,22 @@ export default function CEPapers() {
               )}
               {viewPaperLog.length > 0 && (
                 <div className="border-t pt-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Status Timeline</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                    Status Timeline
+                  </p>
                   <PaperTimeline
                     events={viewPaperLog.map((l, i) => ({
                       id: l.id || String(i),
                       status: l.status,
-                      date: new Date(l.changed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                      date: new Date(l.changed_at).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      }),
                       description: l.status.replace(/_/g, " "),
-                      actor: l.changed_by_name ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})` : undefined,
+                      actor: l.changed_by_name
+                        ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})`
+                        : undefined,
                       isCurrent: i === viewPaperLog.length - 1,
                     }))}
                   />

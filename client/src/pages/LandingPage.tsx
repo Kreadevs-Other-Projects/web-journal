@@ -24,6 +24,8 @@ import {
   Info,
   RotateCcw,
   AlertCircle,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -207,6 +209,15 @@ export default function LandingPage() {
       })
       .catch(() => {})
       .finally(() => setOpenJournalsLoading(false));
+  }, []);
+
+  // Upcoming conferences
+  const [conferences, setConferences] = useState<any[]>([]);
+  useEffect(() => {
+    fetch(`${url}/conferences`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setConferences(d.conferences || []); })
+      .catch(() => {});
   }, []);
 
   // Dynamic categories from API
@@ -1157,6 +1168,61 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ===== UPCOMING CONFERENCES SECTION ===== */}
+      {conferences.length > 0 && (
+        <section className="py-20 bg-card/30">
+          <div className="container mx-auto px-4">
+            <div className="mb-10">
+              <h2 className="font-serif-outfit text-3xl md:text-4xl font-bold text-foreground">
+                Upcoming Conferences
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                Academic events and calls for papers
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {conferences.map((c) => (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="glass-card p-5 flex flex-col gap-3"
+                >
+                  <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
+                    {c.title}
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {new Date(c.date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </div>
+                  {c.location && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {c.location}
+                    </div>
+                  )}
+                  {c.link && (
+                    <a
+                      href={c.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Learn More
+                    </a>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden">

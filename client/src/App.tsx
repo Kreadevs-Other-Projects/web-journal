@@ -18,6 +18,7 @@ import PublishPapers from "./pages/publisher/PublishPapers.tsx";
 import PublisherPayments from "./pages/publisher/Payments.tsx";
 import PublisherCategories from "./pages/publisher/Categories.tsx";
 import PublisherJournalCategories from "./pages/publisher/JournalCategories.tsx";
+import HomepageContent from "./pages/publisher/HomepageContent.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -205,14 +206,14 @@ const App = () => (
                       path="/publisher/journal-categories"
                       element={<PublisherJournalCategories />}
                     />
+                    <Route
+                      path="/publisher/homepage-content"
+                      element={<HomepageContent />}
+                    />
                   </Route>
 
                   <Route
-                    element={
-                      <ProtectedRoute
-                        allowedRoles={["publisher", "journal_manager"]}
-                      />
-                    }
+                    element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route
                       path="/publisher/publish-paper"

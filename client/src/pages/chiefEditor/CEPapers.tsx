@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+import { PaperTimeline } from "@/components/PaperTimeline";
 
 interface Reviewer {
   id: string;
@@ -52,6 +53,7 @@ interface Paper {
   issue_label: string | null;
   created_at: string;
   submitted_at: string;
+  accepted_at: string | null;
   published_at: string | null;
   current_ae_id: string | null;
   current_ae_name: string | null;
@@ -160,6 +162,14 @@ export default function CEPapers() {
 
   // View paper modal
   const [viewPaper, setViewPaper] = useState<Paper | null>(null);
+  const [viewPaperLog, setViewPaperLog] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!viewPaper) { setViewPaperLog([]); return; }
+    fetch(`${url}/papers/${viewPaper.id}/status-log`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()).then(d => { if (d.success) setViewPaperLog(d.log || []); }).catch(() => {});
+  }, [viewPaper?.id]);
 
   // Override modal
   const [overridePaper, setOverridePaper] = useState<Paper | null>(null);
@@ -749,6 +759,16 @@ export default function CEPapers() {
                       : "—"}
                   </p>
                 </div>
+                {viewPaper.accepted_at && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Accepted
+                    </p>
+                    <p className="font-medium">
+                      {new Date(viewPaper.accepted_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                )}
                 {viewPaper.published_at && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
@@ -825,6 +845,21 @@ export default function CEPapers() {
                     <FileDown className="h-3 w-3" />
                     Download {viewPaper.file_type?.toUpperCase() || "File"}
                   </Button>
+                </div>
+              )}
+              {viewPaperLog.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Status Timeline</p>
+                  <PaperTimeline
+                    events={viewPaperLog.map((l, i) => ({
+                      id: l.id || String(i),
+                      status: l.status,
+                      date: new Date(l.changed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                      description: l.status.replace(/_/g, " "),
+                      actor: l.changed_by_name ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})` : undefined,
+                      isCurrent: i === viewPaperLog.length - 1,
+                    }))}
+                  />
                 </div>
               )}
             </div>

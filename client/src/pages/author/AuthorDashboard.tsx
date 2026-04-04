@@ -13,7 +13,9 @@ import {
   AlertTriangle,
   BookOpen,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
+import { getPaperUrl } from "@/lib/utils";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -27,6 +29,8 @@ interface Paper {
   submitted_at?: string;
   journal_title?: string;
   payment_status?: string;
+  url_slug?: string;
+  acronym?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -259,13 +263,13 @@ export default function AuthorDashboard() {
                             Updated: {formatDate(paper.updated_at)}
                           </span>
                         </div>
-                        {/* <Link
-                          to={`/articles/${paper.id}`}
+                        <Link
+                          to={getPaperUrl(paper)}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
                         >
                           <ExternalLink className="h-3 w-3" />
                           View Published
-                        </Link> */}
+                        </Link>
                       </li>
                     ))}
                   </ul>

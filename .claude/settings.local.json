@@ -7,7 +7,11 @@
       "Bash(bun run:*)",
       "Bash(where bun:*)",
       "Read(//c/Users/Saad/AppData/Roaming/bun/**)",
-      "Read(//c/Users/Saad/.bun/bin/**)"
+      "Read(//c/Users/Saad/.bun/bin/**)",
+      "Bash(grep -n \"acronym\\\\|url_slug\\\\|paper_index\\\\|issue_index\" D:/Kreadevs/web-journal/server/src/database/migrations/*.sql)",
+      "Bash(grep -n INSERT.*journal_issues D:/Kreadevs/web-journal/server/src/Api/ -r)",
+      "Bash(grep -n INSERT.*journal_issues D:/Kreadevs/web-journal/server/src/Api/journal/ -r)",
+      "Bash(npm run:*)"
     ]
   }
 }

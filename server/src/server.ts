@@ -5,8 +5,8 @@ import yearlyEmailCron from "./cron/yearlyEmailCron";
 import invitationExpiryCron from "./cron/invitationExpiryCron";
 import issueResetCron from "./cron/issueResetCron";
 
-// yearlyEmailCron();
-// journalSuspensionCron();
+yearlyEmailCron();
+journalSuspensionCron();
 invitationExpiryCron();
 issueResetCron();
 

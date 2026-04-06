@@ -28,11 +28,18 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       r.decision AS review_decision,
       r.comments,
-      r.signed_at AS review_submitted_at
+      r.signed_at AS review_submitted_at,
+
+      j.title AS journal_name,
+      j.acronym AS journal_acronym,
+      i.label AS issue_label
+
     FROM review_assignments ra
     JOIN papers p ON p.id = ra.paper_id
     LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
     LEFT JOIN reviews r ON ra.id = r.review_assignment_id
+    LEFT JOIN journal_issues i ON i.id = p.issue_id
+    LEFT JOIN journals j ON j.id = i.journal_id
     WHERE ra.reviewer_id = $1
     ORDER BY pv.created_at DESC
     `,

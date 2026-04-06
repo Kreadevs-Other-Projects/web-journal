@@ -31,6 +31,7 @@ import {
   ShieldOff,
   ShieldCheck,
   Loader2,
+  Edit3,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,7 +57,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { title } from "process";
 
 interface User {
   id: string;
@@ -89,9 +89,11 @@ interface Journal {
   website_url: string;
   owner_id: string;
   chief_editor_id: string | null;
+  journal_manager_id: string | null;
   created_at: string;
   updated_at?: string | null;
   chief_editor: User | null;
+  journal_manager: User | null;
   owner: User;
   issues: JournalIssue[];
   is_taken_down?: boolean;
@@ -106,6 +108,12 @@ interface Journal {
     | "accepted"
     | "cancelled";
   chief_editor_email?: string;
+  journal_manager_invitation_status?:
+    | "pending"
+    | "expired"
+    | "accepted"
+    | "cancelled";
+  journal_manager_email?: string;
 }
 
 /* PAYMENT_DISABLED: Payment step hidden per client instruction
@@ -163,6 +171,13 @@ export default function PublisherDashboard() {
   const [replacingCE, setReplacingCE] = useState(false);
   const [invitingCE, setInvitingCE] = useState(false);
   const [newCEForm, setNewCEForm] = useState({ name: "", email: "" });
+  const [replaceJMOpen, setReplaceJMOpen] = useState(false);
+  const [replaceJMStep, setReplaceJMStep] = useState<"confirm" | "invite">(
+    "confirm",
+  );
+  const [replacingJM, setReplacingJM] = useState(false);
+  const [invitingJM, setInvitingJM] = useState(false);
+  const [newJMForm, setNewJMForm] = useState({ name: "", email: "" });
   const [issuePreview, setIssuePreview] = useState<{
     label: string;
     volume: number;
@@ -175,6 +190,13 @@ export default function PublisherDashboard() {
   const [apcFee, setApcFee] = useState<string>("");
   const [apcCurrency, setApcCurrency] = useState<string>("USD");
   const [savingAPC, setSavingAPC] = useState(false);
+  const [isEditingAPC, setIsEditingAPC] = useState(false);
+  const [originalApcFee, setOriginalApcFee] = useState<string>("");
+  const [originalApcCurrency, setOriginalApcCurrency] = useState<string>("USD");
+  const [showUnsavedAPCModal, setShowUnsavedAPCModal] = useState(false);
+  const [pendingAPCNavigation, setPendingAPCNavigation] = useState<(
+    () => void
+  ) | null>(null);
 
   const statusMap: Record<string, string[]> = {
     all: ["draft", "active", "suspended", "archived"],
@@ -466,7 +488,122 @@ export default function PublisherDashboard() {
       setInvitingCE(false);
     }
   };
+
+  const replaceJournalManager = async () => {
+    if (!selectedJournal) return;
+    try {
+      setReplacingJM(true);
+      const res = await fetch(
+        `${url}/publisher/journals/${selectedJournal.id}/journal-manager`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "Journal Manager Removed",
+        description: "You can now invite a new journal manager.",
+      });
+      setReplaceJMStep("invite");
+      fetchJournals();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setReplacingJM(false);
+    }
+  };
+
+  const inviteNewJM = async () => {
+    if (!selectedJournal || !newJMForm.name || !newJMForm.email) return;
+    try {
+      setInvitingJM(true);
+      const res = await fetch(`${url}/invitations/send`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newJMForm.name,
+          email: newJMForm.email,
+          role: "journal_manager",
+          journal_id: selectedJournal.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "Invitation Sent",
+        description: `Invitation sent to ${newJMForm.email}`,
+      });
+      setReplaceJMOpen(false);
+      setReplaceJMStep("confirm");
+      setNewJMForm({ name: "", email: "" });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setInvitingJM(false);
+    }
+  };
+
+  const resendJMInvitation = async () => {
+    if (!selectedJournal || !selectedJournal.journal_manager_email) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No email address found to resend the invitation.",
+      });
+      return;
+    }
+
+    try {
+      setResendingJM(true);
+      const res = await fetch(`${url}/invitations/resend`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          journal_id: selectedJournal.id,
+          email: selectedJournal.journal_manager_email,
+          role: "journal_manager",
+          title: selectedJournal.title,
+          journalManagerName: selectedJournal.journal_manager,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Resend failed");
+
+      toast({
+        title: "Invitation Resent",
+        description: `A fresh invitation was sent to ${selectedJournal.journal_manager_email}`,
+      });
+
+      fetchJournals();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message,
+      });
+    } finally {
+      setResendingJM(false);
+    }
+  };
   const [resending, setResending] = useState(false);
+  const [resendingJM, setResendingJM] = useState(false);
 
   // Takedown state
   const [takedownModalOpen, setTakedownModalOpen] = useState(false);
@@ -667,13 +804,18 @@ export default function PublisherDashboard() {
   useEffect(() => {
     if (!detailsModalOpen) {
       setSelectedIssue(null);
+      setIsEditingAPC(false);
     } else if (selectedJournal) {
-      setApcFee(
+      const feeValue =
         selectedJournal.publication_fee != null
           ? String(selectedJournal.publication_fee)
-          : "",
-      );
-      setApcCurrency(selectedJournal.currency || "USD");
+          : "";
+      const currencyValue = selectedJournal.currency || "USD";
+      setApcFee(feeValue);
+      setApcCurrency(currencyValue);
+      setOriginalApcFee(feeValue);
+      setOriginalApcCurrency(currencyValue);
+      setIsEditingAPC(false);
     }
   }, [detailsModalOpen, selectedJournal]);
 
@@ -717,6 +859,9 @@ export default function PublisherDashboard() {
       setSelectedJournal((j) =>
         j ? { ...j, publication_fee: fee, currency: apcCurrency } : j,
       );
+      setOriginalApcFee(String(fee));
+      setOriginalApcCurrency(apcCurrency);
+      setIsEditingAPC(false);
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -725,6 +870,33 @@ export default function PublisherDashboard() {
       });
     } finally {
       setSavingAPC(false);
+    }
+  };
+
+  const hasUnsavedAPCChanges =
+    isEditingAPC && (apcFee !== originalApcFee || apcCurrency !== originalApcCurrency);
+
+  const handleCancelAPC = () => {
+    if (hasUnsavedAPCChanges) {
+      setShowUnsavedAPCModal(true);
+    } else {
+      setIsEditingAPC(false);
+    }
+  };
+
+  const handleDiscardAPCChanges = () => {
+    setApcFee(originalApcFee);
+    setApcCurrency(originalApcCurrency);
+    setIsEditingAPC(false);
+    setShowUnsavedAPCModal(false);
+  };
+
+  const handleSaveAndContinueAPC = async () => {
+    await handleSaveAPC();
+    setShowUnsavedAPCModal(false);
+    if (pendingAPCNavigation) {
+      pendingAPCNavigation();
+      setPendingAPCNavigation(null);
     }
   };
 
@@ -1162,6 +1334,82 @@ export default function PublisherDashboard() {
                           </div>
                         )}
                       </div>
+
+                      <Separator />
+
+                      {/* Journal Manager Section */}
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-gray-600">Journal Manager</p>
+                          <div className="flex gap-2">
+                            {selectedJournal.journal_manager_invitation_status ===
+                              "expired" && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border border-amber-500/30"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  resendJMInvitation();
+                                }}
+                                disabled={resendingJM}
+                              >
+                                <Bell className="h-3 w-3" />
+                                {resendingJM ? "Sending..." : "Resend"}
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReplaceJMStep(
+                                  selectedJournal.journal_manager
+                                    ? "confirm"
+                                    : "invite",
+                                );
+                                setReplaceJMOpen(true);
+                              }}
+                            >
+                              {selectedJournal.journal_manager
+                                ? "Replace"
+                                : "Invite"}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {selectedJournal.journal_manager ? (
+                          <div className="flex items-center gap-2 mt-2">
+                            <User className="h-4 w-4 text-blue-400" />
+                            <div>
+                              <p>{selectedJournal.journal_manager.name}</p>
+                              <p className="text-sm text-gray-600 flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {selectedJournal.journal_manager.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2">
+                            <p
+                              className={`text-sm flex items-center gap-1 ${
+                                selectedJournal.journal_manager_invitation_status ===
+                                "expired"
+                                  ? "text-red-400 font-medium"
+                                  : "text-amber-400"
+                              }`}
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {selectedJournal.journal_manager_invitation_status ===
+                              "expired"
+                                ? `Invitation to ${selectedJournal.journal_manager_email || "manager"} has expired`
+                                : "No journal manager — invitation pending or not yet sent"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -1287,45 +1535,80 @@ export default function PublisherDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-muted-foreground mb-1 block">
-                        Publication Fee per Page
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={apcFee}
-                          onChange={(e) => setApcFee(e.target.value)}
-                          placeholder="0"
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                        <select
-                          value={apcCurrency}
-                          onChange={(e) => setApcCurrency(e.target.value)}
-                          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    {!isEditingAPC ? (
+                      <>
+                        <div className="bg-muted/30 p-4 rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Publication Fee per Page
+                          </p>
+                          <p className="text-2xl font-semibold text-foreground">
+                            {originalApcFee && parseFloat(originalApcFee) > 0
+                              ? `${originalApcCurrency}${parseFloat(originalApcFee)} per page`
+                              : "No fee set"}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => setIsEditingAPC(true)}
+                          variant="outline"
+                          className="w-full gap-2"
                         >
-                          <option value="USD">USD</option>
-                          <option value="PKR">PKR</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                        </select>
-                      </div>
-                      {apcFee && parseFloat(apcFee) > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          e.g. Total for 10 pages = {apcCurrency}{" "}
-                          {(parseFloat(apcFee) * 10).toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      onClick={handleSaveAPC}
-                      disabled={savingAPC}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {savingAPC ? "Saving..." : "Save APC Settings"}
-                    </Button>
+                          <Edit3 className="h-4 w-4" />
+                          Edit APC
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-sm text-muted-foreground mb-1 block">
+                            Publication Fee per Page
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={apcFee}
+                              onChange={(e) => setApcFee(e.target.value)}
+                              placeholder="0"
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                            <select
+                              value={apcCurrency}
+                              onChange={(e) => setApcCurrency(e.target.value)}
+                              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                              <option value="USD">USD</option>
+                              <option value="PKR">PKR</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          </div>
+                          {apcFee && parseFloat(apcFee) > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              e.g. Total for 10 pages = {apcCurrency}{" "}
+                              {(parseFloat(apcFee) * 10).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleCancelAPC}
+                            variant="outline"
+                            className="flex-1"
+                            disabled={savingAPC}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleSaveAPC}
+                            disabled={savingAPC}
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                          >
+                            {savingAPC ? "Saving..." : "Save APC"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1591,6 +1874,92 @@ export default function PublisherDashboard() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={replaceJMOpen}
+        onOpenChange={(open) => {
+          setReplaceJMOpen(open);
+          if (!open) {
+            setReplaceJMStep("confirm");
+            setNewJMForm({ name: "", email: "" });
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {replaceJMStep === "confirm"
+                ? "Replace Journal Manager"
+                : "Invite New Journal Manager"}
+            </DialogTitle>
+            <DialogDescription>
+              {replaceJMStep === "confirm"
+                ? `This will remove ${selectedJournal?.journal_manager?.name ?? "the current journal manager"} from ${selectedJournal?.title} and cancel any pending invitations.`
+                : "Enter the details of the new journal manager to send them an invitation."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {replaceJMStep === "confirm" ? (
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" onClick={() => setReplaceJMOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={replacingJM}
+                onClick={replaceJournalManager}
+              >
+                {replacingJM ? "Removing..." : "Remove & Continue"}
+              </Button>
+            </DialogFooter>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1">
+                  <Label>
+                    Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Full name"
+                    value={newJMForm.name}
+                    onChange={(e) =>
+                      setNewJMForm((p) => ({ ...p, name: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={newJMForm.email}
+                    onChange={(e) =>
+                      setNewJMForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setReplaceJMOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={invitingJM || !newJMForm.name || !newJMForm.email}
+                  onClick={inviteNewJM}
+                >
+                  {invitingJM ? "Sending..." : "Send Invitation"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Takedown confirmation modal */}
       <Dialog
         open={takedownModalOpen}
@@ -1647,6 +2016,39 @@ export default function PublisherDashboard() {
                 <ShieldOff className="h-4 w-4" />
               )}
               Confirm Takedown
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsaved APC Changes Modal */}
+      <Dialog open={showUnsavedAPCModal} onOpenChange={setShowUnsavedAPCModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unsaved APC Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes to the APC price for this journal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 bg-muted/30 p-4 rounded-lg text-sm">
+            <p className="text-muted-foreground mb-1">New price:</p>
+            <p className="font-semibold text-foreground">
+              {apcCurrency}
+              {apcFee} per page
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDiscardAPCChanges}
+            >
+              Discard Changes
+            </Button>
+            <Button
+              onClick={handleSaveAndContinueAPC}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Save & Continue
             </Button>
           </DialogFooter>
         </DialogContent>

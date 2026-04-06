@@ -39,6 +39,7 @@ import {
   ArrowLeft,
   AlignLeft,
   FileX,
+  BookOpen,
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { useAuth } from "@/context/AuthContext";
@@ -64,6 +65,9 @@ interface Paper {
   review_decision?: string;
   comments?: string;
   ce_override?: boolean;
+  journal_name?: string;
+  journal_acronym?: string;
+  issue_label?: string;
 }
 
 export default function ReviewerDashboard() {
@@ -375,6 +379,16 @@ export default function ReviewerDashboard() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <BookOpen className="h-4 w-4" />
+                  <span>{selectedPaper.journal_name}</span>
+                  {selectedPaper.issue_label && (
+                    <>
+                      <span>·</span>
+                      <span>{selectedPaper.issue_label}</span>
+                    </>
+                  )}
+                </div>
                 <h1 className="font-serif-outfit text-2xl font-bold text-white">
                   {selectedPaper.title}
                 </h1>
@@ -425,19 +439,46 @@ export default function ReviewerDashboard() {
                       </div>
                       {viewMode === "pdf" && (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(Math.max(50, pdfZoom - 10))}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setPdfZoom(Math.max(50, pdfZoom - 10))
+                            }
+                          >
                             <ZoomOut className="h-4 w-4" />
                           </Button>
-                          <span className="text-sm text-muted-foreground w-12 text-center">{pdfZoom}%</span>
-                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(Math.min(200, pdfZoom + 10))}>
+                          <span className="text-sm text-muted-foreground w-12 text-center">
+                            {pdfZoom}%
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setPdfZoom(Math.min(200, pdfZoom + 10))
+                            }
+                          >
                             <ZoomIn className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setPdfZoom(100)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPdfZoom(100)}
+                          >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
                         </>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => window.open(`${url}${selectedPaper.file_url}`, "_blank")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `${url}${selectedPaper.file_url}`,
+                            "_blank",
+                          )
+                        }
+                      >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
                       <Button
@@ -461,13 +502,23 @@ export default function ReviewerDashboard() {
                   <div className="aspect-[3/4] bg-muted/30 relative overflow-hidden">
                     {viewMode === "pdf" ? (
                       (() => {
-                        const ext = selectedPaper.file_url?.split(".").pop()?.toLowerCase();
+                        const ext = selectedPaper.file_url
+                          ?.split(".")
+                          .pop()
+                          ?.toLowerCase();
                         if (ext === "docx") {
                           return (
                             <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
                               <FileX className="h-10 w-10" />
-                              <p className="text-sm">PDF view is not available for Word documents.</p>
-                              <button onClick={() => setViewMode("text")} className="text-sm text-primary underline">Switch to Text view</button>
+                              <p className="text-sm">
+                                PDF view is not available for Word documents.
+                              </p>
+                              <button
+                                onClick={() => setViewMode("text")}
+                                className="text-sm text-primary underline"
+                              >
+                                Switch to Text view
+                              </button>
                             </div>
                           );
                         }
@@ -475,7 +526,10 @@ export default function ReviewerDashboard() {
                           <iframe
                             src={`${url}${selectedPaper.file_url}#view=FitH`}
                             className="w-full h-full border-0"
-                            style={{ transform: `scale(${pdfZoom / 100})`, transformOrigin: "top center" }}
+                            style={{
+                              transform: `scale(${pdfZoom / 100})`,
+                              transformOrigin: "top center",
+                            }}
                             title="Paper PDF"
                           />
                         );
@@ -486,32 +540,51 @@ export default function ReviewerDashboard() {
                           <div className="flex items-center justify-center h-full">
                             <div className="text-center">
                               <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                              <p className="text-sm text-muted-foreground">Converting document to text...</p>
+                              <p className="text-sm text-muted-foreground">
+                                Converting document to text...
+                              </p>
                             </div>
                           </div>
                         ) : htmlContent ? (
                           <div className="max-w-[700px] mx-auto px-8 py-10">
                             <div className="mb-8 pb-6 border-b">
-                              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">{selectedPaper.title}</h1>
+                              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+                                {selectedPaper.title}
+                              </h1>
                               {selectedPaper.abstract && (
                                 <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedPaper.abstract}</p>
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                    Abstract
+                                  </p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {selectedPaper.abstract}
+                                  </p>
                                 </div>
                               )}
                             </div>
                             <div
                               className="paper-webview-content"
-                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                              dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(htmlContent),
+                              }}
                             />
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <div className="text-center p-8">
                               <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                              <p className="text-sm font-medium">Text view unavailable</p>
-                              <p className="text-xs text-muted-foreground mt-1">Could not convert this document to text format.</p>
-                              <button onClick={() => setViewMode("pdf")} className="mt-3 text-xs text-primary underline">Switch to PDF view</button>
+                              <p className="text-sm font-medium">
+                                Text view unavailable
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Could not convert this document to text format.
+                              </p>
+                              <button
+                                onClick={() => setViewMode("pdf")}
+                                className="mt-3 text-xs text-primary underline"
+                              >
+                                Switch to PDF view
+                              </button>
                             </div>
                           </div>
                         )}
@@ -529,7 +602,8 @@ export default function ReviewerDashboard() {
                       Status Locked by Chief Editor
                     </CardTitle>
                     <CardDescription>
-                      The Chief Editor has overridden this paper's status. No further reviews can be submitted.
+                      The Chief Editor has overridden this paper's status. No
+                      further reviews can be submitted.
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -883,7 +957,9 @@ export default function ReviewerDashboard() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   <Badge variant="outline" className="text-xs">
-                                    {paper.paper_id}
+                                    {paper.journal_name
+                                      ? `${paper.journal_name} • ${paper.paper_id}`
+                                      : paper.paper_id}
                                   </Badge>
                                   <Badge
                                     className={cn(
@@ -988,7 +1064,11 @@ export default function ReviewerDashboard() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline">{review.paper_id}</Badge>
+                              <Badge variant="outline">
+                                {review.journal_name
+                                  ? `${review.journal_name} • ${review.paper_id}`
+                                  : review.paper_id}
+                              </Badge>
                               <Badge className="bg-success/10 text-success border-success/20">
                                 Review Submitted
                               </Badge>

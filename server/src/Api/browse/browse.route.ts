@@ -8,6 +8,7 @@ import {
   getOpenJournals,
   getPublicPaperBySlug,
   getPaperSlug,
+  getPaperXml,
 } from "./browse.controller";
 
 const router = Router();
@@ -21,6 +22,7 @@ router.get("/article/:acronym/:slug", getPublicPaperBySlug);
 // New: get acronym + url_slug by paper UUID (for ArticleRedirect)
 router.get("/paper/:paperId/slug", getPaperSlug);
 router.get("/paper/:paperId/html", getPaperHtml);
+router.get("/paper/:paperId/xml", getPaperXml);
 router.get("/paper/:paperId", getPublicPaper);
 
 export default router;

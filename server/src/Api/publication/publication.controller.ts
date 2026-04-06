@@ -37,10 +37,11 @@ export const publishPaper = async (req: AuthUser, res: Response) => {
       data: published,
     });
   } catch (error: any) {
-    const status = error.message?.includes("DOI") ? 400 : 500;
+    const status = error.statusCode || (error.message?.includes("DOI") ? 400 : 500);
     return res.status(status).json({
       success: false,
       message: error.message || "Failed to publish paper",
+      ...(error.validation_errors ? { validation_errors: error.validation_errors } : {}),
     });
   }
 };

@@ -316,3 +316,40 @@ export const updatePaymentStatus = async (
     client.release();
   }
 };
+
+export const getEmailLogsService = async (page: number, limit: number) => {
+  return repo.getEmailLogs(page, limit);
+};
+
+export const getAnalyticsService = async () => {
+  const { rows: papersByStatus } = await pool.query(
+    `SELECT status, COUNT(*)::int FROM papers GROUP BY status`,
+  );
+
+  const { rows: pubsPerMonth } = await pool.query(
+    `SELECT TO_CHAR(published_at, 'YYYY-MM') AS month, COUNT(*)::int AS count
+     FROM publications
+     WHERE published_at >= NOW() - INTERVAL '12 months'
+     GROUP BY month ORDER BY month`,
+  );
+
+  const { rows: journalsCountRows } = await pool.query(
+    `SELECT COUNT(*)::int FROM journals`,
+  );
+
+  const { rows: totalPubRows } = await pool.query(
+    `SELECT COUNT(*)::int FROM publications`,
+  );
+
+  const { rows: totalPaperRows } = await pool.query(
+    `SELECT COUNT(*)::int FROM papers`,
+  );
+
+  return {
+    papers_by_status: papersByStatus,
+    publications_per_month: pubsPerMonth,
+    journals_count: journalsCountRows[0].count,
+    total_publications: totalPubRows[0].count,
+    total_papers: totalPaperRows[0].count,
+  };
+};

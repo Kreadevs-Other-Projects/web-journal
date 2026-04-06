@@ -11,6 +11,8 @@ import {
   logout,
   switchRole,
   createStaff,
+  forgotPassword,
+  resetPassword,
 } from "./auth.controller";
 import { validate } from "../../middlewares/validate.middleware";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
@@ -25,6 +27,8 @@ import {
   logoutSchema,
   switchRoleSchema,
   createStaffSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "./auth.schema";
 
 const router = Router();
@@ -49,5 +53,8 @@ router.post(
   validate(createStaffSchema),
   asyncHandler(createStaff),
 );
+
+router.post("/forgot-password", validate(forgotPasswordSchema), asyncHandler(forgotPassword));
+router.post("/reset-password", validate(resetPasswordSchema), asyncHandler(resetPassword));
 
 export default router;

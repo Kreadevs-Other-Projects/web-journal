@@ -372,6 +372,23 @@ export default function ArticlePage() {
                       XML
                     </Button>
                   )}
+                  {/* JATS XML download */}
+                  {resolvedPaperId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(
+                          `${url}/browse/paper/${resolvedPaperId}/xml`,
+                          "_blank",
+                        )
+                      }
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download JATS XML
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

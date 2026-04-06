@@ -6,6 +6,7 @@ import {
   getOpenJournalsRepo,
   getPublicPaperBySlugRepo,
   getPaperSlugRepo,
+  getPublicPaperRepo,
 } from "./browse.repository";
 
 export const getPublicPaper = async (req: Request, res: Response) => {
@@ -92,6 +93,101 @@ export const getPaperSlug = async (req: Request, res: Response) => {
     res.json({ success: true, acronym: row.acronym, url_slug: row.url_slug });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch paper slug" });
+  }
+};
+
+export const getPaperXml = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const paper = await getPublicPaperRepo(paperId);
+    if (!paper) {
+      return res.status(404).json({ success: false, message: "Paper not found" });
+    }
+
+    const authors = Array.isArray(paper.author_details)
+      ? paper.author_details
+      : typeof paper.author_details === "string"
+      ? JSON.parse(paper.author_details || "[]")
+      : [];
+
+    const authorNames: string[] = authors.length
+      ? authors.map((a: any) => a.name || "")
+      : Array.isArray(paper.author_names)
+      ? paper.author_names
+      : [];
+
+    const authorsXml = authorNames
+      .map((name: string, i: number) => {
+        const parts = name.trim().split(" ");
+        const given = parts.slice(0, -1).join(" ");
+        const family = parts.slice(-1)[0] || "";
+        const seq = i === 0 ? "first" : "additional";
+        return `    <contrib contrib-type="author" seq="${seq}">
+      <name>
+        <surname>${family}</surname>
+        <given-names>${given}</given-names>
+      </name>
+    </contrib>`;
+      })
+      .join("\n");
+
+    const keywords: string[] = Array.isArray(paper.keywords)
+      ? paper.keywords
+      : typeof paper.keywords === "string"
+      ? JSON.parse(paper.keywords || "[]")
+      : [];
+
+    const keywordsXml = keywords.length
+      ? `  <kwd-group kwd-group-type="author-keywords">
+${keywords.map((k: string) => `    <kwd>${k}</kwd>`).join("\n")}
+  </kwd-group>`
+      : "";
+
+    const year = paper.year || new Date().getFullYear();
+    const volume = paper.volume || "";
+    const issue = paper.issue || "";
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Article Tag Suite 1.2//EN"
+  "https://jats.nlm.nih.gov/publishing/1.2/JATS-journalpublishing1.dtd">
+<article xmlns:xlink="http://www.w3.org/1999/xlink" article-type="research-article">
+  <front>
+    <journal-meta>
+      <journal-title-group>
+        <journal-title>${paper.journal_title || ""}</journal-title>
+        <abbrev-journal-title>${paper.acronym || ""}</abbrev-journal-title>
+      </journal-title-group>
+      ${paper.issn ? `<issn pub-type="epub">${paper.issn}</issn>` : ""}
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="doi">${paper.doi || ""}</article-id>
+      <title-group>
+        <article-title>${paper.title || ""}</article-title>
+      </title-group>
+      <contrib-group>
+${authorsXml}
+      </contrib-group>
+      <pub-date pub-type="epub">
+        <year>${year}</year>
+      </pub-date>
+      ${volume ? `<volume>${volume}</volume>` : ""}
+      ${issue ? `<issue>${issue}</issue>` : ""}
+      <abstract>
+        <p>${paper.abstract || ""}</p>
+      </abstract>
+${keywordsXml}
+    </article-meta>
+  </front>
+</article>`;
+
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="article-${paperId}.xml"`,
+    );
+    return res.send(xml);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to generate XML" });
   }
 };
 

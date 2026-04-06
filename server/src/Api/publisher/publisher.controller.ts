@@ -326,3 +326,23 @@ export const restorePaper = async (req: AuthUser, res: Response) => {
     res.status(500).json({ success: false, message: e.message });
   }
 };
+
+export const getEmailLogs = async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const result = await service.getEmailLogsService(page, limit);
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const getAnalytics = async (req: Request, res: Response) => {
+  try {
+    const data = await service.getAnalyticsService();
+    res.json({ success: true, ...data });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};

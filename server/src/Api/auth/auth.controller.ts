@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import {
   findUserByEmail,
   findUserById,
@@ -27,8 +28,13 @@ import {
   getUserRoles as getUserRolesRepo,
   insertUserRole,
   upsertAuthorRole,
+  createPasswordResetToken,
+  findValidPasswordResetToken,
+  markPasswordResetTokenUsed,
+  updateUserPassword,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
+import { transporter } from "../../configs/email";
 import { env } from "../../configs/envs";
 
 export const login = async (req: Request, res: Response) => {
@@ -479,6 +485,74 @@ export const createStaff = async (req: Request, res: Response) => {
     success: true,
     user: { id: newUser.id, email: newUser.email, role: newUser.role, username: newUser.username },
   });
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const user = await findUserByEmail(email);
+
+    // Always return success to avoid leaking info
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: "If that email is registered, a reset link has been sent.",
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await createPasswordResetToken(user.id, token);
+
+    const resetLink = `${process.env.CORS_ORIGIN || "http://localhost:5173"}/reset-password?token=${token}`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Reset Your Password — GIKI Journal",
+      html: `<p>Hello ${user.username},</p>
+<p>Click the link below to reset your password. This link expires in 1 hour.</p>
+<p><a href="${resetLink}">${resetLink}</a></p>
+<p>If you did not request this, ignore this email.</p>`,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "If that email is registered, a reset link has been sent.",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+
+    const record = await findValidPasswordResetToken(token);
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    const hashed = await hashPassword(password);
+    await updateUserPassword(record.user_id, hashed);
+    await markPasswordResetTokenUsed(token);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
 };
 
 export const logout = async (req: Request, res: Response) => {

@@ -18,6 +18,7 @@ import {
   Eye,
   X,
   Download,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -87,6 +88,23 @@ export default function PublisherPapersDashboard() {
   const [yearLabel, setYearLabel] = useState("");
   const [publishing, setPublishing] = useState(false);
 
+  // Metadata check state
+  const [metaChecks, setMetaChecks] = useState<Record<string, boolean> | null>(null);
+  const [metaLoading, setMetaLoading] = useState(false);
+
+  const REQUIRED_META_LABELS: Record<string, string> = {
+    title: "Article title",
+    authors: "Author names",
+    abstract: "Abstract",
+    keywords: "Keywords",
+    references: "References",
+    journal_title: "Journal title",
+    volume: "Issue volume",
+    issue: "Issue number",
+    doi: "DOI",
+    publication_date: "Publication date",
+  };
+
   const fetchPapers = async () => {
     try {
       setLoading(true);
@@ -119,22 +137,38 @@ export default function PublisherPapersDashboard() {
     setSelectedPaper(paper);
     setDoi("");
     setYearLabel("");
+    setMetaChecks(null);
     setOpenPublish(true);
 
-    try {
-      setDoiLoading(true);
-      const res = await fetch(`${url}/papers/${paper.paperId}/suggest-doi`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.success && data.doi) {
-        setDoi(data.doi);
-      }
-    } catch {
-      // silently fail — publisher can type manually
-    } finally {
-      setDoiLoading(false);
-    }
+    // Fetch DOI suggestion and metadata check in parallel
+    const [doiRes, metaRes] = await Promise.allSettled([
+      (async () => {
+        setDoiLoading(true);
+        const res = await fetch(`${url}/papers/${paper.paperId}/suggest-doi`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success && data.doi) setDoi(data.doi);
+      })(),
+      (async () => {
+        setMetaLoading(true);
+        const res = await fetch(`${url}/papers/${paper.paperId}/metadata-check`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success || data.valid !== undefined) {
+          const checks: Record<string, boolean> = {};
+          Object.keys(REQUIRED_META_LABELS).forEach((k) => {
+            checks[k] = !(data.missing_fields || []).includes(k);
+          });
+          // DOI check is from the DOI input (will be set after suggest)
+          setMetaChecks(checks);
+        }
+      })(),
+    ]);
+
+    setDoiLoading(false);
+    setMetaLoading(false);
   };
 
   const publishPaper = async () => {
@@ -532,6 +566,56 @@ export default function PublisherPapersDashboard() {
                 )}
               </div>
 
+              {/* Metadata Checklist */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/50 px-3 py-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Metadata Validation</span>
+                  {metaLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : metaChecks ? (
+                    (() => {
+                      const total = Object.keys(REQUIRED_META_LABELS).length;
+                      const done = Object.values(metaChecks).filter(Boolean).length;
+                      return (
+                        <span className={`text-xs font-medium ${done === total ? "text-green-600" : "text-amber-600"}`}>
+                          {done}/{total} complete
+                        </span>
+                      );
+                    })()
+                  ) : null}
+                </div>
+                <div className="divide-y divide-border/50 max-h-44 overflow-y-auto">
+                  {metaLoading ? (
+                    <div className="flex items-center justify-center py-4 text-muted-foreground text-xs gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking metadata…
+                    </div>
+                  ) : metaChecks ? (
+                    Object.entries(REQUIRED_META_LABELS).map(([key, label]) => {
+                      const ok = metaChecks[key] ?? false;
+                      return (
+                        <div key={key} className="flex items-center justify-between px-3 py-1.5">
+                          <span className="text-xs text-foreground">{label}</span>
+                          {ok ? (
+                            <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : null}
+                </div>
+                {metaChecks && (() => {
+                  const total = Object.keys(REQUIRED_META_LABELS).length;
+                  const done = Object.values(metaChecks).filter(Boolean).length;
+                  return done === total ? (
+                    <div className="px-3 py-2 bg-green-500/10 border-t border-green-500/20 text-xs text-green-700 font-medium">
+                      ✓ All metadata validated — Ready to publish
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">
                   DOI <span className="text-muted-foreground">(optional)</span>
@@ -588,7 +672,7 @@ export default function PublisherPapersDashboard() {
               </Button>
               <Button
                 onClick={publishPaper}
-                disabled={publishing || doiLoading}
+                disabled={publishing || doiLoading || (metaChecks !== null && Object.values(metaChecks).some((v) => !v))}
                 className="flex-1"
               >
                 {publishing ? (

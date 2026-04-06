@@ -19,6 +19,10 @@ import PublisherPayments from "./pages/publisher/Payments.tsx";
 import PublisherCategories from "./pages/publisher/Categories.tsx";
 import PublisherJournalCategories from "./pages/publisher/JournalCategories.tsx";
 import HomepageContent from "./pages/publisher/HomepageContent.tsx";
+import Analytics from "./pages/publisher/Analytics.tsx";
+import EmailLogs from "./pages/publisher/EmailLogs.tsx";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage.tsx";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -77,6 +81,8 @@ const App = () => (
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/faq" element={<FAQPage />} />
                     <Route path="/contact-us" element={<ContactPage />} />
@@ -209,6 +215,14 @@ const App = () => (
                     <Route
                       path="/publisher/homepage-content"
                       element={<HomepageContent />}
+                    />
+                    <Route
+                      path="/publisher/analytics"
+                      element={<Analytics />}
+                    />
+                    <Route
+                      path="/publisher/email-logs"
+                      element={<EmailLogs />}
                     />
                   </Route>
 

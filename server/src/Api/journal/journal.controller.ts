@@ -189,3 +189,43 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
     });
   }
 };
+
+export const getIndexingStatus = async (req: Request, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { rows } = await (await import("../../configs/db")).pool.query(
+      `SELECT indexing_notes, indexed_in FROM journals WHERE id = $1`,
+      [journalId],
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: "Journal not found" });
+    }
+    res.json({
+      success: true,
+      indexing_notes: rows[0].indexing_notes || null,
+      indexed_in: rows[0].indexed_in || [],
+    });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const updateIndexingStatus = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { indexing_notes, indexed_in } = req.body;
+    const { rows } = await (await import("../../configs/db")).pool.query(
+      `UPDATE journals
+       SET indexing_notes = $1, indexed_in = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING indexing_notes, indexed_in`,
+      [indexing_notes || null, indexed_in || [], journalId],
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: "Journal not found" });
+    }
+    res.json({ success: true, ...rows[0] });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};

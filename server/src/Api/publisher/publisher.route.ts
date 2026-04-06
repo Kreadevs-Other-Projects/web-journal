@@ -19,6 +19,8 @@ import {
   restoreIssue,
   takedownPaper,
   restorePaper,
+  getEmailLogs,
+  getAnalytics,
 } from "./publisher.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 
@@ -98,5 +100,11 @@ router.post("/journals/:journalId/issues/:issueId/takedown", authMiddleware, aut
 router.post("/journals/:journalId/issues/:issueId/restore", authMiddleware, authorize("publisher"), restoreIssue);
 router.post("/papers/:paperId/takedown", authMiddleware, authorize("publisher"), takedownPaper);
 router.post("/papers/:paperId/restore", authMiddleware, authorize("publisher"), restorePaper);
+
+// Email logs
+router.get("/email-logs", authMiddleware, authorize("publisher"), getEmailLogs);
+
+// Analytics
+router.get("/analytics", authMiddleware, authorize("publisher"), getAnalytics);
 
 export default router;

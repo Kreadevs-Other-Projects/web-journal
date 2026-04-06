@@ -1,0 +1,3 @@
+ALTER TABLE journals
+  ADD COLUMN IF NOT EXISTS indexing_notes TEXT,
+  ADD COLUMN IF NOT EXISTS indexed_in TEXT[] DEFAULT '{}';

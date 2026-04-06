@@ -60,6 +60,8 @@ export const roleConfig: Record<
         icon: FileText,
       },
       { label: "Payments", path: "/publisher/payments", icon: CreditCard },
+      { label: "Analytics", path: "/publisher/analytics", icon: BarChart3 },
+      { label: "Email Logs", path: "/publisher/email-logs", icon: ScrollText },
       { label: "Paper Categories", path: "/publisher/categories", icon: Tag },
       { label: "Journal Categories", path: "/publisher/journal-categories", icon: Tag },
       { label: "Homepage Content", path: "/publisher/homepage-content", icon: Home },

@@ -70,3 +70,40 @@ export const insertUserRole = async (
   );
   return result.rows[0]?.id;
 };
+
+export const createPasswordResetToken = async (
+  userId: string,
+  token: string,
+) => {
+  await pool.query(
+    `INSERT INTO password_resets (user_id, token, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+    [userId, token],
+  );
+};
+
+export const findValidPasswordResetToken = async (token: string) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM password_resets
+     WHERE token = $1 AND used = false AND expires_at > NOW()`,
+    [token],
+  );
+  return rows[0] || null;
+};
+
+export const markPasswordResetTokenUsed = async (token: string) => {
+  await pool.query(
+    `UPDATE password_resets SET used = true WHERE token = $1`,
+    [token],
+  );
+};
+
+export const updateUserPassword = async (
+  userId: string,
+  hashedPassword: string,
+) => {
+  await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [
+    hashedPassword,
+    userId,
+  ]);
+};

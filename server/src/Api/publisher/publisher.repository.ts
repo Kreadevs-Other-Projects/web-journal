@@ -366,6 +366,18 @@ export const restorePaperRepo = async (paperId: string) => {
   return result.rows[0];
 };
 
+export const getEmailLogs = async (page: number, limit: number) => {
+  const offset = (page - 1) * limit;
+  const { rows } = await pool.query(
+    `SELECT * FROM email_logs ORDER BY sent_at DESC LIMIT $1 OFFSET $2`,
+    [limit, offset],
+  );
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(*) FROM email_logs`,
+  );
+  return { logs: rows, total: parseInt(countRows[0].count) };
+};
+
 export const getJournalChiefEditorEmail = async (journalId: string): Promise<string | null> => {
   const result = await pool.query(
     `SELECT u.email, j.title AS journal_title

@@ -13,6 +13,7 @@ import {
   getMetadataCheck,
   uploadRevisionController,
   getPaperHtmlController,
+  getStatusLogController,
 } from "./paper.controller";
 import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -94,6 +95,12 @@ router.get(
   authMiddleware,
   authorize("publisher"),
   suggestDoi,
+);
+
+router.get(
+  "/:paperId/status-log",
+  authMiddleware,
+  getStatusLogController,
 );
 
 export default router;

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-export type PaperStatus = 
+export type PaperStatus =
   | "submitted"
   | "assigned"
   | "under_review"
@@ -10,16 +10,22 @@ export type PaperStatus =
   | "resubmitted"
   | "accepted"
   | "published"
-  | "rejected";
+  | "rejected"
+  | "awaiting_payment"
+  | "payment_review"
+  | "ready_for_publication"
+  | "sub_editor_approved"
+  | "reviewed"
+  | "assigned_to_sub_editor";
 
 interface StatusBadgeProps {
-  status: PaperStatus;
+  status: PaperStatus | string;
   size?: "sm" | "md" | "lg";
   animated?: boolean;
   className?: string;
 }
 
-const statusConfig: Record<PaperStatus, { label: string; className: string; dotColor: string }> = {
+const statusConfig: Record<string, { label: string; className: string; dotColor: string }> = {
   submitted: {
     label: "Submitted",
     className: "bg-info/10 text-info border-info/20",
@@ -47,8 +53,8 @@ const statusConfig: Record<PaperStatus, { label: string; className: string; dotC
   },
   resubmitted: {
     label: "Resubmitted",
-    className: "bg-info/10 text-info border-info/20",
-    dotColor: "bg-info",
+    className: "bg-warning/10 text-warning border-warning/20",
+    dotColor: "bg-warning",
   },
   accepted: {
     label: "Accepted",
@@ -65,6 +71,36 @@ const statusConfig: Record<PaperStatus, { label: string; className: string; dotC
     className: "bg-destructive/10 text-destructive border-destructive/20",
     dotColor: "bg-destructive",
   },
+  awaiting_payment: {
+    label: "Awaiting Payment",
+    className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+    dotColor: "bg-amber-500",
+  },
+  payment_review: {
+    label: "Payment Under Review",
+    className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+    dotColor: "bg-purple-500",
+  },
+  ready_for_publication: {
+    label: "Ready for Publication",
+    className: "bg-success/10 text-success border-success/20",
+    dotColor: "bg-success",
+  },
+  sub_editor_approved: {
+    label: "AE Approved",
+    className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    dotColor: "bg-blue-500",
+  },
+  reviewed: {
+    label: "Reviewed",
+    className: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+    dotColor: "bg-cyan-500",
+  },
+  assigned_to_sub_editor: {
+    label: "Assigned to AE",
+    className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+    dotColor: "bg-purple-500",
+  },
 };
 
 const sizeClasses = {
@@ -79,8 +115,12 @@ export function StatusBadge({
   animated = true,
   className 
 }: StatusBadgeProps) {
-  const config = statusConfig[status];
-  
+  const config = statusConfig[status] ?? {
+    label: status ? status.replace(/_/g, " ") : "Unknown",
+    className: "bg-muted/10 text-muted-foreground border-muted/20",
+    dotColor: "bg-muted-foreground",
+  };
+
   const BadgeContent = (
     <>
       <span className={cn(

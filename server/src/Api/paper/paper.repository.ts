@@ -72,6 +72,19 @@ export const createPaper = async (data: {
   return result.rows[0];
 };
 
+export const getStatusLogRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT psl.id, psl.status, psl.changed_at, psl.note,
+            u.username AS changed_by_name, u.role AS changed_by_role
+     FROM paper_status_log psl
+     LEFT JOIN users u ON u.id = psl.changed_by
+     WHERE psl.paper_id = $1
+     ORDER BY psl.changed_at ASC`,
+    [paperId],
+  );
+  return result.rows;
+};
+
 export const insertStatusLog = async (data: {
   paper_id: string;
   status: string;

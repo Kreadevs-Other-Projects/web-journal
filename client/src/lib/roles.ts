@@ -8,6 +8,9 @@ import {
   CreditCard,
   Tag,
   TrendingUp,
+  Layers,
+  Archive,
+  ScrollText,
 } from "lucide-react";
 
 export type UserRole =
@@ -59,6 +62,7 @@ export const roleConfig: Record<
       { label: "Payments", path: "/publisher/payments", icon: CreditCard },
       { label: "Paper Categories", path: "/publisher/categories", icon: Tag },
       { label: "Journal Categories", path: "/publisher/journal-categories", icon: Tag },
+      { label: "Homepage Content", path: "/publisher/homepage-content", icon: Home },
     ],
   },
 
@@ -70,6 +74,11 @@ export const roleConfig: Record<
     route: "/publisher-manager",
     navigation: [
       { label: "Dashboard", path: "/publisher-manager", icon: Home },
+      { label: "All Issues", path: "/publisher-manager?tab=issues", icon: Layers },
+      { label: "Archive", path: "/publisher-manager?tab=issues&filter=closed", icon: Archive },
+      { label: "Papers", path: "/publisher-manager?tab=papers", icon: FileText },
+      { label: "Editorial Board", path: "/publisher-manager?tab=editorial", icon: Users },
+      { label: "Publication Ethics", path: "/publisher-manager?tab=ethics", icon: ScrollText },
     ],
   },
 

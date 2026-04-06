@@ -54,8 +54,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
-
 import { useToast } from "@/hooks/use-toast";
+import { PaperTimeline } from "@/components/PaperTimeline";
 
 interface PaperVersion {
   id: string;
@@ -99,6 +99,7 @@ export default function SubEditorDashboard() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const [selectedPaperLog, setSelectedPaperLog] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [allReviewers, setAllReviewers] = useState<Reviewer[]>([]);
   const [selectedReviewerId, setSelectedReviewerId] = useState("");
@@ -1024,7 +1025,7 @@ export default function SubEditorDashboard() {
 
                   <CardContent className="pt-6">
                     <Tabs defaultValue="preview" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="preview">
                           <Eye className="h-4 w-4 mr-2" />
                           Preview
@@ -1032,6 +1033,10 @@ export default function SubEditorDashboard() {
                         <TabsTrigger value="abstract">
                           <FileEdit className="h-4 w-4 mr-2" />
                           Abstract
+                        </TabsTrigger>
+                        <TabsTrigger value="timeline">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Timeline
                         </TabsTrigger>
                       </TabsList>
 
@@ -1090,6 +1095,23 @@ export default function SubEditorDashboard() {
                               "No abstract available for this paper."}
                           </p>
                         </div>
+                      </TabsContent>
+
+                      <TabsContent value="timeline" className="mt-4">
+                        {selectedPaperLog.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-4 text-center">No status history available.</p>
+                        ) : (
+                          <PaperTimeline
+                            events={selectedPaperLog.map((l, i) => ({
+                              id: l.id || String(i),
+                              status: l.status,
+                              date: new Date(l.changed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                              description: l.status.replace(/_/g, " "),
+                              actor: l.changed_by_name ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})` : undefined,
+                              isCurrent: i === selectedPaperLog.length - 1,
+                            }))}
+                          />
+                        )}
                       </TabsContent>
                     </Tabs>
                   </CardContent>
@@ -1455,6 +1477,8 @@ export default function SubEditorDashboard() {
                         setSelectedPaper(paper);
                         setSelectedVersion(paper.versions[0]);
                         fetchAllReviewers();
+                        fetch(`${url}/papers/${paper.id}/status-log`, { headers: { Authorization: `Bearer ${token}` } })
+                          .then(r => r.json()).then(d => { if (d.success) setSelectedPaperLog(d.log || []); }).catch(() => {});
                       }}
                     >
                       <CardContent className="p-6">

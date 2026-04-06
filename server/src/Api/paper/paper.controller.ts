@@ -12,6 +12,7 @@ import {
   getPaperTrackingService,
   getPaperMetadataCheckService,
 } from "./paper.service";
+import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
 import { getPublicPaperHtmlService } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
@@ -207,4 +208,10 @@ export const getMetadataCheck = async (req: AuthUser, res: Response) => {
   } catch (e: any) {
     res.status(404).json({ success: false, message: e.message });
   }
+};
+
+export const getStatusLogController = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  const log = await getStatusLogRepo(paperId);
+  return res.status(200).json({ success: true, log });
 };

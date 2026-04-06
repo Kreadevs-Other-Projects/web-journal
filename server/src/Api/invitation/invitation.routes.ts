@@ -42,6 +42,6 @@ router.get(
 );
 
 // Endpoint: POST /api/invitations/resend
-router.post("/resend", resendInvitation);
+router.post("/resend", authMiddleware, authorize("publisher", "chief_editor", "owner"), resendInvitation);
 
 export default router;

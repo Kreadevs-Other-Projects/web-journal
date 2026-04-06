@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { pool } from "../configs/db";
 
 const journalSuspensionCron = () => {
-  cron.schedule("* * * * *", async () => {
+  cron.schedule("0 0 * * *", async () => {
     try {
       console.log("⏰ Cron running: Journal auto-suspension check");
 

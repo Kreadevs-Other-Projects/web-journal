@@ -72,7 +72,7 @@ router.get("/papers/:issueId", authMiddleware, getPapersByIssueId);
 
 router.post("/sendEmail", authMiddleware, sendPaymentEmail);
 
-router.put("/approve/:paymentId", approvePaper);
+router.put("/approve/:paymentId", authMiddleware, authorize("publisher"), approvePaper);
 
 router.get(
   "/getJournalPayments",

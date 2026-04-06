@@ -126,11 +126,11 @@ router.get(
   getJournalDetails,
 );
 
-router.get("/getPapersByIssue/:issueId", getPapersByIssue);
+router.get("/getPapersByIssue/:issueId", authMiddleware, authorize("chief_editor", "publisher"), getPapersByIssue);
 
-router.post("/assignPaperToIssue", assignPaperToIssue);
+router.post("/assignPaperToIssue", authMiddleware, authorize("chief_editor"), assignPaperToIssue);
 
-router.put("/updateIssueStatus/:issueId", updateIssueStatus);
+router.put("/updateIssueStatus/:issueId", authMiddleware, authorize("chief_editor"), updateIssueStatus);
 
 // Replace associate editor
 router.post(

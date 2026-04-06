@@ -45,6 +45,8 @@ router.post(
 
 router.post(
   "/uploadpaymentImage/:id",
+  authMiddleware,
+  authorize("owner", "publisher"),
   upload.single("receipt"),
   uploadpaymentImage,
 );

@@ -58,7 +58,7 @@ router.get(
 router.put(
   "/updatePaperStatus/:paperId",
   authMiddleware,
-  authorize("editor", "owner", "admin"),
+  authorize("chief_editor", "publisher"),
   validate(updatePaperSchema),
   updatePaperStatus,
 );

@@ -235,8 +235,10 @@ const App = () => (
                     <Route path="/journals" element={<Journals />} />
                   </Route>
                   {/* <Route path="/sub-editor" element={<AuthorDashboard />} /> */}
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/*" element={<AdminDashboard />} />
+                  <Route element={<ProtectedRoute allowedRoles={["owner", "publisher"]} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/*" element={<AdminDashboard />} />
+                  </Route>
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                   </Route>

@@ -11,7 +11,10 @@
       "Bash(grep -n \"acronym\\\\|url_slug\\\\|paper_index\\\\|issue_index\" D:/Kreadevs/web-journal/server/src/database/migrations/*.sql)",
       "Bash(grep -n INSERT.*journal_issues D:/Kreadevs/web-journal/server/src/Api/ -r)",
       "Bash(grep -n INSERT.*journal_issues D:/Kreadevs/web-journal/server/src/Api/journal/ -r)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep -h \"CREATE TABLE\\\\|CREATE TYPE\\\\|ALTER TABLE.*ADD COLUMN\\\\|ALTER TYPE.*ADD VALUE\" /d/Kreadevs/web-journal/server/src/database/migrations/*.sql)",
+      "Bash(grep -h \"^export.*async\\\\|^export const\\\\|^export function\" /d/Kreadevs/web-journal/server/src/utils/emails/*.ts)",
+      "Bash(grep -h \"^export\\\\|cron\\\\.\\\\|schedule\" /d/Kreadevs/web-journal/server/src/cron/*.ts)"
     ]
   }
 }

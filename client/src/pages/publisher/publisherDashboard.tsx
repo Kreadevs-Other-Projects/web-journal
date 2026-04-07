@@ -1082,6 +1082,13 @@ export default function PublisherDashboard() {
                               align="end"
                               onClick={(e) => e.stopPropagation()}
                             >
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={() => navigate(`/publisher/journals/${journal.id}/edit`)}
+                              >
+                                <Edit3 className="h-4 w-4" /> Edit Journal
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               {journal.is_taken_down ? (
                                 <DropdownMenuItem
                                   className="text-green-600 gap-2"
@@ -1161,10 +1168,23 @@ export default function PublisherDashboard() {
         <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl flex items-center gap-2">
-                <BookOpen className="h-6 w-6" />
-                {selectedJournal?.title}
-              </DialogTitle>
+              <div className="flex items-start justify-between gap-3">
+                <DialogTitle className="text-2xl flex items-center gap-2">
+                  <BookOpen className="h-6 w-6" />
+                  {selectedJournal?.title}
+                </DialogTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => {
+                    setDetailsModalOpen(false);
+                    navigate(`/publisher/journals/${selectedJournal?.id}/edit`);
+                  }}
+                >
+                  <Edit3 className="h-4 w-4" /> Edit Journal
+                </Button>
+              </div>
               <DialogDescription>
                 Complete journal information and management
               </DialogDescription>

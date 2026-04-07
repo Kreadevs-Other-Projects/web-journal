@@ -214,6 +214,45 @@ export const findReviewers = async (journalId?: string, paperId?: string) => {
   return result.rows;
 };
 
+export const getJournalStaff = async (
+  journalId: string,
+  role: "sub_editor" | "reviewer",
+  paperId?: string,
+) => {
+  const workloadSubquery =
+    role === "sub_editor"
+      ? `(SELECT COUNT(*)::int FROM editor_assignments ea
+           WHERE ea.sub_editor_id = u.id
+             AND ea.status NOT IN ('reassigned','rejected','completed'))`
+      : `(SELECT COUNT(*)::int FROM review_assignments ra
+           WHERE ra.reviewer_id = u.id AND ra.status = 'assigned')`;
+
+  const keywordSubquery = paperId
+    ? `(SELECT COUNT(*)::int FROM unnest(COALESCE(up.keywords, '{}')) k
+         WHERE k = ANY(SELECT unnest(p.keywords) FROM papers p WHERE p.id = $3))`
+    : `0`;
+
+  const result = await pool.query(
+    `SELECT
+       u.id, u.username, u.email,
+       up.degrees, up.keywords, up.profile_pic_url,
+       ${keywordSubquery} AS keyword_matches,
+       ${workloadSubquery} AS active_papers
+     FROM user_roles ur
+     JOIN users u ON u.id = ur.user_id
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     WHERE ur.journal_id = $1
+       AND ur.role = $2
+       AND ur.is_active = true
+       AND u.status = 'active'
+       AND u.deleted_at IS NULL
+     ORDER BY keyword_matches DESC, active_papers ASC`,
+    paperId ? [journalId, role, paperId] : [journalId, role],
+  );
+
+  return result.rows;
+};
+
 export const assignSubEditor = async (
   paperId: string,
   subEditorId: string,

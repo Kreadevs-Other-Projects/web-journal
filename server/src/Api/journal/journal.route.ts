@@ -11,6 +11,7 @@ import {
   getEditorialBoard,
   getAuthorGuidelines,
   updateJournalAPC,
+  updatePublisherJournal,
 } from "./journal.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { validate } from "../../middlewares/validate.middleware";
@@ -83,6 +84,21 @@ router.post(
   authorize("publisher", "journal_manager"),
   logoUpload.single("logo"),
   uploadJournalLogo,
+);
+
+router.patch(
+  "/:journalId/update",
+  authMiddleware,
+  authorize("publisher"),
+  logoUpload.single("logo"),
+  (req, _res, next) => {
+    if (req.body.publication_fee !== undefined) {
+      const n = Number(req.body.publication_fee);
+      req.body.publication_fee = isNaN(n) ? undefined : n;
+    }
+    next();
+  },
+  updatePublisherJournal,
 );
 
 router.patch(

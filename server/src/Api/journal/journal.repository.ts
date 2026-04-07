@@ -132,6 +132,47 @@ export const findEditorialBoard = async (journalId: string) => {
   return { chief_editors, associate_editors };
 };
 
+export const updateJournalByPublisher = async (
+  journalId: string,
+  data: Partial<PublisherJournalData>,
+) => {
+  const result = await pool.query(
+    `UPDATE journals
+     SET
+       title = COALESCE($1, title),
+       issn = COALESCE($2, issn),
+       doi = COALESCE($3, doi),
+       publisher_name = COALESCE($4, publisher_name),
+       type = COALESCE($5, type),
+       peer_review_policy = COALESCE($6, peer_review_policy),
+       oa_policy = COALESCE($7, oa_policy),
+       author_guidelines = COALESCE($8, author_guidelines),
+       aims_and_scope = COALESCE($9, aims_and_scope),
+       publication_fee = COALESCE($10, publication_fee),
+       currency = COALESCE($11, currency),
+       logo_url = COALESCE($12, logo_url),
+       updated_at = NOW()
+     WHERE id = $13
+     RETURNING *`,
+    [
+      data.title ?? null,
+      data.issn ?? null,
+      data.doi ?? null,
+      data.publisher_name ?? null,
+      data.type ?? null,
+      data.peer_review_policy ?? null,
+      data.oa_policy ?? null,
+      data.author_guidelines ?? null,
+      data.aims_and_scope ?? null,
+      data.publication_fee ?? null,
+      data.currency ?? null,
+      data.logo_url ?? null,
+      journalId,
+    ],
+  );
+  return result.rows[0];
+};
+
 export const createJournalByPublisher = async (
   publisher_id: string,
   chief_editor_id: string | null,

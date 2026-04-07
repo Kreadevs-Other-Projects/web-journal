@@ -40,6 +40,14 @@ export const getSubEditors = async () => {
   return repo.findSubEditors();
 };
 
+export const getJournalStaffService = async (
+  journalId: string,
+  role: "sub_editor" | "reviewer",
+  paperId?: string,
+) => {
+  return repo.getJournalStaff(journalId, role, paperId);
+};
+
 export const getReviewers = async () => {
   return repo.findReviewers();
 };

@@ -11,6 +11,7 @@ import {
   updateJournalLogoService,
   getEditorialBoardService,
   updateJournalAPCService,
+  updatePublisherJournalService,
 } from "./journal.service";
 import { findJournalById } from "./journal.repository";
 
@@ -154,6 +155,47 @@ export const updateJournalAPC = async (req: AuthUser, res: Response) => {
     return res.json({ success: true, journal: updated });
   } catch (e: any) {
     return res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const updatePublisherJournal = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const { journalId } = req.params;
+    const logo_url = req.file ? `uploads/${req.file.filename}` : undefined;
+
+    const body = { ...req.body };
+    // Parse numeric fields
+    if (body.publication_fee !== undefined) {
+      const n = Number(body.publication_fee);
+      body.publication_fee = isNaN(n) ? undefined : n;
+    }
+
+    const journal = await updatePublisherJournalService(
+      journalId,
+      req.user.id,
+      { ...body, ...(logo_url ? { logo_url } : {}) },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Journal updated successfully",
+      journal,
+    });
+  } catch (error: any) {
+    if (error.field) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        errors: [{ field: error.field, message: error.message }],
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update journal",
+    });
   }
 };
 

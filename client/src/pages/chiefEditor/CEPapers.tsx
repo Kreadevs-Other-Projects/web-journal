@@ -30,8 +30,11 @@ import {
   Bell,
   Eye,
   FileDown,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 import { PaperTimeline } from "@/components/PaperTimeline";
@@ -141,6 +144,7 @@ function timeAgo(dateStr: string) {
 export default function CEPapers() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const aeIdFilter = searchParams.get("ae_id");
   const reviewerIdFilter = searchParams.get("reviewer_id");
@@ -608,6 +612,36 @@ export default function CEPapers() {
                         <Eye className="h-3 w-3" />
                         View Paper
                       </Button>
+
+                      {/* Assign AE */}
+                      {!["published", "rejected"].includes(paper.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() =>
+                            navigate(`/chief-editor/papers/${paper.id}/assign-ae`)
+                          }
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          {paper.current_ae_id ? "Replace AE" : "Assign AE"}
+                        </Button>
+                      )}
+
+                      {/* Assign Reviewer */}
+                      {!["published", "rejected"].includes(paper.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() =>
+                            navigate(`/chief-editor/papers/${paper.id}/assign-reviewer`)
+                          }
+                        >
+                          <Users className="h-3 w-3" />
+                          Assign Reviewer
+                        </Button>
+                      )}
 
                       {/* File download */}
                       {paper.file_url && (

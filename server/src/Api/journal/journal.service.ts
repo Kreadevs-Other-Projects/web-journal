@@ -9,6 +9,7 @@ import {
   createJournalByPublisher,
   findEditorialBoard,
   updateJournalAPC,
+  updateJournalByPublisher,
 } from "./journal.repository";
 import { insertUserRole } from "../auth/auth.repository";
 import { sendInvitationEmail } from "../../utils/emails/userEmails";
@@ -263,6 +264,48 @@ export const publisherCreateJournalService = async (
   }).catch(console.error);
 
   return journal;
+};
+
+export const updatePublisherJournalService = async (
+  journalId: string,
+  publisherId: string,
+  data: Partial<PublisherJournalData>,
+) => {
+  const journal = await findJournalById(journalId);
+  if (!journal) throw new Error("Journal not found");
+  if (journal.owner_id !== publisherId) throw new Error("Access denied");
+
+  // ISSN uniqueness check (exclude current journal)
+  if (data.issn && data.issn !== journal.issn) {
+    const check = await pool.query(
+      `SELECT 1 FROM journals WHERE issn = $1 AND id != $2`,
+      [data.issn, journalId],
+    );
+    if (check.rows.length) {
+      const err: any = new Error("A journal with this ISSN already exists");
+      err.field = "issn";
+      throw err;
+    }
+  }
+
+  // DOI uniqueness check (exclude current journal)
+  if (data.doi && data.doi !== journal.doi) {
+    const check = await pool.query(
+      `SELECT 1 FROM journals WHERE doi = $1 AND id != $2`,
+      [data.doi, journalId],
+    );
+    if (check.rows.length) {
+      const err: any = new Error("A journal with this DOI already exists");
+      err.field = "doi";
+      throw err;
+    }
+  }
+
+  // Clear ISSN/DOI if explicitly set to empty string
+  if (data.issn === "") data.issn = undefined;
+  if (data.doi === "") data.doi = undefined;
+
+  return updateJournalByPublisher(journalId, data);
 };
 
 const VALID_CURRENCIES = ["USD", "PKR", "EUR", "GBP"];

@@ -60,6 +60,23 @@ export const fetchSubEditors = async (req: Request, res: Response) => {
   });
 };
 
+export const getJournalStaff = asyncHandler(
+  async (req: AuthUser, res: Response) => {
+    const { journalId } = req.params;
+    const { role, paper_id } = req.query as {
+      role?: string;
+      paper_id?: string;
+    };
+    if (role !== "sub_editor" && role !== "reviewer") {
+      return res
+        .status(400)
+        .json({ success: false, message: "role must be sub_editor or reviewer" });
+    }
+    const staff = await service.getJournalStaffService(journalId, role, paper_id);
+    res.json({ success: true, data: staff });
+  },
+);
+
 export const fetchReviewers = async (req: Request, res: Response) => {
   const users = await service.getReviewers();
 

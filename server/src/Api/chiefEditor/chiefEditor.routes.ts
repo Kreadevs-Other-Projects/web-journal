@@ -28,6 +28,7 @@ import {
   remindAllReviewers,
   remindAEBulk,
   remindReviewerBulk,
+  getJournalStaff,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -193,6 +194,14 @@ router.post(
   authMiddleware,
   authorize("chief_editor"),
   remindReviewerBulk,
+);
+
+// Journal staff (AEs/reviewers) for assign pages
+router.get(
+  "/journals/:journalId/staff",
+  authMiddleware,
+  authorize("chief_editor", "sub_editor"),
+  getJournalStaff,
 );
 
 // Reviewer applications

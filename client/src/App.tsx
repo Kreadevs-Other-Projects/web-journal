@@ -33,6 +33,10 @@ import CEPapers from "./pages/chiefEditor/CEPapers.tsx";
 import CETeam from "./pages/chiefEditor/CETeam.tsx";
 import CEApplications from "./pages/chiefEditor/CEApplications.tsx";
 import CEStats from "./pages/chiefEditor/CEStats.tsx";
+import AssignAssociateEditorPage from "./pages/chiefEditor/AssignAssociateEditorPage.tsx";
+import AssignReviewerPage from "./pages/chiefEditor/AssignReviewerPage.tsx";
+import StaffDetailPage from "./pages/chiefEditor/StaffDetailPage.tsx";
+import EditJournalPage from "./pages/publisher/EditJournalPage.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
@@ -184,6 +188,11 @@ const App = () => (
                     <Route path="/chief-editor/team" element={<CETeam />} />
                     <Route path="/chief-editor/applications" element={<CEApplications />} />
                     <Route path="/chief-editor/stats" element={<CEStats />} />
+                    <Route path="/chief-editor/papers/:paperId/assign-ae" element={<AssignAssociateEditorPage />} />
+                    <Route path="/chief-editor/staff/:userId" element={<StaffDetailPage />} />
+                  </Route>
+                  <Route element={<ProtectedRoute allowedRoles={["chief_editor", "sub_editor"]} />}>
+                    <Route path="/chief-editor/papers/:paperId/assign-reviewer" element={<AssignReviewerPage />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}
@@ -209,6 +218,10 @@ const App = () => (
                     <Route
                       path="/publisher/homepage-content"
                       element={<HomepageContent />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId/edit"
+                      element={<EditJournalPage />}
                     />
                   </Route>
 

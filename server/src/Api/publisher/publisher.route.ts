@@ -12,6 +12,7 @@ import {
   getJournalPayments,
   updatePaymentStatus,
   replaceChiefEditor,
+  replaceJournalManager,
   manualIssueReset,
   takedownJournal,
   restoreJournal,
@@ -38,6 +39,13 @@ router.patch(
   authMiddleware,
   authorize("publisher"),
   replaceChiefEditor,
+);
+
+router.patch(
+  "/journals/:journalId/journal-manager",
+  authMiddleware,
+  authorize("publisher"),
+  replaceJournalManager,
 );
 
 router.get(

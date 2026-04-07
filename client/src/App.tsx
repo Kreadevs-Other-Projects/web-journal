@@ -59,6 +59,7 @@ import TrackPaper from "./pages/author/TrackPaper.tsx";
 import Archive from "./pages/Archive.tsx";
 import AcceptInvitation from "./pages/AcceptInvitation.tsx";
 import ApplyReviewer from "./pages/ApplyReviewer.tsx";
+import CompleteProfilePage from "./pages/CompleteProfilePage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +107,11 @@ const App = () => (
                   <Route
                     path="/accept-invitation"
                     element={<AcceptInvitation />}
+                  />
+                  {/* complete-profile: requires auth, no role restriction, no profile guard */}
+                  <Route
+                    path="/complete-profile"
+                    element={<CompleteProfilePage />}
                   />
                   <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route

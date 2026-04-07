@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import type { UserRole } from "@/lib/roles";
 
@@ -8,6 +8,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -19,6 +20,11 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
+  }
+
+  // Redirect to profile completion if not done yet
+  if (!user.profile_completed && location.pathname !== "/complete-profile") {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   // Allow access if the user's active role OR any of their assigned roles matches

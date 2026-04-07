@@ -196,6 +196,53 @@ export const replaceChiefEditorRepo = async (
   }
 };
 
+export const replaceJournalManagerRepo = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1. Get current JM id
+    const { rows: journalRows } = await client.query(
+      `SELECT journal_manager_id FROM journals WHERE id = $1 AND owner_id = $2`,
+      [journalId, publisherId],
+    );
+    if (!journalRows.length)
+      throw new Error("Journal not found or access denied");
+    const currentJmId = journalRows[0].journal_manager_id;
+
+    // 2. Deactivate old JM role in user_roles
+    if (currentJmId) {
+      await client.query(
+        `UPDATE user_roles SET is_active = false WHERE user_id = $1 AND role = 'journal_manager' AND journal_id = $2`,
+        [currentJmId, journalId],
+      );
+    }
+
+    // 3. Null out journals.journal_manager_id
+    await client.query(
+      `UPDATE journals SET journal_manager_id = NULL, updated_at = NOW() WHERE id = $1`,
+      [journalId],
+    );
+
+    // 4. Cancel any pending JM invitations for this journal
+    await client.query(
+      `UPDATE staff_invitations SET status = 'cancelled'
+       WHERE journal_id = $1 AND role = 'journal_manager' AND status = 'pending'`,
+      [journalId],
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 export const publishIssue = async (issueId: string) => {
   const result = await pool.query(
     `UPDATE journal_issues

@@ -801,6 +801,20 @@ export default function PublisherDashboard() {
   }, [user]);
 
   useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (
+        isEditingAPC &&
+        (apcFee !== originalApcFee || apcCurrency !== originalApcCurrency)
+      ) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isEditingAPC, apcFee, originalApcFee, apcCurrency, originalApcCurrency]);
+
+  useEffect(() => {
     if (!detailsModalOpen) {
       setSelectedIssue(null);
       setIsEditingAPC(false);
@@ -1169,408 +1183,303 @@ export default function PublisherDashboard() {
         </div>
 
         <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-start justify-between gap-3">
-                <DialogTitle className="text-2xl flex items-center gap-2">
-                  <BookOpen className="h-6 w-6" />
-                  {selectedJournal?.title}
-                </DialogTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  onClick={() => {
-                    setDetailsModalOpen(false);
-                    navigate(`/publisher/journals/${selectedJournal?.id}/edit`);
-                  }}
-                >
-                  <Edit3 className="h-4 w-4" /> Edit Journal
-                </Button>
-              </div>
-              <DialogDescription>
-                Complete journal information and management
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedJournal && (
-              <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 glass-card rounded-lg">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-sm px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                        ISSN: {selectedJournal.issn}
-                      </div>
-                      {getStatusBadge(selectedJournal.status)}
-                    </div>
-                    <p className="text-gray-700">
-                      {selectedJournal.description}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-400">Created</p>
-                    <p className="text-white">
-                      {new Date(
-                        selectedJournal.created_at,
-                      ).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="glass-card">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Hash className="h-4 w-4" />
-                        Basic Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-600">Website URL</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Globe className="h-4 w-4 text-blue-400" />
-                          {selectedJournal.website_url ? (
-                            <a
-                              href={selectedJournal.website_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:underline"
-                            >
-                              {selectedJournal.website_url}
-                            </a>
-                          ) : (
-                            <span className="text-gray-600">Not provided</span>
-                          )}
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+            {/* Header Section with Gradient */}
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600/10 to-purple-600/10 backdrop-blur-sm border-b">
+              <div className="p-6">
+                <DialogHeader className="mb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <BookOpen className="h-5 w-5 text-blue-400" />
                         </div>
+                        <DialogTitle className="text-2xl font-bold">
+                          {selectedJournal?.title}
+                        </DialogTitle>
                       </div>
-                      <Separator />
-                      <div>
-                        <p className="text-sm text-gray-600">Last Updated</p>
-                        <p>
-                          {selectedJournal.updated_at
-                            ? new Date(
-                                selectedJournal.updated_at,
-                              ).toLocaleString()
-                            : "Never"}
+                      <DialogDescription className="text-base">
+                        Complete journal information and management
+                      </DialogDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      onClick={() => {
+                        setDetailsModalOpen(false);
+                        navigate(
+                          `/publisher/journals/${selectedJournal?.id}/edit`,
+                        );
+                      }}
+                    >
+                      <Edit3 className="h-4 w-4" /> Edit Journal
+                    </Button>
+                  </div>
+                </DialogHeader>
+
+                {/* Quick Stats Row */}
+                {selectedJournal && (
+                  <div className="grid grid-cols-4 gap-3 mt-4">
+                    <div className="bg-background/50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-muted-foreground">ISSN</p>
+                      <p className="text-sm font-mono font-semibold">
+                        {selectedJournal.issn}
+                      </p>
+                    </div>
+                    <div className="bg-background/50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <div className="flex justify-center">
+                        {getStatusBadge(selectedJournal.status)}
+                      </div>
+                    </div>
+                    <div className="bg-background/50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Issues</p>
+                      <p className="text-sm font-semibold">
+                        {selectedJournal.issues.length}
+                      </p>
+                    </div>
+                    <div className="bg-background/50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="text-sm font-semibold">
+                        {new Date(
+                          selectedJournal.created_at,
+                        ).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="p-6 space-y-6">
+              {/* Description Card */}
+              <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-500/5 to-transparent">
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-muted-foreground leading-relaxed">
+                    {selectedJournal?.description}
+                  </p>
+                  {selectedJournal?.website_url && (
+                    <a
+                      href={selectedJournal.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-blue-400 hover:underline mt-2"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      {selectedJournal.website_url}
+                    </a>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Two Column Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* People Section */}
+                <Card className="overflow-hidden">
+                  <CardHeader className="bg-muted/30 pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="p-1.5 bg-purple-500/20 rounded-lg">
+                        <User className="h-4 w-4 text-purple-400" />
+                      </div>
+                      People
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-4">
+                    {/* Owner */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-green-500/5 to-transparent">
+                      <div className="p-2 bg-green-500/20 rounded-full">
+                        <User className="h-4 w-4 text-green-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                          Owner
+                        </p>
+                        <p className="font-semibold">
+                          {selectedJournal?.owner.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Mail className="h-3 w-3" />
+                          {selectedJournal?.owner.email}
                         </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
 
-                  <Card className="glass-card">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        People
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Owner Section */}
-                      <div>
-                        <p className="text-sm text-gray-600">Owner</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <User className="h-4 w-4 text-green-400" />
-                          <div>
-                            <p>{selectedJournal.owner.name}</p>
-                            <p className="text-sm text-gray-600 flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {selectedJournal.owner.email}
-                            </p>
-                          </div>
-                        </div>
+                    {/* Chief Editor */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/5 to-transparent">
+                      <div className="p-2 bg-blue-500/20 rounded-full">
+                        <User className="h-4 w-4 text-blue-400" />
                       </div>
-
-                      <Separator />
-
-                      {/* Chief Editor Section */}
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-600">Chief Editor</p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                            Chief Editor
+                          </p>
                           <div className="flex gap-2">
-                            {/* THE FIX: Resend button appears ONLY when status is 'expired' */}
-                            {selectedJournal.chief_editor_invitation_status ===
+                            {selectedJournal?.chief_editor_invitation_status ===
                               "expired" && (
                               <Button
-                                variant="secondary"
+                                variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs gap-1 bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border border-amber-500/30"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  resendInvitation();
-                                }}
+                                className="h-7 px-2 text-xs gap-1 text-amber-500"
+                                onClick={resendInvitation}
                                 disabled={resending}
                               >
                                 <Bell className="h-3 w-3" />
                                 {resending ? "Sending..." : "Resend"}
                               </Button>
                             )}
-
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               className="h-7 px-2 text-xs gap-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 setReplaceCEStep(
-                                  selectedJournal.chief_editor
+                                  selectedJournal?.chief_editor
                                     ? "confirm"
                                     : "invite",
                                 );
                                 setReplaceCEOpen(true);
                               }}
                             >
-                              {selectedJournal.chief_editor
+                              {selectedJournal?.chief_editor
                                 ? "Replace"
                                 : "Invite"}
                             </Button>
                           </div>
                         </div>
-
-                        {selectedJournal.chief_editor ? (
-                          <div className="flex items-center gap-2 mt-2">
-                            <User className="h-4 w-4 text-purple-400" />
-                            <div>
-                              <p>{selectedJournal.chief_editor.name}</p>
-                              <p className="text-sm text-gray-600 flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {selectedJournal.chief_editor.email}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-2">
-                            <p
-                              className={`text-sm flex items-center gap-1 ${
-                                selectedJournal.chief_editor_invitation_status ===
-                                "expired"
-                                  ? "text-red-400 font-medium"
-                                  : "text-amber-400"
-                              }`}
-                            >
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {selectedJournal.chief_editor_invitation_status ===
-                              "expired"
-                                ? `Invitation to ${selectedJournal.chief_editor_email || "editor"} has expired`
-                                : "No chief editor — invitation pending or not yet sent"}
+                        {selectedJournal?.chief_editor ? (
+                          <>
+                            <p className="font-semibold">
+                              {selectedJournal.chief_editor.name}
                             </p>
-                          </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Mail className="h-3 w-3" />
+                              {selectedJournal.chief_editor.email}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-amber-400 flex items-center gap-1 mt-1">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            {selectedJournal?.chief_editor_invitation_status ===
+                            "expired"
+                              ? `Invitation to ${selectedJournal.chief_editor_email} expired`
+                              : "No chief editor assigned"}
+                          </p>
                         )}
                       </div>
+                    </div>
 
-                      <Separator />
-
-                      {/* Journal Manager Section */}
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-600">
+                    {/* Journal Manager */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-indigo-500/5 to-transparent">
+                      <div className="p-2 bg-indigo-500/20 rounded-full">
+                        <User className="h-4 w-4 text-indigo-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
                             Journal Manager
                           </p>
                           <div className="flex gap-2">
-                            {selectedJournal.journal_manager_invitation_status ===
+                            {selectedJournal?.journal_manager_invitation_status ===
                               "expired" && (
                               <Button
-                                variant="secondary"
+                                variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs gap-1 bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border border-amber-500/30"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  resendJMInvitation();
-                                }}
+                                className="h-7 px-2 text-xs gap-1 text-amber-500"
+                                onClick={resendJMInvitation}
                                 disabled={resendingJM}
                               >
                                 <Bell className="h-3 w-3" />
                                 {resendingJM ? "Sending..." : "Resend"}
                               </Button>
                             )}
-
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               className="h-7 px-2 text-xs gap-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 setReplaceJMStep(
-                                  selectedJournal.journal_manager
+                                  selectedJournal?.journal_manager
                                     ? "confirm"
                                     : "invite",
                                 );
                                 setReplaceJMOpen(true);
                               }}
                             >
-                              {selectedJournal.journal_manager
+                              {selectedJournal?.journal_manager
                                 ? "Replace"
                                 : "Invite"}
                             </Button>
                           </div>
                         </div>
-
-                        {selectedJournal.journal_manager ? (
-                          <div className="flex items-center gap-2 mt-2">
-                            <User className="h-4 w-4 text-blue-400" />
-                            <div>
-                              <p>{selectedJournal.journal_manager.name}</p>
-                              <p className="text-sm text-gray-600 flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {selectedJournal.journal_manager.email}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-2">
-                            <p
-                              className={`text-sm flex items-center gap-1 ${
-                                selectedJournal.journal_manager_invitation_status ===
-                                "expired"
-                                  ? "text-red-400 font-medium"
-                                  : "text-amber-400"
-                              }`}
-                            >
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {selectedJournal.journal_manager_invitation_status ===
-                              "expired"
-                                ? `Invitation to ${selectedJournal.journal_manager_email || "manager"} has expired`
-                                : "No journal manager — invitation pending or not yet sent"}
+                        {selectedJournal?.journal_manager ? (
+                          <>
+                            <p className="font-semibold">
+                              {selectedJournal.journal_manager.name}
                             </p>
-                          </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Mail className="h-3 w-3" />
+                              {selectedJournal.journal_manager.email}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-amber-400 flex items-center gap-1 mt-1">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            {selectedJournal?.journal_manager_invitation_status ===
+                            "expired"
+                              ? `Invitation to ${selectedJournal.journal_manager_email} expired`
+                              : "No journal manager assigned"}
+                          </p>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card className="glass-card">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Journal Issues
-                        <Badge variant="outline" className="ml-2">
-                          {selectedJournal.issues.length}
-                        </Badge>
-                      </CardTitle>
-                      <Button
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCreateIssueOpen(true);
-                          if (selectedJournal)
-                            fetchIssuePreview(selectedJournal.id);
-                        }}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Create New Issue
-                      </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedJournal.issues.map((issue) => {
-                      const isSelected = selectedIssue?.id === issue.id;
-
-                      return (
-                        <div
-                          key={issue.id}
-                          onClick={() => setSelectedIssue(issue)}
-                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all
-                             ${
-                               isSelected
-                                 ? "bg-blue-500/20 border border-blue-500"
-                                 : "glass-card hover:bg-white/5"
-                             }`}
-                        >
-                          <div>
-                            <p className="font-medium flex items-center gap-2">
-                              {issue.label}
-                              {isSelected && (
-                                <Badge className="bg-blue-500 text-white">
-                                  Selected
-                                </Badge>
-                              )}
-                            </p>
-                            <p className="text-sm text-gray-400">
-                              Volume {issue.volume} • Issue {issue.issue} •{" "}
-                              {issue.year}
-                            </p>
-                          </div>
-                          <div className="text-right min-w-[120px]">
-                            <p className="text-sm text-muted-foreground">
-                              {issue.issueStatus}
-                            </p>
-                            {issue.paper_count != null && (
-                              <div className="mt-1">
-                                <p className="text-xs text-muted-foreground mb-0.5">
-                                  {issue.paper_count}/99 papers
-                                </p>
-                                <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-primary transition-all"
-                                    style={{
-                                      width: `${Math.min((issue.paper_count / 99) * 100, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
                   </CardContent>
                 </Card>
 
-                {/* PAYMENT_DISABLED: Payment step hidden per client instruction */}
-                {/* Invoice Management card removed */}
-                <Card className="glass-card border-blue-500/30">
-                  <CardHeader>
+                {/* APC Settings Section */}
+                <Card className="overflow-hidden">
+                  <CardHeader className="bg-muted/30 pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4" />
-                      Issue Approval
+                      <div className="p-1.5 bg-green-500/20 rounded-lg">
+                        <FileText className="h-4 w-4 text-green-400" />
+                      </div>
+                      Article Processing Charge
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                      <Button
-                        onClick={() =>
-                          approveJournal(
-                            selectedJournal.id,
-                            selectedIssue?.id ?? "",
-                          )
-                        }
-                        disabled={approving || !selectedIssue}
-                        className="bg-green-600 hover:bg-green-700 flex-1"
-                        size="lg"
-                      >
-                        {approving ? (
-                          "Approving..."
-                        ) : (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Approve Selected Issue
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* APC Settings */}
-                <Card className="glass-card border-blue-500/30">
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Article Processing Charge (APC) Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="pt-4">
                     {!isEditingAPC ? (
-                      <>
-                        <div className="bg-muted/30 p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground mb-1">
+                      <div className="space-y-4">
+                        <div className="text-center p-6 rounded-lg bg-gradient-to-br from-green-500/10 to-blue-500/10">
+                          <p className="text-sm text-muted-foreground mb-2">
                             Publication Fee per Page
                           </p>
-                          <p className="text-2xl font-semibold text-foreground">
-                            {originalApcFee && parseFloat(originalApcFee) > 0
-                              ? `${originalApcCurrency}${parseFloat(originalApcFee)} per page`
-                              : "No fee set"}
+                          <p className="text-3xl font-bold text-foreground">
+                            {originalApcFee &&
+                            parseFloat(originalApcFee) > 0 ? (
+                              <>
+                                {originalApcCurrency}{" "}
+                                <span className="text-4xl">
+                                  {parseFloat(originalApcFee).toFixed(2)}
+                                </span>
+                                <span className="text-sm font-normal text-muted-foreground">
+                                  {" "}
+                                  per page
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-2xl text-muted-foreground">
+                                No fee set
+                              </span>
+                            )}
                           </p>
+                          {originalApcFee && parseFloat(originalApcFee) > 0 && (
+                            <p className="text-xs text-muted-foreground mt-3">
+                              Example: 10 pages = {originalApcCurrency}{" "}
+                              {(parseFloat(originalApcFee) * 10).toFixed(2)}
+                            </p>
+                          )}
                         </div>
                         <Button
                           onClick={() => setIsEditingAPC(true)}
@@ -1578,29 +1487,29 @@ export default function PublisherDashboard() {
                           className="w-full gap-2"
                         >
                           <Edit3 className="h-4 w-4" />
-                          Edit APC
+                          Edit APC Settings
                         </Button>
-                      </>
+                      </div>
                     ) : (
-                      <>
+                      <div className="space-y-4">
                         <div>
-                          <label className="text-sm text-muted-foreground mb-1 block">
-                            Publication Fee per Page
-                          </label>
-                          <div className="flex gap-2">
-                            <input
+                          <Label className="text-sm font-medium">
+                            Fee per page
+                          </Label>
+                          <div className="flex gap-2 mt-1.5">
+                            <Input
                               type="number"
                               min="0"
                               step="0.01"
                               value={apcFee}
                               onChange={(e) => setApcFee(e.target.value)}
-                              placeholder="0"
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              placeholder="0.00"
+                              className="flex-1"
                             />
                             <select
                               value={apcCurrency}
                               onChange={(e) => setApcCurrency(e.target.value)}
-                              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               <option value="USD">USD</option>
                               <option value="PKR">PKR</option>
@@ -1608,12 +1517,6 @@ export default function PublisherDashboard() {
                               <option value="GBP">GBP</option>
                             </select>
                           </div>
-                          {apcFee && parseFloat(apcFee) > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              e.g. Total for 10 pages = {apcCurrency}{" "}
-                              {(parseFloat(apcFee) * 10).toFixed(2)}
-                            </p>
-                          )}
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -1629,26 +1532,195 @@ export default function PublisherDashboard() {
                             disabled={savingAPC}
                             className="flex-1 bg-green-600 hover:bg-green-700"
                           >
-                            {savingAPC ? "Saving..." : "Save APC"}
+                            {savingAPC ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Save Changes
                           </Button>
                         </div>
-                      </>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
-            )}
 
-            <DialogFooter className="flex gap-2 pt-6 border-t border-gray-800">
-              <Button
-                variant="outline"
-                onClick={() => setDetailsModalOpen(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
+              {/* Issues Section */}
+              <Card className="overflow-hidden">
+                <CardHeader className="bg-muted/30 pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="p-1.5 bg-orange-500/20 rounded-lg">
+                        <Layers className="h-4 w-4 text-orange-400" />
+                      </div>
+                      Journal Issues
+                      <Badge variant="secondary" className="ml-2">
+                        {selectedJournal?.issues.length}
+                      </Badge>
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => {
+                        setCreateIssueOpen(true);
+                        if (selectedJournal)
+                          fetchIssuePreview(selectedJournal.id);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create Issue
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedJournal?.issues.map((issue) => {
+                      const isSelected = selectedIssue?.id === issue.id;
+                      return (
+                        <div
+                          key={issue.id}
+                          onClick={() => setSelectedIssue(issue)}
+                          className={`p-4 rounded-lg cursor-pointer transition-all duration-200 border-2
+                    ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-500/10 shadow-md"
+                        : "border-border hover:border-blue-500/50 hover:bg-blue-500/5"
+                    }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="font-semibold text-foreground">
+                                {issue.label}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Vol {issue.volume} • Issue {issue.issue} •{" "}
+                                {issue.year}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                issue.issueStatus === "published"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="text-xs"
+                            >
+                              {issue.issueStatus}
+                            </Badge>
+                          </div>
+                          {issue.paper_count != null && (
+                            <div className="mt-3">
+                              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                <span>Papers</span>
+                                <span>{issue.paper_count}/99</span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
+                                  style={{
+                                    width: `${Math.min((issue.paper_count / 99) * 100, 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedJournal?.issues.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Layers className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>No issues created yet</p>
+                      <Button
+                        variant="link"
+                        className="mt-2"
+                        onClick={() => {
+                          setCreateIssueOpen(true);
+                          if (selectedJournal)
+                            fetchIssuePreview(selectedJournal.id);
+                        }}
+                      >
+                        Create your first issue
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Approval Section */}
+              <Card className="border-2 border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                      <CheckCircle className="h-4 w-4 text-blue-400" />
+                    </div>
+                    Issue Approval
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <div className="flex-1">
+                      {selectedIssue ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Badge className="bg-green-500/20 text-green-400">
+                            Selected
+                          </Badge>
+                          <span className="font-medium">
+                            {selectedIssue.label}
+                          </span>
+                          <span className="text-muted-foreground">
+                            (Vol {selectedIssue.volume}, Issue{" "}
+                            {selectedIssue.issue})
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Select an issue from above to approve
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() =>
+                        approveJournal(
+                          selectedJournal?.id ?? "",
+                          selectedIssue?.id ?? "",
+                        )
+                      }
+                      disabled={approving || !selectedIssue}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 min-w-[180px]"
+                      size="lg"
+                    >
+                      {approving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Approving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve Selected Issue
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t p-4">
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDetailsModalOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
+
         <Dialog
           open={createIssueOpen}
           onOpenChange={(open) => {
@@ -2057,9 +2129,11 @@ export default function PublisherDashboard() {
           </DialogHeader>
           <div className="py-4 bg-muted/30 p-4 rounded-lg text-sm">
             <p className="text-muted-foreground mb-1">New price:</p>
-            <p className="font-semibold text-foreground">
-              {apcCurrency}
-              {apcFee} per page
+            <p className="text-2xl font-bold text-foreground">
+              {apcCurrency} {apcFee}{" "}
+              <span className="text-base font-normal text-muted-foreground">
+                per page
+              </span>
             </p>
           </div>
           <DialogFooter className="gap-2">

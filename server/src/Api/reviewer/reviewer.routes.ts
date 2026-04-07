@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getReviewerPapers, submitReview } from "./reviewer.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import { zSubmitReviewSchema } from "./reviewer.schema";
 import { validate } from "../../middlewares/validate.middleware";
 import { upload } from "../../middlewares/upload.middleware";
@@ -18,6 +19,7 @@ router.post(
   "/submitReview/:paperId",
   authMiddleware,
   authorize("reviewer"),
+  requireProfileCompleted,
   upload.single("signature"),
   validate(zSubmitReviewSchema),
   submitReview,

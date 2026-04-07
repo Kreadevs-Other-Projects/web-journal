@@ -33,6 +33,9 @@ interface Paper {
   yourRating?: number;
   yourReviewTime?: string;
   keywords?: string[];
+  journal_name?: string;
+  journal_acronym?: string;
+  issue_label?: string;
 }
 
 interface CompletedReview extends Paper {
@@ -142,14 +145,11 @@ export default function CompletedReviewPage() {
                       <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <Badge
-                              variant="outline"
-                              className="text-xs max-w-[200px] truncate"
-                            >
-                              {review.title}
+                            <Badge variant="outline">
+                              {review.journal_name}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                              {review.category}
+                              {review.issue_label}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
                               {review.version_number}

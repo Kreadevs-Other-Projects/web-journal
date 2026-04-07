@@ -263,6 +263,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       userRoleRows,
       activeRole,
       activeJournalId,
+      user.profile_completed ?? false,
     );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
@@ -439,6 +440,7 @@ export const switchRole = async (req: Request, res: Response) => {
       uniqueRoles,
       role,
       effectiveJournalId,
+      user.profile_completed ?? true,
     );
 
     return res.status(200).json({

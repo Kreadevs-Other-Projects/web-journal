@@ -32,6 +32,7 @@ import {
   getStaffProfileHandler,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   assignSubEditorSchema,
   editorDecisionSchema,
@@ -87,6 +88,7 @@ router.post(
   "/assignSubEditor/:paperId",
   authMiddleware,
   authorize("chief_editor"),
+  requireProfileCompleted,
   validate(assignSubEditorSchema),
   assignSubEditor,
 );
@@ -95,6 +97,7 @@ router.post(
   "/decide/:paperId",
   authMiddleware,
   authorize("chief_editor"),
+  requireProfileCompleted,
   validate(editorDecisionSchema),
   decidePaper,
 );

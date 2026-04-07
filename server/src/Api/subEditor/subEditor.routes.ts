@@ -14,6 +14,7 @@ import {
   getExistingDecision,
 } from "./subEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   zSubEditorStatusSchema,
   assignReviewerSchema,
@@ -40,6 +41,7 @@ router.post(
   "/assignReviewer/:paperId",
   authMiddleware,
   authorize("chief_editor", "sub_editor"),
+  requireProfileCompleted,
   validate(assignReviewerSchema),
   assignReviewer,
 );
@@ -77,6 +79,7 @@ router.post(
   "/decision/:paperId",
   authMiddleware,
   authorize("sub_editor"),
+  requireProfileCompleted,
   subEditorDecision,
 );
 

@@ -518,6 +518,14 @@ export function DashboardLayout({
           </div>
         </header>
 
+        {!user?.profile_completed && (
+          <div className="bg-yellow-500 text-yellow-950 px-4 py-2 text-sm flex items-center justify-between">
+            <span>Your profile is incomplete. Some features are restricted until you complete it.</span>
+            <Link to="/complete-profile" className="underline font-medium ml-4 whitespace-nowrap">
+              Complete Profile →
+            </Link>
+          </div>
+        )}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

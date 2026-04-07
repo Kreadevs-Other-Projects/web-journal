@@ -52,6 +52,22 @@ export const replaceChiefEditor = async (req: AuthUser, res: Response) => {
   }
 };
 
+export const replaceJournalManager = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const result = await service.replaceJournalManagerService(
+      journalId,
+      req.user!.id,
+    );
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to replace journal manager",
+    });
+  }
+};
+
 export const sendInvoice = async (req: AuthUser, res: Response) => {
   // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
   return res

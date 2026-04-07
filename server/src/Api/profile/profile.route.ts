@@ -10,6 +10,7 @@ import {
   uploadCertification,
   getCertifications,
   deleteCertification,
+  completeProfile,
 } from "./profile.controller";
 import { updateProfileSchema, changePasswordSchema } from "./profile.schema";
 import { upload, certificationUpload } from "../../middlewares/upload.middleware";
@@ -17,6 +18,13 @@ import { upload, certificationUpload } from "../../middlewares/upload.middleware
 const router = Router();
 
 router.get("/getProfile", authMiddleware, asyncHandler(getProfile));
+
+router.post(
+  "/complete",
+  authMiddleware,
+  upload.single("profile_pic"),
+  asyncHandler(completeProfile),
+);
 
 router.put(
   "/change-password",

@@ -11,13 +11,20 @@ export const findUserByEmail = async (email: string) => {
 
 export const findUserById = async (id: string) => {
   const res = await pool.query(
-    `SELECT id, email, username, role, created_at, profile_pic
+    `SELECT id, email, username, role, created_at, profile_pic, profile_completed, profile_completed_at
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
     [id],
   );
 
   return res.rows[0];
+};
+
+export const markProfileCompleted = async (userId: string) => {
+  await pool.query(
+    `UPDATE users SET profile_completed = TRUE, profile_completed_at = NOW() WHERE id = $1`,
+    [userId],
+  );
 };
 
 export const findUserProfile = async (userId: string) => {
@@ -129,6 +136,9 @@ export const updateUserProfile = async (
     degrees?: string[] | null;
     keywords?: string[] | null;
     profile_pic_url?: string | null;
+    bio?: string | null;
+    organization_name?: string | null;
+    website?: string | null;
   },
 ) => {
   const fields: string[] = [];
@@ -169,6 +179,21 @@ export const updateUserProfile = async (
   if (data.profile_pic_url !== undefined) {
     fields.push(`profile_pic_url = $${paramCount++}`);
     values.push(data.profile_pic_url);
+  }
+
+  if (data.bio !== undefined) {
+    fields.push(`bio = $${paramCount++}`);
+    values.push(data.bio);
+  }
+
+  if (data.organization_name !== undefined) {
+    fields.push(`organization_name = $${paramCount++}`);
+    values.push(data.organization_name);
+  }
+
+  if (data.website !== undefined) {
+    fields.push(`website = $${paramCount++}`);
+    values.push(data.website);
   }
 
   if (fields.length === 0) {

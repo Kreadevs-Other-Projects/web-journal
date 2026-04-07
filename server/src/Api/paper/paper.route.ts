@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   createPaper,
   getAllPapers,
@@ -34,6 +35,7 @@ router.post(
 router.post(
   "/createPaper",
   authMiddleware,
+  requireProfileCompleted,
   manuscriptUpload.single("manuscript"),
   createPaper,
 );

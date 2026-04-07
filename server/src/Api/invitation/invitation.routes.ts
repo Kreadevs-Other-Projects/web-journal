@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   sendInvitation,
   verifyInvitation,
@@ -16,6 +17,7 @@ router.post(
   "/send",
   authMiddleware,
   authorize("publisher", "chief_editor", "sub_editor", "owner"),
+  requireProfileCompleted,
   sendInvitation,
 );
 

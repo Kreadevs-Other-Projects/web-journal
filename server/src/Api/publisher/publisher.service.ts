@@ -36,6 +36,14 @@ export const replaceChiefEditorService = async (
   return { message: "Chief editor removed. You can now invite a new one." };
 };
 
+export const replaceJournalManagerService = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  await repo.replaceJournalManagerRepo(journalId, publisherId);
+  return { message: "Journal manager removed. You can now invite a new one." };
+};
+
 export const journalPaymentInvoice = async (
   user: { id: string; role: string },
   journalId: string,

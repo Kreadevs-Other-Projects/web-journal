@@ -7,6 +7,7 @@ import {
   updateUser,
   updateUserProfile,
   softDeleteUser,
+  markProfileCompleted,
 } from "./profile.repository";
 
 export const getFullProfile = async (userId: string) => {
@@ -46,6 +47,9 @@ export const updateProfileService = async (
     degrees?: string[] | null;
     keywords?: string[] | null;
     profile_pic_url?: string | null;
+    bio?: string | null;
+    organization_name?: string | null;
+    website?: string | null;
   },
 ) => {
   if (profileData?.keywords && profileData.keywords.length > 5) {
@@ -76,4 +80,65 @@ export const updateProfileService = async (
 
 export const deleteProfile = async (userId: string) => {
   return softDeleteUser(userId);
+};
+
+export const completeProfileService = async (
+  userId: string,
+  role: string,
+  userData: { username?: string; profile_pic?: string },
+  profileData: {
+    affiliation?: string;
+    bio?: string;
+    degrees?: string[];
+    keywords?: string[];
+    organization_name?: string;
+    website?: string;
+    profile_pic_url?: string;
+  },
+) => {
+  // Validate role-specific required fields
+  const editorialRoles = ["chief_editor", "sub_editor", "reviewer"];
+  if (editorialRoles.includes(role)) {
+    if (!profileData.degrees || profileData.degrees.length === 0) {
+      throw new Error("DEGREES_REQUIRED");
+    }
+    if (!profileData.keywords || profileData.keywords.length === 0) {
+      throw new Error("KEYWORDS_REQUIRED");
+    }
+    if (!profileData.affiliation) {
+      throw new Error("AFFILIATION_REQUIRED");
+    }
+  }
+  if (role === "author" && !profileData.affiliation) {
+    throw new Error("AFFILIATION_REQUIRED");
+  }
+  if (role === "publisher" && !profileData.organization_name) {
+    throw new Error("ORGANIZATION_REQUIRED");
+  }
+  if (role === "journal_manager" && !profileData.affiliation) {
+    throw new Error("AFFILIATION_REQUIRED");
+  }
+  if (profileData.keywords && profileData.keywords.length > 5) {
+    throw new Error("KEYWORDS_LIMIT_EXCEEDED");
+  }
+
+  if (Object.keys(userData).length > 0) {
+    await updateUser(userId, userData);
+  }
+
+  // Map affiliation → qualifications (existing column), organization_name → certifications as org field
+  const profileUpdate: Record<string, any> = {};
+  if (profileData.profile_pic_url) profileUpdate.profile_pic_url = profileData.profile_pic_url;
+  if (profileData.degrees) profileUpdate.degrees = profileData.degrees;
+  if (profileData.keywords) profileUpdate.keywords = profileData.keywords;
+  if (profileData.affiliation) profileUpdate.qualifications = profileData.affiliation;
+  if (profileData.bio) profileUpdate.bio = profileData.bio;
+  if (profileData.organization_name) profileUpdate.organization_name = profileData.organization_name;
+  if (profileData.website) profileUpdate.website = profileData.website;
+
+  if (Object.keys(profileUpdate).length > 0) {
+    await updateUserProfile(userId, profileUpdate);
+  }
+
+  await markProfileCompleted(userId);
 };

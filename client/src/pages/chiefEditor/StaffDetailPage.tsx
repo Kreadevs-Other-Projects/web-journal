@@ -198,31 +198,51 @@ export default function StaffDetailPage() {
       <DashboardLayout role={user?.role} userName={user?.username}>
         <div className="text-center py-20 space-y-3">
           <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
-          <p className="text-muted-foreground">{error || "Staff member not found."}</p>
-          <Button variant="outline" onClick={handleBack}>Go Back</Button>
+          <p className="text-muted-foreground">
+            {error || "Staff member not found."}
+          </p>
+          <Button variant="outline" onClick={handleBack}>
+            Go Back
+          </Button>
         </div>
       </DashboardLayout>
     );
   }
 
-  const backLabel = navRole === "sub_editor" ? "Associate Editors" : "Reviewers";
+  const backLabel =
+    navRole === "sub_editor" ? "Associate Editors" : "Reviewers";
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Link to="/chief-editor" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link
+            to="/chief-editor"
+            className="hover:text-foreground transition-colors"
+          >
+            Dashboard
+          </Link>
           <ChevronRight className="h-3 w-3" />
-          <button onClick={handleBack} className="hover:text-foreground transition-colors">
+          <button
+            onClick={handleBack}
+            className="hover:text-foreground transition-colors"
+          >
             {backLabel}
           </button>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground truncate max-w-[200px]">{profile.username}</span>
+          <span className="text-foreground truncate max-w-[200px]">
+            {profile.username}
+          </span>
         </nav>
 
         {/* Back button */}
-        <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 -mt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBack}
+          className="gap-1.5 -mt-2"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to All {backLabel}
         </Button>
 
@@ -230,7 +250,7 @@ export default function StaffDetailPage() {
         <div className="flex items-center gap-5">
           {profile.profile_pic_url ? (
             <img
-              src={`${url}/${profile.profile_pic_url}`}
+              src={`${profile.profile_pic_url}`}
               alt={profile.username}
               className="w-20 h-20 rounded-full object-cover shrink-0"
             />
@@ -238,17 +258,24 @@ export default function StaffDetailPage() {
             <Initials name={profile.username} />
           )}
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{profile.username}</h1>
-            <Badge variant="outline" className="mt-1">{roleLabel}</Badge>
+            <h1 className="text-2xl font-bold text-foreground">
+              {profile.username}
+            </h1>
+            <Badge variant="outline" className="mt-1">
+              {roleLabel}
+            </Badge>
             <p className="text-sm text-muted-foreground mt-1">
-              {papers.length} total paper{papers.length !== 1 ? "s" : ""} handled
+              {papers.length} total paper{papers.length !== 1 ? "s" : ""}{" "}
+              handled
             </p>
           </div>
         </div>
 
         {/* Contact */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Contact</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Contact</CardTitle>
+          </CardHeader>
           <CardContent>
             <a
               href={`mailto:${profile.email}`}
@@ -263,11 +290,15 @@ export default function StaffDetailPage() {
         {/* Degrees */}
         {profile.degrees && profile.degrees.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Degrees</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Degrees</CardTitle>
+            </CardHeader>
             <CardContent>
               <ul className="space-y-1">
                 {profile.degrees.map((d, i) => (
-                  <li key={i} className="text-sm text-muted-foreground">{d}</li>
+                  <li key={i} className="text-sm text-muted-foreground">
+                    {d}
+                  </li>
                 ))}
               </ul>
             </CardContent>
@@ -277,7 +308,9 @@ export default function StaffDetailPage() {
         {/* Keywords */}
         {profile.keywords && profile.keywords.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Keywords / Expertise</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Keywords / Expertise</CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {profile.keywords.map((kw) => (
@@ -298,12 +331,16 @@ export default function StaffDetailPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               Certifications
-              <Badge variant="secondary" className="text-xs">{profile.certifications.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {profile.certifications.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {profile.certifications.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No certifications uploaded.</p>
+              <p className="text-sm text-muted-foreground">
+                No certifications uploaded.
+              </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {profile.certifications.map((cert) => {
@@ -321,8 +358,12 @@ export default function StaffDetailPage() {
                         <FileText className="h-8 w-8 text-red-400 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{cert.file_name}</p>
-                        <p className="text-xs text-muted-foreground">{fmt(cert.uploaded_at)}</p>
+                        <p className="text-sm font-medium truncate">
+                          {cert.file_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmt(cert.uploaded_at)}
+                        </p>
                       </div>
                       <Button
                         variant="ghost"
@@ -345,15 +386,32 @@ export default function StaffDetailPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               Papers Handled
-              <Badge variant="secondary" className="text-xs">{papers.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {papers.length}
+              </Badge>
             </CardTitle>
             {papers.length > 0 && (
               <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                <span><span className="font-semibold text-foreground">{activePapers.length}</span> Active</span>
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {activePapers.length}
+                  </span>{" "}
+                  Active
+                </span>
                 <span>·</span>
-                <span><span className="font-semibold text-foreground">{completedPapers.length}</span> Completed</span>
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {completedPapers.length}
+                  </span>{" "}
+                  Completed
+                </span>
                 <span>·</span>
-                <span><span className="font-semibold text-foreground">{rejectedPapers.length}</span> Reassigned/Rejected</span>
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {rejectedPapers.length}
+                  </span>{" "}
+                  Reassigned/Rejected
+                </span>
               </div>
             )}
           </CardHeader>
@@ -370,7 +428,10 @@ export default function StaffDetailPage() {
                       ? p.ae_decision
                       : p.review_decision;
                   return (
-                    <div key={p.id + p.assigned_at} className="px-4 py-3 space-y-1.5">
+                    <div
+                      key={p.id + p.assigned_at}
+                      className="px-4 py-3 space-y-1.5"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium leading-snug flex-1 min-w-0 line-clamp-2">
                           {p.title}
@@ -382,9 +443,13 @@ export default function StaffDetailPage() {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{p.journal_name}</span>
+                        <span className="font-medium text-foreground">
+                          {p.journal_name}
+                        </span>
                         {p.issue_label && <span>{p.issue_label}</span>}
-                        {p.assigned_at && <span>Assigned {fmt(p.assigned_at)}</span>}
+                        {p.assigned_at && (
+                          <span>Assigned {fmt(p.assigned_at)}</span>
+                        )}
                         {decision && (
                           <Badge
                             className={`text-[10px] ${DECISION_COLORS[decision] || "bg-muted text-muted-foreground"}`}
@@ -419,7 +484,10 @@ export default function StaffDetailPage() {
       </div>
 
       {/* Certificate Viewer Modal */}
-      <Dialog open={!!certViewer} onOpenChange={(open) => !open && setCertViewer(null)}>
+      <Dialog
+        open={!!certViewer}
+        onOpenChange={(open) => !open && setCertViewer(null)}
+      >
         <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
             <DialogTitle className="text-base truncate max-w-[60%]">
@@ -430,7 +498,9 @@ export default function StaffDetailPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 h-8 text-xs"
-                onClick={() => certViewer && window.open(`${url}/${certViewer.file_url}`, "_blank")}
+                onClick={() =>
+                  certViewer && window.open(`${certViewer.file_url}`, "_blank")
+                }
               >
                 <Download className="h-3.5 w-3.5" /> Download
               </Button>
@@ -445,26 +515,27 @@ export default function StaffDetailPage() {
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
-            {certViewer && (() => {
-              const isImage = ["jpg", "jpeg", "png", "webp", "gif"].some(
-                (ext) => certViewer.file_name.toLowerCase().endsWith(ext),
-              );
-              return isImage ? (
-                <div className="h-full flex items-center justify-center p-4 bg-muted/30">
-                  <img
-                    src={`${url}/${certViewer.file_url}`}
-                    alt={certViewer.file_name}
-                    className="max-h-full max-w-full object-contain rounded"
+            {certViewer &&
+              (() => {
+                const isImage = ["jpg", "jpeg", "png", "webp", "gif"].some(
+                  (ext) => certViewer.file_name.toLowerCase().endsWith(ext),
+                );
+                return isImage ? (
+                  <div className="h-full flex items-center justify-center p-4 bg-muted/30">
+                    <img
+                      src={`${certViewer.file_url}`}
+                      alt={certViewer.file_name}
+                      className="max-h-full max-w-full object-contain rounded"
+                    />
+                  </div>
+                ) : (
+                  <iframe
+                    src={`${certViewer.file_url}`}
+                    title={certViewer.file_name}
+                    className="w-full h-full border-0"
                   />
-                </div>
-              ) : (
-                <iframe
-                  src={`${url}/${certViewer.file_url}`}
-                  title={certViewer.file_name}
-                  className="w-full h-full border-0"
-                />
-              );
-            })()}
+                );
+              })()}
           </div>
         </DialogContent>
       </Dialog>

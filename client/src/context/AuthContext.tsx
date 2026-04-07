@@ -16,6 +16,7 @@ export interface AuthUser {
   username?: string;
   roles: UserRoleContext[];
   active_journal_id: string | null;
+  profile_completed: boolean;
 }
 
 export interface UserProfile {
@@ -44,6 +45,7 @@ interface JwtPayload {
   roles?: (UserRoleContext | string)[];
   active_role?: UserRole;
   active_journal_id?: string | null;
+  profile_completed?: boolean;
   exp: number;
 }
 
@@ -89,6 +91,8 @@ function decodeAuthUser(token: string): AuthUser {
     username: decoded.username,
     roles: normalizeRoles(decoded.roles, activeRole),
     active_journal_id: decoded.active_journal_id ?? null,
+    // Default true for old tokens — existing users are not affected
+    profile_completed: decoded.profile_completed ?? true,
   };
 }
 

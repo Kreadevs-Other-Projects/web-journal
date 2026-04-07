@@ -39,9 +39,6 @@ export const createOTP = async (req: Request, res: Response) => {
 
 export const verifyLoginOTP = async (req: Request, res: Response) => {
   try {
-    console.log("===== OTP Verification API hit =====");
-    console.log("Request body:", req.body);
-
     const { email, otp } = req.body;
 
     if (!email || !otp) {
@@ -54,7 +51,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 1️⃣ Verify OTP
     const otpRecord = await OTPService.verifyOTP(email, otp);
-    console.log("OTP record found:", otpRecord);
 
     if (!otpRecord) {
       console.warn("Invalid or expired OTP for email:", email);
@@ -66,7 +62,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 2️⃣ Find user
     const user = await AuthService.findUserByEmail(email);
-    console.log("User found:", user);
 
     if (!user) {
       console.warn("No account found for email:", email);
@@ -78,13 +73,10 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 3️⃣ Delete used OTP
     await OTPService.deleteOTP(email);
-    console.log("OTP deleted for email:", email);
 
     // 4️⃣ Generate tokens
     const accessToken = await generateAccessToken(user.id, user.role);
     const refreshToken = await generateRefreshToken(user.id, user.role);
-    console.log("AccessToken:", accessToken);
-    console.log("RefreshToken:", refreshToken);
 
     // 5️⃣ Save refresh token
     const expires_at = new Date();
@@ -95,7 +87,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       refreshToken,
       expires_at,
     );
-    console.log("Refresh token saved with ID:", savedTokenId);
 
     if (!savedTokenId) {
       console.error("Failed to save refresh token");
@@ -112,10 +103,7 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-    console.log("Refresh token cookie set");
 
-    // 7️⃣ Respond
-    console.log("Sending success response for email:", email);
     return res.status(200).json({
       success: true,
       message: "Login successful",

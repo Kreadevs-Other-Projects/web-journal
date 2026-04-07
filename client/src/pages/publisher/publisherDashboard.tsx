@@ -194,9 +194,9 @@ export default function PublisherDashboard() {
   const [originalApcFee, setOriginalApcFee] = useState<string>("");
   const [originalApcCurrency, setOriginalApcCurrency] = useState<string>("USD");
   const [showUnsavedAPCModal, setShowUnsavedAPCModal] = useState(false);
-  const [pendingAPCNavigation, setPendingAPCNavigation] = useState<(
-    () => void
-  ) | null>(null);
+  const [pendingAPCNavigation, setPendingAPCNavigation] = useState<
+    (() => void) | null
+  >(null);
 
   const statusMap: Record<string, string[]> = {
     all: ["draft", "active", "suspended", "archived"],
@@ -214,7 +214,6 @@ export default function PublisherDashboard() {
       });
       if (!res.ok) throw new Error("Failed to fetch journals");
       const json = await res.json();
-      console.log(json);
 
       setJournals(json.journals ?? []);
     } catch (err: any) {
@@ -874,7 +873,8 @@ export default function PublisherDashboard() {
   };
 
   const hasUnsavedAPCChanges =
-    isEditingAPC && (apcFee !== originalApcFee || apcCurrency !== originalApcCurrency);
+    isEditingAPC &&
+    (apcFee !== originalApcFee || apcCurrency !== originalApcCurrency);
 
   const handleCancelAPC = () => {
     if (hasUnsavedAPCChanges) {
@@ -1046,7 +1046,6 @@ export default function PublisherDashboard() {
                     key={journal.id}
                     className={`glass-card hover:shadow-lg transition-all duration-300 hover:border-blue-500/50 cursor-pointer group ${journal.is_taken_down ? "border-red-500/40 opacity-75" : ""}`}
                     onClick={() => {
-                      (console.log({ journal }), setSelectedJournal(journal));
                       setDetailsModalOpen(true);
                     }}
                   >
@@ -1084,7 +1083,11 @@ export default function PublisherDashboard() {
                             >
                               <DropdownMenuItem
                                 className="gap-2"
-                                onClick={() => navigate(`/publisher/journals/${journal.id}/edit`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/publisher/journals/${journal.id}/edit`,
+                                  )
+                                }
                               >
                                 <Edit3 className="h-4 w-4" /> Edit Journal
                               </DropdownMenuItem>
@@ -1360,7 +1363,9 @@ export default function PublisherDashboard() {
                       {/* Journal Manager Section */}
                       <div>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-600">Journal Manager</p>
+                          <p className="text-sm text-gray-600">
+                            Journal Manager
+                          </p>
                           <div className="flex gap-2">
                             {selectedJournal.journal_manager_invitation_status ===
                               "expired" && (
@@ -2058,10 +2063,7 @@ export default function PublisherDashboard() {
             </p>
           </div>
           <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={handleDiscardAPCChanges}
-            >
+            <Button variant="outline" onClick={handleDiscardAPCChanges}>
               Discard Changes
             </Button>
             <Button

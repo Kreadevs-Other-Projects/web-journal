@@ -1,4 +1,3 @@
-// pages/reviewer/ResearchPaperDetail.tsx
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SignatureModal } from "@/components/SignatureModal";
@@ -224,13 +223,7 @@ export default function ResearchPaperDetail() {
       setSignatureModalOpen(true);
     } else {
       // For revision decisions
-      console.log("Review submitted:", {
-        paperId,
-        decision,
-        comments,
-        confidentialComments,
-        ratings,
-      });
+
       // In real app: API call to submit review
       // Then navigate back or show success message
       navigate("/reviewer/papers");
@@ -238,13 +231,6 @@ export default function ResearchPaperDetail() {
   };
 
   const handleSignatureConfirm = (signature: string, password: string) => {
-    console.log("Review submitted with signature:", {
-      paperId,
-      signature,
-      decision,
-      comments,
-      ratings,
-    });
     setSignatureModalOpen(false);
     navigate("/reviewer/papers");
   };

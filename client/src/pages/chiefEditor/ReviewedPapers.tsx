@@ -90,7 +90,6 @@ export default function ChiefEditorSubmittedReviews() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        console.log(data);
 
         if (data.success) {
           const mapped = data.data.map((r: any) => ({
@@ -503,8 +502,7 @@ export default function ChiefEditorSubmittedReviews() {
                                   </Badge>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Sub Editor:{" "}
-                                  {review.subEditorName || "—"}
+                                  Sub Editor: {review.subEditorName || "—"}
                                 </div>
                               </div>
 

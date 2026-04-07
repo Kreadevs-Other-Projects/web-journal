@@ -1,5 +1,10 @@
 import path from "path";
-import { getBrowseDataRepo, getPublicPaperRepo, getPaperVersionForHtmlRepo, cacheVersionHtmlRepo } from "./browse.repository";
+import {
+  getBrowseDataRepo,
+  getPublicPaperRepo,
+  getPaperVersionForHtmlRepo,
+  cacheVersionHtmlRepo,
+} from "./browse.repository";
 
 export const getBrowseDataService = async (filters: any) => {
   const rows = await getBrowseDataRepo(filters);
@@ -44,17 +49,25 @@ export const getPublicPaperService = async (paperId: string) => {
 };
 
 function pdfTextToHtml(rawText: string): string {
-  const lines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  const lines = rawText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   let html = "";
 
   for (const line of lines) {
     const wordCount = line.split(" ").length;
-    const isAllCaps = line === line.toUpperCase() && /[A-Z]/.test(line) && line.length > 3;
+    const isAllCaps =
+      line === line.toUpperCase() && /[A-Z]/.test(line) && line.length > 3;
     const isShortLine = wordCount <= 8 && line.length < 80;
     const endsWithColon = line.endsWith(":");
     const startsWithNumber = /^\d+[\.\s]+[A-Z]/.test(line);
-    const isCommonSection = /^(abstract|introduction|conclusion|discussion|methods|results|references|background|related work|acknowledgements?|keywords?)/i.test(line);
-    const isLikelyHeading = isShortLine && (isAllCaps || endsWithColon || isCommonSection);
+    const isCommonSection =
+      /^(abstract|introduction|conclusion|discussion|methods|results|references|background|related work|acknowledgements?|keywords?)/i.test(
+        line,
+      );
+    const isLikelyHeading =
+      isShortLine && (isAllCaps || endsWithColon || isCommonSection);
 
     if (isLikelyHeading || (startsWithNumber && isShortLine)) {
       if (isCommonSection || (isAllCaps && line.length < 50)) {
@@ -68,7 +81,9 @@ function pdfTextToHtml(rawText: string): string {
   }
 
   // Merge consecutive short <p> lines that are likely wrapped sentence continuations
-  html = html.replace(/<\/p>\n<p>(?=[a-z,;])/g, " ").replace(/<p>\s*<\/p>\n?/g, "");
+  html = html
+    .replace(/<\/p>\n<p>(?=[a-z,;])/g, " ")
+    .replace(/<p>\s*<\/p>\n?/g, "");
 
   return html || "<p>Text content could not be extracted from this PDF.</p>";
 }
@@ -81,10 +96,11 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export const getPublicPaperHtmlService = async (paperId: string): Promise<string | null> => {
+export const getPublicPaperHtmlService = async (
+  paperId: string,
+): Promise<string | null> => {
   const version = await getPaperVersionForHtmlRepo(paperId);
   if (!version) {
-    console.log("getPublicPaperHtmlService: no version found for paperId", paperId);
     return null;
   }
 
@@ -92,7 +108,6 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
   if (version.html_content) return version.html_content;
 
   if (!version.file_url) {
-    console.log("getPublicPaperHtmlService: version has no file_url");
     return null;
   }
 
@@ -100,16 +115,13 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
   const filePath = path.resolve(__dirname, "../../../uploads", filename);
   const lowerUrl = version.file_url.toLowerCase();
 
-  console.log("Looking for file at:", filePath);
   const fsSync = await import("fs");
-  console.log("File exists:", fsSync.default.existsSync(filePath));
 
   // .docx → mammoth
   if (lowerUrl.endsWith(".docx")) {
     try {
       const mammoth = (await import("mammoth")).default;
       const result = await mammoth.convertToHtml({ path: filePath });
-      console.log("mammoth result length:", result.value.length, "filePath:", filePath);
       if (result.value) {
         await cacheVersionHtmlRepo(version.id, result.value);
         return result.value;
@@ -127,7 +139,6 @@ export const getPublicPaperHtmlService = async (paperId: string): Promise<string
       const pdfParse = (await import("pdf-parse")).default;
       const buffer = await fs.readFile(filePath);
       const data = await pdfParse(buffer);
-      console.log("pdf-parse text length:", data.text.length, "filePath:", filePath);
 
       const html = pdfTextToHtml(data.text);
       if (html) {

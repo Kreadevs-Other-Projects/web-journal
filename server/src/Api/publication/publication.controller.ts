@@ -49,14 +49,11 @@ export const suggestDoi = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
     const doi = await suggestDoiService(paperId);
-    console.log("Generated DOI:", doi);
     return res.json({ success: true, doi });
   } catch (error: any) {
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: error.message || "Could not generate DOI",
-      });
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Could not generate DOI",
+    });
   }
 };

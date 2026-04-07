@@ -73,7 +73,6 @@ export const getJournalInvitations = async (req: AuthUser, res: Response) => {
   }
 };
 export const resendInvitation = async (req: AuthUser, res: Response) => {
-  console.log(req.body, req.params);
   try {
     const { email, role, journal_id, chiedEditorName, title } = req.body;
     const username = req.user?.username || "";

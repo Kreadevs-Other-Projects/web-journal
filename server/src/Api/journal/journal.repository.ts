@@ -122,11 +122,6 @@ export const findEditorialBoard = async (journalId: string) => {
     [journalId],
   );
 
-  console.log(
-    "Editorial board sub editors:",
-    result.rows.filter((r) => r.role === "sub_editor"),
-  );
-
   const chief_editors = result.rows.filter((r) => r.role === "chief_editor");
   const associate_editors = result.rows.filter((r) => r.role === "sub_editor");
   return { chief_editors, associate_editors };

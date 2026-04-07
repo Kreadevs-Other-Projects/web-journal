@@ -54,7 +54,10 @@ export const getPublicPaperRepo = async (paperId: string) => {
   return result.rows[0] || null;
 };
 
-export const getPublicPaperBySlugRepo = async (acronym: string, slug: string) => {
+export const getPublicPaperBySlugRepo = async (
+  acronym: string,
+  slug: string,
+) => {
   const result = await pool.query(
     `
     SELECT
@@ -308,7 +311,9 @@ export const getLatestPublishedPapersRepo = async (filters: {
 
   if (q) {
     values.push(`%${q}%`);
-    conds.push(`(p.title ILIKE $${values.length} OR p.keywords::text ILIKE $${values.length})`);
+    conds.push(
+      `(p.title ILIKE $${values.length} OR p.keywords::text ILIKE $${values.length})`,
+    );
   }
   if (category) {
     values.push(category);
@@ -316,7 +321,9 @@ export const getLatestPublishedPapersRepo = async (filters: {
   }
   if (year) {
     values.push(year);
-    conds.push(`EXTRACT(YEAR FROM COALESCE(p.published_at, p.updated_at)) = $${values.length}`);
+    conds.push(
+      `EXTRACT(YEAR FROM COALESCE(p.published_at, p.updated_at)) = $${values.length}`,
+    );
   }
 
   values.push(limit);
@@ -344,6 +351,5 @@ export const getLatestPublishedPapersRepo = async (filters: {
     values,
   );
 
-  console.log("Published papers count:", result.rows.length);
   return result.rows;
 };

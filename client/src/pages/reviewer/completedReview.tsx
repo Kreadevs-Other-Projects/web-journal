@@ -55,7 +55,6 @@ export default function CompletedReviewPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      console.log(data);
 
       if (!res.ok) return;
 
@@ -143,7 +142,10 @@ export default function CompletedReviewPage() {
                       <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <Badge variant="outline" className="text-xs max-w-[200px] truncate">
+                            <Badge
+                              variant="outline"
+                              className="text-xs max-w-[200px] truncate"
+                            >
                               {review.title}
                             </Badge>
                             <Badge variant="outline" className="text-xs">

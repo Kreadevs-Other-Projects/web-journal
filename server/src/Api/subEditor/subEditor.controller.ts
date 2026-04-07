@@ -105,8 +105,6 @@ export const subEditorDecision = async (req: AuthUser, res: Response) => {
     const { paperId } = req.params;
     const { action, comments, email, password } = req.body;
 
-    console.log({ Req: req.body });
-
     if (!["approve", "revision"].includes(action)) {
       return res.status(400).json({
         success: false,

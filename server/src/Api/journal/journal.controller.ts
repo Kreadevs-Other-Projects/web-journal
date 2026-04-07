@@ -73,7 +73,6 @@ export const getJournals = async (req: Request, res: Response) => {
 
 export const getJournal = async (req: Request, res: Response) => {
   const journal = await getJournalService(req.params.id);
-  console.log("Journal logo_url:", journal?.logo_url);
 
   return res.status(200).json({
     success: true,

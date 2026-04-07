@@ -58,7 +58,6 @@ export const sendPasswordResetEmail = async (
       ),
       text: `Your password reset code is ${otpCode}. It will expire in 10 minutes.`,
     });
-    console.log("Password reset email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send password reset email:", error);

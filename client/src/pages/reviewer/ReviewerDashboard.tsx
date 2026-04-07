@@ -98,7 +98,6 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
-      console.log(result.papers);
 
       if (!res.ok) {
         console.error("Failed to fetch papers:", result.message || result);

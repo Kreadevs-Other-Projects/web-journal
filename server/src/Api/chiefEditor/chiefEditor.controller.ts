@@ -65,7 +65,9 @@ export const getStaffProfileHandler = asyncHandler(
     const { userId } = req.params;
     const data = await service.getStaffProfileService(userId);
     if (!data) {
-      return res.status(404).json({ success: false, message: "Staff member not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Staff member not found" });
     }
     res.json({ success: true, data });
   },
@@ -81,9 +83,16 @@ export const getJournalStaff = asyncHandler(
     if (role !== "sub_editor" && role !== "reviewer") {
       return res
         .status(400)
-        .json({ success: false, message: "role must be sub_editor or reviewer" });
+        .json({
+          success: false,
+          message: "role must be sub_editor or reviewer",
+        });
     }
-    const staff = await service.getJournalStaffService(journalId, role, paper_id);
+    const staff = await service.getJournalStaffService(
+      journalId,
+      role,
+      paper_id,
+    );
     res.json({ success: true, data: staff });
   },
 );
@@ -198,7 +207,6 @@ export const updatePaperStatus = async (req: Request, res: Response) => {
 
 export const getSubmittedReviews = async (req: AuthUser, res: Response) => {
   const chiefEditorId = req.user!.id;
-  console.log(chiefEditorId);
 
   const reviews = await service.getSubmittedReviews(chiefEditorId);
 
@@ -420,12 +428,10 @@ export const overridePaperStatus = async (req: AuthUser, res: Response) => {
     const { paperId } = req.params;
     const { status, reason, email, password } = req.body;
     if (!status || !reason || !email || !password) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "status, reason, email, and password are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "status, reason, email, and password are required",
+      });
     }
     const result = await service.overridePaperStatusService(
       paperId,

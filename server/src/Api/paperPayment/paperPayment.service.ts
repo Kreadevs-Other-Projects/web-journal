@@ -29,7 +29,11 @@ function generateInvoiceNumber(): string {
 }
 
 function formatDateStr(d: Date): string {
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export const initiatePaperPaymentService = async (
@@ -46,12 +50,12 @@ export const initiatePaperPaymentService = async (
      WHERE p.id = $1`,
     [paperId],
   );
-  if (!paperRes.rows.length) throw new Error("Paper not found for payment initiation");
+  if (!paperRes.rows.length)
+    throw new Error("Paper not found for payment initiation");
   const row = paperRes.rows[0];
 
-  console.log(`[payment] creating invoice for paper "${row.title}" — fee: ${row.publication_fee}, currency: ${row.currency}`);
-
-  const pricePerPage = row.publication_fee != null ? parseFloat(row.publication_fee) : 50;
+  const pricePerPage =
+    row.publication_fee != null ? parseFloat(row.publication_fee) : 50;
   const currency = row.currency || "USD";
   const pages = DEFAULT_PAGES;
   const totalAmount = pricePerPage * pages;
@@ -66,8 +70,6 @@ export const initiatePaperPaymentService = async (
     currency,
     invoice_number: invoiceNumber,
   });
-
-  console.log(`[payment] record created: ${payment.id} — invoice ${invoiceNumber} — ${currency} ${totalAmount}`);
 
   const now = new Date();
   const due = new Date(now);
@@ -106,16 +108,11 @@ export const uploadReceiptService = async (
   if (!paperRes.rows.length) throw new Error("Paper not found");
   if (paperRes.rows[0].author_id !== authorId) throw new Error("Forbidden");
 
-  console.log("[receipt] Q1: updating paper_payments receipt_url...");
   const payment = await updateReceiptRepo(paperId, receiptUrl);
-  console.log("[receipt] Q1 done");
-
   // Notify publisher (best-effort)
-  console.log("[receipt] Q2: fetching publisher email...");
   const publisherRes = await pool.query(
     `SELECT u.email FROM users u WHERE u.role = 'publisher' LIMIT 1`,
   );
-  console.log("[receipt] Q4 done");
   if (publisherRes.rows.length) {
     sendReceiptNotificationEmail({
       publisherEmail: publisherRes.rows[0].email,
@@ -152,7 +149,10 @@ export const approveOrRejectPaymentService = async (
     }).catch(() => {});
     return payment;
   } else {
-    const payment = await rejectPaymentRepo(paperId, rejectionReason || "Receipt rejected");
+    const payment = await rejectPaymentRepo(
+      paperId,
+      rejectionReason || "Receipt rejected",
+    );
     sendPaymentApprovalEmail({
       authorEmail: existing.author_email,
       authorName: existing.author_name,
@@ -202,13 +202,19 @@ export const sendPaymentReminderService = async (
     const last = new Date(payment.last_reminder_sent_at).getTime();
     const diffHours = (Date.now() - last) / (1000 * 60 * 60);
     if (diffHours < 24) {
-      throw new Error("Reminder already sent in the last 24 hours. Please wait before sending another.");
+      throw new Error(
+        "Reminder already sent in the last 24 hours. Please wait before sending another.",
+      );
     }
   }
 
   const paperUrl = `${env.CORS_ORIGIN || "http://localhost:5173"}/author`;
   const invoiceDate = payment.created_at
-    ? new Date(payment.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    ? new Date(payment.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
     : "—";
 
   await sendPaymentReminderEmail({

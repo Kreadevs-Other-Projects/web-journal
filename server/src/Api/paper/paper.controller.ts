@@ -40,9 +40,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     return field;
   };
 
-  const manuscript_url = req.file
-    ? `/uploads/${req.file.filename}`
-    : undefined;
+  const manuscript_url = req.file ? `/uploads/${req.file.filename}` : undefined;
 
   const data = {
     title: body.title,
@@ -139,12 +137,19 @@ export const updatePaperStatus = async (req: any, res: Response) => {
 
 export const extractMetadata = async (req: AuthUser, res: Response) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file uploaded" });
+    return res
+      .status(400)
+      .json({ success: false, message: "No file uploaded" });
   }
   const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
   if (!["docx", "pdf"].includes(ext)) {
     fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ success: false, message: "Only .docx and .pdf files support metadata extraction" });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Only .docx and .pdf files support metadata extraction",
+      });
   }
   try {
     const metadata = await extractMetadataService(req.file.path, ext);
@@ -152,11 +157,16 @@ export const extractMetadata = async (req: AuthUser, res: Response) => {
     res.json({ success: true, ...metadata });
   } catch {
     fs.unlink(req.file.path, () => {});
-    res.status(500).json({ success: false, message: "Failed to extract metadata" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to extract metadata" });
   }
 };
 
-export const getPaperTrackingController = async (req: AuthUser, res: Response) => {
+export const getPaperTrackingController = async (
+  req: AuthUser,
+  res: Response,
+) => {
   const { paperId } = req.params;
   try {
     const data = await getPaperTrackingService(paperId, req.user!.id);
@@ -168,22 +178,26 @@ export const getPaperTrackingController = async (req: AuthUser, res: Response) =
 
 export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
   const { paperId } = req.params;
-  console.log("HTML endpoint called by role:", req.user?.role);
-  console.log("Paper ID:", paperId);
   try {
     const html = await getPublicPaperHtmlService(paperId);
-    console.log("html_content exists:", !!html, "length:", html?.length ?? 0);
     res.json({ success: true, html: html || null });
   } catch (err) {
     console.error("getPaperHtmlController error:", err);
-    res.status(500).json({ success: false, message: "Failed to get paper HTML" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to get paper HTML" });
   }
 };
 
-export const uploadRevisionController = async (req: AuthUser, res: Response) => {
+export const uploadRevisionController = async (
+  req: AuthUser,
+  res: Response,
+) => {
   const { paperId } = req.params;
   if (!req.file) {
-    return res.status(400).json({ success: false, message: "Manuscript file is required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Manuscript file is required." });
   }
   try {
     const versionNumber = parseInt(req.body.version_number, 10) || 2;
@@ -196,7 +210,9 @@ export const uploadRevisionController = async (req: AuthUser, res: Response) => 
     return res.status(201).json({ success: true, version });
   } catch (err: any) {
     if (req.file?.path) fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ success: false, message: err.message || "Upload failed." });
+    return res
+      .status(400)
+      .json({ success: false, message: err.message || "Upload failed." });
   }
 };
 

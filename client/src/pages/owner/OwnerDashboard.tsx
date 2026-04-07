@@ -107,7 +107,6 @@ export default function OwnerDashboard(): JSX.Element {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      console.log(data);
 
       setJournals(data.journals ?? []);
     } catch (err) {
@@ -262,7 +261,6 @@ export default function OwnerDashboard(): JSX.Element {
       );
 
       const data = await res.json();
-      console.log(data);
 
       if (!res.ok) throw new Error(data.message || "Failed to load payments");
 

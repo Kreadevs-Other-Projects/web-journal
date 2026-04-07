@@ -22,7 +22,6 @@ export const sendWelcomeEmail = async (
       ),
       text: `Hi ${username}, welcome to GIKI JournalHub! You can now log in with your email address.`,
     });
-    console.log("Welcome email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send welcome email:", error);
@@ -39,7 +38,9 @@ const ROLE_DISPLAY: Record<string, string> = {
 
 function formatDate(d: Date | string) {
   return new Date(d).toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -52,7 +53,8 @@ export const sendInvitationEmail = async (params: {
   expiresAt: Date | string;
   acceptLink: string;
 }) => {
-  const { to, name, invitedByName, journalName, role, expiresAt, acceptLink } = params;
+  const { to, name, invitedByName, journalName, role, expiresAt, acceptLink } =
+    params;
   const roleLabel = ROLE_DISPLAY[role] || role;
   try {
     await transporter.sendMail({
@@ -102,7 +104,6 @@ export const sendSubEditorInviteEmail = async (
       ),
       text: `You have been invited to join GIKI JournalHub as a Sub-Editor. Complete your signup here: ${signupLink}`,
     });
-    console.log("Sub-editor invite email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send sub-editor invite email:", error);
@@ -132,7 +133,6 @@ export const sendReviewerInviteEmail = async (
       ),
       text: `You have been invited to join GIKI JournalHub as a Reviewer. Complete your signup here: ${signupLink}`,
     });
-    console.log("Reviewer invite email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send reviewer invite email:", error);

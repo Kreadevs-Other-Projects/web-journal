@@ -1489,7 +1489,7 @@ export default function ChiefEditor() {
 
         {/* Assign Sub-Editor to paper */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
@@ -1635,7 +1635,7 @@ export default function ChiefEditor() {
 
         {/* Assign Reviewer */}
         <Dialog open={openReviewerDialog} onOpenChange={setOpenReviewerDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
@@ -1787,7 +1787,7 @@ export default function ChiefEditor() {
             if (!open) { setCeDecisionPaper(null); setCeDecisionAction(""); setCeDecisionNote(""); setCeDecisionEmail(""); setCeDecisionPassword(""); }
           }}
         >
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
@@ -1844,7 +1844,7 @@ export default function ChiefEditor() {
 
         {/* Replace Associate Editor */}
         <Dialog open={!!replaceAEPaper} onOpenChange={(open) => { if (!open) { setReplaceAEPaper(null); setReplaceAESubEditorId(""); } }}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <RefreshCw className="h-5 w-5 text-orange-500" />

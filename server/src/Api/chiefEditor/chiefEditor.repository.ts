@@ -145,6 +145,73 @@ export const getAllPapers = async (chiefEditorId: string) => {
   return result.rows;
 };
 
+export const getStaffProfile = async (userId: string) => {
+  // Profile
+  const profileRes = await pool.query(
+    `SELECT u.id, u.username, u.email, u.role,
+            up.degrees, up.keywords, up.profile_pic_url
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     WHERE u.id = $1`,
+    [userId],
+  );
+  if (!profileRes.rows.length) return null;
+  const profile = profileRes.rows[0];
+
+  // Certifications
+  const certRes = await pool.query(
+    `SELECT id, file_url, file_name, file_type, uploaded_at
+     FROM user_certifications
+     WHERE user_id = $1
+     ORDER BY uploaded_at DESC`,
+    [userId],
+  );
+
+  // Papers (AE path)
+  const aeRes = await pool.query(
+    `SELECT
+       p.id, p.title, p.status, p.submitted_at,
+       j.title AS journal_name, j.acronym,
+       ji.label AS issue_label,
+       sd.decision AS ae_decision, sd.decided_at,
+       ea.status AS assignment_status, ea.assigned_at
+     FROM editor_assignments ea
+     JOIN papers p ON p.id = ea.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     LEFT JOIN sub_editor_decisions sd
+       ON sd.paper_id = ea.paper_id AND sd.sub_editor_id = ea.sub_editor_id
+     WHERE ea.sub_editor_id = $1
+     ORDER BY ea.assigned_at DESC`,
+    [userId],
+  );
+
+  // Papers (reviewer path)
+  const rvRes = await pool.query(
+    `SELECT
+       p.id, p.title, p.status, p.submitted_at,
+       j.title AS journal_name, j.acronym,
+       ji.label AS issue_label,
+       r.decision AS review_decision, r.reviewed_at,
+       ra.status AS assignment_status, ra.assigned_at
+     FROM review_assignments ra
+     JOIN papers p ON p.id = ra.paper_id
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+     WHERE ra.reviewer_id = $1
+     ORDER BY ra.assigned_at DESC`,
+    [userId],
+  );
+
+  return {
+    ...profile,
+    certifications: certRes.rows,
+    ae_papers: aeRes.rows,
+    review_papers: rvRes.rows,
+  };
+};
+
 export const findSubEditors = async (journalId?: string, paperId?: string) => {
   const result = await pool.query(
     `

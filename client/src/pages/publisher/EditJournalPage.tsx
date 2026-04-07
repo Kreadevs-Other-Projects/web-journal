@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Card,
@@ -21,7 +21,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, Upload, X, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, BookOpen, Upload, X, Loader2, Pencil, ChevronRight } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface JournalData {
@@ -178,6 +178,15 @@ export default function EditJournalPage() {
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+          <Link to="/publisher" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground truncate max-w-[200px]">{title || "Journal"}</span>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground">Edit</span>
+        </nav>
+
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/publisher")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Back

@@ -13,7 +13,10 @@ import {
   UserCheck,
   CheckCircle2,
   X,
+  ChevronRight,
+  AlertCircle,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +61,7 @@ export default function AssignAssociateEditorPage() {
   const [paper, setPaper] = useState<PaperInfo | null>(null);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(
     location.state?.restoredSelectedId ?? null,
@@ -97,7 +101,7 @@ export default function AssignAssociateEditorPage() {
       .then((data) => {
         if (data.success) setStaff(data.data || []);
       })
-      .catch(() => {})
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [paper, token, paperId]);
 
@@ -183,6 +187,17 @@ export default function AssignAssociateEditorPage() {
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-4">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+          <Link to="/chief-editor" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link to="/chief-editor/papers" className="hover:text-foreground transition-colors">Papers</Link>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground truncate max-w-[200px]">{paper?.title || "Assign Associate Editor"}</span>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground">Assign AE</span>
+        </nav>
+
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Back
@@ -216,6 +231,14 @@ export default function AssignAssociateEditorPage() {
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : error ? (
+              <Card>
+                <CardContent className="py-10 text-center space-y-2">
+                  <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                  <button onClick={() => window.location.reload()} className="text-sm text-primary underline">Try again</button>
+                </CardContent>
+              </Card>
             ) : filtered.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">

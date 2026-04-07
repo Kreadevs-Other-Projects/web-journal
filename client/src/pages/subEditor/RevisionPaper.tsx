@@ -1017,7 +1017,7 @@ export default function RevisionPaper() {
             if (!open) closeDecisionModal();
           }}
         >
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                 {pendingDecision === "approve" && (

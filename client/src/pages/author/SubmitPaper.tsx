@@ -1603,7 +1603,7 @@ export default function SubmitPaper() {
 
         {/* Review Modal */}
         <Dialog open={showReview} onOpenChange={setShowReview}>
-          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Review Your Submission</DialogTitle>
             </DialogHeader>

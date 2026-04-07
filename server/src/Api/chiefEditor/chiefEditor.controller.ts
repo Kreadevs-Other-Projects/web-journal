@@ -60,6 +60,17 @@ export const fetchSubEditors = async (req: Request, res: Response) => {
   });
 };
 
+export const getStaffProfileHandler = asyncHandler(
+  async (req: AuthUser, res: Response) => {
+    const { userId } = req.params;
+    const data = await service.getStaffProfileService(userId);
+    if (!data) {
+      return res.status(404).json({ success: false, message: "Staff member not found" });
+    }
+    res.json({ success: true, data });
+  },
+);
+
 export const getJournalStaff = asyncHandler(
   async (req: AuthUser, res: Response) => {
     const { journalId } = req.params;

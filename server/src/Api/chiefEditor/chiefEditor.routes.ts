@@ -29,6 +29,7 @@ import {
   remindAEBulk,
   remindReviewerBulk,
   getJournalStaff,
+  getStaffProfileHandler,
 } from "./chiefEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import {
@@ -202,6 +203,14 @@ router.get(
   authMiddleware,
   authorize("chief_editor", "sub_editor"),
   getJournalStaff,
+);
+
+// Staff member full profile (certifications + papers)
+router.get(
+  "/staff/:userId",
+  authMiddleware,
+  authorize("chief_editor", "sub_editor"),
+  getStaffProfileHandler,
 );
 
 // Reviewer applications

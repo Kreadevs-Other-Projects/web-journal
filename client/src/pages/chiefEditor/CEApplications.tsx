@@ -321,7 +321,7 @@ export default function CEApplications() {
 
       {/* Decline confirmation dialog */}
       <Dialog open={!!declineTarget} onOpenChange={(open) => { if (!open) setDeclineTarget(null); }}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Decline Application</DialogTitle>
           </DialogHeader>

@@ -811,7 +811,7 @@ export default function ChiefEditorSubmittedReviews() {
           )}
 
           <Dialog open={cEModalOpen} onOpenChange={setCEModalOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
                   {cePendingDecision === "accepted"

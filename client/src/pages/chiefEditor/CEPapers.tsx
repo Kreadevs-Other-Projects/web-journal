@@ -736,7 +736,7 @@ export default function CEPapers() {
         open={!!viewPaper}
         onOpenChange={(open) => !open && setViewPaper(null)}
       >
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />

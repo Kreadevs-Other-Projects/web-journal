@@ -37,6 +37,9 @@ import AssignAssociateEditorPage from "./pages/chiefEditor/AssignAssociateEditor
 import AssignReviewerPage from "./pages/chiefEditor/AssignReviewerPage.tsx";
 import StaffDetailPage from "./pages/chiefEditor/StaffDetailPage.tsx";
 import EditJournalPage from "./pages/publisher/EditJournalPage.tsx";
+import PublisherJournalsPage from "./pages/publisher/PublisherJournalsPage.tsx";
+import PublisherJournalDetailPage from "./pages/publisher/PublisherJournalDetailPage.tsx";
+import PublisherIssueDetailPage from "./pages/publisher/PublisherIssueDetailPage.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
 import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
@@ -228,6 +231,18 @@ const App = () => (
                     <Route
                       path="/publisher/journals/:journalId/edit"
                       element={<EditJournalPage />}
+                    />
+                    <Route
+                      path="/publisher/journals"
+                      element={<PublisherJournalsPage />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId"
+                      element={<PublisherJournalDetailPage />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId/issues/:issueId"
+                      element={<PublisherIssueDetailPage />}
                     />
                   </Route>
 

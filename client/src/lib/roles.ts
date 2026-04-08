@@ -54,6 +54,7 @@ export const roleConfig: Record<
     route: "/publisher",
     navigation: [
       { label: "Dashboard", path: "/publisher", icon: Home },
+      { label: "Journals", path: "/publisher/journals", icon: Home },
       {
         label: "Publish Paper",
         path: "/publisher/publish-paper",
@@ -61,8 +62,16 @@ export const roleConfig: Record<
       },
       { label: "Payments", path: "/publisher/payments", icon: CreditCard },
       { label: "Paper Categories", path: "/publisher/categories", icon: Tag },
-      { label: "Journal Categories", path: "/publisher/journal-categories", icon: Tag },
-      { label: "Homepage Content", path: "/publisher/homepage-content", icon: Home },
+      {
+        label: "Journal Categories",
+        path: "/publisher/journal-categories",
+        icon: Tag,
+      },
+      {
+        label: "Homepage Content",
+        path: "/publisher/homepage-content",
+        icon: Home,
+      },
     ],
   },
 
@@ -74,11 +83,31 @@ export const roleConfig: Record<
     route: "/publisher-manager",
     navigation: [
       { label: "Dashboard", path: "/publisher-manager", icon: Home },
-      { label: "All Issues", path: "/publisher-manager?tab=issues", icon: Layers },
-      { label: "Archive", path: "/publisher-manager?tab=issues&filter=closed", icon: Archive },
-      { label: "Papers", path: "/publisher-manager?tab=papers", icon: FileText },
-      { label: "Editorial Board", path: "/publisher-manager?tab=editorial", icon: Users },
-      { label: "Publication Ethics", path: "/publisher-manager?tab=ethics", icon: ScrollText },
+      {
+        label: "All Issues",
+        path: "/publisher-manager?tab=issues",
+        icon: Layers,
+      },
+      {
+        label: "Archive",
+        path: "/publisher-manager?tab=issues&filter=closed",
+        icon: Archive,
+      },
+      {
+        label: "Papers",
+        path: "/publisher-manager?tab=papers",
+        icon: FileText,
+      },
+      {
+        label: "Editorial Board",
+        path: "/publisher-manager?tab=editorial",
+        icon: Users,
+      },
+      {
+        label: "Publication Ethics",
+        path: "/publisher-manager?tab=ethics",
+        icon: ScrollText,
+      },
     ],
   },
 
@@ -93,8 +122,16 @@ export const roleConfig: Record<
       { label: "My Journals", path: "/chief-editor/journals", icon: BookOpen },
       { label: "Papers", path: "/chief-editor/papers", icon: FileText },
       { label: "Team", path: "/chief-editor/team", icon: Users },
-      { label: "Reviewed Papers", path: "/chief-editor/accepted", icon: UserCheck },
-      { label: "Applications", path: "/chief-editor/applications", icon: UserCheck },
+      {
+        label: "Reviewed Papers",
+        path: "/chief-editor/accepted",
+        icon: UserCheck,
+      },
+      {
+        label: "Applications",
+        path: "/chief-editor/applications",
+        icon: UserCheck,
+      },
       { label: "Stats", path: "/chief-editor/stats", icon: TrendingUp },
     ],
   },

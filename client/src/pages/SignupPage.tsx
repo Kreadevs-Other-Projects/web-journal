@@ -174,6 +174,9 @@ export default function SignupPage() {
       // Existing account + new role: server returns a JWT
       if (signupRes.ok && signupResult.token) {
         login(signupResult.token);
+        if (signupResult.refreshToken) {
+          localStorage.setItem("refreshToken", signupResult.refreshToken);
+        }
         const addedRole: string = signupResult.user?.active_role ?? selectedRole;
         const roleLabel = addedRole.charAt(0).toUpperCase() + addedRole.slice(1);
         toast({

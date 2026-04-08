@@ -12,7 +12,12 @@ export const getArchiveRepo = async (filters: {
   const { journal_id, year, volume, issue, search, page = 1, limit = 20 } = filters;
   const offset = (page - 1) * limit;
 
-  const conditions: string[] = ["p.status = 'published'"];
+  const conditions: string[] = [
+    "p.status = 'published'",
+    "(p.is_taken_down IS NULL OR p.is_taken_down = false)",
+    "(j.is_taken_down IS NULL OR j.is_taken_down = false)",
+    "(ji.is_taken_down IS NULL OR ji.is_taken_down = false)",
+  ];
   const values: any[] = [];
 
   if (journal_id) {

@@ -106,10 +106,16 @@ export const getPublisherJournals = async (publisherId: string) => {
 
 export const getJournalIssues = async (journalId: string) => {
   const result = await pool.query(
-    `SELECT *
-     FROM journal_issues
-     WHERE journal_id = $1
-     ORDER BY year DESC, volume DESC, issue DESC`,
+    `SELECT
+       ji.*,
+       COUNT(p.id)::int AS paper_count,
+       (99 - COUNT(p.id))::int AS slots_remaining
+     FROM journal_issues ji
+     LEFT JOIN papers p ON p.issue_id = ji.id
+       AND (p.is_taken_down IS NULL OR p.is_taken_down = false)
+     WHERE ji.journal_id = $1
+     GROUP BY ji.id
+     ORDER BY ji.year DESC, ji.volume DESC, ji.issue DESC`,
     [journalId],
   );
   return result.rows;
@@ -268,19 +274,32 @@ export const getJournalPapers = async (journalId: string) => {
 export const getPapersByIssueIdRepo = async (issueId: string) => {
   const result = await pool.query(
     `
-    SELECT 
+    SELECT
       p.id,
       p.title,
       p.abstract,
       p.status,
+      p.submitted_at,
+      p.accepted_at,
+      p.published_at,
       p.created_at,
+      p.is_taken_down,
+      p.takedown_reason,
       u.id AS author_id,
-      u.username AS author_name
+      u.username AS author_name,
+      pp.status AS payment_status,
+      ae_user.username AS ae_name,
+      pub.doi,
+      pub.published_at AS publication_date
     FROM papers p
     JOIN users u ON u.id = p.author_id
+    LEFT JOIN paper_payments pp ON pp.paper_id = p.id
+    LEFT JOIN editor_assignments ea ON ea.paper_id = p.id
+      AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+    LEFT JOIN users ae_user ON ae_user.id = ea.sub_editor_id
+    LEFT JOIN publications pub ON pub.paper_id = p.id
     WHERE p.issue_id = $1
-    AND p.status = 'accepted'
-    ORDER BY p.created_at DESC
+    ORDER BY p.submitted_at DESC NULLS LAST
     `,
     [issueId],
   );

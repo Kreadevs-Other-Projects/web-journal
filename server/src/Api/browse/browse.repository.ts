@@ -163,6 +163,7 @@ export const getBrowseDataRepo = async (filters: any) => {
   LEFT JOIN papers p
       ON p.issue_id = ji.id
       AND p.status = 'published'
+      AND (p.is_taken_down IS NULL OR p.is_taken_down = false)
   LEFT JOIN publications pub ON pub.paper_id = p.id
   LEFT JOIN LATERAL (
       SELECT *
@@ -233,7 +234,8 @@ export const getPublicJournalsRepo = async (filters: {
 }) => {
   const { limit, q, type, open, category_id } = filters;
   const values: any[] = [limit];
-  let where = `WHERE (j.status = 'active' OR j.status IS NULL)`;
+  let where = `WHERE (j.status = 'active' OR j.status IS NULL)
+    AND (j.is_taken_down IS NULL OR j.is_taken_down = false)`;
 
   if (q) {
     values.push(`%${q}%`);
@@ -292,7 +294,9 @@ export const getOpenJournalsRepo = async () => {
        (99 - (SELECT COUNT(*) FROM papers p2 WHERE p2.issue_id = ji.id))::int AS slots_remaining
      FROM journals j
      JOIN journal_issues ji ON ji.journal_id = j.id AND ji.status = 'open'
-     WHERE j.status = 'active' OR j.status IS NULL
+     WHERE (j.status = 'active' OR j.status IS NULL)
+       AND (j.is_taken_down IS NULL OR j.is_taken_down = false)
+       AND (ji.is_taken_down IS NULL OR ji.is_taken_down = false)
      ORDER BY j.id, ji.created_at DESC`,
   );
   return result.rows;
@@ -307,7 +311,10 @@ export const getLatestPublishedPapersRepo = async (filters: {
 }) => {
   const { limit, offset = 0, q, category, year } = filters;
   const values: any[] = [];
-  const conds: string[] = [`p.status = 'published'`];
+  const conds: string[] = [
+    `p.status = 'published'`,
+    `(p.is_taken_down IS NULL OR p.is_taken_down = false)`,
+  ];
 
   if (q) {
     values.push(`%${q}%`);

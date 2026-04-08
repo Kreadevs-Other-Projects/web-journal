@@ -132,12 +132,25 @@ export const signup = async (req: Request, res: Response) => {
         existingUser.profile_completed ?? false,
       );
 
+      const newRefreshToken = await generateRefreshToken(existingUser.id, existingUser.role);
+      const expires_at = new Date();
+      expires_at.setDate(expires_at.getDate() + 7);
+      await saveRefreshToken(existingUser.id, newRefreshToken, expires_at);
+
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
       await deleteOTP(email);
 
       return res.status(200).json({
         success: true,
         message: `${role.charAt(0).toUpperCase() + role.slice(1)} role added to your existing account`,
         token: accessToken,
+        refreshToken: newRefreshToken,
         user: {
           id: existingUser.id,
           username: existingUser.username,

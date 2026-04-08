@@ -1060,6 +1060,7 @@ export default function PublisherDashboard() {
                     key={journal.id}
                     className={`glass-card hover:shadow-lg transition-all duration-300 hover:border-blue-500/50 cursor-pointer group ${journal.is_taken_down ? "border-red-500/40 opacity-75" : ""}`}
                     onClick={() => {
+                      setSelectedJournal(journal);
                       setDetailsModalOpen(true);
                     }}
                   >

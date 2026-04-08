@@ -13,6 +13,7 @@ import {
   UserCheck,
   CheckCircle2,
   X,
+  ChevronLeft,
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
@@ -68,6 +69,8 @@ export default function AssignAssociateEditorPage() {
     location.state?.restoredSelectedId ?? null,
   );
   const [assigning, setAssigning] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   // Invite form
   const [inviteName, setInviteName] = useState("");
@@ -121,6 +124,14 @@ export default function AssignAssociateEditorPage() {
         (s.keywords || []).some((k) => k.toLowerCase().includes(q)),
     );
   }, [staff, search]);
+
+  useEffect(() => { setCurrentPage(1); }, [search]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
 
   const handleConfirmAssign = async () => {
     if (!selectedId || !paperId) return;
@@ -280,8 +291,12 @@ export default function AssignAssociateEditorPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((s) => {
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {filtered.length} associate editors available
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {paginated.map((s) => {
                   const isCurrentAE = paper?.current_ae_id === s.id;
                   const isSelected = selectedId === s.id;
                   const isBestMatch = s.keyword_matches > 0;
@@ -405,7 +420,59 @@ export default function AssignAssociateEditorPage() {
                     </Card>
                   );
                 })}
-              </div>
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                          .reduce((acc: (number | string)[], page, idx, arr) => {
+                            if (idx > 0 && (page as number) - (arr[idx - 1] as number) > 1) acc.push("...");
+                            acc.push(page);
+                            return acc;
+                          }, [])
+                          .map((page, idx) =>
+                            page === "..." ? (
+                              <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                            ) : (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className="w-8 h-8 p-0"
+                                onClick={() => setCurrentPage(page as number)}
+                              >
+                                {page}
+                              </Button>
+                            )
+                          )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

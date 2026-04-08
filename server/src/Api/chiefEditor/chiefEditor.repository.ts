@@ -80,6 +80,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
     SELECT
       p.id,
       p.title,
+      p.abstract,
       p.status,
       p.submitted_at,
       p.published_at,
@@ -133,7 +134,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
         WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
       )
     GROUP BY
-      p.id, p.title, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
+      p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
       author.username, j.title, j.id, ji.label,
       pv.file_url, pv.file_type, pv.version_number,
       ae_user.id, ae_user.username, ae_user.email,

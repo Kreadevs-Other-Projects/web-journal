@@ -198,3 +198,16 @@ export const reviewReviewerRequest = async (req: AuthUser, res: Response) => {
     res.status(400).json({ success: false, message: e.message });
   }
 };
+
+export const remindReviewer = async (req: AuthUser, res: Response) => {
+  try {
+    const { paper_id, reviewer_id } = req.body;
+    if (!paper_id || !reviewer_id) {
+      return res.status(400).json({ success: false, message: "paper_id and reviewer_id are required" });
+    }
+    const result = await service.remindReviewerFromAEService(paper_id, reviewer_id, req.user!.id);
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    res.status(e.status || 400).json({ success: false, message: e.message });
+  }
+};

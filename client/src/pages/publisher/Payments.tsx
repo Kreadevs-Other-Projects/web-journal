@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Eye, Check, X, Loader2, CreditCard, FileText, Bell, XCircle } from "lucide-react";
+import { Eye, Check, X, Loader2, CreditCard, FileText, Bell, XCircle, Mail } from "lucide-react";
 import { getFileUrl } from "@/lib/utils";
 import { UserRole } from "@/lib/roles";
 
@@ -69,6 +69,8 @@ export default function PublisherPayments() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
 
+  const [resendingInvoice, setResendingInvoice] = useState<string | null>(null);
+
   // Reminder state: paperId → 'idle' | 'sending' | 'sent'
   const [reminderState, setReminderState] = useState<Record<string, "idle" | "sending" | "sent">>({});
   const [reminderTarget, setReminderTarget] = useState<PaperPayment | null>(null);
@@ -105,12 +107,33 @@ export default function PublisherPayments() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      toast({ title: "Payment approved", description: "Paper moved to editorial workflow." });
+      toast({
+        title: "Payment approved",
+        description: `Payment approved for "${payment.paper_title}". You can now publish this paper from the Publish Papers section.`,
+        duration: 6000,
+      });
       fetchAll();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const handleResendInvoice = async (payment: PaperPayment) => {
+    setResendingInvoice(payment.paper_id);
+    try {
+      const res = await fetch(`${url}/payments/paper/${payment.paper_id}/resend-invoice`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      toast({ title: "Invoice resent", description: `Invoice resent to ${payment.author_email}` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setResendingInvoice(null);
     }
   };
 
@@ -277,6 +300,24 @@ export default function PublisherPayments() {
                   <X className="h-3 w-3" /> Reject
                 </Button>
               </>
+            )}
+
+            {/* Resend Invoice for pending payments (no receipt uploaded yet) */}
+            {payment.status === "pending" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-8 text-xs"
+                disabled={resendingInvoice === payment.paper_id}
+                onClick={() => handleResendInvoice(payment)}
+              >
+                {resendingInvoice === payment.paper_id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Mail className="h-3 w-3" />
+                )}
+                Resend Invoice
+              </Button>
             )}
 
             {/* Reminder button shown when explicitly requested */}

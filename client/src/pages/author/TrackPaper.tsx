@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle, Pencil } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle, Pencil, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -106,6 +113,9 @@ export default function TrackPaper() {
   const fileRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
 
+  const [selectedReceiptFile, setSelectedReceiptFile] = useState<File | null>(null);
+  const [showReceiptConfirmModal, setShowReceiptConfirmModal] = useState(false);
+
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingAbstract, setEditingAbstract] = useState(false);
   const [titleValue, setTitleValue] = useState("");
@@ -166,22 +176,31 @@ export default function TrackPaper() {
     }
   };
 
-  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!["jpg", "jpeg", "png", "pdf"].includes(ext || "")) {
       toast({ title: "Invalid file", description: "Only JPG, PNG or PDF receipts accepted.", variant: "destructive" });
+      if (receiptRef.current) receiptRef.current.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Max 5MB.", variant: "destructive" });
+      if (receiptRef.current) receiptRef.current.value = "";
       return;
     }
+    setSelectedReceiptFile(file);
+    setShowReceiptConfirmModal(true);
+  };
+
+  const confirmReceiptUpload = async () => {
+    if (!selectedReceiptFile) return;
+    setShowReceiptConfirmModal(false);
     setUploadingReceipt(true);
     try {
       const fd = new FormData();
-      fd.append("receipt", file);
+      fd.append("receipt", selectedReceiptFile);
       const res = await fetch(`${url}/payments/paper/${paperId}/upload-receipt`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -196,8 +215,15 @@ export default function TrackPaper() {
       toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
     } finally {
       setUploadingReceipt(false);
+      setSelectedReceiptFile(null);
       if (receiptRef.current) receiptRef.current.value = "";
     }
+  };
+
+  const cancelReceiptUpload = () => {
+    setShowReceiptConfirmModal(false);
+    setSelectedReceiptFile(null);
+    if (receiptRef.current) receiptRef.current.value = "";
   };
 
   const saveMetadata = async (field: "title" | "abstract", value: string) => {
@@ -589,6 +615,52 @@ export default function TrackPaper() {
           )}
         </div>
       </PageTransition>
+
+      {/* Receipt upload confirmation modal */}
+      <Dialog open={showReceiptConfirmModal} onOpenChange={cancelReceiptUpload}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Receipt Upload</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              You are about to upload the following file as your payment receipt:
+            </p>
+            {selectedReceiptFile && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+                {selectedReceiptFile.type.startsWith("image/") ? (
+                  <img
+                    src={URL.createObjectURL(selectedReceiptFile)}
+                    alt="Receipt preview"
+                    className="w-full max-h-48 object-contain rounded border"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">PDF document</span>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p><span className="font-medium">File:</span> {selectedReceiptFile.name}</p>
+                  <p><span className="font-medium">Size:</span> {(selectedReceiptFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Once submitted, the publisher will review your receipt and approve or reject the payment.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelReceiptUpload}>
+              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+            </Button>
+            <Button onClick={confirmReceiptUpload} disabled={uploadingReceipt}>
+              {uploadingReceipt ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+              Confirm Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

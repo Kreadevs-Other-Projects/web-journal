@@ -50,8 +50,15 @@ import DOMPurify from "dompurify";
 
 interface Reviewer {
   id: string;
+  assignment_id: string;
+  assignment_status: string;
+  assigned_at: string;
   username: string;
   email: string;
+  decision?: string;
+  comments?: string;
+  reviewed_at?: string;
+  all_reviews?: Array<{ decision: string; reviewed_at: string; paper_version_id: string }>;
 }
 
 interface SubmittedReview {
@@ -98,6 +105,9 @@ export default function RevisionPaper() {
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
+  const [reminderSent, setReminderSent] = useState<Record<string, boolean>>({});
+  const [currentPaperIdForReviewers, setCurrentPaperIdForReviewers] = useState<string | null>(null);
+  const [currentPaperStatus, setCurrentPaperStatus] = useState<string>("");
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [selectedSignature, setSelectedSignature] = useState<string | null>(
     null,
@@ -169,7 +179,7 @@ export default function RevisionPaper() {
     setExistingDecisions(results);
   };
 
-  const fetchReviewers = async (paperId: string) => {
+  const fetchReviewers = async (paperId: string, paperStatus?: string) => {
     try {
       const res = await fetch(
         `${url}/subEditor/getReviewersForPaper/${paperId}`,
@@ -180,6 +190,8 @@ export default function RevisionPaper() {
 
       const data = await res.json();
       setReviewers(data.data || []);
+      setCurrentPaperIdForReviewers(paperId);
+      setCurrentPaperStatus(paperStatus || "");
       setOpenReviewers(true);
     } catch (err) {
       console.error(err);
@@ -188,6 +200,22 @@ export default function RevisionPaper() {
         description: "Failed to fetch reviewers",
         variant: "destructive",
       });
+    }
+  };
+
+  const sendReminderToReviewer = async (reviewerId: string, paperId: string) => {
+    try {
+      const res = await fetch(`${url}/subEditor/remind-reviewer`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ paper_id: paperId, reviewer_id: reviewerId }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || "Failed to send reminder");
+      toast({ title: "Reminder sent", description: data.message });
+      setReminderSent((prev) => ({ ...prev, [reviewerId]: true }));
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message || "Could not send reminder", variant: "destructive" });
     }
   };
 
@@ -605,6 +633,20 @@ export default function RevisionPaper() {
                           </CardHeader>
 
                           <CardContent className="space-y-6">
+                            {/* Resubmitted notice */}
+                            {r.paperStatus === "resubmitted" && (
+                              <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                                    Author has submitted a revised version
+                                  </p>
+                                </div>
+                                <p className="text-xs text-orange-700 dark:text-orange-300">
+                                  Existing reviewers have been notified to re-review. You can assign additional reviewers if needed.
+                                </p>
+                              </div>
+                            )}
                             <div className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -762,7 +804,7 @@ export default function RevisionPaper() {
                                 size="sm"
                                 variant="outline"
                                 className="w-full gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
-                                onClick={() => fetchReviewers(r.paperId)}
+                                onClick={() => fetchReviewers(r.paperId, r.paperStatus)}
                               >
                                 <Users className="h-4 w-4" />
                                 View Reviewers
@@ -1124,35 +1166,99 @@ export default function RevisionPaper() {
         </Dialog>
 
         <Dialog open={openReviewers} onOpenChange={setOpenReviewers}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Assigned Reviewers
+                Reviewer Feedback
+                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {reviewers.length} reviewer{reviewers.length !== 1 ? "s" : ""}
+                </span>
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-4">
+            <div className="space-y-4 py-2">
               {reviewers.length === 0 ? (
                 <div className="text-center py-8 space-y-3">
                   <div className="inline-flex p-3 rounded-full bg-muted">
                     <AlertCircle className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground">
-                    No reviewers assigned to this paper
-                  </p>
+                  <p className="text-muted-foreground">No reviewers assigned to this paper</p>
                 </div>
               ) : (
-                reviewers.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border hover:border-border/60 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{r.username}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {r.email}
-                      </p>
+                reviewers.map((reviewer, index) => (
+                  <div key={reviewer.assignment_id} className="border rounded-lg p-4">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                          {reviewer.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Reviewer {index + 1}</p>
+                          <p className="text-xs text-muted-foreground">{reviewer.username}</p>
+                        </div>
+                      </div>
+                      {reviewer.reviewed_at && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(reviewer.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Status row */}
+                    {reviewer.assignment_status === "submitted" ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">Review Completed</span>
+                          {reviewer.decision && (
+                            <span className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                              reviewer.decision === "accepted" ? "bg-green-500/10 text-green-700 border-green-500/30" :
+                              reviewer.decision === "rejected" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                              "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                            }`}>
+                              {reviewer.decision}
+                            </span>
+                          )}
+                        </div>
+                        {reviewer.comments && (
+                          <div className="bg-muted/50 rounded p-3">
+                            <p className="text-xs text-muted-foreground mb-1 font-medium">Comments:</p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{reviewer.comments}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pending Review</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => sendReminderToReviewer(reviewer.id, currentPaperIdForReviewers!)}
+                          disabled={reminderSent[reviewer.id]}
+                        >
+                          {reminderSent[reviewer.id] ? "Reminded ✓" : "Send Reminder"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Previous reviews history (for resubmitted papers) */}
+                    {currentPaperStatus === "resubmitted" && reviewer.all_reviews && reviewer.all_reviews.length > 1 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-muted-foreground font-medium mb-2">Previous Reviews:</p>
+                        {reviewer.all_reviews.slice(1).map((rev, ri) => (
+                          <div key={ri} className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span className="capitalize font-medium">{rev.decision || "—"}</span>
+                            <span>·</span>
+                            <span>{rev.reviewed_at ? new Date(rev.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

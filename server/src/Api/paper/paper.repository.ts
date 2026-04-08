@@ -308,25 +308,40 @@ export const getPaperMetadata = async (paperId: string) => {
 
 export const editPaperMetadataRepo = async (
   paperId: string,
-  authorId: string,
+  userId: string,
+  userRole: string,
   title?: string,
   abstract?: string,
 ) => {
-  const EDITABLE_STATUSES = ["submitted", "pending_revision", "awaiting_payment"];
-
   const paperRes = await pool.query(
-    `SELECT id, status, author_id FROM papers WHERE id = $1`,
+    `SELECT id, status, author_id, journal_id FROM papers WHERE id = $1`,
     [paperId],
   );
   const paper = paperRes.rows[0];
-
   if (!paper) throw Object.assign(new Error("Paper not found"), { status: 404 });
-  if (paper.author_id !== authorId) throw Object.assign(new Error("Access denied"), { status: 403 });
-  if (!EDITABLE_STATUSES.includes(paper.status)) {
-    throw Object.assign(
-      new Error(`Cannot edit paper metadata when status is '${paper.status}'. Editing is only allowed before review begins.`),
-      { status: 400 },
+
+  const isCE = userRole === "chief_editor";
+  const isAuthor = paper.author_id === userId;
+
+  if (isCE) {
+    const ceCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE id = $1 AND (
+         chief_editor_id = $2
+         OR id IN (SELECT journal_id FROM user_roles WHERE user_id = $2 AND role = 'chief_editor' AND is_active = true)
+       )`,
+      [paper.journal_id, userId],
     );
+    if (!ceCheck.rows.length) throw Object.assign(new Error("Access denied"), { status: 403 });
+  } else if (isAuthor) {
+    const EDITABLE_STATUSES = ["submitted", "pending_revision", "awaiting_payment"];
+    if (!EDITABLE_STATUSES.includes(paper.status)) {
+      throw Object.assign(
+        new Error(`Cannot edit paper metadata when status is '${paper.status}'. Editing is only allowed before review begins.`),
+        { status: 400 },
+      );
+    }
+  } else {
+    throw Object.assign(new Error("Access denied"), { status: 403 });
   }
 
   if (title !== undefined && title.trim().length < 3) {
@@ -345,5 +360,18 @@ export const editPaperMetadataRepo = async (
      RETURNING id, title, abstract, status, updated_at`,
     [title ?? null, abstract ?? null, paperId],
   );
-  return result.rows[0];
+  const updated = result.rows[0];
+
+  if (isCE) {
+    const editedFields: string[] = [];
+    if (title !== undefined) editedFields.push("title");
+    if (abstract !== undefined) editedFields.push("abstract");
+    await pool.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+       VALUES ($1, $2, $3, $4)`,
+      [paperId, updated.status, userId, `Metadata edited by Chief Editor: ${editedFields.join(", ")}`],
+    );
+  }
+
+  return updated;
 };

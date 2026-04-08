@@ -384,10 +384,11 @@ export const getPaperMetadataCheckService = async (paperId: string) => {
 
 export const editPaperMetadataService = async (
   paperId: string,
-  authorId: string,
+  userId: string,
+  userRole: string,
   title?: string,
   abstract?: string,
 ) => {
-  return editPaperMetadataRepo(paperId, authorId, title, abstract);
+  return editPaperMetadataRepo(paperId, userId, userRole, title, abstract);
 };
 

@@ -109,7 +109,7 @@ router.get(
 router.patch(
   "/:paperId/edit-metadata",
   authMiddleware,
-  authorize("author"),
+  authorize("author", "chief_editor"),
   editPaperMetadataController,
 );
 

@@ -237,7 +237,7 @@ export const editPaperMetadataController = async (req: AuthUser, res: Response) 
   const { paperId } = req.params;
   const { title, abstract } = req.body;
   try {
-    const paper = await editPaperMetadataService(paperId, req.user!.id, title, abstract);
+    const paper = await editPaperMetadataService(paperId, req.user!.id, req.user!.role, title, abstract);
     return res.json({ success: true, paper });
   } catch (err: any) {
     return res.status(err.status || 400).json({ success: false, message: err.message });

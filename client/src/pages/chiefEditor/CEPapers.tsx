@@ -32,6 +32,7 @@ import {
   FileDown,
   UserPlus,
   Users,
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -49,6 +50,7 @@ interface Reviewer {
 interface Paper {
   id: string;
   title: string;
+  abstract: string | null;
   status: string;
   author_name: string;
   journal_name: string;
@@ -169,11 +171,22 @@ export default function CEPapers() {
   const [viewPaper, setViewPaper] = useState<Paper | null>(null);
   const [viewPaperLog, setViewPaperLog] = useState<any[]>([]);
 
+  // CE metadata edit state
+  const [ceEditingTitle, setCeEditingTitle] = useState(false);
+  const [ceEditingAbstract, setCeEditingAbstract] = useState(false);
+  const [ceTitleValue, setCeTitleValue] = useState("");
+  const [ceAbstractValue, setCeAbstractValue] = useState("");
+  const [ceSavingMeta, setCeSavingMeta] = useState(false);
+
   useEffect(() => {
     if (!viewPaper) {
       setViewPaperLog([]);
+      setCeEditingTitle(false);
+      setCeEditingAbstract(false);
       return;
     }
+    setCeTitleValue(viewPaper.title);
+    setCeAbstractValue(viewPaper.abstract || "");
     fetch(`${url}/papers/${viewPaper.id}/status-log`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -183,6 +196,27 @@ export default function CEPapers() {
       })
       .catch(() => {});
   }, [viewPaper?.id]);
+
+  const saveCEMetadata = async (field: "title" | "abstract", value: string) => {
+    if (!viewPaper) return;
+    setCeSavingMeta(true);
+    try {
+      const res = await fetch(`${url}/papers/${viewPaper.id}/edit-metadata`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || "Save failed");
+      toast({ title: "Saved", description: `${field === "title" ? "Title" : "Abstract"} updated.` });
+      if (field === "title") { setCeEditingTitle(false); setPapers((prev) => prev.map((p) => p.id === viewPaper.id ? { ...p, title: value } : p)); setViewPaper((prev) => prev ? { ...prev, title: value } : prev); }
+      if (field === "abstract") { setCeEditingAbstract(false); setPapers((prev) => prev.map((p) => p.id === viewPaper.id ? { ...p, abstract: value } : p)); setViewPaper((prev) => prev ? { ...prev, abstract: value } : prev); }
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message || "Save failed", variant: "destructive" });
+    } finally {
+      setCeSavingMeta(false);
+    }
+  };
 
   // Override modal
   const [overridePaper, setOverridePaper] = useState<Paper | null>(null);
@@ -756,10 +790,52 @@ export default function CEPapers() {
           </DialogHeader>
           {viewPaper && (
             <div className="space-y-4 py-2 text-sm">
+              {/* Title with CE edit toggle */}
               <div>
-                <p className="font-semibold text-base leading-snug">
-                  {viewPaper.title}
-                </p>
+                {!ceEditingTitle ? (
+                  <div className="flex items-start gap-2">
+                    <p className="font-semibold text-base leading-snug flex-1">{viewPaper.title}</p>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={() => setCeEditingTitle(true)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input value={ceTitleValue} onChange={(e) => setCeTitleValue(e.target.value)} className="w-full font-semibold text-base border rounded p-2 bg-background" autoFocus />
+                    <p className="text-xs text-muted-foreground">Changes are logged in the paper audit trail</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled={ceSavingMeta} onClick={() => saveCEMetadata("title", ceTitleValue)}>
+                        {ceSavingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setCeEditingTitle(false); setCeTitleValue(viewPaper.title); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Abstract with CE edit toggle */}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Abstract</p>
+                  {!ceEditingAbstract && (
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setCeEditingAbstract(true)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                {!ceEditingAbstract ? (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{viewPaper.abstract || <span className="italic">No abstract</span>}</p>
+                ) : (
+                  <div className="space-y-2">
+                    <textarea value={ceAbstractValue} onChange={(e) => setCeAbstractValue(e.target.value)} rows={5} className="w-full text-sm border rounded p-2 bg-background resize-y" autoFocus />
+                    <p className="text-xs text-muted-foreground">Changes are logged in the paper audit trail</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled={ceSavingMeta} onClick={() => saveCEMetadata("abstract", ceAbstractValue)}>
+                        {ceSavingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setCeEditingAbstract(false); setCeAbstractValue(viewPaper.abstract || ""); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div>

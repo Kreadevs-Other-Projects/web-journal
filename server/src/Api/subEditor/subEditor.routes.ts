@@ -12,6 +12,7 @@ import {
   getReviewsForPaper,
   subEditorDecision,
   getExistingDecision,
+  remindReviewer,
 } from "./subEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
@@ -110,6 +111,13 @@ router.put(
   authMiddleware,
   authorize("chief_editor"),
   reviewReviewerRequest,
+);
+
+router.post(
+  "/remind-reviewer",
+  authMiddleware,
+  authorize("sub_editor"),
+  remindReviewer,
 );
 
 export default router;

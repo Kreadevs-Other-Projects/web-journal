@@ -9,6 +9,7 @@ import {
   getAllPayments,
   getRejectedPayments,
   sendPaymentReminder,
+  resendInvoice,
 } from "./paperPayment.controller";
 
 const router = Router();
@@ -59,6 +60,14 @@ router.get(
   authMiddleware,
   authorize("publisher"),
   getRejectedPayments,
+);
+
+// Publisher: resend invoice email (no cooldown)
+router.post(
+  "/paper/:paperId/resend-invoice",
+  authMiddleware,
+  authorize("publisher"),
+  resendInvoice,
 );
 
 // Publisher: send payment reminder email

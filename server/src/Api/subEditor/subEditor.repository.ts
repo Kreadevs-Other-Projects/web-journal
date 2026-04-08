@@ -130,10 +130,38 @@ export const updatePaperStatusSubEditor = async (
 
 export const getAssignedReviewers = async (paperId: string) => {
   const result = await pool.query(
-    `SELECT u.id, u.username, u.email
-     FROM users u
-     JOIN review_assignments ra ON ra.reviewer_id = u.id
-     WHERE ra.paper_id = $1`,
+    `SELECT
+       ra.id AS assignment_id,
+       ra.status AS assignment_status,
+       ra.assigned_at,
+       u.id,
+       u.username,
+       u.email,
+       latest_r.decision,
+       latest_r.comments,
+       latest_r.signed_at AS reviewed_at,
+       COALESCE(
+         (SELECT json_agg(
+           json_build_object(
+             'decision', r2.decision,
+             'reviewed_at', r2.signed_at,
+             'paper_version_id', r2.paper_version_id
+           ) ORDER BY r2.signed_at DESC)
+          FROM reviews r2 WHERE r2.review_assignment_id = ra.id),
+         '[]'
+       ) AS all_reviews
+     FROM review_assignments ra
+     JOIN users u ON u.id = ra.reviewer_id
+     LEFT JOIN LATERAL (
+       SELECT decision, comments, signed_at
+       FROM reviews
+       WHERE review_assignment_id = ra.id
+       ORDER BY signed_at DESC
+       LIMIT 1
+     ) latest_r ON true
+     WHERE ra.paper_id = $1
+       AND ra.status != 'reassigned'
+     ORDER BY ra.assigned_at ASC`,
     [paperId],
   );
   return result.rows;

@@ -67,6 +67,7 @@ interface Paper {
   reviewers: Reviewer[];
   file_url: string | null;
   file_type: string | null;
+  current_version_number: number | null;
 }
 
 const OVERRIDE_STATUSES = ["accepted", "rejected", "pending_revision"];
@@ -556,7 +557,7 @@ export default function CEPapers() {
                       </span>
                     </div>
 
-                    {/* Row 3: AE + Reviewer info */}
+                    {/* Row 3: AE + Reviewer info + Version */}
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
                       <div className="flex items-center gap-1.5">
                         <span className="text-muted-foreground">AE:</span>
@@ -597,6 +598,12 @@ export default function CEPapers() {
                             ({pendingReviewers.length} pending)
                           </span>
                         )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Version:</span>
+                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                          v{paper.current_version_number || 1}
+                        </span>
                       </div>
                     </div>
 

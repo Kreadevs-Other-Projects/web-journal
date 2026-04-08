@@ -10,6 +10,7 @@ import {
   setCurrentVersion,
   getPaperTracking,
   getPaperMetadata,
+  editPaperMetadataRepo,
 } from "./paper.repository";
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
@@ -380,3 +381,13 @@ export const getPaperMetadataCheckService = async (paperId: string) => {
     paper,
   };
 };
+
+export const editPaperMetadataService = async (
+  paperId: string,
+  authorId: string,
+  title?: string,
+  abstract?: string,
+) => {
+  return editPaperMetadataRepo(paperId, authorId, title, abstract);
+};
+

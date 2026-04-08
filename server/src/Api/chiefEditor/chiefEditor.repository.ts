@@ -93,6 +93,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
       -- Current version file info
       pv.file_url,
       pv.file_type,
+      pv.version_number AS current_version_number,
       -- AE info
       ae_user.id AS current_ae_id,
       ae_user.username AS current_ae_name,
@@ -134,7 +135,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
     GROUP BY
       p.id, p.title, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
       author.username, j.title, j.id, ji.label,
-      pv.file_url, pv.file_type,
+      pv.file_url, pv.file_type, pv.version_number,
       ae_user.id, ae_user.username, ae_user.email,
       ea.status, sd.decision, sd.decided_at
     ORDER BY p.submitted_at DESC NULLS LAST, p.created_at DESC

@@ -15,7 +15,8 @@
       "Bash(/Users/kreadevs/.bun/bin/bun run:*)",
       "Read(//usr/local/bin/**)",
       "Read(//Users/kreadevs/.bun/bin/**)",
-      "Bash(node_modules/.bin/tsc --noEmit 2>&1 | head -50)"
+      "Bash(node_modules/.bin/tsc --noEmit 2>&1 | head -50)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

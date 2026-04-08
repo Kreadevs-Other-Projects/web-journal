@@ -261,7 +261,7 @@ export default function CreateJournal() {
       toast({
         title: "Journal Created",
         description:
-          "Invitation emails sent to Chief Editor and Journal Manager.",
+          "Journal created successfully. Vol 1, Issue 1 has been created as a draft. Ask your Chief Editor to open it for submissions. Invitation emails sent to Chief Editor and Journal Manager.",
       });
 
       // Refresh JWT so new journal_manager role appears in role switcher
@@ -409,14 +409,19 @@ export default function CreateJournal() {
                   <Label>ISSN</Label>
                   <Input
                     value={journal.issn}
-                    onChange={(e) => updateJournal("issn", e.target.value)}
-                    placeholder="e.g. 1234-567X"
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^0-9Xx]/g, "").toUpperCase();
+                      const formatted = cleaned.length <= 4 ? cleaned : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
+                      updateJournal("issn", formatted);
+                    }}
+                    placeholder="0000-000X"
+                    maxLength={9}
                     className={fieldErrors["issn"] ? "border-destructive" : ""}
                   />
                   {fieldErrors["issn"] ? (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
                   ) : (
-                    <FieldHint text="Format: XXXX-XXXX — e.g. 1234-567X" />
+                    <FieldHint text="Format: XXXX-XXXX · Last character can be a number or X" />
                   )}
                 </div>
                 <div className="space-y-1">

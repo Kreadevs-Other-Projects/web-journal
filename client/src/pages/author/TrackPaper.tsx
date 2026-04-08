@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle, Pencil } from "lucide-react";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -106,6 +106,12 @@ export default function TrackPaper() {
   const fileRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
 
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingAbstract, setEditingAbstract] = useState(false);
+  const [titleValue, setTitleValue] = useState("");
+  const [abstractValue, setAbstractValue] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
+
   const fetchTracking = () => {
     fetch(`${url}/papers/${paperId}/tracking`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -194,6 +200,27 @@ export default function TrackPaper() {
     }
   };
 
+  const saveMetadata = async (field: "title" | "abstract", value: string) => {
+    setSavingMeta(true);
+    try {
+      const res = await fetch(`${url}/papers/${paperId}/edit-metadata`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const resp = await res.json();
+      if (!resp.success) throw new Error(resp.message || "Save failed");
+      toast({ title: "Saved", description: `${field === "title" ? "Title" : "Abstract"} updated successfully.` });
+      fetchTracking();
+      if (field === "title") setEditingTitle(false);
+      if (field === "abstract") setEditingAbstract(false);
+    } catch (err) {
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Save failed", variant: "destructive" });
+    } finally {
+      setSavingMeta(false);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout role={(user?.role as UserRole) ?? "author"} userName={user?.username}>
@@ -214,6 +241,7 @@ export default function TrackPaper() {
 
   const { paper, status_log, reviews, publication, ae_decision } = data;
   const currentStageIdx = getStageIndex(paper.status);
+  const canEdit = ["submitted", "pending_revision", "awaiting_payment"].includes(paper.status);
 
   return (
     <DashboardLayout role={(user?.role as UserRole) ?? "author"} userName={user?.username}>
@@ -235,7 +263,37 @@ export default function TrackPaper() {
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold leading-snug">{paper.title}</h1>
+            {canEdit && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 bg-muted/50 rounded px-3 py-1.5 w-fit">
+                <Pencil className="h-3 w-3" />
+                You can edit the title and abstract while your paper is awaiting review
+              </div>
+            )}
+            {!editingTitle ? (
+              <div className="flex items-start gap-2">
+                <h1 className="text-xl font-bold leading-snug">{paper.title}</h1>
+                {canEdit && (
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 mt-1 shrink-0" onClick={() => { setTitleValue(paper.title); setEditingTitle(true); }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  className="w-full text-xl font-bold border rounded p-2 bg-background"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={savingMeta} onClick={() => saveMetadata("title", titleValue)}>
+                    {savingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setEditingTitle(false); setTitleValue(paper.title); }}>Cancel</Button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="secondary">{paper.status.replace(/_/g, " ")}</Badge>
               {paper.status === "accepted" && <Badge className="bg-green-600 text-white">Accepted</Badge>}
@@ -405,10 +463,40 @@ export default function TrackPaper() {
                   </div>
                 </div>
               )}
-              {paper.abstract && (
+              {(paper.abstract || canEdit) && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Abstract</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{paper.abstract}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xs text-muted-foreground">Abstract</p>
+                    {canEdit && !editingAbstract && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setAbstractValue(paper.abstract || ""); setEditingAbstract(true); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  {!editingAbstract ? (
+                    <>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{paper.abstract}</p>
+                      {!canEdit && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">Title and abstract cannot be edited once the review process has started.</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea
+                        value={abstractValue}
+                        onChange={(e) => setAbstractValue(e.target.value)}
+                        rows={6}
+                        className="w-full text-sm border rounded p-2 bg-background resize-y"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={savingMeta} onClick={() => saveMetadata("abstract", abstractValue)}>
+                          {savingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => { setEditingAbstract(false); setAbstractValue(paper.abstract || ""); }}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

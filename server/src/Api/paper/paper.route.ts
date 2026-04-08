@@ -15,6 +15,7 @@ import {
   uploadRevisionController,
   getPaperHtmlController,
   getStatusLogController,
+  editPaperMetadataController,
 } from "./paper.controller";
 import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -103,6 +104,13 @@ router.get(
   "/:paperId/status-log",
   authMiddleware,
   getStatusLogController,
+);
+
+router.patch(
+  "/:paperId/edit-metadata",
+  authMiddleware,
+  authorize("author"),
+  editPaperMetadataController,
 );
 
 export default router;

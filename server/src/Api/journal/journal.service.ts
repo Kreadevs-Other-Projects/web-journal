@@ -218,6 +218,13 @@ export const publisherCreateJournalService = async (
   // Create journal with null chief_editor_id — CE will be linked when they accept invitation
   const journal = await createJournalByPublisher(publisherId, null, data);
 
+  // Auto-create first issue (Vol 1, Issue 1) as draft
+  await pool.query(
+    `INSERT INTO journal_issues (journal_id, volume, issue, year, label, status, article_index)
+     VALUES ($1, 1, 1, $2, 'Vol 1, Issue 1', 'draft', 1)`,
+    [journal.id, new Date().getFullYear()],
+  );
+
   // Grant publisher their journal_manager role for this journal
   await insertUserRole(publisherId, "journal_manager", journal.id, publisherId);
 

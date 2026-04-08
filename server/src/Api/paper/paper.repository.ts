@@ -305,3 +305,45 @@ export const getPaperMetadata = async (paperId: string) => {
   );
   return result.rows[0] || null;
 };
+
+export const editPaperMetadataRepo = async (
+  paperId: string,
+  authorId: string,
+  title?: string,
+  abstract?: string,
+) => {
+  const EDITABLE_STATUSES = ["submitted", "pending_revision", "awaiting_payment"];
+
+  const paperRes = await pool.query(
+    `SELECT id, status, author_id FROM papers WHERE id = $1`,
+    [paperId],
+  );
+  const paper = paperRes.rows[0];
+
+  if (!paper) throw Object.assign(new Error("Paper not found"), { status: 404 });
+  if (paper.author_id !== authorId) throw Object.assign(new Error("Access denied"), { status: 403 });
+  if (!EDITABLE_STATUSES.includes(paper.status)) {
+    throw Object.assign(
+      new Error(`Cannot edit paper metadata when status is '${paper.status}'. Editing is only allowed before review begins.`),
+      { status: 400 },
+    );
+  }
+
+  if (title !== undefined && title.trim().length < 3) {
+    throw Object.assign(new Error("Title must be at least 3 characters"), { status: 400 });
+  }
+  if (abstract !== undefined && abstract.trim().length < 50) {
+    throw Object.assign(new Error("Abstract must be at least 50 characters"), { status: 400 });
+  }
+
+  const result = await pool.query(
+    `UPDATE papers
+     SET title = COALESCE($1, title),
+         abstract = COALESCE($2, abstract),
+         updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, title, abstract, status, updated_at`,
+    [title ?? null, abstract ?? null, paperId],
+  );
+  return result.rows[0];
+};

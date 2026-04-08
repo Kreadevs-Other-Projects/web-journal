@@ -42,6 +42,7 @@ import {
   BookOpen,
   Info,
   X,
+  User,
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { useAuth } from "@/context/AuthContext";
@@ -70,6 +71,7 @@ interface Paper {
   journal_name?: string;
   journal_acronym?: string;
   issue_label?: string;
+  ae_name?: string;
 }
 
 export default function ReviewerDashboard() {
@@ -78,8 +80,8 @@ export default function ReviewerDashboard() {
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [completedReviews, setCompletedReviews] = useState<Paper[]>([]);
-  const [showReviewerHint, setShowReviewerHint] = useState(() =>
-    !localStorage.getItem("hint_dismissed_reviewer")
+  const [showReviewerHint, setShowReviewerHint] = useState(
+    () => !localStorage.getItem("hint_dismissed_reviewer"),
   );
   const dismissReviewerHint = () => {
     localStorage.setItem("hint_dismissed_reviewer", "true");
@@ -400,9 +402,18 @@ export default function ReviewerDashboard() {
                 <h1 className="font-serif-outfit text-2xl font-bold text-white">
                   {selectedPaper.title}
                 </h1>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <Badge variant="outline">{selectedPaper.category}</Badge>
                   <Badge variant="secondary">{selectedPaper.version}</Badge>
+                  {selectedPaper.ae_name && (
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <User className="h-3.5 w-3.5" />
+                      AE:{" "}
+                      <span className="text-foreground">
+                        {selectedPaper.ae_name}
+                      </span>
+                    </span>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     {selectedPaper.dueDate &&
                       `Due: ${new Date(selectedPaper.dueDate).toLocaleDateString()}`}
@@ -871,12 +882,19 @@ export default function ReviewerDashboard() {
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Getting Started</p>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Getting Started
+                  </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    You'll see assigned papers here once a Chief Editor or Associate Editor assigns one to you. Review each paper carefully and submit your decision.
+                    You'll see assigned papers here once a Chief Editor or
+                    Associate Editor assigns one to you. Review each paper
+                    carefully and submit your decision.
                   </p>
                 </div>
-                <button onClick={dismissReviewerHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+                <button
+                  onClick={dismissReviewerHint}
+                  className="text-blue-400 hover:text-blue-600 shrink-0"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </div>

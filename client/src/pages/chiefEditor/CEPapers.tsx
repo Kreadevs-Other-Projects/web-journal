@@ -620,7 +620,9 @@ export default function CEPapers() {
                           size="sm"
                           className="h-7 text-xs gap-1"
                           onClick={() =>
-                            navigate(`/chief-editor/papers/${paper.id}/assign-ae`)
+                            navigate(
+                              `/chief-editor/papers/${paper.id}/assign-ae`,
+                            )
                           }
                         >
                           <UserPlus className="h-3 w-3" />
@@ -635,7 +637,9 @@ export default function CEPapers() {
                           size="sm"
                           className="h-7 text-xs gap-1"
                           onClick={() =>
-                            navigate(`/chief-editor/papers/${paper.id}/assign-reviewer`)
+                            navigate(
+                              `/chief-editor/papers/${paper.id}/assign-reviewer`,
+                            )
                           }
                         >
                           <Users className="h-3 w-3" />
@@ -930,7 +934,7 @@ export default function CEPapers() {
         open={!!overridePaper}
         onOpenChange={(open) => !open && setOverridePaper(null)}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-destructive" />
@@ -945,7 +949,9 @@ export default function CEPapers() {
           {overridePaper && (
             <div className="space-y-4 py-2">
               <div className="rounded-md bg-muted/50 p-3 text-sm">
-                <p className="font-medium truncate">{overridePaper.title}</p>
+                <p className="font-medium line-clamp-2">
+                  {overridePaper.title}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Current: {overridePaper.status.replace(/_/g, " ")}
                 </p>

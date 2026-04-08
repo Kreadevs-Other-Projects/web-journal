@@ -171,14 +171,21 @@ export default function SignupPage() {
 
       const signupResult = await signupRes.json();
 
-      // Existing account + author role: server returns a JWT
+      // Existing account + new role: server returns a JWT
       if (signupRes.ok && signupResult.token) {
         login(signupResult.token);
+        const addedRole: string = signupResult.user?.active_role ?? selectedRole;
+        const roleLabel = addedRole.charAt(0).toUpperCase() + addedRole.slice(1);
         toast({
-          title: "Author role added!",
-          description: signupResult.message || "You can now submit papers.",
+          title: `${roleLabel} role added!`,
+          description: signupResult.message || `You can now access the ${roleLabel} dashboard.`,
         });
-        navigate("/author");
+        const roleRoutes: Record<string, string> = {
+          author: "/author",
+          reviewer: "/reviewer",
+          publisher: "/publisher",
+        };
+        navigate(roleRoutes[addedRole] ?? "/");
         return;
       }
 

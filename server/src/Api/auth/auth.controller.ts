@@ -26,7 +26,7 @@ import {
   saveRefreshToken,
   getUserRoles as getUserRolesRepo,
   insertUserRole,
-  upsertAuthorRole,
+  upsertPlatformRole,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
@@ -115,9 +115,9 @@ export const signup = async (req: Request, res: Response) => {
   const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
-    // Special case: existing user wants to add Author role — no new account needed
-    if (role === "author") {
-      await upsertAuthorRole(existingUser.id);
+    const ADDABLE_ROLES = ["author", "reviewer", "publisher"];
+    if (ADDABLE_ROLES.includes(role)) {
+      await upsertPlatformRole(existingUser.id, role);
 
       const userRoleRows = await getUserRoles(existingUser.id, existingUser.role);
 
@@ -127,21 +127,22 @@ export const signup = async (req: Request, res: Response) => {
         existingUser.email,
         existingUser.username,
         userRoleRows,
-        "author",
+        role,
         null,
+        existingUser.profile_completed ?? false,
       );
 
       await deleteOTP(email);
 
       return res.status(200).json({
         success: true,
-        message: "Author role added to your existing account",
+        message: `${role.charAt(0).toUpperCase() + role.slice(1)} role added to your existing account`,
         token: accessToken,
         user: {
           id: existingUser.id,
           username: existingUser.username,
           email: existingUser.email,
-          active_role: "author",
+          active_role: role,
         },
       });
     }

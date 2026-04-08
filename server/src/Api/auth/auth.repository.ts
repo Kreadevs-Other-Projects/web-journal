@@ -44,14 +44,15 @@ export const getUserRoles = async (userId: string) => {
 };
 
 export const upsertAuthorRole = async (userId: string) => {
+  await upsertPlatformRole(userId, "author");
+};
+
+export const upsertPlatformRole = async (userId: string, role: string) => {
   await pool.query(
     `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
-     SELECT $1, 'author', NULL, $1, true
-     WHERE NOT EXISTS (
-       SELECT 1 FROM user_roles
-       WHERE user_id = $1 AND role = 'author' AND journal_id IS NULL
-     )`,
-    [userId],
+     VALUES ($1, $2, NULL, $1, true)
+     ON CONFLICT (user_id, role, journal_id) DO UPDATE SET is_active = true`,
+    [userId, role],
   );
 };
 

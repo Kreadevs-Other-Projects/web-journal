@@ -40,6 +40,8 @@ import {
   AlignLeft,
   FileX,
   BookOpen,
+  Info,
+  X,
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { useAuth } from "@/context/AuthContext";
@@ -76,6 +78,13 @@ export default function ReviewerDashboard() {
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [completedReviews, setCompletedReviews] = useState<Paper[]>([]);
+  const [showReviewerHint, setShowReviewerHint] = useState(() =>
+    !localStorage.getItem("hint_dismissed_reviewer")
+  );
+  const dismissReviewerHint = () => {
+    localStorage.setItem("hint_dismissed_reviewer", "true");
+    setShowReviewerHint(false);
+  };
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
@@ -858,6 +867,20 @@ export default function ReviewerDashboard() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-6"
           >
+            {showReviewerHint && (
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Getting Started</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    You'll see assigned papers here once a Chief Editor or Associate Editor assigns one to you. Review each paper carefully and submit your decision.
+                  </p>
+                </div>
+                <button onClick={dismissReviewerHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <div>
               <h1 className="font-serif-outfit text-3xl font-bold text-white">
                 Reviewer Dashboard

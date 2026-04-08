@@ -49,6 +49,8 @@ import {
   Calendar,
   History,
   RefreshCw,
+  Info,
+  X,
 } from "lucide-react";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -190,6 +192,14 @@ export default function ChiefEditor() {
   const [historyPaper, setHistoryPaper] = useState<Paper | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [showCEHint, setShowCEHint] = useState(() =>
+    !localStorage.getItem("hint_dismissed_chief_editor")
+  );
+  const dismissCEHint = () => {
+    localStorage.setItem("hint_dismissed_chief_editor", "true");
+    setShowCEHint(false);
+  };
 
   const fetchJournals = async () => {
     try {
@@ -693,6 +703,20 @@ export default function ChiefEditor() {
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
+        {showCEHint && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Welcome, Chief Editor</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                You've been assigned as Chief Editor. Start by opening an issue for submissions, then review incoming papers and assign them to Associate Editors.
+              </p>
+            </div>
+            <button onClick={dismissCEHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* ── HEADER ── */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b">

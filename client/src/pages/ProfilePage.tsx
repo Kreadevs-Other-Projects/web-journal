@@ -39,6 +39,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import { useToast } from "@/hooks/use-toast";
+import { FieldHint } from "@/components/FieldHint";
 
 const EDITORIAL_ROLES: UserRole[] = ["chief_editor", "sub_editor", "reviewer"];
 
@@ -561,6 +562,7 @@ export default function ProfilePage() {
 
                       <div className="space-y-4">
                         <Label>Areas of Expertise</Label>
+                        <FieldHint text="Add topics you specialize in. These help match you to relevant papers." />
                         {isEditing ? (
                           <Input
                             value={userData.expertise.join(", ")}
@@ -592,6 +594,7 @@ export default function ProfilePage() {
                         )}
 
                         <Label>Qualifications</Label>
+                        <FieldHint text="Your academic or professional qualifications (e.g. PhD, MSc, Professional certification)." />
                         {isEditing ? (
                           <Textarea
                             value={userData.qualifications || ""}
@@ -664,6 +667,7 @@ export default function ProfilePage() {
                           EDITORIAL_ROLES.includes(userData.role) && (
                             <>
                               <Label>Degrees</Label>
+                              <FieldHint text="Add your academic qualifications (e.g. PhD Computer Science, MIT, 2018)" />
                               {isEditing ? (
                                 <div className="space-y-2">
                                   <div className="flex flex-wrap gap-2">
@@ -757,6 +761,7 @@ export default function ProfilePage() {
                                   (max 5)
                                 </span>
                               </Label>
+                              <FieldHint text="Add up to 5 topics you specialize in. These help match you to relevant paper submissions." />
                               {isEditing ? (
                                 <div className="space-y-2">
                                   <div className="flex flex-wrap gap-2">

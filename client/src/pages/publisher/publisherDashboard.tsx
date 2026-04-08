@@ -32,6 +32,8 @@ import {
   ShieldCheck,
   Loader2,
   Edit3,
+  Info,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -197,6 +199,13 @@ export default function PublisherDashboard() {
   const [pendingAPCNavigation, setPendingAPCNavigation] = useState<
     (() => void) | null
   >(null);
+  const [showPublisherHint, setShowPublisherHint] = useState(() =>
+    !localStorage.getItem("hint_dismissed_publisher")
+  );
+  const dismissPublisherHint = () => {
+    localStorage.setItem("hint_dismissed_publisher", "true");
+    setShowPublisherHint(false);
+  };
 
   const statusMap: Record<string, string[]> = {
     all: ["draft", "active", "suspended", "archived"],
@@ -917,6 +926,20 @@ export default function PublisherDashboard() {
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
+        {showPublisherHint && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Getting Started</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                Start by creating your first journal. Once created, you can invite a Chief Editor and Journal Manager, then open it for paper submissions.
+              </p>
+            </div>
+            <button onClick={dismissPublisherHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">

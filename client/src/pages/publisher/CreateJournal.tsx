@@ -33,6 +33,7 @@ import {
   Plus,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
+import { FieldHint } from "@/components/FieldHint";
 
 interface JournalFields {
   title: string;
@@ -385,6 +386,7 @@ export default function CreateJournal() {
                   {fieldErrors["title"] && (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
                   )}
+                  {!fieldErrors["title"] && <FieldHint text="The official full name of your journal as it should appear in publications." />}
                 </div>
                 <div className="space-y-1">
                   <Label>
@@ -401,6 +403,7 @@ export default function CreateJournal() {
                   {fieldErrors["publisher_name"] && (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["publisher_name"]}</p>
                   )}
+                  {!fieldErrors["publisher_name"] && <FieldHint text="The name of the organization or institution publishing this journal." />}
                 </div>
                 <div className="space-y-1">
                   <Label>ISSN</Label>
@@ -413,7 +416,7 @@ export default function CreateJournal() {
                   {fieldErrors["issn"] ? (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
                   ) : (
-                    <p className="text-xs text-muted-foreground mt-1">Format: XXXX-XXXX — e.g. 1234-567X</p>
+                    <FieldHint text="Format: XXXX-XXXX — e.g. 1234-567X" />
                   )}
                 </div>
                 <div className="space-y-1">
@@ -427,7 +430,7 @@ export default function CreateJournal() {
                   {fieldErrors["doi"] ? (
                     <p className="text-xs text-destructive mt-1">{fieldErrors["doi"]}</p>
                   ) : (
-                    <p className="text-xs text-muted-foreground mt-1">Format: 10.XXXXX/suffix — e.g. 10.12345/tm.2026.001</p>
+                    <FieldHint text="Format: 10.XXXXX/suffix — e.g. 10.12345/tm.2026.001" />
                   )}
                 </div>
                 <div className="space-y-1">
@@ -446,6 +449,7 @@ export default function CreateJournal() {
                       <SelectItem value="subscription">Subscription</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FieldHint text="Open Access means free for readers. Subscription requires payment to read." />
                 </div>
                 <div className="space-y-1">
                   <Label>Publication Fee per Page</Label>
@@ -457,7 +461,7 @@ export default function CreateJournal() {
                     onChange={(e) => updateJournal("publication_fee", e.target.value)}
                     placeholder="e.g. 50"
                   />
-                  <p className="text-xs text-muted-foreground">Leave blank if no fee (Open Access). Used to calculate APC for authors.</p>
+                  <FieldHint text="Leave blank if no fee (Open Access). Used to calculate APC for authors." />
                 </div>
                 <div className="space-y-1">
                   <Label>Currency</Label>
@@ -475,6 +479,7 @@ export default function CreateJournal() {
                       <SelectItem value="GBP">GBP</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FieldHint text="Select the currency for all payment invoices for this journal." />
                 </div>
               </div>
 
@@ -526,6 +531,7 @@ export default function CreateJournal() {
                   onChange={(html) => updateJournal("peer_review_policy", html)}
                   placeholder="Describe the peer review process..."
                 />
+                <FieldHint text="Describe how manuscripts are reviewed. This is shown publicly to authors." />
               </div>
 
               <div className="space-y-1">
@@ -537,6 +543,7 @@ export default function CreateJournal() {
                   onChange={(html) => updateJournal("oa_policy", html)}
                   placeholder="Describe the open access policy..."
                 />
+                <FieldHint text="Describe your open access terms and licensing. Required for DOAJ indexing." />
               </div>
 
               <div className="space-y-1">
@@ -548,6 +555,7 @@ export default function CreateJournal() {
                   onChange={(html) => updateJournal("author_guidelines", html)}
                   placeholder="Guidelines for authors submitting manuscripts..."
                 />
+                <FieldHint text="Instructions for authors on how to prepare and submit manuscripts." />
               </div>
 
               <div className="space-y-1">
@@ -557,6 +565,7 @@ export default function CreateJournal() {
                   onChange={(html) => updateJournal("aims_and_scope", html)}
                   placeholder="Describe the journal's aims and scope..."
                 />
+                <FieldHint text="What topics does this journal cover? Who is the target audience?" />
               </div>
             </CardContent>
           </Card>

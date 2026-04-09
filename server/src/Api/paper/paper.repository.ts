@@ -111,6 +111,45 @@ export const getKeywordSuggestions = async (q: string) => {
   return result.rows.map((r: { keyword: string }) => r.keyword);
 };
 
+export const getPublicKeywordSuggestions = async (
+  q: string | null,
+  journalId: string | null,
+  limit: number,
+) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE ($1::uuid IS NULL OR journal_id = $1)
+         AND keywords IS NOT NULL
+     ) kw
+     WHERE ($2::text IS NULL OR keyword ILIKE '%' || $2 || '%')
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $3`,
+    [journalId || null, q || null, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
+export const getJournalTopKeywords = async (journalId: string, limit: number) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE journal_id = $1
+         AND keywords IS NOT NULL
+     ) kw
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $2`,
+    [journalId, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
 export const getPaperById = async (id: string) => {
   const result = await pool.query(`SELECT * FROM papers WHERE id = $1`, [id]);
   return result.rows[0];

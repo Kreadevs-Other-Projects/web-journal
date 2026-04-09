@@ -24,6 +24,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+import { KeywordInput } from "@/components/KeywordInput";
 import {
   Plus,
   X,
@@ -91,8 +92,6 @@ export default function SubmitPaper() {
     CorrespondingAuthorDetail[]
   >([{ name: "", email: "", affiliation: "", phone: "" }]);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState("");
-  const [keywordSuggestions, setKeywordSuggestions] = useState<string[]>([]);
   const [references, setReferences] = useState<Reference[]>([
     { text: "", link: "" },
   ]);
@@ -159,25 +158,6 @@ export default function SubmitPaper() {
       .catch(() => {});
   }, []);
 
-  // Keyword suggestions
-  useEffect(() => {
-    if (!keywordInput.trim()) {
-      setKeywordSuggestions([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      fetch(
-        `${url}/papers/keyword-suggestions?q=${encodeURIComponent(keywordInput)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      )
-        .then((r) => r.json())
-        .then((d) => setKeywordSuggestions(d.keywords || []))
-        .catch(() => {});
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [keywordInput, token]);
 
   useEffect(() => {
     if (!journalId) {
@@ -227,16 +207,6 @@ export default function SubmitPaper() {
     setApcAgreed(false);
   }, [journalId, token]);
 
-  const addKeyword = (kw: string) => {
-    const trimmed = kw.trim();
-    if (!trimmed || keywords.includes(trimmed) || keywords.length >= 5) return;
-    setKeywords([...keywords, trimmed]);
-    setKeywordInput("");
-    setKeywordSuggestions([]);
-  };
-
-  const removeKeyword = (kw: string) =>
-    setKeywords(keywords.filter((k) => k !== kw));
 
   const updateArrayField = <T,>(
     arr: T[],
@@ -1104,64 +1074,14 @@ export default function SubmitPaper() {
                 Keywords *{" "}
                 <span className="text-muted-foreground text-xs">(max 5)</span>
               </Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {keywords.map((kw) => (
-                  <Badge key={kw} variant="secondary" className="gap-1 pr-1">
-                    {kw}
-                    <button
-                      type="button"
-                      onClick={() => removeKeyword(kw)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-              {keywords.length < 5 && (
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <Input
-                      value={keywordInput}
-                      onChange={(e) => setKeywordInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addKeyword(keywordInput);
-                        }
-                      }}
-                      placeholder="Type a keyword and press Enter"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => addKeyword(keywordInput)}
-                      disabled={keywords.length >= 5}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  {keywordSuggestions.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {keywordSuggestions.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          className="block w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                          onClick={() => addKeyword(s)}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {fieldErrors["keywords"] && (
-                <p className="text-xs text-destructive mt-1">
-                  {fieldErrors["keywords"]}
-                </p>
-              )}
+              <KeywordInput
+                value={keywords}
+                onChange={setKeywords}
+                max={5}
+                journalId={journalId || undefined}
+                placeholder="Type a keyword and press Enter"
+                error={fieldErrors["keywords"]}
+              />
             </div>
 
             {/* 7. References */}

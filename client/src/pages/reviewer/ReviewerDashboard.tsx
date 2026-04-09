@@ -287,6 +287,11 @@ export default function ReviewerDashboard() {
         description: "Review submitted successfully",
       });
 
+      if (selectedPaper) {
+        const completed = { ...selectedPaper, assignment_status: "completed", review_decision: decision };
+        setPapers((prev) => prev.filter((p) => p.paper_id !== selectedPaper.paper_id));
+        setCompletedReviews((prev) => [completed, ...prev]);
+      }
       resetForm();
       fetchPapers();
     } catch (err) {

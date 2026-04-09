@@ -12,6 +12,8 @@ import {
   getPaperTrackingService,
   getPaperMetadataCheckService,
   editPaperMetadataService,
+  getPublicKeywordSuggestionsService,
+  getJournalTopKeywordsService,
 } from "./paper.service";
 import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
@@ -88,6 +90,21 @@ export const getKeywordSuggestions = async (req: Request, res: Response) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ success: true, keywords: [] });
   const keywords = await getKeywordSuggestionsService(q);
+  res.json({ success: true, keywords });
+};
+
+export const getPublicKeywordSuggestionsController = async (req: Request, res: Response) => {
+  const q = String(req.query.q || "").trim() || null;
+  const journalId = String(req.query.journal_id || "").trim() || null;
+  const limit = Math.min(Number(req.query.limit) || 10, 30);
+  const keywords = await getPublicKeywordSuggestionsService(q, journalId, limit);
+  res.json({ success: true, keywords });
+};
+
+export const getJournalTopKeywordsController = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 20, 50);
+  const keywords = await getJournalTopKeywordsService(journalId, limit);
   res.json({ success: true, keywords });
 };
 

@@ -414,6 +414,12 @@ export default function SubEditorDashboard() {
       setSelectedPaper((prev) =>
         prev ? { ...prev, status: newStatus } : null,
       );
+      setPapers((prev) =>
+        prev.map((p) => (p.id === selectedPaper!.id ? { ...p, status: newStatus } : p)),
+      );
+      setFilteredPapers((prev) =>
+        prev.map((p) => (p.id === selectedPaper!.id ? { ...p, status: newStatus } : p)),
+      );
       fetchPapers();
     } catch (err: any) {
       toast({

@@ -40,6 +40,7 @@ import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import { useToast } from "@/hooks/use-toast";
 import { FieldHint } from "@/components/FieldHint";
+import { KeywordInput } from "@/components/KeywordInput";
 
 const EDITORIAL_ROLES: UserRole[] = ["chief_editor", "sub_editor", "reviewer"];
 
@@ -82,7 +83,6 @@ export default function ProfilePage() {
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [newDegree, setNewDegree] = useState("");
-  const [newKeyword, setNewKeyword] = useState("");
 
   interface Certification {
     id: string;
@@ -763,87 +763,14 @@ export default function ProfilePage() {
                               </Label>
                               <FieldHint text="Add up to 5 topics you specialize in. These help match you to relevant paper submissions." />
                               {isEditing ? (
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap gap-2">
-                                    {userData.keywords.map((kw, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm"
-                                      >
-                                        {kw}
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setUserData({
-                                              ...userData,
-                                              keywords: userData.keywords.filter(
-                                                (_, i) => i !== idx,
-                                              ),
-                                            })
-                                          }
-                                          className="hover:text-destructive ml-1"
-                                        >
-                                          ×
-                                        </button>
-                                      </span>
-                                    ))}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Input
-                                      value={newKeyword}
-                                      onChange={(e) =>
-                                        setNewKeyword(e.target.value)
-                                      }
-                                      placeholder="e.g. Machine Learning"
-                                      disabled={userData.keywords.length >= 5}
-                                      onKeyDown={(e) => {
-                                        if (
-                                          e.key === "Enter" &&
-                                          newKeyword.trim() &&
-                                          userData.keywords.length < 5
-                                        ) {
-                                          e.preventDefault();
-                                          setUserData({
-                                            ...userData,
-                                            keywords: [
-                                              ...userData.keywords,
-                                              newKeyword.trim(),
-                                            ],
-                                          });
-                                          setNewKeyword("");
-                                        }
-                                      }}
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={userData.keywords.length >= 5}
-                                      onClick={() => {
-                                        if (
-                                          newKeyword.trim() &&
-                                          userData.keywords.length < 5
-                                        ) {
-                                          setUserData({
-                                            ...userData,
-                                            keywords: [
-                                              ...userData.keywords,
-                                              newKeyword.trim(),
-                                            ],
-                                          });
-                                          setNewKeyword("");
-                                        }
-                                      }}
-                                    >
-                                      Add
-                                    </Button>
-                                  </div>
-                                  {userData.keywords.length >= 5 && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Maximum 5 keywords reached
-                                    </p>
-                                  )}
-                                </div>
+                                <KeywordInput
+                                  value={userData.keywords}
+                                  onChange={(kws) =>
+                                    setUserData({ ...userData, keywords: kws })
+                                  }
+                                  max={5}
+                                  placeholder="e.g. Machine Learning"
+                                />
                               ) : (
                                 <div className="flex flex-wrap gap-2">
                                   {userData.keywords.length ? (

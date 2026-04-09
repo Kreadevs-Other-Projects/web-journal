@@ -72,6 +72,14 @@ interface Paper {
 
 const OVERRIDE_STATUSES = ["accepted", "rejected", "pending_revision"];
 
+const ACCEPTED_STATUSES = [
+  "accepted",
+  "awaiting_payment",
+  "payment_review",
+  "ready_for_publication",
+  "published",
+];
+
 const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
   assigned_to_sub_editor: "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -302,6 +310,11 @@ export default function CEPapers() {
         title: "Status overridden",
         description: `Paper status updated to "${overrideStatus.replace(/_/g, " ")}"`,
       });
+      setPapers((prev) =>
+        prev.map((p) =>
+          p.id === overridePaper.id ? { ...p, status: overrideStatus } : p,
+        ),
+      );
       setOverridePaper(null);
       fetchPapers();
     } catch (e: any) {
@@ -478,12 +491,13 @@ export default function CEPapers() {
           <Card>
             <CardContent className="p-0 divide-y divide-border">
               {filtered.map((paper) => {
+                const isAccepted = ACCEPTED_STATUSES.includes(paper.status);
                 const pendingReviewers = paper.reviewers.filter(
                   (r) => r.status === "assigned",
                 );
                 const aeNeedsReminder =
-                  paper.current_ae_id && !paper.ae_decision;
-                const rvNeedsReminder = pendingReviewers.length > 0;
+                  !isAccepted && paper.current_ae_id && !paper.ae_decision;
+                const rvNeedsReminder = !isAccepted && pendingReviewers.length > 0;
                 const aeReminderLabel = getReminderLabel(`ae-${paper.id}`);
                 const rvReminderLabel = getReminderLabel(`rv-${paper.id}`);
 
@@ -607,7 +621,7 @@ export default function CEPapers() {
                       </Button>
 
                       {/* Assign AE */}
-                      {!["published", "rejected"].includes(paper.status) && (
+                      {!isAccepted && !["rejected"].includes(paper.status) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -624,7 +638,7 @@ export default function CEPapers() {
                       )}
 
                       {/* Assign Reviewer */}
-                      {!["published", "rejected"].includes(paper.status) && (
+                      {!isAccepted && !["rejected"].includes(paper.status) && (
                         <Button
                           variant="outline"
                           size="sm"

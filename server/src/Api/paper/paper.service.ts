@@ -11,6 +11,8 @@ import {
   getPaperTracking,
   getPaperMetadata,
   editPaperMetadataRepo,
+  getPublicKeywordSuggestions,
+  getJournalTopKeywords,
 } from "./paper.repository";
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
@@ -104,6 +106,18 @@ export const getPaperVersionsService = async (paperId: string) => {
 
 export const getKeywordSuggestionsService = async (q: string) => {
   return getKeywordSuggestions(q);
+};
+
+export const getPublicKeywordSuggestionsService = async (
+  q: string | null,
+  journalId: string | null,
+  limit: number,
+) => {
+  return getPublicKeywordSuggestions(q, journalId, limit);
+};
+
+export const getJournalTopKeywordsService = async (journalId: string, limit: number) => {
+  return getJournalTopKeywords(journalId, limit);
 };
 
 export const getAllPapersService = async () => getAllPapers();

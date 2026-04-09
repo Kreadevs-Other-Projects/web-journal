@@ -16,6 +16,8 @@ import {
   getPaperHtmlController,
   getStatusLogController,
   editPaperMetadataController,
+  getPublicKeywordSuggestionsController,
+  getJournalTopKeywordsController,
 } from "./paper.controller";
 import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -23,6 +25,10 @@ import { createPaperSchema, updatePaperSchema } from "./paper.schema";
 import { manuscriptUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
+
+// Public routes — no auth required
+router.get("/keywords/suggestions", getPublicKeywordSuggestionsController);
+router.get("/keywords/journal/:journalId", getJournalTopKeywordsController);
 
 router.get("/keyword-suggestions", authMiddleware, getKeywordSuggestions);
 

@@ -49,7 +49,19 @@ export const getPublicPaperService = async (paperId: string) => {
 };
 
 function pdfTextToHtml(rawText: string): string {
-  const lines = rawText
+  if (!rawText || rawText.trim().length < 50) {
+    return "<p>Text content could not be extracted from this PDF. Please download the file to view it.</p>";
+  }
+
+  // Clean up PDF artifacts before splitting
+  const cleaned = rawText
+    .replace(/\f/g, "\n\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n");
+
+  const lines = cleaned
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
@@ -63,7 +75,7 @@ function pdfTextToHtml(rawText: string): string {
     const endsWithColon = line.endsWith(":");
     const startsWithNumber = /^\d+[\.\s]+[A-Z]/.test(line);
     const isCommonSection =
-      /^(abstract|introduction|conclusion|discussion|methods|results|references|background|related work|acknowledgements?|keywords?)/i.test(
+      /^(abstract|introduction|conclusion|discussion|methods?|results?|references?|background|related work|acknowledgements?|keywords?)/i.test(
         line,
       );
     const isLikelyHeading =
@@ -101,33 +113,66 @@ export const getPublicPaperHtmlService = async (
 ): Promise<string | null> => {
   const version = await getPaperVersionForHtmlRepo(paperId);
   if (!version) {
+    console.log(`[html] No version found for paper ${paperId}`);
     return null;
   }
 
   // Return cached HTML if available
-  if (version.html_content) return version.html_content;
+  if (version.html_content) {
+    console.log(`[html] Returning cached HTML (${version.html_content.length} chars) for paper ${paperId}`);
+    return version.html_content;
+  }
 
   if (!version.file_url) {
+    console.log(`[html] No file_url for paper ${paperId}`);
     return null;
   }
 
   const filename = path.basename(version.file_url);
-  const filePath = path.resolve(__dirname, "../../../uploads", filename);
+  const primaryPath = path.resolve(__dirname, "../../../uploads", filename);
   const lowerUrl = version.file_url.toLowerCase();
 
-  const fsSync = await import("fs");
+  console.log(`[html] file_url: ${version.file_url}`);
+  console.log(`[html] filename: ${filename}`);
+  console.log(`[html] primary path: ${primaryPath}`);
+
+  const fsSync = (await import("fs")).default;
+
+  // Resolve actual file path — try primary then fallbacks
+  const altPaths = [
+    primaryPath,
+    path.join(process.cwd(), "uploads", filename),
+    path.join(process.cwd(), "src", "uploads", filename),
+    path.join(__dirname, "../../uploads", filename),
+    path.join(__dirname, "../../../../../uploads", filename),
+  ];
+
+  let resolvedPath: string | null = null;
+  for (const candidate of altPaths) {
+    if (fsSync.existsSync(candidate)) {
+      resolvedPath = candidate;
+      console.log(`[html] Found file at: ${resolvedPath}`);
+      break;
+    }
+  }
+
+  if (!resolvedPath) {
+    console.log(`[html] File not found on disk. Tried: ${altPaths.join(", ")}`);
+    return null;
+  }
 
   // .docx → mammoth
   if (lowerUrl.endsWith(".docx")) {
     try {
       const mammoth = (await import("mammoth")).default;
-      const result = await mammoth.convertToHtml({ path: filePath });
+      const result = await mammoth.convertToHtml({ path: resolvedPath });
       if (result.value) {
         await cacheVersionHtmlRepo(version.id, result.value);
         return result.value;
       }
+      console.log(`[html] mammoth returned empty value`);
     } catch (err) {
-      console.error("mammoth conversion failed:", err);
+      console.error("[html] mammoth conversion failed:", err);
     }
     return null;
   }
@@ -137,8 +182,9 @@ export const getPublicPaperHtmlService = async (
     try {
       const fs = await import("fs/promises");
       const pdfParse = (await import("pdf-parse")).default;
-      const buffer = await fs.readFile(filePath);
+      const buffer = await fs.readFile(resolvedPath);
       const data = await pdfParse(buffer);
+      console.log(`[html] pdf-parse extracted ${data.text?.length ?? 0} chars`);
 
       const html = pdfTextToHtml(data.text);
       if (html) {
@@ -146,7 +192,7 @@ export const getPublicPaperHtmlService = async (
         return html;
       }
     } catch (err) {
-      console.error("pdf-parse conversion failed:", err);
+      console.error("[html] pdf-parse conversion failed:", err);
     }
     return null;
   }

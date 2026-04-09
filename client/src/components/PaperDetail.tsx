@@ -146,25 +146,13 @@ function JournalLogo({
   );
 }
 
-function MemberAvatar({
-  name,
-  profilePicUrl,
-}: {
-  name: string;
-  profilePicUrl?: string;
-}) {
-  if (profilePicUrl) {
-    return (
-      <img
-        src={`${url}${profilePicUrl}`}
-        alt={name}
-        className="h-20 w-20 rounded-full object-cover mx-auto"
-      />
-    );
-  }
+function Initials({ name }: { name: string }) {
+  const parts = name.trim().split(/\s+/);
+  const letters =
+    parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2);
   return (
-    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold text-xl mx-auto">
-      {getInitials(name)}
+    <div className="w-20 h-20 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-2xl uppercase shrink-0">
+      {letters}
     </div>
   );
 }
@@ -467,10 +455,15 @@ export default function JournalDetail() {
                             key={member.id}
                             className="glass-card p-6 text-center"
                           >
-                            <MemberAvatar
-                              name={member.name}
-                              profilePicUrl={member.profile_pic_url}
-                            />
+                            {member.profile_pic_url ? (
+                              <img
+                                alt={member.name}
+                                src={`${member.profile_pic_url}`}
+                                className="w-20 h-20 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <Initials name={member.name} />
+                            )}
                             <h3 className="font-semibold text-foreground mt-3 mb-1">
                               {member.name}
                             </h3>
@@ -511,10 +504,15 @@ export default function JournalDetail() {
                             key={member.id}
                             className="glass-card p-6 text-center"
                           >
-                            <MemberAvatar
-                              name={member.name}
-                              profilePicUrl={member.profile_pic_url}
-                            />
+                            {member.profile_pic_url ? (
+                              <img
+                                alt={member.name}
+                                src={`${member.profile_pic_url}`}
+                                className="w-20 h-20 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <Initials name={member.name} />
+                            )}
                             <h3 className="font-semibold text-foreground mt-3 mb-1">
                               {member.name}
                             </h3>

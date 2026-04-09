@@ -45,6 +45,13 @@ import {
   User,
 } from "lucide-react";
 import DOMPurify from "dompurify";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +104,18 @@ export default function ReviewerDashboard() {
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [htmlLoading, setHtmlLoading] = useState(false);
+
+  // Version switcher
+  const [versions, setVersions] = useState<
+    { id: string; version_number: number; file_url: string; file_type: string; created_at: string; }[]
+  >([]);
+  const [selectedVersion, setSelectedVersion] = useState<{
+    id: string;
+    version_number: number;
+    file_url: string;
+    file_type: string;
+    created_at: string;
+  } | null>(null);
 
   const fetchPapers = async () => {
     if (!token) return;
@@ -340,17 +359,43 @@ export default function ReviewerDashboard() {
     }).length;
   };
 
-  // Auto-switch to text view for docx
+  // Fetch all versions when selected paper changes
+  useEffect(() => {
+    if (!selectedPaper) {
+      setVersions([]);
+      setSelectedVersion(null);
+      return;
+    }
+    fetch(`${url}/paper-versions/getPaperVersions/${selectedPaper.paper_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.versions) {
+          const sorted = [...d.versions].sort((a, b) => a.version_number - b.version_number);
+          setVersions(sorted);
+          // Default to the version the reviewer is assigned to review
+          const current =
+            sorted.find((v) => v.id === selectedPaper.paper_version_id) ||
+            sorted[sorted.length - 1];
+          setSelectedVersion(current || null);
+        }
+      })
+      .catch(() => {});
+  }, [selectedPaper?.paper_id]);
+
+  // Auto-switch to text view for docx based on selected version
   useEffect(() => {
     setHtmlContent(null);
-    if (!selectedPaper?.file_url) return;
-    const ext = selectedPaper.file_url.split(".").pop()?.toLowerCase();
+    const fileUrl = selectedVersion?.file_url || selectedPaper?.file_url;
+    if (!fileUrl) return;
+    const ext = fileUrl.split(".").pop()?.toLowerCase();
     if (ext === "docx") {
       setViewMode("text");
     } else {
       setViewMode("pdf");
     }
-  }, [selectedPaper?.paper_id]);
+  }, [selectedPaper?.paper_id, selectedVersion?.id]);
 
   // Fetch HTML when switching to text view
   useEffect(() => {
@@ -424,7 +469,39 @@ export default function ReviewerDashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <Card className="glass-card overflow-hidden">
-                <CardHeader className="border-b border-border/50">
+                <CardHeader className="border-b border-border/50 space-y-3">
+                  {/* Version selector */}
+                  {versions.length > 0 && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">Version:</span>
+                      <Select
+                        value={selectedVersion?.id ?? ""}
+                        onValueChange={(val) => {
+                          const v = versions.find((v) => v.id === val);
+                          if (v) setSelectedVersion(v);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-48 text-xs">
+                          <SelectValue placeholder="Select version" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {versions.map((v) => (
+                            <SelectItem key={v.id} value={v.id} className="text-xs">
+                              v{v.version_number}
+                              {v.id === selectedPaper.paper_version_id ? " (latest)" : ""}
+                              {" — "}
+                              {new Date(v.created_at).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5 text-primary" />
@@ -493,7 +570,7 @@ export default function ReviewerDashboard() {
                         size="sm"
                         onClick={() =>
                           window.open(
-                            `${url}${selectedPaper.file_url}`,
+                            `${url}${selectedVersion?.file_url || selectedPaper.file_url}`,
                             "_blank",
                           )
                         }
@@ -505,7 +582,7 @@ export default function ReviewerDashboard() {
                         size="sm"
                         onClick={() => {
                           const link = document.createElement("a");
-                          link.href = `${url}${selectedPaper.file_url}`;
+                          link.href = `${url}${selectedVersion?.file_url || selectedPaper.file_url}`;
                           link.download = `${selectedPaper.title}.pdf`;
                           document.body.appendChild(link);
                           link.click();
@@ -518,10 +595,28 @@ export default function ReviewerDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
+                  {/* Old version banner */}
+                  {selectedVersion && selectedVersion.id !== selectedPaper.paper_version_id && (
+                    <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
+                      <p className="text-xs text-amber-800 dark:text-amber-200">
+                        You are viewing <span className="font-semibold">v{selectedVersion.version_number}</span> — this is not the current version.
+                      </p>
+                      <button
+                        className="text-xs text-amber-700 dark:text-amber-300 underline shrink-0"
+                        onClick={() => {
+                          const latest = versions.find((v) => v.id === selectedPaper.paper_version_id) || versions[versions.length - 1];
+                          if (latest) setSelectedVersion(latest);
+                        }}
+                      >
+                        Switch to v{versions.find((v) => v.id === selectedPaper.paper_version_id)?.version_number ?? versions[versions.length - 1]?.version_number}
+                      </button>
+                    </div>
+                  )}
                   <div className="aspect-[3/4] bg-muted/30 relative overflow-hidden">
                     {viewMode === "pdf" ? (
                       (() => {
-                        const ext = selectedPaper.file_url
+                        const displayFileUrl = selectedVersion?.file_url || selectedPaper.file_url;
+                        const ext = displayFileUrl
                           ?.split(".")
                           .pop()
                           ?.toLowerCase();
@@ -543,7 +638,7 @@ export default function ReviewerDashboard() {
                         }
                         return (
                           <iframe
-                            src={`${url}${selectedPaper.file_url}#view=FitH`}
+                            src={`${url}${displayFileUrl}#view=FitH`}
                             className="w-full h-full border-0"
                             style={{
                               transform: `scale(${pdfZoom / 100})`,
@@ -851,18 +946,29 @@ export default function ReviewerDashboard() {
                           </RadioGroup>
                         </div>
 
-                        <Button
-                          onClick={submitReview}
-                          disabled={!decision || !comments.trim()}
-                          className="w-full btn-physics"
-                          size="lg"
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Submit Review
-                          {(decision === "accepted" ||
-                            decision === "rejected") &&
-                            " (Requires Signature)"}
-                        </Button>
+                        {selectedVersion && selectedVersion.id !== selectedPaper.paper_version_id ? (
+                          <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                            <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                              You can only submit a review for the latest version
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                              Switch to v{versions.find((v) => v.id === selectedPaper.paper_version_id)?.version_number ?? versions[versions.length - 1]?.version_number} to submit your review.
+                            </p>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={submitReview}
+                            disabled={!decision || !comments.trim()}
+                            className="w-full btn-physics"
+                            size="lg"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Submit Review
+                            {(decision === "accepted" ||
+                              decision === "rejected") &&
+                              " (Requires Signature)"}
+                          </Button>
+                        )}
                       </div>
                     </ScrollArea>
                   </CardContent>

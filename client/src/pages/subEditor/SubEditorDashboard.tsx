@@ -1023,6 +1023,27 @@ export default function SubEditorDashboard() {
                     </div>
                   </CardHeader>
 
+                  {selectedVersion &&
+                    selectedPaper.versions[0]?.id !== selectedVersion.id && (
+                      <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          You are viewing{" "}
+                          <span className="font-semibold">
+                            v{selectedVersion.version_number}
+                          </span>{" "}
+                          — this is not the current version.
+                        </p>
+                        <button
+                          className="text-xs text-amber-700 dark:text-amber-300 underline shrink-0"
+                          onClick={() =>
+                            setSelectedVersion(selectedPaper.versions[0])
+                          }
+                        >
+                          Switch to v{selectedPaper.versions[0]?.version_number}
+                        </button>
+                      </div>
+                    )}
+
                   <CardContent className="pt-6">
                     <Tabs defaultValue="preview" className="w-full">
                       <TabsList className="grid w-full grid-cols-3">
@@ -1099,15 +1120,26 @@ export default function SubEditorDashboard() {
 
                       <TabsContent value="timeline" className="mt-4">
                         {selectedPaperLog.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-4 text-center">No status history available.</p>
+                          <p className="text-sm text-muted-foreground py-4 text-center">
+                            No status history available.
+                          </p>
                         ) : (
                           <PaperTimeline
                             events={selectedPaperLog.map((l, i) => ({
                               id: l.id || String(i),
                               status: l.status,
-                              date: new Date(l.changed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                              date: new Date(l.changed_at).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              ),
                               description: l.status.replace(/_/g, " "),
-                              actor: l.changed_by_name ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})` : undefined,
+                              actor: l.changed_by_name
+                                ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})`
+                                : undefined,
                               isCurrent: i === selectedPaperLog.length - 1,
                             }))}
                           />
@@ -1203,7 +1235,8 @@ export default function SubEditorDashboard() {
                         Status Locked by Chief Editor
                       </CardTitle>
                       <CardDescription>
-                        The Chief Editor has overridden this paper's status. No further decisions can be made.
+                        The Chief Editor has overridden this paper's status. No
+                        further decisions can be made.
                       </CardDescription>
                     </CardHeader>
                   </Card>
@@ -1477,8 +1510,14 @@ export default function SubEditorDashboard() {
                         setSelectedPaper(paper);
                         setSelectedVersion(paper.versions[0]);
                         fetchAllReviewers();
-                        fetch(`${url}/papers/${paper.id}/status-log`, { headers: { Authorization: `Bearer ${token}` } })
-                          .then(r => r.json()).then(d => { if (d.success) setSelectedPaperLog(d.log || []); }).catch(() => {});
+                        fetch(`${url}/papers/${paper.id}/status-log`, {
+                          headers: { Authorization: `Bearer ${token}` },
+                        })
+                          .then((r) => r.json())
+                          .then((d) => {
+                            if (d.success) setSelectedPaperLog(d.log || []);
+                          })
+                          .catch(() => {});
                       }}
                     >
                       <CardContent className="p-6">

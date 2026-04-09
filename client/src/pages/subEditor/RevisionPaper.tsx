@@ -58,7 +58,7 @@ interface Reviewer {
   decision?: string;
   comments?: string;
   reviewed_at?: string;
-  all_reviews?: Array<{ decision: string; reviewed_at: string; paper_version_id: string }>;
+  all_reviews?: Array<{ decision: string; reviewed_at: string }>;
 }
 
 interface SubmittedReview {
@@ -106,7 +106,9 @@ export default function RevisionPaper() {
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
   const [reminderSent, setReminderSent] = useState<Record<string, boolean>>({});
-  const [currentPaperIdForReviewers, setCurrentPaperIdForReviewers] = useState<string | null>(null);
+  const [currentPaperIdForReviewers, setCurrentPaperIdForReviewers] = useState<
+    string | null
+  >(null);
   const [currentPaperStatus, setCurrentPaperStatus] = useState<string>("");
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [selectedSignature, setSelectedSignature] = useState<string | null>(
@@ -145,6 +147,7 @@ export default function RevisionPaper() {
       }
 
       setReviews(data.data || []);
+      console.log(data);
     } catch (err) {
       console.error("Error fetching sub-editor papers:", err);
       toast({
@@ -203,19 +206,30 @@ export default function RevisionPaper() {
     }
   };
 
-  const sendReminderToReviewer = async (reviewerId: string, paperId: string) => {
+  const sendReminderToReviewer = async (
+    reviewerId: string,
+    paperId: string,
+  ) => {
     try {
       const res = await fetch(`${url}/subEditor/remind-reviewer`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ paper_id: paperId, reviewer_id: reviewerId }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || "Failed to send reminder");
+      if (!data.success)
+        throw new Error(data.message || "Failed to send reminder");
       toast({ title: "Reminder sent", description: data.message });
       setReminderSent((prev) => ({ ...prev, [reviewerId]: true }));
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message || "Could not send reminder", variant: "destructive" });
+      toast({
+        title: "Failed",
+        description: err.message || "Could not send reminder",
+        variant: "destructive",
+      });
     }
   };
 
@@ -643,7 +657,9 @@ export default function RevisionPaper() {
                                   </p>
                                 </div>
                                 <p className="text-xs text-orange-700 dark:text-orange-300">
-                                  Existing reviewers have been notified to re-review. You can assign additional reviewers if needed.
+                                  Existing reviewers have been notified to
+                                  re-review. You can assign additional reviewers
+                                  if needed.
                                 </p>
                               </div>
                             )}
@@ -804,7 +820,9 @@ export default function RevisionPaper() {
                                 size="sm"
                                 variant="outline"
                                 className="w-full gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
-                                onClick={() => fetchReviewers(r.paperId, r.paperStatus)}
+                                onClick={() =>
+                                  fetchReviewers(r.paperId, r.paperStatus)
+                                }
                               >
                                 <Users className="h-4 w-4" />
                                 View Reviewers
@@ -919,20 +937,38 @@ export default function RevisionPaper() {
                 <div className="flex-1 relative overflow-hidden">
                   {viewMode === "pdf" ? (
                     (() => {
-                      const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                      const ext = viewPdf.fileUrl
+                        ?.split(".")
+                        .pop()
+                        ?.toLowerCase();
                       if (ext === "pdf") {
                         return (
                           <Worker workerUrl="/pdf.worker.min.js">
-                            <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                            <Viewer
+                              fileUrl={`${url}${viewPdf.fileUrl}`}
+                              theme="dark"
+                            />
                           </Worker>
                         );
                       }
                       if (ext === "tex" || ext === "latex") {
                         return (
                           <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                            <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
-                            <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
-                              <Download className="h-4 w-4" />Download Manuscript
+                            <p className="text-sm">
+                              LaTeX files cannot be previewed. Please download
+                              to view.
+                            </p>
+                            <Button
+                              onClick={() =>
+                                window.open(
+                                  `${url}${viewPdf.fileUrl}`,
+                                  "_blank",
+                                )
+                              }
+                              className="gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download Manuscript
                             </Button>
                           </div>
                         );
@@ -941,8 +977,13 @@ export default function RevisionPaper() {
                       return (
                         <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
                           <FileX className="h-10 w-10" />
-                          <p className="text-sm">PDF view is not available for Word documents.</p>
-                          <button onClick={() => setViewMode("text")} className="text-sm text-primary underline">
+                          <p className="text-sm">
+                            PDF view is not available for Word documents.
+                          </p>
+                          <button
+                            onClick={() => setViewMode("text")}
+                            className="text-sm text-primary underline"
+                          >
                             Switch to Text view
                           </button>
                         </div>
@@ -955,7 +996,9 @@ export default function RevisionPaper() {
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
                             <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                            <p className="text-sm text-muted-foreground">Converting document to text...</p>
+                            <p className="text-sm text-muted-foreground">
+                              Converting document to text...
+                            </p>
                           </div>
                         </div>
                       ) : viewerHtml ? (
@@ -967,16 +1010,25 @@ export default function RevisionPaper() {
                           </div>
                           <div
                             className="paper-webview-content"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(viewerHtml),
+                            }}
                           />
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center p-8">
                             <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-sm font-medium">Text view unavailable</p>
-                            <p className="text-xs text-muted-foreground mt-1">Could not convert this document to text format.</p>
-                            <button onClick={() => setViewMode("pdf")} className="mt-3 text-xs text-primary underline">
+                            <p className="text-sm font-medium">
+                              Text view unavailable
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Could not convert this document to text format.
+                            </p>
+                            <button
+                              onClick={() => setViewMode("pdf")}
+                              className="mt-3 text-xs text-primary underline"
+                            >
                               Switch to PDF view
                             </button>
                           </div>
@@ -1182,11 +1234,16 @@ export default function RevisionPaper() {
                   <div className="inline-flex p-3 rounded-full bg-muted">
                     <AlertCircle className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground">No reviewers assigned to this paper</p>
+                  <p className="text-muted-foreground">
+                    No reviewers assigned to this paper
+                  </p>
                 </div>
               ) : (
                 reviewers.map((reviewer, index) => (
-                  <div key={reviewer.assignment_id} className="border rounded-lg p-4">
+                  <div
+                    key={reviewer.assignment_id}
+                    className="border rounded-lg p-4"
+                  >
                     {/* Header row */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -1194,13 +1251,20 @@ export default function RevisionPaper() {
                           {reviewer.username?.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium">Reviewer {index + 1}</p>
-                          <p className="text-xs text-muted-foreground">{reviewer.username}</p>
+                          <p className="text-sm font-medium">
+                            Reviewer {index + 1}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {reviewer.username}
+                          </p>
                         </div>
                       </div>
                       {reviewer.reviewed_at && (
                         <span className="text-xs text-muted-foreground">
-                          {new Date(reviewer.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                          {new Date(reviewer.reviewed_at).toLocaleDateString(
+                            "en-GB",
+                            { day: "2-digit", month: "short", year: "numeric" },
+                          )}
                         </span>
                       )}
                     </div>
@@ -1210,21 +1274,31 @@ export default function RevisionPaper() {
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">Review Completed</span>
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            Review Completed
+                          </span>
                           {reviewer.decision && (
-                            <span className={`text-xs px-2 py-0.5 rounded font-medium border ${
-                              reviewer.decision === "accepted" ? "bg-green-500/10 text-green-700 border-green-500/30" :
-                              reviewer.decision === "rejected" ? "bg-destructive/10 text-destructive border-destructive/30" :
-                              "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
-                            }`}>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                                reviewer.decision === "accepted"
+                                  ? "bg-green-500/10 text-green-700 border-green-500/30"
+                                  : reviewer.decision === "rejected"
+                                    ? "bg-destructive/10 text-destructive border-destructive/30"
+                                    : "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                              }`}
+                            >
                               {reviewer.decision}
                             </span>
                           )}
                         </div>
                         {reviewer.comments && (
                           <div className="bg-muted/50 rounded p-3">
-                            <p className="text-xs text-muted-foreground mb-1 font-medium">Comments:</p>
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{reviewer.comments}</p>
+                            <p className="text-xs text-muted-foreground mb-1 font-medium">
+                              Comments:
+                            </p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {reviewer.comments}
+                            </p>
                           </div>
                         )}
                       </>
@@ -1232,33 +1306,61 @@ export default function RevisionPaper() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-yellow-500" />
-                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pending Review</span>
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                            Pending Review
+                          </span>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs gap-1"
-                          onClick={() => sendReminderToReviewer(reviewer.id, currentPaperIdForReviewers!)}
+                          onClick={() =>
+                            sendReminderToReviewer(
+                              reviewer.id,
+                              currentPaperIdForReviewers!,
+                            )
+                          }
                           disabled={reminderSent[reviewer.id]}
                         >
-                          {reminderSent[reviewer.id] ? "Reminded ✓" : "Send Reminder"}
+                          {reminderSent[reviewer.id]
+                            ? "Reminded ✓"
+                            : "Send Reminder"}
                         </Button>
                       </div>
                     )}
 
                     {/* Previous reviews history (for resubmitted papers) */}
-                    {currentPaperStatus === "resubmitted" && reviewer.all_reviews && reviewer.all_reviews.length > 1 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-muted-foreground font-medium mb-2">Previous Reviews:</p>
-                        {reviewer.all_reviews.slice(1).map((rev, ri) => (
-                          <div key={ri} className="text-xs text-muted-foreground flex items-center gap-2">
-                            <span className="capitalize font-medium">{rev.decision || "—"}</span>
-                            <span>·</span>
-                            <span>{rev.reviewed_at ? new Date(rev.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {currentPaperStatus === "resubmitted" &&
+                      reviewer.all_reviews &&
+                      reviewer.all_reviews.length > 1 && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground font-medium mb-2">
+                            Previous Reviews:
+                          </p>
+                          {reviewer.all_reviews.slice(1).map((rev, ri) => (
+                            <div
+                              key={ri}
+                              className="text-xs text-muted-foreground flex items-center gap-2"
+                            >
+                              <span className="capitalize font-medium">
+                                {rev.decision || "—"}
+                              </span>
+                              <span>·</span>
+                              <span>
+                                {rev.reviewed_at
+                                  ? new Date(
+                                      rev.reviewed_at,
+                                    ).toLocaleDateString("en-GB", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ))
               )}

@@ -144,8 +144,7 @@ export const getAssignedReviewers = async (paperId: string) => {
          (SELECT json_agg(
            json_build_object(
              'decision', r2.decision,
-             'reviewed_at', r2.signed_at,
-             'paper_version_id', r2.paper_version_id
+             'reviewed_at', r2.signed_at
            ) ORDER BY r2.signed_at DESC)
           FROM reviews r2 WHERE r2.review_assignment_id = ra.id),
          '[]'

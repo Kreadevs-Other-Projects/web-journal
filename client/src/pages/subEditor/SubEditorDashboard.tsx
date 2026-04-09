@@ -80,9 +80,16 @@ interface Paper {
 
 interface Reviewer {
   id: string;
+  assignment_id: string;
+  assignment_status: string;
+  assigned_at: string;
   username: string;
   email: string;
   expertise?: string[];
+  decision?: string;
+  comments?: string;
+  reviewed_at?: string;
+  all_reviews?: Array<{ decision: string; reviewed_at: string }>;
 }
 
 interface Review {
@@ -141,6 +148,7 @@ export default function SubEditorDashboard() {
   } | null>(null);
 
   const [openReviewersDialog, setOpenReviewersDialog] = useState(false);
+  const [reminderSent, setReminderSent] = useState<Record<string, boolean>>({});
   const [openAssignReviewerDialog, setOpenAssignReviewerDialog] =
     useState(false);
   const [openPaperStats, setOpenPaperStats] = useState(false);
@@ -274,6 +282,7 @@ export default function SubEditorDashboard() {
       );
       const data = await res.json();
       setReviewers(data.data || []);
+      setReminderSent({});
       setOpenReviewersDialog(true);
     } catch (err) {
       console.error(err);
@@ -282,6 +291,23 @@ export default function SubEditorDashboard() {
         description: "Failed to load reviewers.",
         variant: "destructive",
       });
+    }
+  };
+
+  const sendReminderToReviewer = async (reviewerId: string) => {
+    if (!selectedPaper) return;
+    try {
+      const res = await fetch(`${url}/subEditor/remind-reviewer`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ paper_id: selectedPaper.id, reviewer_id: reviewerId }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || "Failed to send reminder");
+      toast({ title: "Reminder sent", description: data.message });
+      setReminderSent((prev) => ({ ...prev, [reviewerId]: true }));
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message || "Could not send reminder", variant: "destructive" });
     }
   };
 
@@ -1580,70 +1606,102 @@ export default function SubEditorDashboard() {
       {/* ── Dialogs (unchanged) ─────────────────────────────────────────────── */}
 
       <Dialog open={openReviewersDialog} onOpenChange={setOpenReviewersDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Assigned Reviewers
+              <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                {reviewers.length} reviewer{reviewers.length !== 1 ? "s" : ""}
+              </span>
             </DialogTitle>
             <DialogDescription>
               Reviewers assigned to this paper
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="h-64 pr-4">
+          <div className="space-y-4 py-2">
             {reviewers.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <UserCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No reviewers assigned yet</p>
+              <div className="text-center py-8 space-y-3">
+                <div className="inline-flex p-3 rounded-full bg-muted">
+                  <UserCheck className="h-8 w-8 text-muted-foreground opacity-50" />
+                </div>
+                <p className="text-muted-foreground">No reviewers assigned yet</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {reviewers.map((reviewer) => (
-                  <Card key={reviewer.id} className="bg-muted/50 border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
-                            {reviewer.username.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {reviewer.username}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {reviewer.email}
-                          </p>
-                          {reviewer.expertise &&
-                            reviewer.expertise.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {reviewer.expertise
-                                  .slice(0, 2)
-                                  .map((exp, idx) => (
-                                    <Badge
-                                      key={idx}
-                                      variant="secondary"
-                                      className="text-xs"
-                                    >
-                                      {exp}
-                                    </Badge>
-                                  ))}
-                                {reviewer.expertise.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{reviewer.expertise.length - 2} more
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                        </div>
+              reviewers.map((reviewer, index) => (
+                <div key={reviewer.assignment_id || reviewer.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                        {reviewer.username?.charAt(0).toUpperCase()}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      <div>
+                        <p className="text-sm font-medium">Reviewer {index + 1}</p>
+                        <p className="text-xs text-muted-foreground">{reviewer.username}</p>
+                      </div>
+                    </div>
+                    {reviewer.reviewed_at && (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(reviewer.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+
+                  {reviewer.expertise && reviewer.expertise.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {reviewer.expertise.slice(0, 3).map((exp, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">{exp}</Badge>
+                      ))}
+                      {reviewer.expertise.length > 3 && (
+                        <Badge variant="outline" className="text-xs">+{reviewer.expertise.length - 3} more</Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {reviewer.assignment_status === "submitted" ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">Review Completed</span>
+                        {reviewer.decision && (
+                          <span className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                            reviewer.decision === "accepted" ? "bg-green-500/10 text-green-700 border-green-500/30" :
+                            reviewer.decision === "rejected" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                            "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                          }`}>
+                            {reviewer.decision}
+                          </span>
+                        )}
+                      </div>
+                      {reviewer.comments && (
+                        <div className="bg-muted/50 rounded p-3">
+                          <p className="text-xs text-muted-foreground mb-1 font-medium">Comments:</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{reviewer.comments}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-yellow-500" />
+                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pending Review</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => sendReminderToReviewer(reviewer.id)}
+                        disabled={reminderSent[reviewer.id]}
+                      >
+                        {reminderSent[reviewer.id] ? "Reminded ✓" : "Send Reminder"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

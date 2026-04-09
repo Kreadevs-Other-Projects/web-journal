@@ -125,7 +125,9 @@ export default function AssignAssociateEditorPage() {
     );
   }, [staff, search]);
 
-  useEffect(() => { setCurrentPage(1); }, [search]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(
@@ -296,141 +298,145 @@ export default function AssignAssociateEditorPage() {
                   {filtered.length} associate editors available
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {paginated.map((s) => {
-                  const isCurrentAE = paper?.current_ae_id === s.id;
-                  const isSelected = selectedId === s.id;
-                  const isBestMatch = s.keyword_matches > 0;
+                  {paginated.map((s) => {
+                    const isCurrentAE = paper?.current_ae_id === s.id;
+                    const isSelected = selectedId === s.id;
+                    const isBestMatch = s.keyword_matches > 0;
 
-                  return (
-                    <Card
-                      key={s.id}
-                      className={`relative transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isCurrentAE ? "border-blue-400/50" : ""}`}
-                    >
-                      <CardContent className="pt-4 pb-4 space-y-3">
-                        {/* Badges row */}
-                        <div className="flex flex-wrap gap-1 min-h-[20px]">
-                          {isCurrentAE && (
-                            <Badge className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-400/40">
-                              Currently Assigned
-                            </Badge>
-                          )}
-                          {isBestMatch && (
-                            <Badge className="text-[10px] bg-green-500/10 text-green-600 border-green-400/40">
-                              Best Match ({s.keyword_matches})
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Avatar + name */}
-                        <div className="flex items-center gap-3">
-                          {s.profile_pic_url ? (
-                            <img
-                              src={`${s.profile_pic_url}`}
-                              alt={s.username}
-                              className="w-12 h-12 rounded-full object-cover shrink-0"
-                            />
-                          ) : (
-                            <Initials name={s.username} />
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm leading-tight truncate">
-                              {s.username}
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] mt-0.5"
-                            >
-                              Associate Editor
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* Degrees */}
-                        {s.degrees && s.degrees.length > 0 && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {s.degrees.slice(0, 2).join(" · ")}
-                          </p>
-                        )}
-
-                        {/* Keywords */}
-                        {s.keywords && s.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {s.keywords.slice(0, 5).map((kw) => (
-                              <span
-                                key={kw}
-                                className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
-                              >
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Workload */}
-                        <p className="text-xs text-muted-foreground">
-                          Handling{" "}
-                          <span className="font-semibold text-foreground">
-                            {s.active_papers}
-                          </span>{" "}
-                          active paper{s.active_papers !== 1 ? "s" : ""}
-                        </p>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 pt-1">
-                          <Button
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            className="flex-1 h-7 text-xs"
-                            onClick={() =>
-                              setSelectedId(isSelected ? null : s.id)
-                            }
-                          >
-                            {isSelected ? (
-                              <>
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Selected
-                              </>
-                            ) : isCurrentAE ? (
-                              "Replace"
-                            ) : (
-                              "Select"
+                    return (
+                      <Card
+                        key={s.id}
+                        className={`relative transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isCurrentAE ? "border-blue-400/50" : ""}`}
+                      >
+                        <CardContent className="pt-4 pb-4 space-y-3">
+                          {/* Badges row */}
+                          <div className="flex flex-wrap gap-1 min-h-[20px]">
+                            {isCurrentAE && (
+                              <Badge className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-400/40">
+                                Currently Assigned
+                              </Badge>
                             )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs px-2"
-                            onClick={() =>
-                              navigate(`/chief-editor/staff/${s.id}`, {
-                                state: {
-                                  selectedId,
-                                  paperId,
-                                  journalId: paper?.journal_id,
-                                  role: "sub_editor",
-                                  scrollPosition: window.scrollY,
-                                  fromPath: location.pathname,
-                                },
-                              })
-                            }
-                          >
-                            Details
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                            {isBestMatch && (
+                              <Badge className="text-[10px] bg-green-500/10 text-green-600 border-green-400/40">
+                                Best Match ({s.keyword_matches})
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Avatar + name */}
+                          <div className="flex items-center gap-3">
+                            {s.profile_pic_url ? (
+                              <img
+                                src={`${s.profile_pic_url}`}
+                                alt={s.username}
+                                className="w-12 h-12 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <Initials name={s.username} />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm leading-tight truncate">
+                                {s.username}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] mt-0.5"
+                              >
+                                Associate Editor
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Degrees */}
+                          {s.degrees && s.degrees.length > 0 && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {s.degrees.slice(0, 2).join(" · ")}
+                            </p>
+                          )}
+
+                          {/* Keywords */}
+                          {s.keywords && s.keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {s.keywords.slice(0, 5).map((kw) => (
+                                <span
+                                  key={kw}
+                                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Workload */}
+                          <p className="text-xs text-muted-foreground">
+                            Handling{" "}
+                            <span className="font-semibold text-foreground">
+                              {s.active_papers}
+                            </span>{" "}
+                            active paper{s.active_papers !== 1 ? "s" : ""}
+                          </p>
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className="flex-1 h-7 text-xs"
+                              onClick={() =>
+                                setSelectedId(isSelected ? null : s.id)
+                              }
+                            >
+                              {isSelected ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Selected
+                                </>
+                              ) : isCurrentAE ? (
+                                "Replace"
+                              ) : (
+                                "Select"
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() =>
+                                navigate(`/chief-editor/staff/${s.id}`, {
+                                  state: {
+                                    selectedId,
+                                    paperId,
+                                    journalId: paper?.journal_id,
+                                    role: "sub_editor",
+                                    scrollPosition: window.scrollY,
+                                    fromPath: location.pathname,
+                                  },
+                                })
+                              }
+                            >
+                              Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                     <p className="text-sm text-muted-foreground">
-                      Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}{" "}
+                      of {filtered.length}
                     </p>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
                         disabled={currentPage === 1}
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -438,32 +444,53 @@ export default function AssignAssociateEditorPage() {
                       </Button>
                       <div className="flex items-center gap-1">
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
-                          .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
-                          .reduce((acc: (number | string)[], page, idx, arr) => {
-                            if (idx > 0 && (page as number) - (arr[idx - 1] as number) > 1) acc.push("...");
-                            acc.push(page);
-                            return acc;
-                          }, [])
+                          .filter(
+                            (page) =>
+                              page === 1 ||
+                              page === totalPages ||
+                              Math.abs(page - currentPage) <= 1,
+                          )
+                          .reduce(
+                            (acc: (number | string)[], page, idx, arr) => {
+                              if (
+                                idx > 0 &&
+                                (page as number) - (arr[idx - 1] as number) > 1
+                              )
+                                acc.push("...");
+                              acc.push(page);
+                              return acc;
+                            },
+                            [],
+                          )
                           .map((page, idx) =>
                             page === "..." ? (
-                              <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                              <span
+                                key={`ellipsis-${idx}`}
+                                className="px-2 text-muted-foreground"
+                              >
+                                ...
+                              </span>
                             ) : (
                               <Button
                                 key={page}
-                                variant={currentPage === page ? "default" : "outline"}
+                                variant={
+                                  currentPage === page ? "default" : "outline"
+                                }
                                 size="sm"
                                 className="w-8 h-8 p-0"
                                 onClick={() => setCurrentPage(page as number)}
                               >
                                 {page}
                               </Button>
-                            )
+                            ),
                           )}
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
                         disabled={currentPage === totalPages}
                       >
                         Next
@@ -574,7 +601,7 @@ export default function AssignAssociateEditorPage() {
                   <div className="flex items-center gap-2">
                     {selectedStaff.profile_pic_url ? (
                       <img
-                        src={`${url}/${selectedStaff.profile_pic_url}`}
+                        src={selectedStaff.profile_pic_url}
                         alt={selectedStaff.username}
                         className="w-8 h-8 rounded-full object-cover"
                       />

@@ -37,7 +37,6 @@ export const getSubmittedReviewsBySubEditor = async (subEditorId: string) => {
 
     LEFT JOIN review_assignments ra
       ON ra.paper_id = ea.paper_id
-      AND ra.assigned_by = ea.sub_editor_id
       AND ra.status = 'submitted'
 
     LEFT JOIN reviews r ON r.review_assignment_id = ra.id

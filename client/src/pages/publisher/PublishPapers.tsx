@@ -257,9 +257,14 @@ export default function PublisherPapersDashboard() {
               <TabsList>
                 <TabsTrigger value="accepted">
                   Accepted
-                  {papers.filter((p) => ACCEPTED_STATUSES.has(p.paperStatus)).length > 0 && (
+                  {papers.filter((p) => ACCEPTED_STATUSES.has(p.paperStatus))
+                    .length > 0 && (
                     <span className="ml-1.5 text-xs bg-blue-500/20 text-blue-600 px-1.5 py-0.5 rounded-full">
-                      {papers.filter((p) => ACCEPTED_STATUSES.has(p.paperStatus)).length}
+                      {
+                        papers.filter((p) =>
+                          ACCEPTED_STATUSES.has(p.paperStatus),
+                        ).length
+                      }
                     </span>
                   )}
                 </TabsTrigger>
@@ -304,7 +309,9 @@ export default function PublisherPapersDashboard() {
                   {/* Author · Journal · Issue */}
                   <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
                     {paper.authorName && (
-                      <span className="font-medium text-foreground">{paper.authorName}</span>
+                      <span className="font-medium text-foreground">
+                        {paper.authorName}
+                      </span>
                     )}
                     {paper.journalName && (
                       <>
@@ -337,14 +344,18 @@ export default function PublisherPapersDashboard() {
                   {/* AE · Reviewers */}
                   <div className="text-xs space-y-0.5">
                     <div className="flex items-start gap-1">
-                      <span className="text-muted-foreground shrink-0">AE:</span>
+                      <span className="text-muted-foreground shrink-0">
+                        AE:
+                      </span>
                       <span className="font-medium text-foreground">
                         {paper.aeName || "Unassigned"}
                       </span>
                     </div>
                     {paper.reviewerNames.length > 0 && (
                       <div className="flex items-start gap-1">
-                        <span className="text-muted-foreground shrink-0">Reviewers:</span>
+                        <span className="text-muted-foreground shrink-0">
+                          Reviewers:
+                        </span>
                         <span className="font-medium text-foreground">
                           {paper.reviewerNames.join(", ")}
                         </span>
@@ -356,7 +367,9 @@ export default function PublisherPapersDashboard() {
                   {paper.doi && (
                     <div className="text-xs">
                       <span className="text-muted-foreground">DOI: </span>
-                      <span className="font-mono text-foreground">{paper.doi}</span>
+                      <span className="font-mono text-foreground">
+                        {paper.doi}
+                      </span>
                     </div>
                   )}
                 </CardContent>
@@ -386,7 +399,7 @@ export default function PublisherPapersDashboard() {
                             : "Download file"
                         }
                         onClick={() =>
-                          window.open(`${url}/${paper.fileUrl}`, "_blank")
+                          window.open(`${url}${paper.fileUrl}`, "_blank")
                         }
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -424,7 +437,10 @@ export default function PublisherPapersDashboard() {
         )}
 
         {/* View Paper Modal */}
-        <Dialog open={!!viewPaper} onOpenChange={(open) => !open && setViewPaper(null)}>
+        <Dialog
+          open={!!viewPaper}
+          onOpenChange={(open) => !open && setViewPaper(null)}
+        >
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -435,47 +451,77 @@ export default function PublisherPapersDashboard() {
             </DialogHeader>
             {viewPaper && (
               <div className="space-y-4 py-2 text-sm">
-                <p className="font-semibold text-base leading-snug">{viewPaper.title}</p>
+                <p className="font-semibold text-base leading-snug">
+                  {viewPaper.title}
+                </p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Status</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Status
+                    </p>
                     {getStatusBadge(viewPaper.paperStatus)}
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Author</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Author
+                    </p>
                     <p className="font-medium">{viewPaper.authorName || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Journal</p>
-                    <p className="font-medium">{viewPaper.journalName || "—"}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Journal
+                    </p>
+                    <p className="font-medium">
+                      {viewPaper.journalName || "—"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Issue</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Issue
+                    </p>
                     <p className="font-medium">{viewPaper.issueLabel || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Submitted</p>
-                    <p className="font-medium">{formatDate(viewPaper.submittedAt)}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Submitted
+                    </p>
+                    <p className="font-medium">
+                      {formatDate(viewPaper.submittedAt)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Accepted</p>
-                    <p className="font-medium">{formatDate(viewPaper.acceptedAt)}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Accepted
+                    </p>
+                    <p className="font-medium">
+                      {formatDate(viewPaper.acceptedAt)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Associate Editor</p>
-                    <p className="font-medium">{viewPaper.aeName || "Unassigned"}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Associate Editor
+                    </p>
+                    <p className="font-medium">
+                      {viewPaper.aeName || "Unassigned"}
+                    </p>
                   </div>
                   {viewPaper.doi && (
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">DOI</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                        DOI
+                      </p>
                       <p className="font-mono text-xs">{viewPaper.doi}</p>
                     </div>
                   )}
                 </div>
                 {viewPaper.reviewerNames.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Reviewers</p>
-                    <p className="font-medium">{viewPaper.reviewerNames.join(", ")}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                      Reviewers
+                    </p>
+                    <p className="font-medium">
+                      {viewPaper.reviewerNames.join(", ")}
+                    </p>
                   </div>
                 )}
                 {viewPaper.fileUrl && (
@@ -485,17 +531,23 @@ export default function PublisherPapersDashboard() {
                       variant="outline"
                       size="sm"
                       className="h-7 text-xs gap-1"
-                      onClick={() => window.open(`${url}/${viewPaper.fileUrl}`, "_blank")}
+                      onClick={() =>
+                        window.open(`${url}${viewPaper.fileUrl}`, "_blank")
+                      }
                     >
                       <Download className="h-3 w-3" />
-                      Download {viewPaper.fileType?.replace(".", "").toUpperCase() || "File"}
+                      Download{" "}
+                      {viewPaper.fileType?.replace(".", "").toUpperCase() ||
+                        "File"}
                     </Button>
                   </div>
                 )}
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setViewPaper(null)}>Close</Button>
+              <Button variant="outline" onClick={() => setViewPaper(null)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -527,7 +579,8 @@ export default function PublisherPapersDashboard() {
                 {selectedPaper?.authorName && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {selectedPaper.authorName}
-                    {selectedPaper.journalName && ` · ${selectedPaper.journalName}`}
+                    {selectedPaper.journalName &&
+                      ` · ${selectedPaper.journalName}`}
                   </p>
                 )}
               </div>
@@ -571,7 +624,9 @@ export default function PublisherPapersDashboard() {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                   <Eye className="h-3.5 w-3.5" />
                   <span>
-                    Issue: {selectedPaper.issueLabel || selectedPaper.issueId.slice(0, 8) + "…"}
+                    Issue:{" "}
+                    {selectedPaper.issueLabel ||
+                      selectedPaper.issueId.slice(0, 8) + "…"}
                   </span>
                 </div>
               )}

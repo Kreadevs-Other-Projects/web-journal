@@ -461,32 +461,60 @@ export default function JournalDetail() {
                         No chief editor assigned yet.
                       </p>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {board?.chief_editors.map((member) => (
                           <div
                             key={member.id}
-                            className="glass-card p-6 text-center"
+                            className="p-5 flex items-start gap-4 transition-all bg-background/50 border-none shadow-none"
                           >
-                            <MemberAvatar
-                              name={member.name}
-                              profilePicUrl={member.profile_pic_url}
-                            />
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">
-                              {member.name}
-                            </h3>
-                            {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">
-                                {member.degrees.join(", ")}
+                            {/* Profile Pic on Left side */}
+                            <div className="shrink-0">
+                              <MemberAvatar
+                                name={member.name}
+                                profilePicUrl={member.profile_pic_url}
+                              />
+                            </div>
+
+                            {/* Details on Right side */}
+                            <div className="flex-1 min-w-0 text-left">
+                              <h3 className="font-bold text-foreground text-base truncate">
+                                {member.name}
+                              </h3>
+
+                              {/* Next line: Role/Type */}
+                              <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">
+                                Editor-in-Chief
                               </p>
-                            ) : null}
-                            {member.keywords?.length ? (
-                              <p className="text-xs text-muted-foreground">
-                                Interests: {member.keywords.join("; ")}
-                              </p>
-                            ) : null}
-                            <Badge variant="outline" className="mt-2 text-xs">
-                              Editor-in-Chief
-                            </Badge>
+
+                              {/* Next line: Degrees */}
+                              {member.degrees?.length ? (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                                  {member.degrees.join(", ")}
+                                </p>
+                              ) : null}
+
+                              {/* Next line: Area of Interest (Dynamic) */}
+                              {member.keywords?.length ? (
+                                <div className="mt-2">
+                                  <p className="text-[10px] uppercase text-muted-foreground font-semibold mb-1">
+                                    Areas of Interest
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {member.keywords
+                                      .slice(0, 3)
+                                      .map((kw, i) => (
+                                        <Badge
+                                          key={i}
+                                          variant="secondary"
+                                          className="text-[9px] px-1.5 py-0 h-4"
+                                        >
+                                          {kw}
+                                        </Badge>
+                                      ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -505,32 +533,58 @@ export default function JournalDetail() {
                         No associate editors assigned yet.
                       </p>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {board?.associate_editors.map((member) => (
                           <div
                             key={member.id}
-                            className="glass-card p-6 text-center"
+                            className="p-5 flex items-start gap-4 transition-all bg-background/50 border-none shadow-none"
                           >
-                            <MemberAvatar
-                              name={member.name}
-                              profilePicUrl={member.profile_pic_url}
-                            />
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">
-                              {member.name}
-                            </h3>
-                            {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">
-                                {member.degrees.join(", ")}
+                            {/* Profile Pic on Left side */}
+                            <div className="shrink-0">
+                              <MemberAvatar
+                                name={member.name}
+                                profilePicUrl={member.profile_pic_url}
+                              />
+                            </div>
+
+                            {/* Details on Right side */}
+                            <div className="flex-1 min-w-0 text-left">
+                              <h3 className="font-bold text-foreground text-base truncate">
+                                {member.name}
+                              </h3>
+
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                                Associate Editor
                               </p>
-                            ) : null}
-                            {member.keywords?.length ? (
-                              <p className="text-xs text-muted-foreground">
-                                Interests: {member.keywords.join("; ")}
-                              </p>
-                            ) : null}
-                            <Badge variant="outline" className="mt-2 text-xs">
-                              Associate Editor
-                            </Badge>
+
+                              {member.degrees?.length ? (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                                  {member.degrees.join(", ")}
+                                </p>
+                              ) : null}
+
+                              {/* Dynamic Interests */}
+                              {member.keywords?.length ? (
+                                <div className="mt-2">
+                                  <p className="text-[10px] uppercase text-muted-foreground font-semibold mb-1">
+                                    Areas of Interest
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {member.keywords
+                                      .slice(0, 3)
+                                      .map((kw, i) => (
+                                        <Badge
+                                          key={i}
+                                          variant="secondary"
+                                          className="text-[9px] px-1.5 py-0 h-4"
+                                        >
+                                          {kw}
+                                        </Badge>
+                                      ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         ))}
                       </div>

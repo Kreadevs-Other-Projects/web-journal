@@ -10,39 +10,77 @@ import {
 export const getBrowseDataService = async (filters: any) => {
   const rows = await getBrowseDataRepo(filters);
 
-  const grouped: any = {};
+  const grouped: Record<string, any> = {};
 
   rows.forEach((row) => {
-    // Group by issue if present, otherwise by journal (for journals with no issues yet)
-    const issueKey = row.issue_id || `journal-${row.journal_id}`;
+    const journalKey = row.journal_id;
 
-    if (!grouped[issueKey]) {
-      grouped[issueKey] = {
+    if (!grouped[journalKey]) {
+      grouped[journalKey] = {
         journal_id: row.journal_id,
         journal_title: row.journal_title,
         issn: row.issn,
         aims_and_scope: row.aims_and_scope,
         logo_url: row.logo_url,
-        issue: row.issue_id
-          ? `Vol ${row.volume} Issue ${row.issue} (${row.year})`
-          : "No issues published yet",
-        published_at: row.journal_created_at,
+        journal_category_id: row.journal_category_id,
+        category_name: row.category_name,
+        category_slug: row.category_slug,
+        published_at: row.published_at || row.journal_created_at,
+        issues: {},
         papers: [],
       };
     }
 
-    // Only push if there's an actual paper (LEFT JOIN can produce null paper rows)
-    if (row.paper_id) {
-      grouped[issueKey].papers.push({
-        id: row.paper_id,
-        title: row.paper_title,
-        abstract: row.abstract,
-        pdf_url: row.file_url,
-      });
+    const journal = grouped[journalKey];
+
+    if (row.issue_id) {
+      if (!journal.issues[row.issue_id]) {
+        journal.issues[row.issue_id] = {
+          issue_id: row.issue_id,
+          label: `Vol ${row.volume} Issue ${row.issue} (${row.year})`,
+          published_at: row.published_at,
+          papers: [],
+        };
+      }
+
+      if (row.paper_id) {
+        journal.issues[row.issue_id].papers.push({
+          id: row.paper_id,
+          title: row.paper_title,
+          abstract: row.abstract,
+          pdf_url: row.file_url,
+        });
+      }
     }
   });
 
-  return Object.values(grouped);
+  // Flatten for the frontend — show latest issue label, aggregate all papers
+  return Object.values(grouped).map((journal) => {
+    const issueList = Object.values(journal.issues) as any[];
+
+    // Sort issues descending (latest first)
+    issueList.sort(
+      (a, b) => b.published_at?.localeCompare(a.published_at ?? "") ?? 0,
+    );
+
+    const allPapers = issueList.flatMap((i: any) => i.papers);
+    const latestIssue = issueList[0];
+
+    return {
+      journal_id: journal.journal_id,
+      journal_title: journal.journal_title,
+      issn: journal.issn,
+      aims_and_scope: journal.aims_and_scope,
+      logo_url: journal.logo_url,
+      journal_category_id: journal.journal_category_id,
+      category_name: journal.category_name,
+      category_slug: journal.category_slug,
+      issue: latestIssue ? latestIssue.label : "No issues published yet",
+      published_at: latestIssue?.published_at ?? journal.published_at,
+      issues: issueList, // full list available if needed
+      papers: allPapers,
+    };
+  });
 };
 
 export const getPublicPaperService = async (paperId: string) => {

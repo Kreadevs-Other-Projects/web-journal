@@ -77,69 +77,74 @@ export const findChiefEditors = async () => {
 export const getAllPapers = async (chiefEditorId: string) => {
   const result = await pool.query(
     `
-    SELECT
-      p.id,
-      p.title,
-      p.abstract,
-      p.status,
-      p.submitted_at,
-      p.published_at,
-      p.created_at,
-      p.updated_at,
-      p.ce_override,
-      author.username AS author_name,
-      j.title AS journal_name,
-      j.id AS journal_id,
-      ji.label AS issue_label,
-      -- Current version file info
-      pv.file_url,
-      pv.file_type,
-      pv.version_number AS current_version_number,
-      -- AE info
-      ae_user.id AS current_ae_id,
-      ae_user.username AS current_ae_name,
-      ae_user.email AS current_ae_email,
-      ea.status AS ae_assignment_status,
-      sd.decision AS ae_decision,
-      sd.decided_at AS ae_decided_at,
-      -- Reviewer info (aggregate)
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'id', rv.id,
-            'name', rv.username,
-            'status', ra.status,
-            'decision', r.decision
-          )
-        ) FILTER (WHERE rv.id IS NOT NULL),
-        '[]'
-      ) AS reviewers
-    FROM papers p
-    JOIN users author ON author.id = p.author_id
-    JOIN journals j ON j.id = p.journal_id
-    LEFT JOIN journal_issues ji ON ji.id = p.issue_id
-    LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
-    LEFT JOIN editor_assignments ea ON ea.paper_id = p.id
-      AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
-    LEFT JOIN users ae_user ON ae_user.id = ea.sub_editor_id
-    LEFT JOIN sub_editor_decisions sd ON sd.paper_id = p.id
-      AND sd.sub_editor_id = ea.sub_editor_id
-    LEFT JOIN review_assignments ra ON ra.paper_id = p.id
-      AND ra.status != 'reassigned'
-    LEFT JOIN users rv ON rv.id = ra.reviewer_id
-    LEFT JOIN reviews r ON r.review_assignment_id = ra.id
-    WHERE j.chief_editor_id = $1
-      OR j.id IN (
-        SELECT journal_id FROM user_roles
-        WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+   SELECT
+  p.id,
+  p.title,
+  p.abstract,
+  p.status,
+  p.submitted_at,
+  p.published_at,
+  p.created_at,
+  p.updated_at,
+  p.ce_override,
+  author.username AS author_name,
+  j.title AS journal_name,
+  j.id AS journal_id,
+  ji.label AS issue_label,
+  pv.file_url,
+  pv.file_type,
+  pv.version_number AS current_version_number,
+  ae_user.id AS current_ae_id,
+  ae_user.username AS current_ae_name,
+  ae_user.email AS current_ae_email,
+  ea.status AS ae_assignment_status,
+  sd.decision AS ae_decision,
+  sd.decided_at AS ae_decided_at,
+  COALESCE(
+    json_agg(
+      json_build_object(
+        'id', rv.id,
+        'name', rv.username,
+        'status', ra.status,
+        'decision', r.decision
       )
-    GROUP BY
-      p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
-      author.username, j.title, j.id, ji.label,
-      pv.file_url, pv.file_type, pv.version_number,
-      ae_user.id, ae_user.username, ae_user.email,
-      ea.status, sd.decision, sd.decided_at
-    ORDER BY p.submitted_at DESC NULLS LAST, p.created_at DESC
+    ) FILTER (WHERE rv.id IS NOT NULL),
+    '[]'
+  ) AS reviewers
+FROM papers p
+JOIN users author ON author.id = p.author_id
+JOIN journals j ON j.id = p.journal_id
+LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
+LEFT JOIN editor_assignments ea ON ea.paper_id = p.id
+  AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+LEFT JOIN users ae_user ON ae_user.id = ea.sub_editor_id
+LEFT JOIN LATERAL (
+  SELECT decision, decided_at
+  FROM sub_editor_decisions
+  WHERE paper_id = p.id
+    AND sub_editor_id = ea.sub_editor_id
+  ORDER BY decided_at DESC
+  LIMIT 1
+) sd ON true
+LEFT JOIN review_assignments ra ON ra.paper_id = p.id
+  AND ra.status != 'reassigned'
+LEFT JOIN users rv ON rv.id = ra.reviewer_id
+LEFT JOIN reviews r ON r.review_assignment_id = ra.id
+WHERE j.chief_editor_id = $1
+  OR j.id IN (
+    SELECT journal_id FROM user_roles
+    WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+  )
+GROUP BY
+  p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
+  p.ce_override,
+  author.username, j.title, j.id, ji.label,
+  pv.file_url, pv.file_type, pv.version_number,
+  ae_user.id, ae_user.username, ae_user.email,
+  ea.status,
+  sd.decision, sd.decided_at
+ORDER BY p.submitted_at DESC NULLS LAST, p.created_at DESC
     `,
     [chiefEditorId],
   );

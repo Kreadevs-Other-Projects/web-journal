@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +15,7 @@ import {
   Send,
   UserCheck,
   CreditCard,
+  ChevronDown,
 } from "lucide-react";
 import { cn, getFileUrl, getPaperUrl } from "@/lib/utils";
 import { url } from "@/url";
@@ -50,9 +51,8 @@ interface Paper {
 }
 
 interface IssueGroup {
-  journal_id: string;
-  journal_title: string;
-  issue: string;
+  issue_id: string;
+  label: string;
   published_at: string;
   papers: Paper[];
 }
@@ -171,6 +171,106 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+function IssueAccordion({ issue }: { issue: IssueGroup }) {
+  const [open, setOpen] = useState(true); // first open by default, or false
+
+  return (
+    <div className="border border-border/50 rounded-xl overflow-hidden">
+      {/* Header / Toggle */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-5 py-4 bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+      >
+        <Calendar className="h-4 w-4 text-primary shrink-0" />
+        <span className="font-semibold text-foreground flex-1">
+          {issue.label}
+        </span>
+        <span className="text-xs text-muted-foreground mr-3">
+          {formatDate(issue.published_at)}
+        </span>
+        <Badge variant="outline" className="text-xs mr-2">
+          {issue.papers.length} article{issue.papers.length !== 1 ? "s" : ""}
+        </Badge>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {/* Collapsible Body */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="divide-y divide-border/30">
+              {issue.papers.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-muted-foreground italic">
+                  No articles in this issue yet.
+                </p>
+              ) : (
+                issue.papers.map((paper) => (
+                  <div
+                    key={paper.id}
+                    className="px-5 py-4 flex items-start gap-4 group hover:bg-muted/20 transition-colors"
+                  >
+                    <FileText className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={getPaperUrl(paper)}
+                        className="font-medium text-foreground hover:text-primary transition-colors line-clamp-2"
+                      >
+                        {paper.title}
+                      </Link>
+                      {paper.abstract && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {paper.abstract}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="text-primary h-8 px-2"
+                      >
+                        <a
+                          href={`${url}${paper.pdf_url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Download className="h-3 w-3 mr-1" /> PDF
+                        </a>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="text-primary h-8 px-2"
+                      >
+                        <Link to={getPaperUrl(paper)}>
+                          <ExternalLink className="h-3 w-3 mr-1" /> View
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ---- Main Component ----
 
 export default function JournalDetail() {
@@ -214,7 +314,11 @@ export default function JournalDetail() {
       try {
         const r = await fetch(`${url}/browse/getBrowseData?journalId=${id}`);
         const data = await r.json();
-        if (data.success) setIssues(data.data);
+        if (data.success && data.data.length > 0) {
+          // New shape: data.data[0].issues is the array of issues
+          const journalData = data.data[0];
+          setIssues(journalData.issues || []);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -815,72 +919,9 @@ export default function JournalDetail() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-10">
+                <div className="space-y-4">
                   {issues.map((issue, idx) => (
-                    <section key={idx}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <h2 className="font-semibold text-foreground">
-                          {issue.issue}
-                        </h2>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(issue.published_at)}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {issue.papers.length} article
-                          {issue.papers.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      <div className="space-y-3">
-                        {issue.papers.map((paper) => (
-                          <div
-                            key={paper.id}
-                            className="glass-card p-5 flex items-start gap-4 group hover:border-primary/30 transition-colors"
-                          >
-                            <FileText className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <Link
-                                to={getPaperUrl(paper)}
-                                className="font-medium text-foreground hover:text-primary transition-colors line-clamp-2"
-                              >
-                                {paper.title}
-                              </Link>
-                              {paper.abstract && (
-                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                  {paper.abstract}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                                className="text-primary h-8 px-2"
-                              >
-                                <a
-                                  href={`${url}${paper.pdf_url}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <Download className="h-3 w-3 mr-1" /> PDF
-                                </a>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                                className="text-primary h-8 px-2"
-                              >
-                                <Link to={getPaperUrl(paper)}>
-                                  <ExternalLink className="h-3 w-3 mr-1" /> View
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
+                    <IssueAccordion key={issue.issue_id ?? idx} issue={issue} />
                   ))}
                 </div>
               )}

@@ -14,7 +14,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Users, UserCheck, Loader2, UserPlus, Clock, XCircle } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  Loader2,
+  UserPlus,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -24,9 +31,13 @@ interface InviteDialogProps {
   onOpenChange: (v: boolean) => void;
   role: "sub_editor" | "reviewer";
   inviteForm: { name: string; email: string };
-  setInviteForm: React.Dispatch<React.SetStateAction<{ name: string; email: string }>>;
+  setInviteForm: React.Dispatch<
+    React.SetStateAction<{ name: string; email: string }>
+  >;
   inviteFieldErrors: Record<string, string>;
-  setInviteFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setInviteFieldErrors: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   inviting: boolean;
   onSubmit: (role: "sub_editor" | "reviewer") => void;
 }
@@ -53,7 +64,8 @@ function InviteDialog({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <p className="text-sm text-muted-foreground">
-            An invitation email will be sent. They will set their own password when they accept.
+            An invitation email will be sent. They will set their own password
+            when they accept.
           </p>
           <div className="space-y-1">
             <Label>Full Name *</Label>
@@ -62,11 +74,20 @@ function InviteDialog({
               value={inviteForm.name}
               onChange={(e) => {
                 setInviteForm((p) => ({ ...p, name: e.target.value }));
-                if (inviteFieldErrors.name) setInviteFieldErrors((p) => { const n = { ...p }; delete n.name; return n; });
+                if (inviteFieldErrors.name)
+                  setInviteFieldErrors((p) => {
+                    const n = { ...p };
+                    delete n.name;
+                    return n;
+                  });
               }}
               className={inviteFieldErrors.name ? "border-destructive" : ""}
             />
-            {inviteFieldErrors.name && <p className="text-xs text-destructive">{inviteFieldErrors.name}</p>}
+            {inviteFieldErrors.name && (
+              <p className="text-xs text-destructive">
+                {inviteFieldErrors.name}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Email *</Label>
@@ -76,18 +97,37 @@ function InviteDialog({
               value={inviteForm.email}
               onChange={(e) => {
                 setInviteForm((p) => ({ ...p, email: e.target.value }));
-                if (inviteFieldErrors.email) setInviteFieldErrors((p) => { const n = { ...p }; delete n.email; return n; });
+                if (inviteFieldErrors.email)
+                  setInviteFieldErrors((p) => {
+                    const n = { ...p };
+                    delete n.email;
+                    return n;
+                  });
               }}
               className={inviteFieldErrors.email ? "border-destructive" : ""}
             />
-            {inviteFieldErrors.email && <p className="text-xs text-destructive">{inviteFieldErrors.email}</p>}
+            {inviteFieldErrors.email && (
+              <p className="text-xs text-destructive">
+                {inviteFieldErrors.email}
+              </p>
+            )}
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => { onOpenChange(false); setInviteForm({ name: "", email: "" }); setInviteFieldErrors({}); }}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              onOpenChange(false);
+              setInviteForm({ name: "", email: "" });
+              setInviteFieldErrors({});
+            }}
+          >
             Cancel
           </Button>
-          <Button onClick={() => onSubmit(role)} disabled={inviting || !inviteForm.name || !inviteForm.email}>
+          <Button
+            onClick={() => onSubmit(role)}
+            disabled={inviting || !inviteForm.name || !inviteForm.email}
+          >
             <UserPlus className="h-4 w-4 mr-2" />
             {inviting ? "Sending..." : "Send Invitation"}
           </Button>
@@ -130,7 +170,9 @@ export default function CETeam() {
   const [openInviteRev, setOpenInviteRev] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: "", email: "" });
   const [inviting, setInviting] = useState(false);
-  const [inviteFieldErrors, setInviteFieldErrors] = useState<Record<string, string>>({});
+  const [inviteFieldErrors, setInviteFieldErrors] = useState<
+    Record<string, string>
+  >({});
 
   const fetchData = async () => {
     if (!token) return;
@@ -146,6 +188,7 @@ export default function CETeam() {
       ]);
       if (seData.success) setSubEditors(seData.data || []);
       if (rvData.success) setReviewers(rvData.data || []);
+      console.log(seData, rvData);
 
       // Fetch pending invitations for this CE's journal
       if (user?.active_journal_id) {
@@ -155,9 +198,10 @@ export default function CETeam() {
         ).then((r) => r.json());
         if (invData.success) {
           setInvitations(
-            (invData.invitations || []).filter((i: PendingInvitation) =>
-              i.status === "pending" &&
-              ["sub_editor", "reviewer"].includes(i.role),
+            (invData.invitations || []).filter(
+              (i: PendingInvitation) =>
+                i.status === "pending" &&
+                ["sub_editor", "reviewer"].includes(i.role),
             ),
           );
         }
@@ -175,18 +219,29 @@ export default function CETeam() {
 
   const handleInvite = async (role: "sub_editor" | "reviewer") => {
     if (!inviteForm.name || !inviteForm.email) {
-      toast({ title: "Missing fields", description: "Name and email are required.", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Name and email are required.",
+        variant: "destructive",
+      });
       return;
     }
     if (!user?.active_journal_id) {
-      toast({ title: "No journal", description: "You must be assigned to a journal to invite staff.", variant: "destructive" });
+      toast({
+        title: "No journal",
+        description: "You must be assigned to a journal to invite staff.",
+        variant: "destructive",
+      });
       return;
     }
     try {
       setInviting(true);
       const res = await fetch(`${url}/invitations/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: inviteForm.name,
           email: inviteForm.email,
@@ -198,19 +253,28 @@ export default function CETeam() {
       if (!res.ok) {
         if (data.errors && Array.isArray(data.errors)) {
           const map: Record<string, string> = {};
-          data.errors.forEach((e: { field: string; message: string }) => { map[e.field] = e.message; });
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
           setInviteFieldErrors(map);
         }
         throw new Error(data.message || "Failed to send invitation");
       }
       setInviteFieldErrors({});
-      toast({ title: "Invitation Sent", description: `${inviteForm.name} has been invited as ${role.replace("_", " ")}.` });
+      toast({
+        title: "Invitation Sent",
+        description: `${inviteForm.name} has been invited as ${role.replace("_", " ")}.`,
+      });
       setInviteForm({ name: "", email: "" });
       setOpenInviteSE(false);
       setOpenInviteRev(false);
       fetchData();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setInviting(false);
     }
@@ -228,7 +292,11 @@ export default function CETeam() {
       toast({ title: "Invitation cancelled" });
       setInvitations((prev) => prev.filter((i) => i.id !== invitationId));
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setCancellingId(null);
     }
@@ -246,17 +314,22 @@ export default function CETeam() {
         <p className="text-sm font-medium text-foreground">{member.username}</p>
         <p className="text-xs text-muted-foreground">{member.email}</p>
         {member.degrees && member.degrees.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{member.degrees.join(", ")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {member.degrees.join(", ")}
+          </p>
         )}
         {member.keywords && member.keywords.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {member.keywords.map((k, i) => (
-              <Badge key={i} variant="outline" className="text-xs">{k}</Badge>
+              <Badge key={i} variant="outline" className="text-xs">
+                {k}
+              </Badge>
             ))}
           </div>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          {member.active_assignments ?? 0} active assignment{member.active_assignments !== 1 ? "s" : ""}
+          {member.active_assignments ?? 0} active assignment
+          {member.active_assignments !== 1 ? "s" : ""}
         </p>
       </div>
     </div>
@@ -271,10 +344,17 @@ export default function CETeam() {
         <p className="text-sm font-medium text-foreground">{inv.name}</p>
         <p className="text-xs text-muted-foreground">{inv.email}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Expires {new Date(inv.expires_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+          Expires{" "}
+          {new Date(inv.expires_at).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
         </p>
       </div>
-      <Badge variant="secondary" className="text-xs shrink-0">Pending</Badge>
+      <Badge variant="secondary" className="text-xs shrink-0">
+        Pending
+      </Badge>
       <Button
         variant="ghost"
         size="icon"
@@ -287,7 +367,6 @@ export default function CETeam() {
     </div>
   );
 
-
   const pendingSE = invitations.filter((i) => i.role === "sub_editor");
   const pendingRev = invitations.filter((i) => i.role === "reviewer");
 
@@ -295,8 +374,12 @@ export default function CETeam() {
     <DashboardLayout role={user?.role} userName={user?.username}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
-          <p className="text-muted-foreground mt-1">Manage your editorial team and reviewers</p>
+          <h1 className="text-3xl font-bold text-foreground">
+            Team Management
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your editorial team and reviewers
+          </p>
         </div>
 
         {loading ? (
@@ -308,11 +391,15 @@ export default function CETeam() {
             <TabsList>
               <TabsTrigger value="sub_editors">
                 Associate Editors
-                <Badge variant="secondary" className="ml-2">{subEditors.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {subEditors.length}
+                </Badge>
               </TabsTrigger>
               <TabsTrigger value="reviewers">
                 Reviewers
-                <Badge variant="secondary" className="ml-2">{reviewers.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {reviewers.length}
+                </Badge>
               </TabsTrigger>
             </TabsList>
 
@@ -323,7 +410,13 @@ export default function CETeam() {
                   <Users className="h-4 w-4 text-primary" />
                   Active Associate Editors
                 </h2>
-                <Button size="sm" onClick={() => { setInviteForm({ name: "", email: "" }); setOpenInviteSE(true); }}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setInviteForm({ name: "", email: "" });
+                    setOpenInviteSE(true);
+                  }}
+                >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Invite New
                 </Button>
@@ -332,7 +425,9 @@ export default function CETeam() {
               <Card>
                 <CardContent className="p-0">
                   {subEditors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-4 py-4">No associate editors yet.</p>
+                    <p className="text-sm text-muted-foreground px-4 py-4">
+                      No associate editors yet.
+                    </p>
                   ) : (
                     subEditors.map((m) => <MemberCard key={m.id} member={m} />)
                   )}
@@ -348,7 +443,9 @@ export default function CETeam() {
                   </h2>
                   <Card>
                     <CardContent className="p-0">
-                      {pendingSE.map((inv) => <PendingCard key={inv.id} inv={inv} />)}
+                      {pendingSE.map((inv) => (
+                        <PendingCard key={inv.id} inv={inv} />
+                      ))}
                     </CardContent>
                   </Card>
                 </>
@@ -362,7 +459,13 @@ export default function CETeam() {
                   <UserCheck className="h-4 w-4 text-primary" />
                   Active Reviewers
                 </h2>
-                <Button size="sm" onClick={() => { setInviteForm({ name: "", email: "" }); setOpenInviteRev(true); }}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setInviteForm({ name: "", email: "" });
+                    setOpenInviteRev(true);
+                  }}
+                >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Invite New
                 </Button>
@@ -371,7 +474,9 @@ export default function CETeam() {
               <Card>
                 <CardContent className="p-0">
                   {reviewers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-4 py-4">No reviewers yet.</p>
+                    <p className="text-sm text-muted-foreground px-4 py-4">
+                      No reviewers yet.
+                    </p>
                   ) : (
                     reviewers.map((m) => <MemberCard key={m.id} member={m} />)
                   )}
@@ -387,7 +492,9 @@ export default function CETeam() {
                   </h2>
                   <Card>
                     <CardContent className="p-0">
-                      {pendingRev.map((inv) => <PendingCard key={inv.id} inv={inv} />)}
+                      {pendingRev.map((inv) => (
+                        <PendingCard key={inv.id} inv={inv} />
+                      ))}
                     </CardContent>
                   </Card>
                 </>
@@ -397,8 +504,28 @@ export default function CETeam() {
         )}
       </div>
 
-      <InviteDialog open={openInviteSE} onOpenChange={setOpenInviteSE} role="sub_editor" inviteForm={inviteForm} setInviteForm={setInviteForm} inviteFieldErrors={inviteFieldErrors} setInviteFieldErrors={setInviteFieldErrors} inviting={inviting} onSubmit={handleInvite} />
-      <InviteDialog open={openInviteRev} onOpenChange={setOpenInviteRev} role="reviewer" inviteForm={inviteForm} setInviteForm={setInviteForm} inviteFieldErrors={inviteFieldErrors} setInviteFieldErrors={setInviteFieldErrors} inviting={inviting} onSubmit={handleInvite} />
+      <InviteDialog
+        open={openInviteSE}
+        onOpenChange={setOpenInviteSE}
+        role="sub_editor"
+        inviteForm={inviteForm}
+        setInviteForm={setInviteForm}
+        inviteFieldErrors={inviteFieldErrors}
+        setInviteFieldErrors={setInviteFieldErrors}
+        inviting={inviting}
+        onSubmit={handleInvite}
+      />
+      <InviteDialog
+        open={openInviteRev}
+        onOpenChange={setOpenInviteRev}
+        role="reviewer"
+        inviteForm={inviteForm}
+        setInviteForm={setInviteForm}
+        inviteFieldErrors={inviteFieldErrors}
+        setInviteFieldErrors={setInviteFieldErrors}
+        inviting={inviting}
+        onSubmit={handleInvite}
+      />
     </DashboardLayout>
   );
 }

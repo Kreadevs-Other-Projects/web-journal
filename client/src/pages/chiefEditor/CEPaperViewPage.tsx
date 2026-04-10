@@ -213,19 +213,18 @@ export default function CEPaperViewPage() {
       .finally(() => setVersionsLoading(false));
   }, [paperId, token]);
 
-  // Auto-switch view mode based on selected version file type
+  // Reset view mode when version changes
   useEffect(() => {
     setHtmlContent(null);
-    const fileUrl = selectedVersion?.file_url || paper?.file_url;
-    if (!fileUrl) return;
-    const ext = fileUrl.split(".").pop()?.toLowerCase();
-    if (ext === "docx") setViewMode("text");
-    else setViewMode("pdf");
+    setViewMode("pdf");
   }, [selectedVersion?.id]);
 
-  // Fetch HTML for text view — version-specific so switching versions works
+  // Fetch HTML for text view or when viewing a DOCX in "pdf" (Document) mode
   useEffect(() => {
-    if (viewMode !== "text" || !paperId) return;
+    const fileUrl = selectedVersion?.file_url || paper?.file_url;
+    const ext = fileUrl?.split(".").pop()?.toLowerCase();
+    const needsHtml = viewMode === "text" || (viewMode === "pdf" && ext === "docx");
+    if (!needsHtml || !paperId) return;
     const versionId = selectedVersion?.id;
     if (!versionId) return;
     setHtmlLoading(true);
@@ -474,7 +473,7 @@ export default function CEPaperViewPage() {
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    PDF
+                    {displayFileUrl?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF"}
                   </button>
                   <button
                     onClick={() => setViewMode("text")}
@@ -610,17 +609,41 @@ export default function CEPaperViewPage() {
                     const ext = displayFileUrl?.split(".").pop()?.toLowerCase();
                     if (ext === "docx") {
                       return (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
-                          <FileX className="h-10 w-10" />
-                          <p className="text-sm">
-                            PDF view is not available for Word documents.
-                          </p>
-                          <button
-                            onClick={() => setViewMode("text")}
-                            className="text-sm text-primary underline"
-                          >
-                            Switch to Text view
-                          </button>
+                        <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
+                          {htmlLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+                                <p className="text-sm text-muted-foreground">Converting document...</p>
+                              </div>
+                            </div>
+                          ) : htmlContent ? (
+                            <div className="max-w-[700px] mx-auto px-8 py-10">
+                              <div className="mb-8 pb-6 border-b">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+                                  {displayPaper.title}
+                                </h1>
+                                {displayPaper.abstract && (
+                                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{displayPaper.abstract}</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div
+                                className="paper-webview-content"
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center p-8">
+                                <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                <p className="text-sm font-medium">Document preview unavailable</p>
+                                <p className="text-xs text-muted-foreground mt-1">Could not convert this document.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     }

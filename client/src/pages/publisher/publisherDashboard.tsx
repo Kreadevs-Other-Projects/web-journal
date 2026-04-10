@@ -199,8 +199,8 @@ export default function PublisherDashboard() {
   const [pendingAPCNavigation, setPendingAPCNavigation] = useState<
     (() => void) | null
   >(null);
-  const [showPublisherHint, setShowPublisherHint] = useState(() =>
-    !localStorage.getItem("hint_dismissed_publisher")
+  const [showPublisherHint, setShowPublisherHint] = useState(
+    () => !localStorage.getItem("hint_dismissed_publisher"),
   );
   const dismissPublisherHint = () => {
     localStorage.setItem("hint_dismissed_publisher", "true");
@@ -930,12 +930,19 @@ export default function PublisherDashboard() {
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Getting Started</p>
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                Getting Started
+              </p>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                Start by creating your first journal. Once created, you can invite a Chief Editor and Journal Manager, then open it for paper submissions.
+                Start by creating your first journal. Once created, you can
+                invite a Chief Editor and Journal Manager, then open it for
+                paper submissions.
               </p>
             </div>
-            <button onClick={dismissPublisherHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+            <button
+              onClick={dismissPublisherHint}
+              className="text-blue-400 hover:text-blue-600 shrink-0"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -1477,7 +1484,7 @@ export default function PublisherDashboard() {
                       <div className="space-y-4">
                         <div className="text-center p-6 rounded-lg bg-gradient-to-br from-green-500/10 to-blue-500/10">
                           <p className="text-sm text-muted-foreground mb-2">
-                            Publication Fee per Page
+                            Publication Fee per Article
                           </p>
                           <p className="text-3xl font-bold text-foreground">
                             {originalApcFee &&

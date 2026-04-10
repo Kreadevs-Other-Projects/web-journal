@@ -93,7 +93,9 @@ export default function CreateJournal() {
     useState<StaffFields>(defaultStaff);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [journalCategories, setJournalCategories] = useState<JournalCategory[]>([]);
+  const [journalCategories, setJournalCategories] = useState<JournalCategory[]>(
+    [],
+  );
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
   const [logo, setLogo] = useState<File | null>(null);
@@ -103,11 +105,15 @@ export default function CreateJournal() {
   const fetchJournalCategories = () => {
     fetch(`${url}/journal-categories`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setJournalCategories(d.categories || []); })
+      .then((d) => {
+        if (d.success) setJournalCategories(d.categories || []);
+      })
       .catch(() => {});
   };
 
-  useEffect(() => { fetchJournalCategories(); }, []);
+  useEffect(() => {
+    fetchJournalCategories();
+  }, []);
 
   const handleQuickAddCategory = async () => {
     if (!newCategoryName.trim() || addingCategory) return;
@@ -115,7 +121,10 @@ export default function CreateJournal() {
     try {
       const res = await fetch(`${url}/journal-categories`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ name: newCategoryName.trim() }),
       });
       const data = await res.json();
@@ -156,7 +165,12 @@ export default function CreateJournal() {
 
   const updateJournal = (field: keyof JournalFields, value: string) => {
     setJournal((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors[field]) setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+    if (fieldErrors[field])
+      setFieldErrors((prev) => {
+        const n = { ...prev };
+        delete n[field];
+        return n;
+      });
   };
 
   const updateChiefEditor = (field: keyof StaffFields, value: string) =>
@@ -228,7 +242,10 @@ export default function CreateJournal() {
       formData.append("author_guidelines", journal.author_guidelines);
       if (journal.aims_and_scope)
         formData.append("aims_and_scope", journal.aims_and_scope);
-      if (journal.publication_fee !== "" && journal.publication_fee !== undefined) {
+      if (
+        journal.publication_fee !== "" &&
+        journal.publication_fee !== undefined
+      ) {
         const fee = parseFloat(journal.publication_fee);
         if (!isNaN(fee)) formData.append("publication_fee", String(fee));
       }
@@ -384,9 +401,13 @@ export default function CreateJournal() {
                     className={fieldErrors["title"] ? "border-destructive" : ""}
                   />
                   {fieldErrors["title"] && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors["title"]}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors["title"]}
+                    </p>
                   )}
-                  {!fieldErrors["title"] && <FieldHint text="The official full name of your journal as it should appear in publications." />}
+                  {!fieldErrors["title"] && (
+                    <FieldHint text="The official full name of your journal as it should appear in publications." />
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>
@@ -398,20 +419,31 @@ export default function CreateJournal() {
                       updateJournal("publisher_name", e.target.value)
                     }
                     placeholder="e.g. GIKI Press"
-                    className={fieldErrors["publisher_name"] ? "border-destructive" : ""}
+                    className={
+                      fieldErrors["publisher_name"] ? "border-destructive" : ""
+                    }
                   />
                   {fieldErrors["publisher_name"] && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors["publisher_name"]}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors["publisher_name"]}
+                    </p>
                   )}
-                  {!fieldErrors["publisher_name"] && <FieldHint text="The name of the organization or institution publishing this journal." />}
+                  {!fieldErrors["publisher_name"] && (
+                    <FieldHint text="The name of the organization or institution publishing this journal." />
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>ISSN</Label>
                   <Input
                     value={journal.issn}
                     onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^0-9Xx]/g, "").toUpperCase();
-                      const formatted = cleaned.length <= 4 ? cleaned : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
+                      const cleaned = e.target.value
+                        .replace(/[^0-9Xx]/g, "")
+                        .toUpperCase();
+                      const formatted =
+                        cleaned.length <= 4
+                          ? cleaned
+                          : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
                       updateJournal("issn", formatted);
                     }}
                     placeholder="0000-000X"
@@ -419,7 +451,9 @@ export default function CreateJournal() {
                     className={fieldErrors["issn"] ? "border-destructive" : ""}
                   />
                   {fieldErrors["issn"] ? (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors["issn"]}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors["issn"]}
+                    </p>
                   ) : (
                     <FieldHint text="Format: XXXX-XXXX · Last character can be a number or X" />
                   )}
@@ -433,7 +467,9 @@ export default function CreateJournal() {
                     className={fieldErrors["doi"] ? "border-destructive" : ""}
                   />
                   {fieldErrors["doi"] ? (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors["doi"]}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors["doi"]}
+                    </p>
                   ) : (
                     <FieldHint text="Format: 10.XXXXX/suffix — e.g. 10.12345/tm.2026.001" />
                   )}
@@ -457,13 +493,15 @@ export default function CreateJournal() {
                   <FieldHint text="Open Access means free for readers. Subscription requires payment to read." />
                 </div>
                 <div className="space-y-1">
-                  <Label>Publication Fee per Page</Label>
+                  <Label>Publication Fee per Article</Label>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
                     value={journal.publication_fee}
-                    onChange={(e) => updateJournal("publication_fee", e.target.value)}
+                    onChange={(e) =>
+                      updateJournal("publication_fee", e.target.value)
+                    }
                     placeholder="e.g. 50"
                   />
                   <FieldHint text="Leave blank if no fee (Open Access). Used to calculate APC for authors." />
@@ -494,14 +532,18 @@ export default function CreateJournal() {
                 <div className="flex gap-2">
                   <Select
                     value={journal.journal_category_id}
-                    onValueChange={(v) => updateJournal("journal_category_id", v)}
+                    onValueChange={(v) =>
+                      updateJournal("journal_category_id", v)
+                    }
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select a subject category" />
                     </SelectTrigger>
                     <SelectContent>
                       {journalCategories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -511,7 +553,12 @@ export default function CreateJournal() {
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       placeholder="New category..."
                       className="w-40"
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleQuickAddCategory(); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleQuickAddCategory();
+                        }
+                      }}
                     />
                     <Button
                       type="button"

@@ -21,7 +21,15 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, Upload, X, Loader2, Pencil, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  Upload,
+  X,
+  Loader2,
+  Pencil,
+  ChevronRight,
+} from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface JournalData {
@@ -71,7 +79,8 @@ export default function EditJournalPage() {
     fetch(`${url}/journal/getJournal/${journalId}`)
       .then((r) => r.json())
       .then((data) => {
-        if (!data.success || !data.journal) throw new Error("Journal not found");
+        if (!data.success || !data.journal)
+          throw new Error("Journal not found");
         const j: JournalData = data.journal;
         setTitle(j.title ?? "");
         setIssn(j.issn ?? "");
@@ -82,12 +91,18 @@ export default function EditJournalPage() {
         setOaPolicy(j.oa_policy ?? "");
         setAuthorGuidelines(j.author_guidelines ?? "");
         setAimsAndScope(j.aims_and_scope ?? "");
-        setPublicationFee(j.publication_fee != null ? String(j.publication_fee) : "");
+        setPublicationFee(
+          j.publication_fee != null ? String(j.publication_fee) : "",
+        );
         setCurrency(j.currency ?? "USD");
         setCurrentLogoUrl(j.logo_url ?? null);
       })
       .catch((e) =>
-        toast({ variant: "destructive", title: "Error", description: e.message }),
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: e.message,
+        }),
       )
       .finally(() => setLoading(false));
   }, [journalId, token]);
@@ -97,11 +112,19 @@ export default function EditJournalPage() {
     if (!file) return;
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(file.type)) {
-      toast({ title: "Invalid file type", description: "Only JPG, PNG, WebP, or GIF allowed.", variant: "destructive" });
+      toast({
+        title: "Invalid file type",
+        description: "Only JPG, PNG, WebP, or GIF allowed.",
+        variant: "destructive",
+      });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Logo must be under 2MB.", variant: "destructive" });
+      toast({
+        title: "File too large",
+        description: "Logo must be under 2MB.",
+        variant: "destructive",
+      });
       return;
     }
     setLogo(file);
@@ -109,12 +132,36 @@ export default function EditJournalPage() {
   };
 
   const validate = () => {
-    if (!title.trim()) { toast({ variant: "destructive", title: "Journal Name is required" }); return false; }
-    if (!publisherName.trim()) { toast({ variant: "destructive", title: "Publisher Name is required" }); return false; }
-    if (!type) { toast({ variant: "destructive", title: "Type is required" }); return false; }
-    if (!peerReviewPolicy.trim()) { toast({ variant: "destructive", title: "Peer Review Policy is required" }); return false; }
-    if (!oaPolicy.trim()) { toast({ variant: "destructive", title: "OA Policy is required" }); return false; }
-    if (!authorGuidelines.trim()) { toast({ variant: "destructive", title: "Author Guidelines are required" }); return false; }
+    if (!title.trim()) {
+      toast({ variant: "destructive", title: "Journal Name is required" });
+      return false;
+    }
+    if (!publisherName.trim()) {
+      toast({ variant: "destructive", title: "Publisher Name is required" });
+      return false;
+    }
+    if (!type) {
+      toast({ variant: "destructive", title: "Type is required" });
+      return false;
+    }
+    if (!peerReviewPolicy.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Peer Review Policy is required",
+      });
+      return false;
+    }
+    if (!oaPolicy.trim()) {
+      toast({ variant: "destructive", title: "OA Policy is required" });
+      return false;
+    }
+    if (!authorGuidelines.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Author Guidelines are required",
+      });
+      return false;
+    }
     return true;
   };
 
@@ -150,7 +197,9 @@ export default function EditJournalPage() {
       if (!res.ok) {
         if (data.errors && Array.isArray(data.errors)) {
           const map: Record<string, string> = {};
-          data.errors.forEach((e: { field: string; message: string }) => { map[e.field] = e.message; });
+          data.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
           setFieldErrors(map);
         }
         throw new Error(data.message || "Failed to update journal");
@@ -159,7 +208,11 @@ export default function EditJournalPage() {
       toast({ title: "Journal updated successfully" });
       navigate("/publisher");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -180,22 +233,36 @@ export default function EditJournalPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Link to="/publisher" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link
+            to="/publisher"
+            className="hover:text-foreground transition-colors"
+          >
+            Dashboard
+          </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground truncate max-w-[200px]">{title || "Journal"}</span>
+          <span className="text-foreground truncate max-w-[200px]">
+            {title || "Journal"}
+          </span>
           <ChevronRight className="h-3 w-3" />
           <span className="text-foreground">Edit</span>
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/publisher")} className="gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/publisher")}
+            className="gap-1.5"
+          >
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <Pencil className="h-7 w-7 text-primary" /> Edit Journal
             </h1>
-            <p className="text-muted-foreground mt-0.5">Update journal details</p>
+            <p className="text-muted-foreground mt-0.5">
+              Update journal details
+            </p>
           </div>
         </div>
 
@@ -204,25 +271,42 @@ export default function EditJournalPage() {
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Journal Details
             </CardTitle>
-            <CardDescription>Edit the journal's core information</CardDescription>
+            <CardDescription>
+              Edit the journal's core information
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Logo */}
             <div className="space-y-1">
-              <Label>Journal Cover <span className="text-muted-foreground font-normal">(Portrait recommended: 3:4 ratio)</span></Label>
+              <Label>
+                Journal Cover{" "}
+                <span className="text-muted-foreground font-normal">
+                  (Portrait recommended: 3:4 ratio)
+                </span>
+              </Label>
               <div className="flex items-start gap-4">
                 <div
                   className="w-[90px] h-[120px] rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/60 transition-colors overflow-hidden shrink-0"
                   onClick={() => logoRef.current?.click()}
                 >
                   {logoPreview ? (
-                    <img src={logoPreview} alt="Cover preview" className="h-full w-full object-cover object-top" />
+                    <img
+                      src={logoPreview}
+                      alt="Cover preview"
+                      className="h-full w-full object-cover object-top"
+                    />
                   ) : currentLogoUrl ? (
-                    <img src={`${url}/${currentLogoUrl}`} alt="Current cover" className="h-full w-full object-cover object-top" />
+                    <img
+                      src={`${url}/${currentLogoUrl}`}
+                      alt="Current cover"
+                      className="h-full w-full object-cover object-top"
+                    />
                   ) : (
                     <div className="text-center px-1">
                       <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
-                      <span className="text-xs text-muted-foreground">Upload</span>
+                      <span className="text-xs text-muted-foreground">
+                        Upload
+                      </span>
                     </div>
                   )}
                 </div>
@@ -232,51 +316,115 @@ export default function EditJournalPage() {
                     <button
                       type="button"
                       className="text-destructive text-xs mt-1 flex items-center gap-1"
-                      onClick={() => { setLogo(null); setLogoPreview(null); if (logoRef.current) logoRef.current.value = ""; }}
+                      onClick={() => {
+                        setLogo(null);
+                        setLogoPreview(null);
+                        if (logoRef.current) logoRef.current.value = "";
+                      }}
                     >
                       <X className="h-3 w-3" /> {logo ? "Remove new logo" : ""}
                     </button>
                   )}
                 </div>
               </div>
-              <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleLogoChange} />
+              <input
+                ref={logoRef}
+                type="file"
+                className="hidden"
+                accept=".jpg,.jpeg,.png,.webp,.gif"
+                onChange={handleLogoChange}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Journal Name <span className="text-destructive">*</span></Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Journal of AI" className={fieldErrors["title"] ? "border-destructive" : ""} />
-                {fieldErrors["title"] && <p className="text-xs text-destructive">{fieldErrors["title"]}</p>}
+                <Label>
+                  Journal Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Journal of AI"
+                  className={fieldErrors["title"] ? "border-destructive" : ""}
+                />
+                {fieldErrors["title"] && (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors["title"]}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
-                <Label>Publisher Name <span className="text-destructive">*</span></Label>
-                <Input value={publisherName} onChange={(e) => setPublisherName(e.target.value)} placeholder="e.g. GIKI Press" className={fieldErrors["publisher_name"] ? "border-destructive" : ""} />
-                {fieldErrors["publisher_name"] && <p className="text-xs text-destructive">{fieldErrors["publisher_name"]}</p>}
+                <Label>
+                  Publisher Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={publisherName}
+                  onChange={(e) => setPublisherName(e.target.value)}
+                  placeholder="e.g. GIKI Press"
+                  className={
+                    fieldErrors["publisher_name"] ? "border-destructive" : ""
+                  }
+                />
+                {fieldErrors["publisher_name"] && (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors["publisher_name"]}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>ISSN</Label>
                 <Input
                   value={issn}
                   onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^0-9Xx]/g, "").toUpperCase();
-                    const formatted = cleaned.length <= 4 ? cleaned : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
+                    const cleaned = e.target.value
+                      .replace(/[^0-9Xx]/g, "")
+                      .toUpperCase();
+                    const formatted =
+                      cleaned.length <= 4
+                        ? cleaned
+                        : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
                     setIssn(formatted);
                   }}
                   placeholder="0000-000X"
                   maxLength={9}
                   className={fieldErrors["issn"] ? "border-destructive" : ""}
                 />
-                {fieldErrors["issn"] ? <p className="text-xs text-destructive">{fieldErrors["issn"]}</p> : <p className="text-xs text-muted-foreground">Format: XXXX-XXXX · Last character can be a number or X</p>}
+                {fieldErrors["issn"] ? (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors["issn"]}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Format: XXXX-XXXX · Last character can be a number or X
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>DOI</Label>
-                <Input value={doi} onChange={(e) => setDoi(e.target.value)} placeholder="e.g. 10.12345/journal.2026.001" className={fieldErrors["doi"] ? "border-destructive" : ""} />
-                {fieldErrors["doi"] ? <p className="text-xs text-destructive">{fieldErrors["doi"]}</p> : <p className="text-xs text-muted-foreground">Format: 10.XXXXX/suffix</p>}
+                <Input
+                  value={doi}
+                  onChange={(e) => setDoi(e.target.value)}
+                  placeholder="e.g. 10.12345/journal.2026.001"
+                  className={fieldErrors["doi"] ? "border-destructive" : ""}
+                />
+                {fieldErrors["doi"] ? (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors["doi"]}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Format: 10.XXXXX/suffix
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
-                <Label>Type <span className="text-destructive">*</span></Label>
+                <Label>
+                  Type <span className="text-destructive">*</span>
+                </Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="open_access">Open Access</SelectItem>
                     <SelectItem value="subscription">Subscription</SelectItem>
@@ -284,13 +432,22 @@ export default function EditJournalPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Publication Fee per Page</Label>
-                <Input type="number" min="0" step="0.01" value={publicationFee} onChange={(e) => setPublicationFee(e.target.value)} placeholder="e.g. 50" />
+                <Label>Publication Fee per Article</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={publicationFee}
+                  onChange={(e) => setPublicationFee(e.target.value)}
+                  placeholder="e.g. 50"
+                />
               </div>
               <div className="space-y-1">
                 <Label>Currency</Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
                     <SelectItem value="PKR">PKR</SelectItem>
@@ -302,31 +459,68 @@ export default function EditJournalPage() {
             </div>
 
             <div className="space-y-1">
-              <Label>Peer Review Policy <span className="text-destructive">*</span></Label>
-              <RichTextEditor value={peerReviewPolicy} onChange={setPeerReviewPolicy} placeholder="Describe the peer review process..." />
+              <Label>
+                Peer Review Policy <span className="text-destructive">*</span>
+              </Label>
+              <RichTextEditor
+                value={peerReviewPolicy}
+                onChange={setPeerReviewPolicy}
+                placeholder="Describe the peer review process..."
+              />
             </div>
 
             <div className="space-y-1">
-              <Label>OA Policy <span className="text-destructive">*</span></Label>
-              <RichTextEditor value={oaPolicy} onChange={setOaPolicy} placeholder="Describe the open access policy..." />
+              <Label>
+                OA Policy <span className="text-destructive">*</span>
+              </Label>
+              <RichTextEditor
+                value={oaPolicy}
+                onChange={setOaPolicy}
+                placeholder="Describe the open access policy..."
+              />
             </div>
 
             <div className="space-y-1">
-              <Label>Author Guidelines <span className="text-destructive">*</span></Label>
-              <RichTextEditor value={authorGuidelines} onChange={setAuthorGuidelines} placeholder="Guidelines for authors submitting manuscripts..." />
+              <Label>
+                Author Guidelines <span className="text-destructive">*</span>
+              </Label>
+              <RichTextEditor
+                value={authorGuidelines}
+                onChange={setAuthorGuidelines}
+                placeholder="Guidelines for authors submitting manuscripts..."
+              />
             </div>
 
             <div className="space-y-1">
               <Label>Aims & Scope</Label>
-              <RichTextEditor value={aimsAndScope} onChange={setAimsAndScope} placeholder="Describe the journal's aims and scope..." />
+              <RichTextEditor
+                value={aimsAndScope}
+                onChange={setAimsAndScope}
+                placeholder="Describe the journal's aims and scope..."
+              />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => navigate("/publisher")} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/publisher")}
+                className="flex-1"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting} className="flex-1">
-                {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </div>
           </CardContent>

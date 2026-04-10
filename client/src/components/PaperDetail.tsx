@@ -457,10 +457,15 @@ export default function JournalDetail() {
                           >
                             {/* Profile Pic on Left side */}
                             <div className="shrink-0">
-                              <Initials
-                                name={member.name}
-                                // profilePicUrl={member.profile_pic_url}
-                              />
+                              {member.profile_pic_url ? (
+                                <img
+                                  alt={member.name}
+                                  src={`${member.profile_pic_url}`}
+                                  className="w-20 h-20 rounded-full object-cover shrink-0"
+                                />
+                              ) : (
+                                <Initials name={member.name} />
+                              )}
                             </div>
 
                             {/* Details on Right side */}
@@ -469,35 +474,16 @@ export default function JournalDetail() {
                                 {member.name}
                               </h3>
 
-                              {/* Next line: Role/Type */}
                               <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">
                                 Editor-in-Chief
-                                </p>
-                            {member.profile_pic_url ? (
-                              <img
-                                alt={member.name}
-                                src={`${member.profile_pic_url}`}
-                                className="w-20 h-20 rounded-full object-cover shrink-0"
-                              />
-                            ) : (
-                              <Initials name={member.name} />
-                            )}
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">
-                              {member.name}
-                            </h3>
-                            {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">
-                                {member.degrees.join(", ")}
                               </p>
 
-                              {/* Next line: Degrees */}
                               {member.degrees?.length ? (
-                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                                <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
                                   {member.degrees.join(", ")}
                                 </p>
                               ) : null}
 
-                              {/* Next line: Area of Interest (Dynamic) */}
                               {member.keywords?.length ? (
                                 <div className="mt-2">
                                   <p className="text-[10px] uppercase text-muted-foreground font-semibold mb-1">
@@ -545,10 +531,15 @@ export default function JournalDetail() {
                           >
                             {/* Profile Pic on Left side */}
                             <div className="shrink-0">
-                              <Initials
-                                name={member.name}
-                                // profilePicUrl={member.profile_pic_url}
-                              />
+                              {member.profile_pic_url ? (
+                                <img
+                                  alt={member.name}
+                                  src={`${member.profile_pic_url}`}
+                                  className="w-20 h-20 rounded-full object-cover shrink-0"
+                                />
+                              ) : (
+                                <Initials name={member.name} />
+                              )}
                             </div>
 
                             {/* Details on Right side */}
@@ -558,32 +549,15 @@ export default function JournalDetail() {
                               </h3>
 
                               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                                Associate 
-                                </p>
-                            {member.profile_pic_url ? (
-                              <img
-                                alt={member.name}
-                                src={`${member.profile_pic_url}`}
-                                className="w-20 h-20 rounded-full object-cover shrink-0"
-                              />
-                            ) : (
-                              <Initials name={member.name} />
-                            )}
-                            <h3 className="font-semibold text-foreground mt-3 mb-1">
-                              {member.name}
-                            </h3>
-                            {member.degrees?.length ? (
-                              <p className="text-sm text-muted-foreground mb-1">
-                                {member.degrees.join(", ")}
+                                Associate Editor
                               </p>
 
                               {member.degrees?.length ? (
-                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                                <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
                                   {member.degrees.join(", ")}
                                 </p>
                               ) : null}
 
-                              {/* Dynamic Interests */}
                               {member.keywords?.length ? (
                                 <div className="mt-2">
                                   <p className="text-[10px] uppercase text-muted-foreground font-semibold mb-1">

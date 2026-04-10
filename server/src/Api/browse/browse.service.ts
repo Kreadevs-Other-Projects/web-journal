@@ -3,6 +3,7 @@ import {
   getBrowseDataRepo,
   getPublicPaperRepo,
   getPaperVersionForHtmlRepo,
+  getVersionForHtmlByIdRepo,
   cacheVersionHtmlRepo,
 } from "./browse.repository";
 
@@ -108,37 +109,19 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export const getPublicPaperHtmlService = async (
-  paperId: string,
-): Promise<string | null> => {
-  const version = await getPaperVersionForHtmlRepo(paperId);
-  if (!version) {
-    console.log(`[html] No version found for paper ${paperId}`);
-    return null;
-  }
-
-  // Return cached HTML if available
-  if (version.html_content) {
-    console.log(`[html] Returning cached HTML (${version.html_content.length} chars) for paper ${paperId}`);
-    return version.html_content;
-  }
-
-  if (!version.file_url) {
-    console.log(`[html] No file_url for paper ${paperId}`);
-    return null;
-  }
+async function convertVersionToHtml(version: {
+  id: string;
+  file_url: string | null;
+  html_content: string | null;
+}): Promise<string | null> {
+  if (version.html_content) return version.html_content;
+  if (!version.file_url) return null;
 
   const filename = path.basename(version.file_url);
   const primaryPath = path.resolve(__dirname, "../../../uploads", filename);
   const lowerUrl = version.file_url.toLowerCase();
 
-  console.log(`[html] file_url: ${version.file_url}`);
-  console.log(`[html] filename: ${filename}`);
-  console.log(`[html] primary path: ${primaryPath}`);
-
   const fsSync = (await import("fs")).default;
-
-  // Resolve actual file path — try primary then fallbacks
   const altPaths = [
     primaryPath,
     path.join(process.cwd(), "uploads", filename),
@@ -161,7 +144,6 @@ export const getPublicPaperHtmlService = async (
     return null;
   }
 
-  // .docx → mammoth
   if (lowerUrl.endsWith(".docx")) {
     try {
       const mammoth = (await import("mammoth")).default;
@@ -177,7 +159,6 @@ export const getPublicPaperHtmlService = async (
     return null;
   }
 
-  // .pdf → pdf-parse → structured HTML
   if (lowerUrl.endsWith(".pdf")) {
     try {
       const fs = await import("fs/promises");
@@ -185,7 +166,6 @@ export const getPublicPaperHtmlService = async (
       const buffer = await fs.readFile(resolvedPath);
       const data = await pdfParse(buffer);
       console.log(`[html] pdf-parse extracted ${data.text?.length ?? 0} chars`);
-
       const html = pdfTextToHtml(data.text);
       if (html) {
         await cacheVersionHtmlRepo(version.id, html);
@@ -198,4 +178,27 @@ export const getPublicPaperHtmlService = async (
   }
 
   return null;
+}
+
+export const getPublicPaperHtmlService = async (
+  paperId: string,
+): Promise<string | null> => {
+  const version = await getPaperVersionForHtmlRepo(paperId);
+  if (!version) {
+    console.log(`[html] No version found for paper ${paperId}`);
+    return null;
+  }
+  return convertVersionToHtml(version);
+};
+
+export const getPaperVersionHtmlService = async (
+  paperId: string,
+  versionId: string,
+): Promise<string | null> => {
+  const version = await getVersionForHtmlByIdRepo(paperId, versionId);
+  if (!version) {
+    console.log(`[html] Version ${versionId} not found for paper ${paperId}`);
+    return null;
+  }
+  return convertVersionToHtml(version);
 };

@@ -600,7 +600,7 @@ export default function AssignReviewerPage() {
                   <div className="flex items-center gap-2">
                     {selectedStaff.profile_pic_url ? (
                       <img
-                        src={`${url}/${selectedStaff.profile_pic_url}`}
+                        src={selectedStaff.profile_pic_url}
                         alt={selectedStaff.username}
                         className="w-8 h-8 rounded-full object-cover"
                       />

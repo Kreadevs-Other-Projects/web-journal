@@ -461,6 +461,8 @@ export const getSubmittedReviewsByChiefEditor = async (
       ON j.id = p.journal_id
     JOIN paper_versions pv
       ON pv.id = p.current_version_id
+    JOIN reviews r_exists
+      ON r_exists.review_assignment_id = ra.id
 
     LEFT JOIN sub_editor_decisions sed
       ON sed.paper_id = p.id
@@ -475,7 +477,7 @@ export const getSubmittedReviewsByChiefEditor = async (
 
     WHERE
       j.chief_editor_id = $1
-      AND ra.status = 'submitted'
+      AND ra.status != 'reassigned'
       AND ea.status = 'accepted'
 
     ORDER BY ra.submitted_at DESC

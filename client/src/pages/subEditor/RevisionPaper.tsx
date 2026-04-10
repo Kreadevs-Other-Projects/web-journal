@@ -336,17 +336,20 @@ export default function RevisionPaper() {
     } else {
       setViewMode("pdf");
     }
-  }, [viewPdf?.paperId]);
+  }, [viewPdf?.paperVersionId]);
 
-  // Fetch HTML when switching to text view
+  // Fetch HTML when switching to text view — version-specific so switching versions works
   useEffect(() => {
     if (viewMode !== "text" || !viewPdf?.paperId || viewerHtml) return;
+    const versionId = viewPdf.paperVersionId;
+    if (!versionId) return;
     setViewerHtmlLoading(true);
     const fetchHtml = async () => {
       try {
-        const r = await fetch(`${url}/papers/${viewPdf.paperId}/html`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const r = await fetch(
+          `${url}/papers/${viewPdf.paperId}/version/${versionId}/html`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         const d = await r.json();
         if (d.success && d.html) setViewerHtml(d.html);
         else setViewerHtml(null);
@@ -357,7 +360,7 @@ export default function RevisionPaper() {
       }
     };
     fetchHtml();
-  }, [viewMode, viewPdf?.paperId]);
+  }, [viewMode, viewPdf?.paperVersionId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -426,9 +429,28 @@ export default function RevisionPaper() {
   });
 
   const getCountByStatus = (status: string) => {
-    return reviews.filter((review) => review.editorAssignmentStatus === status)
-      .length;
+    return new Set(
+      reviews
+        .filter((review) => review.editorAssignmentStatus === status)
+        .map((r) => r.paperId),
+    ).size;
   };
+
+  const uniquePaperCount = new Set(reviews.map((r) => r.paperId)).size;
+
+  const filteredPaperGroups = Object.values(
+    filteredReviews.reduce(
+      (acc, r) => {
+        if (!acc[r.paperId]) acc[r.paperId] = { paper: r, reviewList: [r] };
+        else acc[r.paperId].reviewList.push(r);
+        return acc;
+      },
+      {} as Record<
+        string,
+        { paper: SubmittedReview; reviewList: SubmittedReview[] }
+      >,
+    ),
+  );
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
@@ -445,7 +467,7 @@ export default function RevisionPaper() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
             <Shield className="h-5 w-5 text-blue-400" />
             <span className="text-sm font-medium">
-              {reviews.length} Paper{reviews.length !== 1 ? "s" : ""} Assigned
+              {uniquePaperCount} Paper{uniquePaperCount !== 1 ? "s" : ""} Assigned
             </span>
           </div>
         </div>
@@ -458,8 +480,11 @@ export default function RevisionPaper() {
                   <p className="text-sm text-muted-foreground">Under Review</p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter((r) => r.paperStatus === "under_review")
-                        .length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "under_review")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -479,9 +504,11 @@ export default function RevisionPaper() {
                   </p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter(
-                        (r) => r.paperStatus === "pending_revision",
-                      ).length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "pending_revision")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -499,8 +526,11 @@ export default function RevisionPaper() {
                   <p className="text-sm text-muted-foreground">Resubmitted</p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter((r) => r.paperStatus === "resubmitted")
-                        .length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "resubmitted")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -523,7 +553,8 @@ export default function RevisionPaper() {
                   </h3>
                 </div>
                 <Badge variant="outline" className="text-muted-foreground">
-                  Showing {filteredReviews.length} of {reviews.length} papers
+                  Showing {filteredPaperGroups.length} of {uniquePaperCount}{" "}
+                  papers
                 </Badge>
               </div>
 
@@ -608,9 +639,9 @@ export default function RevisionPaper() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {filteredReviews.map((r) => (
+                      {filteredPaperGroups.map(({ paper: r, reviewList }) => (
                         <Card
-                          key={r.reviewAssignmentId}
+                          key={r.paperId}
                           className="border-border hover:border-primary/40 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
                         >
                           <CardHeader className="pb-4">
@@ -663,98 +694,79 @@ export default function RevisionPaper() {
                                 </p>
                               </div>
                             )}
+
                             <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <PenTool className="h-4 w-4" />
-                                    Paper Details
-                                  </p>
-                                  <div className="text-sm space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground">
-                                        Status:
-                                      </span>
-                                      <span
-                                        className={`px-2 py-1 rounded text-xs ${getStatusColor(r.paperStatus)}`}
-                                      >
-                                        {r.paperStatus.replace("_", " ")}
-                                      </span>
+                              {/* Latest reviewer review */}
+                              {(() => {
+                                const latest = [...reviewList].sort(
+                                  (a, b) =>
+                                    new Date(b.submittedAt).getTime() -
+                                    new Date(a.submittedAt).getTime(),
+                                )[0];
+                                return (
+                                  <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                      <User className="h-4 w-4" />
+                                      Latest Review
+                                      {reviewList.length > 1 && (
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                          ({reviewList.length} total — see "View
+                                          Reviewers")
+                                        </span>
+                                      )}
+                                    </p>
+                                    <div className="text-sm bg-muted rounded-lg p-3 border border-border space-y-1.5">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-foreground">
+                                          {latest.reviewerName ||
+                                            (latest.reviewerId
+                                              ? "Assigned"
+                                              : "Not assigned")}
+                                        </span>
+                                        <span className="capitalize text-xs font-medium px-2 py-0.5 rounded bg-background border border-border">
+                                          {latest.decision || "Pending"}
+                                        </span>
+                                      </div>
+                                      {latest.comments ? (
+                                        <p className="text-muted-foreground line-clamp-2 text-xs">
+                                          {latest.comments}
+                                        </p>
+                                      ) : (
+                                        <p className="text-muted-foreground italic text-xs">
+                                          No comments provided
+                                        </p>
+                                      )}
+                                      {latest.signatureUrl && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-xs gap-1 px-2 hover:text-emerald-400"
+                                          onClick={() => {
+                                            setSelectedSignature(
+                                              `${url}${latest.signatureUrl}`,
+                                            );
+                                            setSignatureModalOpen(true);
+                                          }}
+                                        >
+                                          <CheckCircle className="h-3 w-3" />
+                                          View Signature
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
-                                </div>
+                                );
+                              })()}
 
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    Review Details
-                                  </p>
-                                  <div className="text-sm space-y-1">
-                                    <p className="text-muted-foreground">
-                                      Decision:{" "}
-                                      <span className="text-foreground font-semibold capitalize">
-                                        {r.decision || "Pending"}
-                                      </span>
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      Reviewer:{" "}
-                                      <span className="text-foreground">
-                                        {r.reviewerName ||
-                                          (r.reviewerId
-                                            ? "Assigned"
-                                            : "Not assigned")}
-                                      </span>
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-foreground">
-                                  Review Comments
-                                </p>
-                                <div className="text-sm bg-muted rounded-lg p-3 border border-border">
-                                  <p
-                                    className={
-                                      r.comments
-                                        ? "line-clamp-2"
-                                        : "text-muted-foreground italic"
-                                    }
-                                  >
-                                    {r.comments || "No comments provided"}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between pt-2">
-                                {r.fileUrl && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
-                                    onClick={() => setViewPdf(r)}
-                                  >
-                                    <Eye className="h-4 w-4" /> View Paper
-                                  </Button>
-                                )}
-
-                                {r.signatureUrl && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 hover:border-emerald-500/50 hover:bg-emerald-500/10"
-                                    onClick={() => {
-                                      setSelectedSignature(
-                                        `${url}${r.signatureUrl}`,
-                                      );
-                                      setSignatureModalOpen(true);
-                                    }}
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                    View Signature
-                                  </Button>
-                                )}
-                              </div>
+                              {r.fileUrl && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
+                                  onClick={() => setViewPdf(r)}
+                                >
+                                  <Eye className="h-4 w-4" /> View Paper
+                                </Button>
+                              )}
                             </div>
 
                             <div className="flex flex-col gap-3 pt-4 border-t border-border">

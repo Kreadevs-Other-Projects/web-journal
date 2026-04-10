@@ -14,6 +14,7 @@ import {
   getMetadataCheck,
   uploadRevisionController,
   getPaperHtmlController,
+  getPaperVersionHtmlController,
   getStatusLogController,
   editPaperMetadataController,
   getPublicKeywordSuggestionsController,
@@ -83,6 +84,13 @@ router.post(
   authMiddleware,
   manuscriptUpload.single("manuscript"),
   uploadRevisionController,
+);
+
+router.get(
+  "/:paperId/version/:versionId/html",
+  authMiddleware,
+  authorize("sub_editor", "reviewer", "chief_editor", "author", "publisher"),
+  getPaperVersionHtmlController,
 );
 
 router.get(

@@ -107,7 +107,13 @@ export default function ReviewerDashboard() {
 
   // Version switcher
   const [versions, setVersions] = useState<
-    { id: string; version_number: number; file_url: string; file_type: string; created_at: string; }[]
+    {
+      id: string;
+      version_number: number;
+      file_url: string;
+      file_type: string;
+      created_at: string;
+    }[]
   >([]);
   const [selectedVersion, setSelectedVersion] = useState<{
     id: string;
@@ -128,6 +134,7 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
+      console.log(result);
 
       if (!res.ok) {
         console.error("Failed to fetch papers:", result.message || result);
@@ -288,8 +295,14 @@ export default function ReviewerDashboard() {
       });
 
       if (selectedPaper) {
-        const completed = { ...selectedPaper, assignment_status: "completed", review_decision: decision };
-        setPapers((prev) => prev.filter((p) => p.paper_id !== selectedPaper.paper_id));
+        const completed = {
+          ...selectedPaper,
+          assignment_status: "completed",
+          review_decision: decision,
+        };
+        setPapers((prev) =>
+          prev.filter((p) => p.paper_id !== selectedPaper.paper_id),
+        );
         setCompletedReviews((prev) => [completed, ...prev]);
       }
       resetForm();
@@ -377,7 +390,9 @@ export default function ReviewerDashboard() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.versions) {
-          const sorted = [...d.versions].sort((a, b) => a.version_number - b.version_number);
+          const sorted = [...d.versions].sort(
+            (a, b) => a.version_number - b.version_number,
+          );
           setVersions(sorted);
           // Default to the version the reviewer is assigned to review
           const current =
@@ -402,18 +417,20 @@ export default function ReviewerDashboard() {
     }
   }, [selectedPaper?.paper_id, selectedVersion?.id]);
 
-  // Fetch HTML when switching to text view
+  // Fetch HTML when switching to text view — version-specific so switching versions works
   useEffect(() => {
-    if (viewMode !== "text" || !selectedPaper?.paper_id || htmlContent) return;
+    if (viewMode !== "text" || !selectedPaper?.paper_id) return;
+    const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
+    if (!versionId) return;
     setHtmlLoading(true);
-    fetch(`${url}/papers/${selectedPaper.paper_id}/html`, {
+    fetch(`${url}/papers/${selectedPaper.paper_id}/version/${versionId}/html`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((d) => setHtmlContent(d.success && d.html ? d.html : null))
       .catch(() => setHtmlContent(null))
       .finally(() => setHtmlLoading(false));
-  }, [viewMode, selectedPaper?.paper_id]);
+  }, [viewMode, selectedVersion?.id, selectedPaper?.paper_id]);
 
   useEffect(() => {
     if (token) fetchPapers();
@@ -478,7 +495,9 @@ export default function ReviewerDashboard() {
                   {/* Version selector */}
                   {versions.length > 0 && (
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground shrink-0">Version:</span>
+                      <span className="text-sm text-muted-foreground shrink-0">
+                        Version:
+                      </span>
                       <Select
                         value={selectedVersion?.id ?? ""}
                         onValueChange={(val) => {
@@ -491,15 +510,24 @@ export default function ReviewerDashboard() {
                         </SelectTrigger>
                         <SelectContent>
                           {versions.map((v) => (
-                            <SelectItem key={v.id} value={v.id} className="text-xs">
+                            <SelectItem
+                              key={v.id}
+                              value={v.id}
+                              className="text-xs"
+                            >
                               v{v.version_number}
-                              {v.id === selectedPaper.paper_version_id ? " (latest)" : ""}
+                              {v.id === selectedPaper.paper_version_id
+                                ? " (latest)"
+                                : ""}
                               {" — "}
-                              {new Date(v.created_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {new Date(v.created_at).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -601,26 +629,39 @@ export default function ReviewerDashboard() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {/* Old version banner */}
-                  {selectedVersion && selectedVersion.id !== selectedPaper.paper_version_id && (
-                    <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
-                      <p className="text-xs text-amber-800 dark:text-amber-200">
-                        You are viewing <span className="font-semibold">v{selectedVersion.version_number}</span> — this is not the current version.
-                      </p>
-                      <button
-                        className="text-xs text-amber-700 dark:text-amber-300 underline shrink-0"
-                        onClick={() => {
-                          const latest = versions.find((v) => v.id === selectedPaper.paper_version_id) || versions[versions.length - 1];
-                          if (latest) setSelectedVersion(latest);
-                        }}
-                      >
-                        Switch to v{versions.find((v) => v.id === selectedPaper.paper_version_id)?.version_number ?? versions[versions.length - 1]?.version_number}
-                      </button>
-                    </div>
-                  )}
+                  {selectedVersion &&
+                    selectedVersion.id !== selectedPaper.paper_version_id && (
+                      <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          You are viewing{" "}
+                          <span className="font-semibold">
+                            v{selectedVersion.version_number}
+                          </span>{" "}
+                          — this is not the current version.
+                        </p>
+                        <button
+                          className="text-xs text-amber-700 dark:text-amber-300 underline shrink-0"
+                          onClick={() => {
+                            const latest =
+                              versions.find(
+                                (v) => v.id === selectedPaper.paper_version_id,
+                              ) || versions[versions.length - 1];
+                            if (latest) setSelectedVersion(latest);
+                          }}
+                        >
+                          Switch to v
+                          {versions.find(
+                            (v) => v.id === selectedPaper.paper_version_id,
+                          )?.version_number ??
+                            versions[versions.length - 1]?.version_number}
+                        </button>
+                      </div>
+                    )}
                   <div className="aspect-[3/4] bg-muted/30 relative overflow-hidden">
                     {viewMode === "pdf" ? (
                       (() => {
-                        const displayFileUrl = selectedVersion?.file_url || selectedPaper.file_url;
+                        const displayFileUrl =
+                          selectedVersion?.file_url || selectedPaper.file_url;
                         const ext = displayFileUrl
                           ?.split(".")
                           .pop()
@@ -951,13 +992,22 @@ export default function ReviewerDashboard() {
                           </RadioGroup>
                         </div>
 
-                        {selectedVersion && selectedVersion.id !== selectedPaper.paper_version_id ? (
+                        {selectedVersion &&
+                        selectedVersion.id !==
+                          selectedPaper.paper_version_id ? (
                           <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-center">
                             <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
-                              You can only submit a review for the latest version
+                              You can only submit a review for the latest
+                              version
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                              Switch to v{versions.find((v) => v.id === selectedPaper.paper_version_id)?.version_number ?? versions[versions.length - 1]?.version_number} to submit your review.
+                              Switch to v
+                              {versions.find(
+                                (v) => v.id === selectedPaper.paper_version_id,
+                              )?.version_number ??
+                                versions[versions.length - 1]
+                                  ?.version_number}{" "}
+                              to submit your review.
                             </p>
                           </div>
                         ) : (

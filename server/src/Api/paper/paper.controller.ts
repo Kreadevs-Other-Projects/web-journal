@@ -17,7 +17,7 @@ import {
 } from "./paper.service";
 import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
-import { getPublicPaperHtmlService } from "../browse/browse.service";
+import { getPublicPaperHtmlService, getPaperVersionHtmlService } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
@@ -204,6 +204,17 @@ export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to get paper HTML" });
+  }
+};
+
+export const getPaperVersionHtmlController = async (req: AuthUser, res: Response) => {
+  const { paperId, versionId } = req.params;
+  try {
+    const html = await getPaperVersionHtmlService(paperId, versionId);
+    res.json({ success: true, html: html || null });
+  } catch (err) {
+    console.error("getPaperVersionHtmlController error:", err);
+    res.status(500).json({ success: false, message: "Failed to get version HTML" });
   }
 };
 

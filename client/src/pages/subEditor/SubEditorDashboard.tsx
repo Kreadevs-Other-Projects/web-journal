@@ -181,6 +181,7 @@ export default function SubEditorDashboard() {
 
       setPapers(data.papers || []);
       setFilteredPapers(data.papers || []);
+      console.log(data);
 
       const underReview = data.papers.filter(
         (p) => p.status === "under_review",
@@ -299,15 +300,26 @@ export default function SubEditorDashboard() {
     try {
       const res = await fetch(`${url}/subEditor/remind-reviewer`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ paper_id: selectedPaper.id, reviewer_id: reviewerId }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paper_id: selectedPaper.id,
+          reviewer_id: reviewerId,
+        }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || "Failed to send reminder");
+      if (!data.success)
+        throw new Error(data.message || "Failed to send reminder");
       toast({ title: "Reminder sent", description: data.message });
       setReminderSent((prev) => ({ ...prev, [reviewerId]: true }));
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message || "Could not send reminder", variant: "destructive" });
+      toast({
+        title: "Failed",
+        description: err.message || "Could not send reminder",
+        variant: "destructive",
+      });
     }
   };
 
@@ -344,11 +356,14 @@ export default function SubEditorDashboard() {
     }
   };
 
-  const fetchDocxHtml = useCallback(async (paperId: string) => {
+  const fetchDocxHtml = useCallback(async (paperId: string, versionId: string) => {
     try {
       setDocxLoading(true);
       setDocxHtml(null);
-      const res = await fetch(`${url}/browse/paper/${paperId}/html`);
+      const res = await fetch(
+        `${url}/papers/${paperId}/version/${versionId}/html`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       const data = await res.json();
       if (data.success && data.html) {
         setDocxHtml(data.html);
@@ -360,7 +375,7 @@ export default function SubEditorDashboard() {
     } finally {
       setDocxLoading(false);
     }
-  }, []);
+  }, [token]);
 
   const fetchPaperReviews = async (paperId: string) => {
     try {
@@ -441,10 +456,14 @@ export default function SubEditorDashboard() {
         prev ? { ...prev, status: newStatus } : null,
       );
       setPapers((prev) =>
-        prev.map((p) => (p.id === selectedPaper!.id ? { ...p, status: newStatus } : p)),
+        prev.map((p) =>
+          p.id === selectedPaper!.id ? { ...p, status: newStatus } : p,
+        ),
       );
       setFilteredPapers((prev) =>
-        prev.map((p) => (p.id === selectedPaper!.id ? { ...p, status: newStatus } : p)),
+        prev.map((p) =>
+          p.id === selectedPaper!.id ? { ...p, status: newStatus } : p,
+        ),
       );
       fetchPapers();
     } catch (err: any) {
@@ -581,11 +600,11 @@ export default function SubEditorDashboard() {
     if (!selectedVersion || !selectedPaper) return;
     const ext = selectedVersion.file_url?.split(".").pop()?.toLowerCase();
     if (ext === "docx") {
-      fetchDocxHtml(selectedPaper.id);
+      fetchDocxHtml(selectedPaper.id, selectedVersion.id);
     } else {
       setDocxHtml(null);
     }
-  }, [selectedVersion, selectedPaper, fetchDocxHtml]);
+  }, [selectedVersion?.id, selectedPaper?.id, fetchDocxHtml]);
 
   // Reset view mode when switching papers
   useEffect(() => {
@@ -1632,24 +1651,36 @@ export default function SubEditorDashboard() {
                 <div className="inline-flex p-3 rounded-full bg-muted">
                   <UserCheck className="h-8 w-8 text-muted-foreground opacity-50" />
                 </div>
-                <p className="text-muted-foreground">No reviewers assigned yet</p>
+                <p className="text-muted-foreground">
+                  No reviewers assigned yet
+                </p>
               </div>
             ) : (
               reviewers.map((reviewer, index) => (
-                <div key={reviewer.assignment_id || reviewer.id} className="border rounded-lg p-4">
+                <div
+                  key={reviewer.assignment_id || reviewer.id}
+                  className="border rounded-lg p-4"
+                >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
                         {reviewer.username?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Reviewer {index + 1}</p>
-                        <p className="text-xs text-muted-foreground">{reviewer.username}</p>
+                        <p className="text-sm font-medium">
+                          Reviewer {index + 1}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {reviewer.username}
+                        </p>
                       </div>
                     </div>
                     {reviewer.reviewed_at && (
                       <span className="text-xs text-muted-foreground">
-                        {new Date(reviewer.reviewed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        {new Date(reviewer.reviewed_at).toLocaleDateString(
+                          "en-GB",
+                          { day: "2-digit", month: "short", year: "numeric" },
+                        )}
                       </span>
                     )}
                   </div>
@@ -1657,10 +1688,18 @@ export default function SubEditorDashboard() {
                   {reviewer.expertise && reviewer.expertise.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
                       {reviewer.expertise.slice(0, 3).map((exp, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">{exp}</Badge>
+                        <Badge
+                          key={idx}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {exp}
+                        </Badge>
                       ))}
                       {reviewer.expertise.length > 3 && (
-                        <Badge variant="outline" className="text-xs">+{reviewer.expertise.length - 3} more</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          +{reviewer.expertise.length - 3} more
+                        </Badge>
                       )}
                     </div>
                   )}
@@ -1669,21 +1708,31 @@ export default function SubEditorDashboard() {
                     <>
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">Review Completed</span>
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                          Review Completed
+                        </span>
                         {reviewer.decision && (
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium border ${
-                            reviewer.decision === "accepted" ? "bg-green-500/10 text-green-700 border-green-500/30" :
-                            reviewer.decision === "rejected" ? "bg-destructive/10 text-destructive border-destructive/30" :
-                            "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
-                          }`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                              reviewer.decision === "accepted"
+                                ? "bg-green-500/10 text-green-700 border-green-500/30"
+                                : reviewer.decision === "rejected"
+                                  ? "bg-destructive/10 text-destructive border-destructive/30"
+                                  : "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                            }`}
+                          >
                             {reviewer.decision}
                           </span>
                         )}
                       </div>
                       {reviewer.comments && (
                         <div className="bg-muted/50 rounded p-3">
-                          <p className="text-xs text-muted-foreground mb-1 font-medium">Comments:</p>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{reviewer.comments}</p>
+                          <p className="text-xs text-muted-foreground mb-1 font-medium">
+                            Comments:
+                          </p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {reviewer.comments}
+                          </p>
                         </div>
                       )}
                     </>
@@ -1691,7 +1740,9 @@ export default function SubEditorDashboard() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-yellow-500" />
-                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pending Review</span>
+                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                          Pending Review
+                        </span>
                       </div>
                       <Button
                         size="sm"
@@ -1700,7 +1751,9 @@ export default function SubEditorDashboard() {
                         onClick={() => sendReminderToReviewer(reviewer.id)}
                         disabled={reminderSent[reviewer.id]}
                       >
-                        {reminderSent[reviewer.id] ? "Reminded ✓" : "Send Reminder"}
+                        {reminderSent[reviewer.id]
+                          ? "Reminded ✓"
+                          : "Send Reminder"}
                       </Button>
                     </div>
                   )}

@@ -223,18 +223,20 @@ export default function CEPaperViewPage() {
     else setViewMode("pdf");
   }, [selectedVersion?.id]);
 
-  // Fetch HTML for text view (always uses current paper's HTML conversion)
+  // Fetch HTML for text view — version-specific so switching versions works
   useEffect(() => {
-    if (viewMode !== "text" || !paperId || htmlContent) return;
+    if (viewMode !== "text" || !paperId) return;
+    const versionId = selectedVersion?.id;
+    if (!versionId) return;
     setHtmlLoading(true);
-    fetch(`${url}/papers/${paperId}/html`, {
+    fetch(`${url}/papers/${paperId}/version/${versionId}/html`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((d) => setHtmlContent(d.success && d.html ? d.html : null))
       .catch(() => setHtmlContent(null))
       .finally(() => setHtmlLoading(false));
-  }, [viewMode, paperId]);
+  }, [viewMode, selectedVersion?.id]);
 
   // Fetch decision history
   useEffect(() => {

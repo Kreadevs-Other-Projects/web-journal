@@ -40,8 +40,18 @@ import {
   AlignLeft,
   FileX,
   BookOpen,
+  Info,
+  X,
+  User,
 } from "lucide-react";
 import DOMPurify from "dompurify";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +78,7 @@ interface Paper {
   journal_name?: string;
   journal_acronym?: string;
   issue_label?: string;
+  ae_name?: string;
 }
 
 export default function ReviewerDashboard() {
@@ -76,6 +87,13 @@ export default function ReviewerDashboard() {
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [completedReviews, setCompletedReviews] = useState<Paper[]>([]);
+  const [showReviewerHint, setShowReviewerHint] = useState(
+    () => !localStorage.getItem("hint_dismissed_reviewer"),
+  );
+  const dismissReviewerHint = () => {
+    localStorage.setItem("hint_dismissed_reviewer", "true");
+    setShowReviewerHint(false);
+  };
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
@@ -86,6 +104,24 @@ export default function ReviewerDashboard() {
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [htmlLoading, setHtmlLoading] = useState(false);
+
+  // Version switcher
+  const [versions, setVersions] = useState<
+    {
+      id: string;
+      version_number: number;
+      file_url: string;
+      file_type: string;
+      created_at: string;
+    }[]
+  >([]);
+  const [selectedVersion, setSelectedVersion] = useState<{
+    id: string;
+    version_number: number;
+    file_url: string;
+    file_type: string;
+    created_at: string;
+  } | null>(null);
 
   const fetchPapers = async () => {
     if (!token) return;
@@ -98,6 +134,7 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
+      console.log(result);
 
       if (!res.ok) {
         console.error("Failed to fetch papers:", result.message || result);
@@ -257,6 +294,17 @@ export default function ReviewerDashboard() {
         description: "Review submitted successfully",
       });
 
+      if (selectedPaper) {
+        const completed = {
+          ...selectedPaper,
+          assignment_status: "completed",
+          review_decision: decision,
+        };
+        setPapers((prev) =>
+          prev.filter((p) => p.paper_id !== selectedPaper.paper_id),
+        );
+        setCompletedReviews((prev) => [completed, ...prev]);
+      }
       resetForm();
       fetchPapers();
     } catch (err) {
@@ -329,30 +377,56 @@ export default function ReviewerDashboard() {
     }).length;
   };
 
-  // Auto-switch to text view for docx
+  // Fetch all versions when selected paper changes
   useEffect(() => {
-    setHtmlContent(null);
-    if (!selectedPaper?.file_url) return;
-    const ext = selectedPaper.file_url.split(".").pop()?.toLowerCase();
-    if (ext === "docx") {
-      setViewMode("text");
-    } else {
-      setViewMode("pdf");
+    if (!selectedPaper) {
+      setVersions([]);
+      setSelectedVersion(null);
+      return;
     }
+    fetch(`${url}/paper-versions/getPaperVersions/${selectedPaper.paper_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.versions) {
+          const sorted = [...d.versions].sort(
+            (a, b) => a.version_number - b.version_number,
+          );
+          setVersions(sorted);
+          // Default to the version the reviewer is assigned to review
+          const current =
+            sorted.find((v) => v.id === selectedPaper.paper_version_id) ||
+            sorted[sorted.length - 1];
+          setSelectedVersion(current || null);
+        }
+      })
+      .catch(() => {});
   }, [selectedPaper?.paper_id]);
 
-  // Fetch HTML when switching to text view
+  // Auto-switch to text view for docx based on selected version
   useEffect(() => {
-    if (viewMode !== "text" || !selectedPaper?.paper_id || htmlContent) return;
+    setHtmlContent(null);
+    setViewMode("pdf");
+  }, [selectedPaper?.paper_id, selectedVersion?.id]);
+
+  // Fetch HTML when switching to text view or when viewing a DOCX in "pdf" (Document) mode
+  useEffect(() => {
+    const fileUrl = selectedVersion?.file_url || selectedPaper?.file_url;
+    const ext = fileUrl?.split(".").pop()?.toLowerCase();
+    const needsHtml = viewMode === "text" || (viewMode === "pdf" && ext === "docx");
+    if (!needsHtml || !selectedPaper?.paper_id) return;
+    const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
+    if (!versionId) return;
     setHtmlLoading(true);
-    fetch(`${url}/papers/${selectedPaper.paper_id}/html`, {
+    fetch(`${url}/papers/${selectedPaper.paper_id}/version/${versionId}/html`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((d) => setHtmlContent(d.success && d.html ? d.html : null))
       .catch(() => setHtmlContent(null))
       .finally(() => setHtmlLoading(false));
-  }, [viewMode, selectedPaper?.paper_id]);
+  }, [viewMode, selectedVersion?.id, selectedPaper?.paper_id]);
 
   useEffect(() => {
     if (token) fetchPapers();
@@ -391,9 +465,18 @@ export default function ReviewerDashboard() {
                 <h1 className="font-serif-outfit text-2xl font-bold text-white">
                   {selectedPaper.title}
                 </h1>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <Badge variant="outline">{selectedPaper.category}</Badge>
                   <Badge variant="secondary">{selectedPaper.version}</Badge>
+                  {selectedPaper.ae_name && (
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <User className="h-3.5 w-3.5" />
+                      AE:{" "}
+                      <span className="text-foreground">
+                        {selectedPaper.ae_name}
+                      </span>
+                    </span>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     {selectedPaper.dueDate &&
                       `Due: ${new Date(selectedPaper.dueDate).toLocaleDateString()}`}
@@ -404,7 +487,50 @@ export default function ReviewerDashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <Card className="glass-card overflow-hidden">
-                <CardHeader className="border-b border-border/50">
+                <CardHeader className="border-b border-border/50 space-y-3">
+                  {/* Version selector */}
+                  {versions.length > 0 && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">
+                        Version:
+                      </span>
+                      <Select
+                        value={selectedVersion?.id ?? ""}
+                        onValueChange={(val) => {
+                          const v = versions.find((v) => v.id === val);
+                          if (v) setSelectedVersion(v);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-48 text-xs">
+                          <SelectValue placeholder="Select version" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {versions.map((v) => (
+                            <SelectItem
+                              key={v.id}
+                              value={v.id}
+                              className="text-xs"
+                            >
+                              v{v.version_number}
+                              {v.id === selectedPaper.paper_version_id
+                                ? " (latest)"
+                                : ""}
+                              {" — "}
+                              {new Date(v.created_at).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5 text-primary" />
@@ -422,7 +548,7 @@ export default function ReviewerDashboard() {
                           }`}
                         >
                           <FileText className="h-3.5 w-3.5" />
-                          PDF
+                          {(selectedVersion?.file_url || selectedPaper.file_url)?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF"}
                         </button>
                         <button
                           onClick={() => setViewMode("text")}
@@ -473,7 +599,7 @@ export default function ReviewerDashboard() {
                         size="sm"
                         onClick={() =>
                           window.open(
-                            `${url}${selectedPaper.file_url}`,
+                            `${url}${selectedVersion?.file_url || selectedPaper.file_url}`,
                             "_blank",
                           )
                         }
@@ -485,7 +611,7 @@ export default function ReviewerDashboard() {
                         size="sm"
                         onClick={() => {
                           const link = document.createElement("a");
-                          link.href = `${url}${selectedPaper.file_url}`;
+                          link.href = `${url}${selectedVersion?.file_url || selectedPaper.file_url}`;
                           link.download = `${selectedPaper.title}.pdf`;
                           document.body.appendChild(link);
                           link.click();
@@ -498,32 +624,87 @@ export default function ReviewerDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
+                  {/* Old version banner */}
+                  {selectedVersion &&
+                    selectedVersion.id !== selectedPaper.paper_version_id && (
+                      <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          You are viewing{" "}
+                          <span className="font-semibold">
+                            v{selectedVersion.version_number}
+                          </span>{" "}
+                          — this is not the current version.
+                        </p>
+                        <button
+                          className="text-xs text-amber-700 dark:text-amber-300 underline shrink-0"
+                          onClick={() => {
+                            const latest =
+                              versions.find(
+                                (v) => v.id === selectedPaper.paper_version_id,
+                              ) || versions[versions.length - 1];
+                            if (latest) setSelectedVersion(latest);
+                          }}
+                        >
+                          Switch to v
+                          {versions.find(
+                            (v) => v.id === selectedPaper.paper_version_id,
+                          )?.version_number ??
+                            versions[versions.length - 1]?.version_number}
+                        </button>
+                      </div>
+                    )}
                   <div className="aspect-[3/4] bg-muted/30 relative overflow-hidden">
                     {viewMode === "pdf" ? (
                       (() => {
-                        const ext = selectedPaper.file_url
+                        const displayFileUrl =
+                          selectedVersion?.file_url || selectedPaper.file_url;
+                        const ext = displayFileUrl
                           ?.split(".")
                           .pop()
                           ?.toLowerCase();
                         if (ext === "docx") {
                           return (
-                            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
-                              <FileX className="h-10 w-10" />
-                              <p className="text-sm">
-                                PDF view is not available for Word documents.
-                              </p>
-                              <button
-                                onClick={() => setViewMode("text")}
-                                className="text-sm text-primary underline"
-                              >
-                                Switch to Text view
-                              </button>
+                            <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
+                              {htmlLoading ? (
+                                <div className="flex items-center justify-center h-full">
+                                  <div className="text-center">
+                                    <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+                                    <p className="text-sm text-muted-foreground">Converting document...</p>
+                                  </div>
+                                </div>
+                              ) : htmlContent ? (
+                                <div className="max-w-[700px] mx-auto px-8 py-10">
+                                  <div className="mb-8 pb-6 border-b">
+                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+                                      {selectedPaper.title}
+                                    </h1>
+                                    {selectedPaper.abstract && (
+                                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedPaper.abstract}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div
+                                    className="paper-webview-content"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center h-full">
+                                  <div className="text-center p-8">
+                                    <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                    <p className="text-sm font-medium">Document preview unavailable</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Could not convert this document.</p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         }
                         return (
                           <iframe
-                            src={`${url}${selectedPaper.file_url}#view=FitH`}
+                            src={`${url}${displayFileUrl}#view=FitH`}
                             className="w-full h-full border-0"
                             style={{
                               transform: `scale(${pdfZoom / 100})`,
@@ -831,18 +1012,38 @@ export default function ReviewerDashboard() {
                           </RadioGroup>
                         </div>
 
-                        <Button
-                          onClick={submitReview}
-                          disabled={!decision || !comments.trim()}
-                          className="w-full btn-physics"
-                          size="lg"
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Submit Review
-                          {(decision === "accepted" ||
-                            decision === "rejected") &&
-                            " (Requires Signature)"}
-                        </Button>
+                        {selectedVersion &&
+                        selectedVersion.id !==
+                          selectedPaper.paper_version_id ? (
+                          <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                            <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                              You can only submit a review for the latest
+                              version
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                              Switch to v
+                              {versions.find(
+                                (v) => v.id === selectedPaper.paper_version_id,
+                              )?.version_number ??
+                                versions[versions.length - 1]
+                                  ?.version_number}{" "}
+                              to submit your review.
+                            </p>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={submitReview}
+                            disabled={!decision || !comments.trim()}
+                            className="w-full btn-physics"
+                            size="lg"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Submit Review
+                            {(decision === "accepted" ||
+                              decision === "rejected") &&
+                              " (Requires Signature)"}
+                          </Button>
+                        )}
                       </div>
                     </ScrollArea>
                   </CardContent>
@@ -858,6 +1059,27 @@ export default function ReviewerDashboard() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-6"
           >
+            {showReviewerHint && (
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Getting Started
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    You'll see assigned papers here once a Chief Editor or
+                    Associate Editor assigns one to you. Review each paper
+                    carefully and submit your decision.
+                  </p>
+                </div>
+                <button
+                  onClick={dismissReviewerHint}
+                  className="text-blue-400 hover:text-blue-600 shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <div>
               <h1 className="font-serif-outfit text-3xl font-bold text-white">
                 Reviewer Dashboard

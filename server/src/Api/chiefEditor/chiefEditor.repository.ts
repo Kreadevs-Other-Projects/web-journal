@@ -80,6 +80,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
     SELECT
       p.id,
       p.title,
+      p.abstract,
       p.status,
       p.submitted_at,
       p.published_at,
@@ -93,6 +94,7 @@ export const getAllPapers = async (chiefEditorId: string) => {
       -- Current version file info
       pv.file_url,
       pv.file_type,
+      pv.version_number AS current_version_number,
       -- AE info
       ae_user.id AS current_ae_id,
       ae_user.username AS current_ae_name,
@@ -132,9 +134,9 @@ export const getAllPapers = async (chiefEditorId: string) => {
         WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
       )
     GROUP BY
-      p.id, p.title, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
+      p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
       author.username, j.title, j.id, ji.label,
-      pv.file_url, pv.file_type,
+      pv.file_url, pv.file_type, pv.version_number,
       ae_user.id, ae_user.username, ae_user.email,
       ea.status, sd.decision, sd.decided_at
     ORDER BY p.submitted_at DESC NULLS LAST, p.created_at DESC
@@ -459,6 +461,8 @@ export const getSubmittedReviewsByChiefEditor = async (
       ON j.id = p.journal_id
     JOIN paper_versions pv
       ON pv.id = p.current_version_id
+    JOIN reviews r_exists
+      ON r_exists.review_assignment_id = ra.id
 
     LEFT JOIN sub_editor_decisions sed
       ON sed.paper_id = p.id
@@ -473,7 +477,7 @@ export const getSubmittedReviewsByChiefEditor = async (
 
     WHERE
       j.chief_editor_id = $1
-      AND ra.status = 'submitted'
+      AND ra.status != 'reassigned'
       AND ea.status = 'accepted'
 
     ORDER BY ra.submitted_at DESC

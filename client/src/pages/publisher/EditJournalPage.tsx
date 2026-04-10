@@ -255,8 +255,18 @@ export default function EditJournalPage() {
               </div>
               <div className="space-y-1">
                 <Label>ISSN</Label>
-                <Input value={issn} onChange={(e) => setIssn(e.target.value)} placeholder="e.g. 1234-567X" className={fieldErrors["issn"] ? "border-destructive" : ""} />
-                {fieldErrors["issn"] ? <p className="text-xs text-destructive">{fieldErrors["issn"]}</p> : <p className="text-xs text-muted-foreground">Format: XXXX-XXXX</p>}
+                <Input
+                  value={issn}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^0-9Xx]/g, "").toUpperCase();
+                    const formatted = cleaned.length <= 4 ? cleaned : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
+                    setIssn(formatted);
+                  }}
+                  placeholder="0000-000X"
+                  maxLength={9}
+                  className={fieldErrors["issn"] ? "border-destructive" : ""}
+                />
+                {fieldErrors["issn"] ? <p className="text-xs text-destructive">{fieldErrors["issn"]}</p> : <p className="text-xs text-muted-foreground">Format: XXXX-XXXX · Last character can be a number or X</p>}
               </div>
               <div className="space-y-1">
                 <Label>DOI</Label>

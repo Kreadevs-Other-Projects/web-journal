@@ -3,6 +3,7 @@ import {
   getBrowseDataRepo,
   getPublicPaperRepo,
   getPaperVersionForHtmlRepo,
+  getVersionForHtmlByIdRepo,
   cacheVersionHtmlRepo,
 } from "./browse.repository";
 
@@ -49,7 +50,19 @@ export const getPublicPaperService = async (paperId: string) => {
 };
 
 function pdfTextToHtml(rawText: string): string {
-  const lines = rawText
+  if (!rawText || rawText.trim().length < 50) {
+    return "<p>Text content could not be extracted from this PDF. Please download the file to view it.</p>";
+  }
+
+  // Clean up PDF artifacts before splitting
+  const cleaned = rawText
+    .replace(/\f/g, "\n\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n");
+
+  const lines = cleaned
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
@@ -63,7 +76,7 @@ function pdfTextToHtml(rawText: string): string {
     const endsWithColon = line.endsWith(":");
     const startsWithNumber = /^\d+[\.\s]+[A-Z]/.test(line);
     const isCommonSection =
-      /^(abstract|introduction|conclusion|discussion|methods|results|references|background|related work|acknowledgements?|keywords?)/i.test(
+      /^(abstract|introduction|conclusion|discussion|methods?|results?|references?|background|related work|acknowledgements?|keywords?)/i.test(
         line,
       );
     const isLikelyHeading =
@@ -96,60 +109,96 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export const getPublicPaperHtmlService = async (
-  paperId: string,
-): Promise<string | null> => {
-  const version = await getPaperVersionForHtmlRepo(paperId);
-  if (!version) {
-    return null;
-  }
-
-  // Return cached HTML if available
+async function convertVersionToHtml(version: {
+  id: string;
+  file_url: string | null;
+  html_content: string | null;
+}): Promise<string | null> {
   if (version.html_content) return version.html_content;
-
-  if (!version.file_url) {
-    return null;
-  }
+  if (!version.file_url) return null;
 
   const filename = path.basename(version.file_url);
-  const filePath = path.resolve(__dirname, "../../../uploads", filename);
+  const primaryPath = path.resolve(__dirname, "../../../uploads", filename);
   const lowerUrl = version.file_url.toLowerCase();
 
-  const fsSync = await import("fs");
+  const fsSync = (await import("fs")).default;
+  const altPaths = [
+    primaryPath,
+    path.join(process.cwd(), "uploads", filename),
+    path.join(process.cwd(), "src", "uploads", filename),
+    path.join(__dirname, "../../uploads", filename),
+    path.join(__dirname, "../../../../../uploads", filename),
+  ];
 
-  // .docx → mammoth
+  let resolvedPath: string | null = null;
+  for (const candidate of altPaths) {
+    if (fsSync.existsSync(candidate)) {
+      resolvedPath = candidate;
+      console.log(`[html] Found file at: ${resolvedPath}`);
+      break;
+    }
+  }
+
+  if (!resolvedPath) {
+    console.log(`[html] File not found on disk. Tried: ${altPaths.join(", ")}`);
+    return null;
+  }
+
   if (lowerUrl.endsWith(".docx")) {
     try {
       const mammoth = (await import("mammoth")).default;
-      const result = await mammoth.convertToHtml({ path: filePath });
+      const result = await mammoth.convertToHtml({ path: resolvedPath });
       if (result.value) {
         await cacheVersionHtmlRepo(version.id, result.value);
         return result.value;
       }
+      console.log(`[html] mammoth returned empty value`);
     } catch (err) {
-      console.error("mammoth conversion failed:", err);
+      console.error("[html] mammoth conversion failed:", err);
     }
     return null;
   }
 
-  // .pdf → pdf-parse → structured HTML
   if (lowerUrl.endsWith(".pdf")) {
     try {
       const fs = await import("fs/promises");
       const pdfParse = (await import("pdf-parse")).default;
-      const buffer = await fs.readFile(filePath);
+      const buffer = await fs.readFile(resolvedPath);
       const data = await pdfParse(buffer);
-
+      console.log(`[html] pdf-parse extracted ${data.text?.length ?? 0} chars`);
       const html = pdfTextToHtml(data.text);
       if (html) {
         await cacheVersionHtmlRepo(version.id, html);
         return html;
       }
     } catch (err) {
-      console.error("pdf-parse conversion failed:", err);
+      console.error("[html] pdf-parse conversion failed:", err);
     }
     return null;
   }
 
   return null;
+}
+
+export const getPublicPaperHtmlService = async (
+  paperId: string,
+): Promise<string | null> => {
+  const version = await getPaperVersionForHtmlRepo(paperId);
+  if (!version) {
+    console.log(`[html] No version found for paper ${paperId}`);
+    return null;
+  }
+  return convertVersionToHtml(version);
+};
+
+export const getPaperVersionHtmlService = async (
+  paperId: string,
+  versionId: string,
+): Promise<string | null> => {
+  const version = await getVersionForHtmlByIdRepo(paperId, versionId);
+  if (!version) {
+    console.log(`[html] Version ${versionId} not found for paper ${paperId}`);
+    return null;
+  }
+  return convertVersionToHtml(version);
 };

@@ -111,6 +111,45 @@ export const getKeywordSuggestions = async (q: string) => {
   return result.rows.map((r: { keyword: string }) => r.keyword);
 };
 
+export const getPublicKeywordSuggestions = async (
+  q: string | null,
+  journalId: string | null,
+  limit: number,
+) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE ($1::uuid IS NULL OR journal_id = $1)
+         AND keywords IS NOT NULL
+     ) kw
+     WHERE ($2::text IS NULL OR keyword ILIKE '%' || $2 || '%')
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $3`,
+    [journalId || null, q || null, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
+export const getJournalTopKeywords = async (journalId: string, limit: number) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE journal_id = $1
+         AND keywords IS NOT NULL
+     ) kw
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $2`,
+    [journalId, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
 export const getPaperById = async (id: string) => {
   const result = await pool.query(`SELECT * FROM papers WHERE id = $1`, [id]);
   return result.rows[0];
@@ -304,4 +343,74 @@ export const getPaperMetadata = async (paperId: string) => {
     [paperId],
   );
   return result.rows[0] || null;
+};
+
+export const editPaperMetadataRepo = async (
+  paperId: string,
+  userId: string,
+  userRole: string,
+  title?: string,
+  abstract?: string,
+) => {
+  const paperRes = await pool.query(
+    `SELECT id, status, author_id, journal_id FROM papers WHERE id = $1`,
+    [paperId],
+  );
+  const paper = paperRes.rows[0];
+  if (!paper) throw Object.assign(new Error("Paper not found"), { status: 404 });
+
+  const isCE = userRole === "chief_editor";
+  const isAuthor = paper.author_id === userId;
+
+  if (isCE) {
+    const ceCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE id = $1 AND (
+         chief_editor_id = $2
+         OR id IN (SELECT journal_id FROM user_roles WHERE user_id = $2 AND role = 'chief_editor' AND is_active = true)
+       )`,
+      [paper.journal_id, userId],
+    );
+    if (!ceCheck.rows.length) throw Object.assign(new Error("Access denied"), { status: 403 });
+  } else if (isAuthor) {
+    const EDITABLE_STATUSES = ["submitted", "pending_revision", "awaiting_payment"];
+    if (!EDITABLE_STATUSES.includes(paper.status)) {
+      throw Object.assign(
+        new Error(`Cannot edit paper metadata when status is '${paper.status}'. Editing is only allowed before review begins.`),
+        { status: 400 },
+      );
+    }
+  } else {
+    throw Object.assign(new Error("Access denied"), { status: 403 });
+  }
+
+  if (title !== undefined && title.trim().length < 3) {
+    throw Object.assign(new Error("Title must be at least 3 characters"), { status: 400 });
+  }
+  if (abstract !== undefined && abstract.trim().length < 50) {
+    throw Object.assign(new Error("Abstract must be at least 50 characters"), { status: 400 });
+  }
+
+  const result = await pool.query(
+    `UPDATE papers
+     SET title = COALESCE($1, title),
+         abstract = COALESCE($2, abstract),
+         updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, title, abstract, status, updated_at`,
+    [title ?? null, abstract ?? null, paperId],
+  );
+  const updated = result.rows[0];
+
+  if (isCE) {
+    const editedFields: string[] = [];
+    if (title !== undefined) editedFields.push("title");
+    if (abstract !== undefined) editedFields.push("abstract");
+    await pool.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+       VALUES ($1, $2, $3, $4)`,
+      [paperId, updated.status, userId, `Metadata edited by Chief Editor: ${editedFields.join(", ")}`],
+    );
+  }
+
+  return updated;
 };

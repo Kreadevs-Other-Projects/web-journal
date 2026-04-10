@@ -50,8 +50,15 @@ import DOMPurify from "dompurify";
 
 interface Reviewer {
   id: string;
+  assignment_id: string;
+  assignment_status: string;
+  assigned_at: string;
   username: string;
   email: string;
+  decision?: string;
+  comments?: string;
+  reviewed_at?: string;
+  all_reviews?: Array<{ decision: string; reviewed_at: string }>;
 }
 
 interface SubmittedReview {
@@ -98,6 +105,11 @@ export default function RevisionPaper() {
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [openReviewers, setOpenReviewers] = useState(false);
+  const [reminderSent, setReminderSent] = useState<Record<string, boolean>>({});
+  const [currentPaperIdForReviewers, setCurrentPaperIdForReviewers] = useState<
+    string | null
+  >(null);
+  const [currentPaperStatus, setCurrentPaperStatus] = useState<string>("");
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [selectedSignature, setSelectedSignature] = useState<string | null>(
     null,
@@ -135,6 +147,7 @@ export default function RevisionPaper() {
       }
 
       setReviews(data.data || []);
+      console.log(data);
     } catch (err) {
       console.error("Error fetching sub-editor papers:", err);
       toast({
@@ -169,7 +182,7 @@ export default function RevisionPaper() {
     setExistingDecisions(results);
   };
 
-  const fetchReviewers = async (paperId: string) => {
+  const fetchReviewers = async (paperId: string, paperStatus?: string) => {
     try {
       const res = await fetch(
         `${url}/subEditor/getReviewersForPaper/${paperId}`,
@@ -180,12 +193,41 @@ export default function RevisionPaper() {
 
       const data = await res.json();
       setReviewers(data.data || []);
+      setCurrentPaperIdForReviewers(paperId);
+      setCurrentPaperStatus(paperStatus || "");
       setOpenReviewers(true);
     } catch (err) {
       console.error(err);
       toast({
         title: "Error",
         description: "Failed to fetch reviewers",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendReminderToReviewer = async (
+    reviewerId: string,
+    paperId: string,
+  ) => {
+    try {
+      const res = await fetch(`${url}/subEditor/remind-reviewer`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paper_id: paperId, reviewer_id: reviewerId }),
+      });
+      const data = await res.json();
+      if (!data.success)
+        throw new Error(data.message || "Failed to send reminder");
+      toast({ title: "Reminder sent", description: data.message });
+      setReminderSent((prev) => ({ ...prev, [reviewerId]: true }));
+    } catch (err: any) {
+      toast({
+        title: "Failed",
+        description: err.message || "Could not send reminder",
         variant: "destructive",
       });
     }
@@ -294,17 +336,20 @@ export default function RevisionPaper() {
     } else {
       setViewMode("pdf");
     }
-  }, [viewPdf?.paperId]);
+  }, [viewPdf?.paperVersionId]);
 
-  // Fetch HTML when switching to text view
+  // Fetch HTML when switching to text view — version-specific so switching versions works
   useEffect(() => {
     if (viewMode !== "text" || !viewPdf?.paperId || viewerHtml) return;
+    const versionId = viewPdf.paperVersionId;
+    if (!versionId) return;
     setViewerHtmlLoading(true);
     const fetchHtml = async () => {
       try {
-        const r = await fetch(`${url}/papers/${viewPdf.paperId}/html`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const r = await fetch(
+          `${url}/papers/${viewPdf.paperId}/version/${versionId}/html`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         const d = await r.json();
         if (d.success && d.html) setViewerHtml(d.html);
         else setViewerHtml(null);
@@ -315,7 +360,7 @@ export default function RevisionPaper() {
       }
     };
     fetchHtml();
-  }, [viewMode, viewPdf?.paperId]);
+  }, [viewMode, viewPdf?.paperVersionId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -384,9 +429,28 @@ export default function RevisionPaper() {
   });
 
   const getCountByStatus = (status: string) => {
-    return reviews.filter((review) => review.editorAssignmentStatus === status)
-      .length;
+    return new Set(
+      reviews
+        .filter((review) => review.editorAssignmentStatus === status)
+        .map((r) => r.paperId),
+    ).size;
   };
+
+  const uniquePaperCount = new Set(reviews.map((r) => r.paperId)).size;
+
+  const filteredPaperGroups = Object.values(
+    filteredReviews.reduce(
+      (acc, r) => {
+        if (!acc[r.paperId]) acc[r.paperId] = { paper: r, reviewList: [r] };
+        else acc[r.paperId].reviewList.push(r);
+        return acc;
+      },
+      {} as Record<
+        string,
+        { paper: SubmittedReview; reviewList: SubmittedReview[] }
+      >,
+    ),
+  );
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
@@ -403,7 +467,7 @@ export default function RevisionPaper() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
             <Shield className="h-5 w-5 text-blue-400" />
             <span className="text-sm font-medium">
-              {reviews.length} Paper{reviews.length !== 1 ? "s" : ""} Assigned
+              {uniquePaperCount} Paper{uniquePaperCount !== 1 ? "s" : ""} Assigned
             </span>
           </div>
         </div>
@@ -416,8 +480,11 @@ export default function RevisionPaper() {
                   <p className="text-sm text-muted-foreground">Under Review</p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter((r) => r.paperStatus === "under_review")
-                        .length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "under_review")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -437,9 +504,11 @@ export default function RevisionPaper() {
                   </p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter(
-                        (r) => r.paperStatus === "pending_revision",
-                      ).length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "pending_revision")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -457,8 +526,11 @@ export default function RevisionPaper() {
                   <p className="text-sm text-muted-foreground">Resubmitted</p>
                   <p className="text-2xl font-bold mt-1">
                     {
-                      reviews.filter((r) => r.paperStatus === "resubmitted")
-                        .length
+                      new Set(
+                        reviews
+                          .filter((r) => r.paperStatus === "resubmitted")
+                          .map((r) => r.paperId),
+                      ).size
                     }
                   </p>
                 </div>
@@ -481,7 +553,8 @@ export default function RevisionPaper() {
                   </h3>
                 </div>
                 <Badge variant="outline" className="text-muted-foreground">
-                  Showing {filteredReviews.length} of {reviews.length} papers
+                  Showing {filteredPaperGroups.length} of {uniquePaperCount}{" "}
+                  papers
                 </Badge>
               </div>
 
@@ -566,9 +639,9 @@ export default function RevisionPaper() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {filteredReviews.map((r) => (
+                      {filteredPaperGroups.map(({ paper: r, reviewList }) => (
                         <Card
-                          key={r.reviewAssignmentId}
+                          key={r.paperId}
                           className="border-border hover:border-primary/40 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
                         >
                           <CardHeader className="pb-4">
@@ -605,98 +678,95 @@ export default function RevisionPaper() {
                           </CardHeader>
 
                           <CardContent className="space-y-6">
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <PenTool className="h-4 w-4" />
-                                    Paper Details
+                            {/* Resubmitted notice */}
+                            {r.paperStatus === "resubmitted" && (
+                              <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                                    Author has submitted a revised version
                                   </p>
-                                  <div className="text-sm space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground">
-                                        Status:
-                                      </span>
-                                      <span
-                                        className={`px-2 py-1 rounded text-xs ${getStatusColor(r.paperStatus)}`}
-                                      >
-                                        {r.paperStatus.replace("_", " ")}
-                                      </span>
+                                </div>
+                                <p className="text-xs text-orange-700 dark:text-orange-300">
+                                  Existing reviewers have been notified to
+                                  re-review. You can assign additional reviewers
+                                  if needed.
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="space-y-4">
+                              {/* Latest reviewer review */}
+                              {(() => {
+                                const latest = [...reviewList].sort(
+                                  (a, b) =>
+                                    new Date(b.submittedAt).getTime() -
+                                    new Date(a.submittedAt).getTime(),
+                                )[0];
+                                return (
+                                  <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                      <User className="h-4 w-4" />
+                                      Latest Review
+                                      {reviewList.length > 1 && (
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                          ({reviewList.length} total — see "View
+                                          Reviewers")
+                                        </span>
+                                      )}
+                                    </p>
+                                    <div className="text-sm bg-muted rounded-lg p-3 border border-border space-y-1.5">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-foreground">
+                                          {latest.reviewerName ||
+                                            (latest.reviewerId
+                                              ? "Assigned"
+                                              : "Not assigned")}
+                                        </span>
+                                        <span className="capitalize text-xs font-medium px-2 py-0.5 rounded bg-background border border-border">
+                                          {latest.decision || "Pending"}
+                                        </span>
+                                      </div>
+                                      {latest.comments ? (
+                                        <p className="text-muted-foreground line-clamp-2 text-xs">
+                                          {latest.comments}
+                                        </p>
+                                      ) : (
+                                        <p className="text-muted-foreground italic text-xs">
+                                          No comments provided
+                                        </p>
+                                      )}
+                                      {latest.signatureUrl && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-xs gap-1 px-2 hover:text-emerald-400"
+                                          onClick={() => {
+                                            setSelectedSignature(
+                                              `${url}${latest.signatureUrl}`,
+                                            );
+                                            setSignatureModalOpen(true);
+                                          }}
+                                        >
+                                          <CheckCircle className="h-3 w-3" />
+                                          View Signature
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
-                                </div>
+                                );
+                              })()}
 
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    Review Details
-                                  </p>
-                                  <div className="text-sm space-y-1">
-                                    <p className="text-muted-foreground">
-                                      Decision:{" "}
-                                      <span className="text-foreground font-semibold capitalize">
-                                        {r.decision || "Pending"}
-                                      </span>
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      Reviewer:{" "}
-                                      <span className="text-foreground">
-                                        {r.reviewerName ||
-                                          (r.reviewerId
-                                            ? "Assigned"
-                                            : "Not assigned")}
-                                      </span>
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-foreground">
-                                  Review Comments
-                                </p>
-                                <div className="text-sm bg-muted rounded-lg p-3 border border-border">
-                                  <p
-                                    className={
-                                      r.comments
-                                        ? "line-clamp-2"
-                                        : "text-muted-foreground italic"
-                                    }
-                                  >
-                                    {r.comments || "No comments provided"}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between pt-2">
-                                {r.fileUrl && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
-                                    onClick={() => setViewPdf(r)}
-                                  >
-                                    <Eye className="h-4 w-4" /> View Paper
-                                  </Button>
-                                )}
-
-                                {r.signatureUrl && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 hover:border-emerald-500/50 hover:bg-emerald-500/10"
-                                    onClick={() => {
-                                      setSelectedSignature(
-                                        `${url}${r.signatureUrl}`,
-                                      );
-                                      setSignatureModalOpen(true);
-                                    }}
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                    View Signature
-                                  </Button>
-                                )}
-                              </div>
+                              {r.fileUrl && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
+                                  onClick={() => setViewPdf(r)}
+                                >
+                                  <Eye className="h-4 w-4" /> View Paper
+                                </Button>
+                              )}
                             </div>
 
                             <div className="flex flex-col gap-3 pt-4 border-t border-border">
@@ -762,7 +832,9 @@ export default function RevisionPaper() {
                                 size="sm"
                                 variant="outline"
                                 className="w-full gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
-                                onClick={() => fetchReviewers(r.paperId)}
+                                onClick={() =>
+                                  fetchReviewers(r.paperId, r.paperStatus)
+                                }
                               >
                                 <Users className="h-4 w-4" />
                                 View Reviewers
@@ -877,20 +949,38 @@ export default function RevisionPaper() {
                 <div className="flex-1 relative overflow-hidden">
                   {viewMode === "pdf" ? (
                     (() => {
-                      const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                      const ext = viewPdf.fileUrl
+                        ?.split(".")
+                        .pop()
+                        ?.toLowerCase();
                       if (ext === "pdf") {
                         return (
                           <Worker workerUrl="/pdf.worker.min.js">
-                            <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} theme="dark" />
+                            <Viewer
+                              fileUrl={`${url}${viewPdf.fileUrl}`}
+                              theme="dark"
+                            />
                           </Worker>
                         );
                       }
                       if (ext === "tex" || ext === "latex") {
                         return (
                           <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                            <p className="text-sm">LaTeX files cannot be previewed. Please download to view.</p>
-                            <Button onClick={() => window.open(`${url}${viewPdf.fileUrl}`, "_blank")} className="gap-2">
-                              <Download className="h-4 w-4" />Download Manuscript
+                            <p className="text-sm">
+                              LaTeX files cannot be previewed. Please download
+                              to view.
+                            </p>
+                            <Button
+                              onClick={() =>
+                                window.open(
+                                  `${url}${viewPdf.fileUrl}`,
+                                  "_blank",
+                                )
+                              }
+                              className="gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download Manuscript
                             </Button>
                           </div>
                         );
@@ -899,8 +989,13 @@ export default function RevisionPaper() {
                       return (
                         <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8 text-center">
                           <FileX className="h-10 w-10" />
-                          <p className="text-sm">PDF view is not available for Word documents.</p>
-                          <button onClick={() => setViewMode("text")} className="text-sm text-primary underline">
+                          <p className="text-sm">
+                            PDF view is not available for Word documents.
+                          </p>
+                          <button
+                            onClick={() => setViewMode("text")}
+                            className="text-sm text-primary underline"
+                          >
                             Switch to Text view
                           </button>
                         </div>
@@ -913,7 +1008,9 @@ export default function RevisionPaper() {
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
                             <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                            <p className="text-sm text-muted-foreground">Converting document to text...</p>
+                            <p className="text-sm text-muted-foreground">
+                              Converting document to text...
+                            </p>
                           </div>
                         </div>
                       ) : viewerHtml ? (
@@ -925,16 +1022,25 @@ export default function RevisionPaper() {
                           </div>
                           <div
                             className="paper-webview-content"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewerHtml) }}
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(viewerHtml),
+                            }}
                           />
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center p-8">
                             <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-sm font-medium">Text view unavailable</p>
-                            <p className="text-xs text-muted-foreground mt-1">Could not convert this document to text format.</p>
-                            <button onClick={() => setViewMode("pdf")} className="mt-3 text-xs text-primary underline">
+                            <p className="text-sm font-medium">
+                              Text view unavailable
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Could not convert this document to text format.
+                            </p>
+                            <button
+                              onClick={() => setViewMode("pdf")}
+                              className="mt-3 text-xs text-primary underline"
+                            >
                               Switch to PDF view
                             </button>
                           </div>
@@ -1124,14 +1230,17 @@ export default function RevisionPaper() {
         </Dialog>
 
         <Dialog open={openReviewers} onOpenChange={setOpenReviewers}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Assigned Reviewers
+                Reviewer Feedback
+                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {reviewers.length} reviewer{reviewers.length !== 1 ? "s" : ""}
+                </span>
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-4">
+            <div className="space-y-4 py-2">
               {reviewers.length === 0 ? (
                 <div className="text-center py-8 space-y-3">
                   <div className="inline-flex p-3 rounded-full bg-muted">
@@ -1142,17 +1251,128 @@ export default function RevisionPaper() {
                   </p>
                 </div>
               ) : (
-                reviewers.map((r) => (
+                reviewers.map((reviewer, index) => (
                   <div
-                    key={r.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border hover:border-border/60 transition-colors"
+                    key={reviewer.assignment_id}
+                    className="border rounded-lg p-4"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{r.username}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {r.email}
-                      </p>
+                    {/* Header row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                          {reviewer.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Reviewer {index + 1}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {reviewer.username}
+                          </p>
+                        </div>
+                      </div>
+                      {reviewer.reviewed_at && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(reviewer.reviewed_at).toLocaleDateString(
+                            "en-GB",
+                            { day: "2-digit", month: "short", year: "numeric" },
+                          )}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Status row */}
+                    {reviewer.assignment_status === "submitted" ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            Review Completed
+                          </span>
+                          {reviewer.decision && (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                                reviewer.decision === "accepted"
+                                  ? "bg-green-500/10 text-green-700 border-green-500/30"
+                                  : reviewer.decision === "rejected"
+                                    ? "bg-destructive/10 text-destructive border-destructive/30"
+                                    : "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                              }`}
+                            >
+                              {reviewer.decision}
+                            </span>
+                          )}
+                        </div>
+                        {reviewer.comments && (
+                          <div className="bg-muted/50 rounded p-3">
+                            <p className="text-xs text-muted-foreground mb-1 font-medium">
+                              Comments:
+                            </p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {reviewer.comments}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                            Pending Review
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() =>
+                            sendReminderToReviewer(
+                              reviewer.id,
+                              currentPaperIdForReviewers!,
+                            )
+                          }
+                          disabled={reminderSent[reviewer.id]}
+                        >
+                          {reminderSent[reviewer.id]
+                            ? "Reminded ✓"
+                            : "Send Reminder"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Previous reviews history (for resubmitted papers) */}
+                    {currentPaperStatus === "resubmitted" &&
+                      reviewer.all_reviews &&
+                      reviewer.all_reviews.length > 1 && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground font-medium mb-2">
+                            Previous Reviews:
+                          </p>
+                          {reviewer.all_reviews.slice(1).map((rev, ri) => (
+                            <div
+                              key={ri}
+                              className="text-xs text-muted-foreground flex items-center gap-2"
+                            >
+                              <span className="capitalize font-medium">
+                                {rev.decision || "—"}
+                              </span>
+                              <span>·</span>
+                              <span>
+                                {rev.reviewed_at
+                                  ? new Date(
+                                      rev.reviewed_at,
+                                    ).toLocaleDateString("en-GB", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ))
               )}

@@ -13,6 +13,7 @@ import {
   UserCheck,
   CheckCircle2,
   X,
+  ChevronLeft,
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
@@ -42,7 +43,8 @@ interface PaperInfo {
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(/\s+/);
-  const letters = parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2);
+  const letters =
+    parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2);
   return (
     <div className="w-12 h-12 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-base uppercase shrink-0">
       {letters}
@@ -66,6 +68,8 @@ export default function AssignReviewerPage() {
     location.state?.restoredSelectedId ?? null,
   );
   const [assigning, setAssigning] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   // Invite form
   const [inviteName, setInviteName] = useState("");
@@ -86,9 +90,10 @@ export default function AssignReviewerPage() {
           if (found) {
             setPaper({
               ...found,
-              reviewers: typeof found.reviewers === "string"
-                ? JSON.parse(found.reviewers)
-                : found.reviewers || [],
+              reviewers:
+                typeof found.reviewers === "string"
+                  ? JSON.parse(found.reviewers)
+                  : found.reviewers || [],
             });
           }
         }
@@ -126,29 +131,40 @@ export default function AssignReviewerPage() {
     );
   }, [staff, search]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
+
   const currentReviewerIds = new Set((paper?.reviewers || []).map((r) => r.id));
 
   const handleConfirmAssign = async () => {
     if (!selectedId || !paperId) return;
     setAssigning(true);
     try {
-      const res = await fetch(
-        `${url}/subEditor/assignReviewer/${paperId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ reviewerId: selectedId }),
+      const res = await fetch(`${url}/subEditor/assignReviewer/${paperId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ reviewerId: selectedId }),
+      });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
       toast({ title: "Reviewer assigned successfully" });
       navigate(-1);
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Failed", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: e.message,
+      });
     } finally {
       setAssigning(false);
     }
@@ -179,7 +195,11 @@ export default function AssignReviewerPage() {
       setInviteEmail("");
       setInviteKeywords([]);
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Invite failed", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Invite failed",
+        description: e.message,
+      });
     } finally {
       setInviting(false);
     }
@@ -187,7 +207,8 @@ export default function AssignReviewerPage() {
 
   const addInviteKeyword = () => {
     const kw = inviteKwInput.trim();
-    if (!kw || inviteKeywords.includes(kw) || inviteKeywords.length >= 5) return;
+    if (!kw || inviteKeywords.includes(kw) || inviteKeywords.length >= 5)
+      return;
     setInviteKeywords((prev) => [...prev, kw]);
     setInviteKwInput("");
   };
@@ -199,21 +220,40 @@ export default function AssignReviewerPage() {
       <div className="space-y-4">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Link to="/chief-editor" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link
+            to="/chief-editor"
+            className="hover:text-foreground transition-colors"
+          >
+            Dashboard
+          </Link>
           <ChevronRight className="h-3 w-3" />
-          <Link to="/chief-editor/papers" className="hover:text-foreground transition-colors">Papers</Link>
+          <Link
+            to="/chief-editor/papers"
+            className="hover:text-foreground transition-colors"
+          >
+            Papers
+          </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground truncate max-w-[200px]">{paper?.title || "Assign Reviewer"}</span>
+          <span className="text-foreground truncate max-w-[200px]">
+            {paper?.title || "Assign Reviewer"}
+          </span>
           <ChevronRight className="h-3 w-3" />
           <span className="text-foreground">Assign Reviewer</span>
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="gap-1.5"
+          >
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Assign Reviewer</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              Assign Reviewer
+            </h1>
             {paper && (
               <p className="text-sm text-muted-foreground mt-0.5">
                 <span className="font-medium truncate">{paper.title}</span>
@@ -246,7 +286,12 @@ export default function AssignReviewerPage() {
                 <CardContent className="py-10 text-center space-y-2">
                   <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
                   <p className="text-sm text-muted-foreground">{error}</p>
-                  <button onClick={() => window.location.reload()} className="text-sm text-primary underline">Try again</button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="text-sm text-primary underline"
+                  >
+                    Try again
+                  </button>
                 </CardContent>
               </Card>
             ) : filtered.length === 0 ? (
@@ -256,104 +301,208 @@ export default function AssignReviewerPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((s) => {
-                  const isCurrentReviewer = currentReviewerIds.has(s.id);
-                  const isSelected = selectedId === s.id;
-                  const isBestMatch = s.keyword_matches > 0;
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {filtered.length} reviewers available
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {paginated.map((s) => {
+                    const isCurrentReviewer = currentReviewerIds.has(s.id);
+                    const isSelected = selectedId === s.id;
+                    const isBestMatch = s.keyword_matches > 0;
 
-                  return (
-                    <Card
-                      key={s.id}
-                      className={`relative transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isCurrentReviewer ? "border-blue-400/50" : ""}`}
-                    >
-                      <CardContent className="pt-4 pb-4 space-y-3">
-                        <div className="flex flex-wrap gap-1 min-h-[20px]">
-                          {isCurrentReviewer && (
-                            <Badge className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-400/40">
-                              Already Assigned
-                            </Badge>
-                          )}
-                          {isBestMatch && (
-                            <Badge className="text-[10px] bg-green-500/10 text-green-600 border-green-400/40">
-                              Best Match ({s.keyword_matches})
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          {s.profile_pic_url ? (
-                            <img
-                              src={`${url}/${s.profile_pic_url}`}
-                              alt={s.username}
-                              className="w-12 h-12 rounded-full object-cover shrink-0"
-                            />
-                          ) : (
-                            <Initials name={s.username} />
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm leading-tight truncate">{s.username}</p>
-                            <Badge variant="outline" className="text-[10px] mt-0.5">Reviewer</Badge>
+                    return (
+                      <Card
+                        key={s.id}
+                        className={`relative transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isCurrentReviewer ? "border-blue-400/50" : ""}`}
+                      >
+                        <CardContent className="pt-4 pb-4 space-y-3">
+                          <div className="flex flex-wrap gap-1 min-h-[20px]">
+                            {isCurrentReviewer && (
+                              <Badge className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-400/40">
+                                Already Assigned
+                              </Badge>
+                            )}
+                            {isBestMatch && (
+                              <Badge className="text-[10px] bg-green-500/10 text-green-600 border-green-400/40">
+                                Best Match ({s.keyword_matches})
+                              </Badge>
+                            )}
                           </div>
-                        </div>
 
-                        {s.degrees && s.degrees.length > 0 && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {s.degrees.slice(0, 2).join(" · ")}
+                          <div className="flex items-center gap-3">
+                            {s.profile_pic_url ? (
+                              <img
+                                src={`${s.profile_pic_url}`}
+                                alt={s.username}
+                                className="w-12 h-12 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <Initials name={s.username} />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm leading-tight truncate">
+                                {s.username}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] mt-0.5"
+                              >
+                                Reviewer
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {s.degrees && s.degrees.length > 0 && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {s.degrees.slice(0, 2).join(" · ")}
+                            </p>
+                          )}
+
+                          {s.keywords && s.keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {s.keywords.slice(0, 5).map((kw) => (
+                                <span
+                                  key={kw}
+                                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            Handling{" "}
+                            <span className="font-semibold text-foreground">
+                              {s.active_papers}
+                            </span>{" "}
+                            active review{s.active_papers !== 1 ? "s" : ""}
                           </p>
-                        )}
 
-                        {s.keywords && s.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {s.keywords.slice(0, 5).map((kw) => (
-                              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                                {kw}
-                              </span>
-                            ))}
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className="flex-1 h-7 text-xs"
+                              onClick={() =>
+                                setSelectedId(isSelected ? null : s.id)
+                              }
+                              disabled={isCurrentReviewer}
+                            >
+                              {isSelected ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Selected
+                                </>
+                              ) : isCurrentReviewer ? (
+                                "Assigned"
+                              ) : (
+                                "Select"
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() =>
+                                navigate(`/chief-editor/staff/${s.id}`, {
+                                  state: {
+                                    selectedId,
+                                    paperId,
+                                    journalId: paper?.journal_id,
+                                    role: "reviewer",
+                                    scrollPosition: window.scrollY,
+                                    fromPath: location.pathname,
+                                  },
+                                })
+                              }
+                            >
+                              Details
+                            </Button>
                           </div>
-                        )}
-
-                        <p className="text-xs text-muted-foreground">
-                          Handling <span className="font-semibold text-foreground">{s.active_papers}</span> active review{s.active_papers !== 1 ? "s" : ""}
-                        </p>
-
-                        <div className="flex gap-2 pt-1">
-                          <Button
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            className="flex-1 h-7 text-xs"
-                            onClick={() => setSelectedId(isSelected ? null : s.id)}
-                            disabled={isCurrentReviewer}
-                          >
-                            {isSelected ? (
-                              <><CheckCircle2 className="h-3 w-3 mr-1" />Selected</>
-                            ) : isCurrentReviewer ? "Assigned" : "Select"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs px-2"
-                            onClick={() =>
-                              navigate(`/chief-editor/staff/${s.id}`, {
-                                state: {
-                                  selectedId,
-                                  paperId,
-                                  journalId: paper?.journal_id,
-                                  role: "reviewer",
-                                  scrollPosition: window.scrollY,
-                                  fromPath: location.pathname,
-                                },
-                              })
-                            }
-                          >
-                            Details
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}{" "}
+                      of {filtered.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(
+                            (page) =>
+                              page === 1 ||
+                              page === totalPages ||
+                              Math.abs(page - currentPage) <= 1,
+                          )
+                          .reduce(
+                            (acc: (number | string)[], page, idx, arr) => {
+                              if (
+                                idx > 0 &&
+                                (page as number) - (arr[idx - 1] as number) > 1
+                              )
+                                acc.push("...");
+                              acc.push(page);
+                              return acc;
+                            },
+                            [],
+                          )
+                          .map((page, idx) =>
+                            page === "..." ? (
+                              <span
+                                key={`ellipsis-${idx}`}
+                                className="px-2 text-muted-foreground"
+                              >
+                                ...
+                              </span>
+                            ) : (
+                              <Button
+                                key={page}
+                                variant={
+                                  currentPage === page ? "default" : "outline"
+                                }
+                                size="sm"
+                                className="w-8 h-8 p-0"
+                                onClick={() => setCurrentPage(page as number)}
+                              >
+                                {page}
+                              </Button>
+                            ),
+                          )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -365,11 +514,22 @@ export default function AssignReviewerPage() {
                 <div className="space-y-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Name</Label>
-                    <Input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Full name" className="h-8 text-sm" />
+                    <Input
+                      value={inviteName}
+                      onChange={(e) => setInviteName(e.target.value)}
+                      placeholder="Full name"
+                      className="h-8 text-sm"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Email</Label>
-                    <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="email@example.com" className="h-8 text-sm" />
+                    <Input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="h-8 text-sm"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Keywords (max 5)</Label>
@@ -377,18 +537,41 @@ export default function AssignReviewerPage() {
                       <Input
                         value={inviteKwInput}
                         onChange={(e) => setInviteKwInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInviteKeyword(); } }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addInviteKeyword();
+                          }
+                        }}
                         placeholder="Add keyword"
                         className="h-8 text-sm flex-1"
                         disabled={inviteKeywords.length >= 5}
                       />
-                      <Button type="button" variant="outline" size="sm" className="h-8 px-2" onClick={addInviteKeyword} disabled={inviteKeywords.length >= 5}>+</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={addInviteKeyword}
+                        disabled={inviteKeywords.length >= 5}
+                      >
+                        +
+                      </Button>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {inviteKeywords.map((kw) => (
-                        <span key={kw} className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted border">
+                        <span
+                          key={kw}
+                          className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted border"
+                        >
                           {kw}
-                          <button onClick={() => setInviteKeywords((p) => p.filter((k) => k !== kw))}>
+                          <button
+                            onClick={() =>
+                              setInviteKeywords((p) =>
+                                p.filter((k) => k !== kw),
+                              )
+                            }
+                          >
                             <X className="h-2.5 w-2.5" />
                           </button>
                         </span>
@@ -402,7 +585,9 @@ export default function AssignReviewerPage() {
                   onClick={handleInvite}
                   disabled={inviting || !inviteName || !inviteEmail}
                 >
-                  {inviting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  {inviting ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : null}
                   Send Invitation
                 </Button>
               </CardContent>
@@ -414,19 +599,30 @@ export default function AssignReviewerPage() {
                 {selectedStaff ? (
                   <div className="flex items-center gap-2">
                     {selectedStaff.profile_pic_url ? (
-                      <img src={`${url}/${selectedStaff.profile_pic_url}`} alt={selectedStaff.username} className="w-8 h-8 rounded-full object-cover" />
+                      <img
+                        src={selectedStaff.profile_pic_url}
+                        alt={selectedStaff.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
                     ) : (
                       <Initials name={selectedStaff.username} />
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{selectedStaff.username}</p>
-                      <button className="text-[10px] text-muted-foreground hover:text-destructive" onClick={() => setSelectedId(null)}>
+                      <p className="text-sm font-medium truncate">
+                        {selectedStaff.username}
+                      </p>
+                      <button
+                        className="text-[10px] text-muted-foreground hover:text-destructive"
+                        onClick={() => setSelectedId(null)}
+                      >
                         Remove
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No one selected yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    No one selected yet
+                  </p>
                 )}
 
                 <Button
@@ -434,7 +630,11 @@ export default function AssignReviewerPage() {
                   disabled={!selectedId || assigning}
                   onClick={handleConfirmAssign}
                 >
-                  {assigning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserCheck className="h-4 w-4 mr-1" />}
+                  {assigning ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <UserCheck className="h-4 w-4 mr-1" />
+                  )}
                   Confirm Assign
                 </Button>
               </CardContent>

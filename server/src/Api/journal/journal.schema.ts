@@ -52,9 +52,9 @@ export const publisherCreateJournalSchema = z.object({
       .optional(),
     issn: z
       .string()
-      .regex(/^\d{4}-\d{3}[\dxX]$/, "Invalid ISSN format. Must be 8 characters in format XXXX-XXXX (e.g. 1234-567X)")
+      .regex(/^\d{4}-\d{3}[\dX]$/, "ISSN must be in format XXXX-XXXX (e.g. 1234-567X)")
       .optional()
-      .or(z.literal("")),
+      .nullable(),
     doi: z
       .string()
       .regex(/^10\.\d{4,}\/\S+$/, 'Invalid DOI format. Must start with "10." followed by registrant code and suffix (e.g. 10.12345/journal.2026.001)')

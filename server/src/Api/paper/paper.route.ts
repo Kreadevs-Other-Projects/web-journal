@@ -14,7 +14,11 @@ import {
   getMetadataCheck,
   uploadRevisionController,
   getPaperHtmlController,
+  getPaperVersionHtmlController,
   getStatusLogController,
+  editPaperMetadataController,
+  getPublicKeywordSuggestionsController,
+  getJournalTopKeywordsController,
 } from "./paper.controller";
 import { suggestDoi } from "../publication/publication.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -22,6 +26,10 @@ import { createPaperSchema, updatePaperSchema } from "./paper.schema";
 import { manuscriptUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
+
+// Public routes — no auth required
+router.get("/keywords/suggestions", getPublicKeywordSuggestionsController);
+router.get("/keywords/journal/:journalId", getJournalTopKeywordsController);
 
 router.get("/keyword-suggestions", authMiddleware, getKeywordSuggestions);
 
@@ -79,6 +87,13 @@ router.post(
 );
 
 router.get(
+  "/:paperId/version/:versionId/html",
+  authMiddleware,
+  authorize("sub_editor", "reviewer", "chief_editor", "author", "publisher"),
+  getPaperVersionHtmlController,
+);
+
+router.get(
   "/:paperId/html",
   authMiddleware,
   authorize("sub_editor", "reviewer", "chief_editor", "author", "publisher"),
@@ -103,6 +118,13 @@ router.get(
   "/:paperId/status-log",
   authMiddleware,
   getStatusLogController,
+);
+
+router.patch(
+  "/:paperId/edit-metadata",
+  authMiddleware,
+  authorize("author", "chief_editor"),
+  editPaperMetadataController,
 );
 
 export default router;

@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Circle, Clock, BookOpen, ExternalLink, Loader2, FileText, CreditCard, AlertTriangle, Pencil, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { PageTransition } from "@/components/AnimationWrappers";
 import { UserRole } from "@/lib/roles";
 
@@ -106,6 +113,15 @@ export default function TrackPaper() {
   const fileRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
 
+  const [selectedReceiptFile, setSelectedReceiptFile] = useState<File | null>(null);
+  const [showReceiptConfirmModal, setShowReceiptConfirmModal] = useState(false);
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingAbstract, setEditingAbstract] = useState(false);
+  const [titleValue, setTitleValue] = useState("");
+  const [abstractValue, setAbstractValue] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
+
   const fetchTracking = () => {
     fetch(`${url}/papers/${paperId}/tracking`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -160,22 +176,31 @@ export default function TrackPaper() {
     }
   };
 
-  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!["jpg", "jpeg", "png", "pdf"].includes(ext || "")) {
       toast({ title: "Invalid file", description: "Only JPG, PNG or PDF receipts accepted.", variant: "destructive" });
+      if (receiptRef.current) receiptRef.current.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Max 5MB.", variant: "destructive" });
+      if (receiptRef.current) receiptRef.current.value = "";
       return;
     }
+    setSelectedReceiptFile(file);
+    setShowReceiptConfirmModal(true);
+  };
+
+  const confirmReceiptUpload = async () => {
+    if (!selectedReceiptFile) return;
+    setShowReceiptConfirmModal(false);
     setUploadingReceipt(true);
     try {
       const fd = new FormData();
-      fd.append("receipt", file);
+      fd.append("receipt", selectedReceiptFile);
       const res = await fetch(`${url}/payments/paper/${paperId}/upload-receipt`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -190,7 +215,35 @@ export default function TrackPaper() {
       toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
     } finally {
       setUploadingReceipt(false);
+      setSelectedReceiptFile(null);
       if (receiptRef.current) receiptRef.current.value = "";
+    }
+  };
+
+  const cancelReceiptUpload = () => {
+    setShowReceiptConfirmModal(false);
+    setSelectedReceiptFile(null);
+    if (receiptRef.current) receiptRef.current.value = "";
+  };
+
+  const saveMetadata = async (field: "title" | "abstract", value: string) => {
+    setSavingMeta(true);
+    try {
+      const res = await fetch(`${url}/papers/${paperId}/edit-metadata`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const resp = await res.json();
+      if (!resp.success) throw new Error(resp.message || "Save failed");
+      toast({ title: "Saved", description: `${field === "title" ? "Title" : "Abstract"} updated successfully.` });
+      fetchTracking();
+      if (field === "title") setEditingTitle(false);
+      if (field === "abstract") setEditingAbstract(false);
+    } catch (err) {
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Save failed", variant: "destructive" });
+    } finally {
+      setSavingMeta(false);
     }
   };
 
@@ -214,6 +267,7 @@ export default function TrackPaper() {
 
   const { paper, status_log, reviews, publication, ae_decision } = data;
   const currentStageIdx = getStageIndex(paper.status);
+  const canEdit = ["submitted", "pending_revision", "awaiting_payment"].includes(paper.status);
 
   return (
     <DashboardLayout role={(user?.role as UserRole) ?? "author"} userName={user?.username}>
@@ -235,7 +289,37 @@ export default function TrackPaper() {
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold leading-snug">{paper.title}</h1>
+            {canEdit && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 bg-muted/50 rounded px-3 py-1.5 w-fit">
+                <Pencil className="h-3 w-3" />
+                You can edit the title and abstract while your paper is awaiting review
+              </div>
+            )}
+            {!editingTitle ? (
+              <div className="flex items-start gap-2">
+                <h1 className="text-xl font-bold leading-snug">{paper.title}</h1>
+                {canEdit && (
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 mt-1 shrink-0" onClick={() => { setTitleValue(paper.title); setEditingTitle(true); }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  className="w-full text-xl font-bold border rounded p-2 bg-background"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={savingMeta} onClick={() => saveMetadata("title", titleValue)}>
+                    {savingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setEditingTitle(false); setTitleValue(paper.title); }}>Cancel</Button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="secondary">{paper.status.replace(/_/g, " ")}</Badge>
               {paper.status === "accepted" && <Badge className="bg-green-600 text-white">Accepted</Badge>}
@@ -405,10 +489,40 @@ export default function TrackPaper() {
                   </div>
                 </div>
               )}
-              {paper.abstract && (
+              {(paper.abstract || canEdit) && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Abstract</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{paper.abstract}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xs text-muted-foreground">Abstract</p>
+                    {canEdit && !editingAbstract && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setAbstractValue(paper.abstract || ""); setEditingAbstract(true); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  {!editingAbstract ? (
+                    <>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{paper.abstract}</p>
+                      {!canEdit && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">Title and abstract cannot be edited once the review process has started.</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea
+                        value={abstractValue}
+                        onChange={(e) => setAbstractValue(e.target.value)}
+                        rows={6}
+                        className="w-full text-sm border rounded p-2 bg-background resize-y"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={savingMeta} onClick={() => saveMetadata("abstract", abstractValue)}>
+                          {savingMeta ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => { setEditingAbstract(false); setAbstractValue(paper.abstract || ""); }}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -501,6 +615,52 @@ export default function TrackPaper() {
           )}
         </div>
       </PageTransition>
+
+      {/* Receipt upload confirmation modal */}
+      <Dialog open={showReceiptConfirmModal} onOpenChange={cancelReceiptUpload}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Receipt Upload</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              You are about to upload the following file as your payment receipt:
+            </p>
+            {selectedReceiptFile && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+                {selectedReceiptFile.type.startsWith("image/") ? (
+                  <img
+                    src={URL.createObjectURL(selectedReceiptFile)}
+                    alt="Receipt preview"
+                    className="w-full max-h-48 object-contain rounded border"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">PDF document</span>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p><span className="font-medium">File:</span> {selectedReceiptFile.name}</p>
+                  <p><span className="font-medium">Size:</span> {(selectedReceiptFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Once submitted, the publisher will review your receipt and approve or reject the payment.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelReceiptUpload}>
+              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+            </Button>
+            <Button onClick={confirmReceiptUpload} disabled={uploadingReceipt}>
+              {uploadingReceipt ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+              Confirm Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

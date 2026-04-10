@@ -192,6 +192,38 @@ export const getRejectedPaymentsService = async () => {
   return getRejectedPaymentsRepo();
 };
 
+export const resendInvoiceService = async (paperId: string): Promise<void> => {
+  const payment = await getPaymentReminderInfoRepo(paperId);
+  if (!payment) throw new Error("Payment not found");
+
+  const now = new Date();
+  const invoiceDate = payment.created_at
+    ? new Date(payment.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : formatDateStr(now);
+
+  const due = new Date(now);
+  due.setDate(due.getDate() + 7);
+
+  await sendInvoiceEmail({
+    authorName: payment.author_name,
+    authorEmail: payment.author_email,
+    paperTitle: payment.paper_title,
+    journalName: payment.journal_name,
+    invoiceNumber: payment.invoice_number || generateInvoiceNumber(),
+    invoiceDate,
+    dueDate: formatDateStr(due),
+    pages: payment.pages || DEFAULT_PAGES,
+    pricePerPage: parseFloat(payment.price_per_page) || 50,
+    totalAmount: payment.total_amount,
+    currency: payment.currency || "USD",
+    publisherName: payment.publisher_name || "Publisher",
+  });
+};
+
 export const sendPaymentReminderService = async (
   paperId: string,
 ): Promise<{ authorEmail: string }> => {

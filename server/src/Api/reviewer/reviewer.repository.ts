@@ -32,7 +32,9 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       j.title AS journal_name,
       j.acronym AS journal_acronym,
-      i.label AS issue_label
+      i.label AS issue_label,
+
+      ae_user.username AS ae_name
 
     FROM review_assignments ra
     JOIN papers p ON p.id = ra.paper_id
@@ -40,6 +42,9 @@ export const getReviewerPapers = async (reviewerId: string) => {
     LEFT JOIN reviews r ON ra.id = r.review_assignment_id
     LEFT JOIN journal_issues i ON i.id = p.issue_id
     LEFT JOIN journals j ON j.id = i.journal_id
+    LEFT JOIN editor_assignments ea ON ea.paper_id = p.id
+      AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+    LEFT JOIN users ae_user ON ae_user.id = ea.sub_editor_id
     WHERE ra.reviewer_id = $1
     ORDER BY pv.created_at DESC
     `,

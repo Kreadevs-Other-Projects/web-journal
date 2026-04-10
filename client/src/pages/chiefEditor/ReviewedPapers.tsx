@@ -13,6 +13,7 @@ import {
   Clock,
   XCircle,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +195,8 @@ export default function ChiefEditorSubmittedReviews() {
         return <Clock className="h-4 w-4 text-amber-500" />;
       case "rejected":
         return <XCircle className="h-4 w-4 text-red-500" />;
+      case "resubmitted":
+        return <RotateCcw className="h-4 w-4 text-cyan-500" />;
       default:
         return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
@@ -209,6 +212,8 @@ export default function ChiefEditorSubmittedReviews() {
         return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20";
       case "published":
         return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20";
+      case "resubmitted":
+        return "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -377,7 +382,7 @@ export default function ChiefEditorSubmittedReviews() {
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-fit bg-muted/50 p-1">
+            <TabsList className="grid grid-cols-2 md:grid-cols-6 lg:w-fit bg-muted/50 p-1">
               <TabsTrigger
                 value="all"
                 className="data-[state=active]:bg-background"
@@ -398,6 +403,18 @@ export default function ChiefEditorSubmittedReviews() {
                   Pending Revision
                   <Badge variant="secondary" className="ml-1">
                     {getTabCount("pending_revision")}
+                  </Badge>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="resubmitted"
+                className="data-[state=active]:bg-background"
+              >
+                <div className="flex items-center gap-2">
+                  {getStatusIcon("resubmitted")}
+                  Resubmitted
+                  <Badge variant="secondary" className="ml-1">
+                    {getTabCount("resubmitted")}
                   </Badge>
                 </div>
               </TabsTrigger>

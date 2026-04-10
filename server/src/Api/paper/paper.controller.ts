@@ -11,10 +11,13 @@ import {
   extractMetadataService,
   getPaperTrackingService,
   getPaperMetadataCheckService,
+  editPaperMetadataService,
+  getPublicKeywordSuggestionsService,
+  getJournalTopKeywordsService,
 } from "./paper.service";
 import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
-import { getPublicPaperHtmlService } from "../browse/browse.service";
+import { getPublicPaperHtmlService, getPaperVersionHtmlService } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
@@ -87,6 +90,21 @@ export const getKeywordSuggestions = async (req: Request, res: Response) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ success: true, keywords: [] });
   const keywords = await getKeywordSuggestionsService(q);
+  res.json({ success: true, keywords });
+};
+
+export const getPublicKeywordSuggestionsController = async (req: Request, res: Response) => {
+  const q = String(req.query.q || "").trim() || null;
+  const journalId = String(req.query.journal_id || "").trim() || null;
+  const limit = Math.min(Number(req.query.limit) || 10, 30);
+  const keywords = await getPublicKeywordSuggestionsService(q, journalId, limit);
+  res.json({ success: true, keywords });
+};
+
+export const getJournalTopKeywordsController = async (req: Request, res: Response) => {
+  const { journalId } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 20, 50);
+  const keywords = await getJournalTopKeywordsService(journalId, limit);
   res.json({ success: true, keywords });
 };
 
@@ -189,6 +207,17 @@ export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
   }
 };
 
+export const getPaperVersionHtmlController = async (req: AuthUser, res: Response) => {
+  const { paperId, versionId } = req.params;
+  try {
+    const html = await getPaperVersionHtmlService(paperId, versionId);
+    res.json({ success: true, html: html || null });
+  } catch (err) {
+    console.error("getPaperVersionHtmlController error:", err);
+    res.status(500).json({ success: false, message: "Failed to get version HTML" });
+  }
+};
+
 export const uploadRevisionController = async (
   req: AuthUser,
   res: Response,
@@ -230,4 +259,15 @@ export const getStatusLogController = async (req: AuthUser, res: Response) => {
   const { paperId } = req.params;
   const log = await getStatusLogRepo(paperId);
   return res.status(200).json({ success: true, log });
+};
+
+export const editPaperMetadataController = async (req: AuthUser, res: Response) => {
+  const { paperId } = req.params;
+  const { title, abstract } = req.body;
+  try {
+    const paper = await editPaperMetadataService(paperId, req.user!.id, req.user!.role, title, abstract);
+    return res.json({ success: true, paper });
+  } catch (err: any) {
+    return res.status(err.status || 400).json({ success: false, message: err.message });
+  }
 };

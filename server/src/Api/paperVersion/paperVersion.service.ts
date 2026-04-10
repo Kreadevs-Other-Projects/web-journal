@@ -58,7 +58,7 @@ export const uploadPaperVersionService = async (
   await setCurrentVersion(paper_id, version.id);
 
   // If paper was in pending_revision → mark as resubmitted, reset reviewer decisions, notify team
-  if (paper.status === "rejected") {
+  if (paper.status === "pending_revision") {
     await pool.query(
       `UPDATE papers SET status = 'resubmitted', updated_at = NOW() WHERE id = $1`,
       [paper_id],

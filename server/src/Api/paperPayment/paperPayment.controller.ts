@@ -8,6 +8,7 @@ import {
   getAllPaperPaymentsService,
   getRejectedPaymentsService,
   sendPaymentReminderService,
+  resendInvoiceService,
 } from "./paperPayment.service";
 
 export const uploadReceipt = async (req: AuthUser, res: Response) => {
@@ -97,6 +98,18 @@ export const getRejectedPayments = async (req: AuthUser, res: Response) => {
     res.json({ success: true, payments });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const resendInvoice = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { paperId } = req.params;
+    await resendInvoiceService(paperId);
+    res.json({ success: true, message: "Invoice resent successfully" });
+  } catch (e: any) {
+    const status = e.message === "Payment not found" ? 404 : 500;
+    res.status(status).json({ success: false, message: e.message });
   }
 };
 

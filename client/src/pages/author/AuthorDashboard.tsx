@@ -14,6 +14,8 @@ import {
   BookOpen,
   Calendar,
   ExternalLink,
+  Info,
+  X,
 } from "lucide-react";
 import { getPaperUrl } from "@/lib/utils";
 import { PageTransition } from "@/components/AnimationWrappers";
@@ -76,6 +78,13 @@ export default function AuthorDashboard() {
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAuthorHint, setShowAuthorHint] = useState(() =>
+    !localStorage.getItem("hint_dismissed_author")
+  );
+  const dismissAuthorHint = () => {
+    localStorage.setItem("hint_dismissed_author", "true");
+    setShowAuthorHint(false);
+  };
 
   useEffect(() => {
     fetch(`${url}/papers/getPapersByAuthor`, {
@@ -98,6 +107,20 @@ export default function AuthorDashboard() {
     >
       <PageTransition>
         <div className="p-6">
+          {showAuthorHint && (
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Getting Started</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  Welcome! Browse our open journals and submit your research. After submission, you can track your paper's progress here.
+                </p>
+              </div>
+              <button onClick={dismissAuthorHint} className="text-blue-400 hover:text-blue-600 shrink-0">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold">

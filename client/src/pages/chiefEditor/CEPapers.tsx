@@ -37,7 +37,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
-import { PaperTimeline } from "@/components/PaperTimeline";
 
 interface Reviewer {
   id: string;
@@ -49,6 +48,7 @@ interface Reviewer {
 interface Paper {
   id: string;
   title: string;
+  abstract: string | null;
   status: string;
   author_name: string;
   journal_name: string;
@@ -67,9 +67,18 @@ interface Paper {
   reviewers: Reviewer[];
   file_url: string | null;
   file_type: string | null;
+  current_version_number: number | null;
 }
 
 const OVERRIDE_STATUSES = ["accepted", "rejected", "pending_revision"];
+
+const ACCEPTED_STATUSES = [
+  "accepted",
+  "awaiting_payment",
+  "payment_review",
+  "ready_for_publication",
+  "published",
+];
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
@@ -164,24 +173,6 @@ export default function CEPapers() {
     Record<string, string>
   >({});
 
-  // View paper modal
-  const [viewPaper, setViewPaper] = useState<Paper | null>(null);
-  const [viewPaperLog, setViewPaperLog] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!viewPaper) {
-      setViewPaperLog([]);
-      return;
-    }
-    fetch(`${url}/papers/${viewPaper.id}/status-log`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) setViewPaperLog(d.log || []);
-      })
-      .catch(() => {});
-  }, [viewPaper?.id]);
 
   // Override modal
   const [overridePaper, setOverridePaper] = useState<Paper | null>(null);
@@ -319,6 +310,11 @@ export default function CEPapers() {
         title: "Status overridden",
         description: `Paper status updated to "${overrideStatus.replace(/_/g, " ")}"`,
       });
+      setPapers((prev) =>
+        prev.map((p) =>
+          p.id === overridePaper.id ? { ...p, status: overrideStatus } : p,
+        ),
+      );
       setOverridePaper(null);
       fetchPapers();
     } catch (e: any) {
@@ -495,12 +491,13 @@ export default function CEPapers() {
           <Card>
             <CardContent className="p-0 divide-y divide-border">
               {filtered.map((paper) => {
+                const isAccepted = ACCEPTED_STATUSES.includes(paper.status);
                 const pendingReviewers = paper.reviewers.filter(
                   (r) => r.status === "assigned",
                 );
                 const aeNeedsReminder =
-                  paper.current_ae_id && !paper.ae_decision;
-                const rvNeedsReminder = pendingReviewers.length > 0;
+                  !isAccepted && paper.current_ae_id && !paper.ae_decision;
+                const rvNeedsReminder = !isAccepted && pendingReviewers.length > 0;
                 const aeReminderLabel = getReminderLabel(`ae-${paper.id}`);
                 const rvReminderLabel = getReminderLabel(`rv-${paper.id}`);
 
@@ -556,7 +553,7 @@ export default function CEPapers() {
                       </span>
                     </div>
 
-                    {/* Row 3: AE + Reviewer info */}
+                    {/* Row 3: AE + Reviewer info + Version */}
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
                       <div className="flex items-center gap-1.5">
                         <span className="text-muted-foreground">AE:</span>
@@ -598,6 +595,12 @@ export default function CEPapers() {
                           </span>
                         )}
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Version:</span>
+                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                          v{paper.current_version_number || 1}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Row 4: Action buttons */}
@@ -607,20 +610,26 @@ export default function CEPapers() {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs gap-1"
-                        onClick={() => setViewPaper(paper)}
+                        onClick={() =>
+                          navigate(`/chief-editor/papers/${paper.id}/view`, {
+                            state: { paper },
+                          })
+                        }
                       >
                         <Eye className="h-3 w-3" />
                         View Paper
                       </Button>
 
                       {/* Assign AE */}
-                      {!["published", "rejected"].includes(paper.status) && (
+                      {!isAccepted && !["rejected"].includes(paper.status) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs gap-1"
                           onClick={() =>
-                            navigate(`/chief-editor/papers/${paper.id}/assign-ae`)
+                            navigate(
+                              `/chief-editor/papers/${paper.id}/assign-ae`,
+                            )
                           }
                         >
                           <UserPlus className="h-3 w-3" />
@@ -629,13 +638,15 @@ export default function CEPapers() {
                       )}
 
                       {/* Assign Reviewer */}
-                      {!["published", "rejected"].includes(paper.status) && (
+                      {!isAccepted && !["rejected"].includes(paper.status) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs gap-1"
                           onClick={() =>
-                            navigate(`/chief-editor/papers/${paper.id}/assign-reviewer`)
+                            navigate(
+                              `/chief-editor/papers/${paper.id}/assign-reviewer`,
+                            )
                           }
                         >
                           <Users className="h-3 w-3" />
@@ -731,206 +742,12 @@ export default function CEPapers() {
         </p>
       </div>
 
-      {/* View Paper Modal */}
-      <Dialog
-        open={!!viewPaper}
-        onOpenChange={(open) => !open && setViewPaper(null)}
-      >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Paper Details
-            </DialogTitle>
-          </DialogHeader>
-          {viewPaper && (
-            <div className="space-y-4 py-2 text-sm">
-              <div>
-                <p className="font-semibold text-base leading-snug">
-                  {viewPaper.title}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                    Status
-                  </p>
-                  <Badge
-                    className={
-                      STATUS_COLORS[viewPaper.status] ||
-                      "bg-muted text-muted-foreground"
-                    }
-                  >
-                    {viewPaper.status.replace(/_/g, " ")}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                    Author
-                  </p>
-                  <p className="font-medium">{viewPaper.author_name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                    Journal
-                  </p>
-                  <p className="font-medium">{viewPaper.journal_name}</p>
-                </div>
-                {viewPaper.issue_label && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                      Issue
-                    </p>
-                    <p className="font-medium">{viewPaper.issue_label}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                    Submitted
-                  </p>
-                  <p className="font-medium">
-                    {viewPaper.submitted_at
-                      ? new Date(viewPaper.submitted_at).toLocaleDateString(
-                          "en-GB",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          },
-                        )
-                      : "—"}
-                  </p>
-                </div>
-                {viewPaper.accepted_at && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                      Accepted
-                    </p>
-                    <p className="font-medium">
-                      {new Date(viewPaper.accepted_at).toLocaleDateString(
-                        "en-GB",
-                        { day: "2-digit", month: "short", year: "numeric" },
-                      )}
-                    </p>
-                  </div>
-                )}
-                {viewPaper.published_at && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                      Published
-                    </p>
-                    <p className="font-medium">
-                      {new Date(viewPaper.published_at).toLocaleDateString(
-                        "en-GB",
-                        {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        },
-                      )}
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                    Associate Editor
-                  </p>
-                  <p className="font-medium">
-                    {viewPaper.current_ae_name || "Unassigned"}
-                  </p>
-                </div>
-                {viewPaper.ae_decision && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
-                      AE Decision
-                    </p>
-                    <Badge
-                      className={
-                        AE_DECISION_COLORS[viewPaper.ae_decision] ||
-                        "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {viewPaper.ae_decision}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              {viewPaper.reviewers.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Reviewers
-                  </p>
-                  <div className="space-y-1">
-                    {viewPaper.reviewers.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="font-medium">{r.name}</span>
-                        <span className="text-muted-foreground capitalize">
-                          {r.status}
-                          {r.decision ? ` · ${r.decision}` : ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {viewPaper.file_url && (
-                <div className="border-t pt-3 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">File:</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() =>
-                      window.open(`${url}${viewPaper.file_url}`, "_blank")
-                    }
-                  >
-                    <FileDown className="h-3 w-3" />
-                    Download {viewPaper.file_type?.toUpperCase() || "File"}
-                  </Button>
-                </div>
-              )}
-              {viewPaperLog.length > 0 && (
-                <div className="border-t pt-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
-                    Status Timeline
-                  </p>
-                  <PaperTimeline
-                    events={viewPaperLog.map((l, i) => ({
-                      id: l.id || String(i),
-                      status: l.status,
-                      date: new Date(l.changed_at).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      }),
-                      description: l.status.replace(/_/g, " "),
-                      actor: l.changed_by_name
-                        ? `${l.changed_by_name} (${l.changed_by_role?.replace(/_/g, " ")})`
-                        : undefined,
-                      isCurrent: i === viewPaperLog.length - 1,
-                    }))}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewPaper(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Override Status Modal */}
       <Dialog
         open={!!overridePaper}
         onOpenChange={(open) => !open && setOverridePaper(null)}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-destructive" />
@@ -945,7 +762,9 @@ export default function CEPapers() {
           {overridePaper && (
             <div className="space-y-4 py-2">
               <div className="rounded-md bg-muted/50 p-3 text-sm">
-                <p className="font-medium truncate">{overridePaper.title}</p>
+                <p className="font-medium line-clamp-2">
+                  {overridePaper.title}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Current: {overridePaper.status.replace(/_/g, " ")}
                 </p>

@@ -218,6 +218,14 @@ export const getPaperVersionForHtmlRepo = async (paperId: string) => {
   return result.rows[0] || null;
 };
 
+export const getVersionForHtmlByIdRepo = async (paperId: string, versionId: string) => {
+  const result = await pool.query(
+    `SELECT id, file_url, html_content FROM paper_versions WHERE id = $1 AND paper_id = $2`,
+    [versionId, paperId],
+  );
+  return result.rows[0] || null;
+};
+
 export const cacheVersionHtmlRepo = async (versionId: string, html: string) => {
   await pool.query(
     "UPDATE paper_versions SET html_content = $1 WHERE id = $2",

@@ -323,3 +323,67 @@ export const reviewReviewerRequestService = async (
 
   return updated;
 };
+
+export const remindReviewerFromAEService = async (
+  paperId: string,
+  reviewerId: string,
+  subEditorId: string,
+) => {
+  // Verify the reviewer is assigned to this paper and the SE is the AE
+  const res = await pool.query(
+    `SELECT u.id, u.email, u.username, p.title
+     FROM review_assignments ra
+     JOIN users u ON u.id = ra.reviewer_id
+     JOIN papers p ON p.id = ra.paper_id
+     WHERE ra.paper_id = $1 AND ra.reviewer_id = $2
+       AND ra.status = 'assigned'
+       AND p.id IN (
+         SELECT ea.paper_id FROM editor_assignments ea
+         WHERE ea.sub_editor_id = $3 AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+       )
+     LIMIT 1`,
+    [paperId, reviewerId, subEditorId],
+  );
+  if (!res.rows.length) {
+    throw Object.assign(new Error("Reviewer not found or not actively assigned to this paper"), { status: 404 });
+  }
+
+  const reviewer = res.rows[0];
+
+  // Check 24-hour cooldown
+  const lastReminder = await pool.query(
+    `SELECT sent_at FROM paper_reminders WHERE paper_id = $1 AND sent_to = $2 ORDER BY sent_at DESC LIMIT 1`,
+    [paperId, reviewer.id],
+  );
+  if (lastReminder.rows.length) {
+    const hoursSince = (Date.now() - new Date(lastReminder.rows[0].sent_at).getTime()) / 3600000;
+    if (hoursSince < 24) {
+      const hoursLeft = Math.ceil(24 - hoursSince);
+      throw Object.assign(
+        new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`),
+        { status: 429 },
+      );
+    }
+  }
+
+  await pool.query(
+    `INSERT INTO paper_reminders (paper_id, sent_to, sent_by, role) VALUES ($1, $2, $3, $4)`,
+    [paperId, reviewer.id, subEditorId, "reviewer"],
+  );
+
+  transporter.sendMail({
+    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    to: reviewer.email,
+    subject: `Reminder: Review pending for "${reviewer.title}"`,
+    html: baseEmailTemplate(
+      "Review Reminder",
+      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+       <p>This is a friendly reminder that your peer review is pending for:</p>
+       <p><strong>"${reviewer.title}"</strong></p>
+       <p>Your timely review is important to the publication process.</p>
+       <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
+    ),
+  }).catch(console.error);
+
+  return { message: `Reminder sent to ${reviewer.username}` };
+};

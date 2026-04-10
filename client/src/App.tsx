@@ -36,6 +36,7 @@ import CEStats from "./pages/chiefEditor/CEStats.tsx";
 import AssignAssociateEditorPage from "./pages/chiefEditor/AssignAssociateEditorPage.tsx";
 import AssignReviewerPage from "./pages/chiefEditor/AssignReviewerPage.tsx";
 import StaffDetailPage from "./pages/chiefEditor/StaffDetailPage.tsx";
+import CEPaperViewPage from "./pages/chiefEditor/CEPaperViewPage.tsx";
 import EditJournalPage from "./pages/publisher/EditJournalPage.tsx";
 import PublisherJournalsPage from "./pages/publisher/PublisherJournalsPage.tsx";
 import PublisherJournalDetailPage from "./pages/publisher/PublisherJournalDetailPage.tsx";
@@ -194,6 +195,10 @@ const App = () => (
                       element={<CEJournalDetail />}
                     />
                     <Route path="/chief-editor/papers" element={<CEPapers />} />
+                    <Route
+                      path="/chief-editor/papers/:paperId/view"
+                      element={<CEPaperViewPage />}
+                    />
                     <Route path="/chief-editor/team" element={<CETeam />} />
                     <Route path="/chief-editor/applications" element={<CEApplications />} />
                     <Route path="/chief-editor/stats" element={<CEStats />} />

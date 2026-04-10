@@ -173,7 +173,6 @@ export default function CEPapers() {
     Record<string, string>
   >({});
 
-
   // Override modal
   const [overridePaper, setOverridePaper] = useState<Paper | null>(null);
   const [overrideStatus, setOverrideStatus] = useState("");
@@ -497,7 +496,8 @@ export default function CEPapers() {
                 );
                 const aeNeedsReminder =
                   !isAccepted && paper.current_ae_id && !paper.ae_decision;
-                const rvNeedsReminder = !isAccepted && pendingReviewers.length > 0;
+                const rvNeedsReminder =
+                  !isAccepted && pendingReviewers.length > 0;
                 const aeReminderLabel = getReminderLabel(`ae-${paper.id}`);
                 const rvReminderLabel = getReminderLabel(`rv-${paper.id}`);
 

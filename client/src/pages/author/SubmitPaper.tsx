@@ -158,7 +158,6 @@ export default function SubmitPaper() {
       .catch(() => {});
   }, []);
 
-
   useEffect(() => {
     if (!journalId) {
       setGuidelines(null);
@@ -206,7 +205,6 @@ export default function SubmitPaper() {
     setApcCurrency("USD");
     setApcAgreed(false);
   }, [journalId, token]);
-
 
   const updateArrayField = <T,>(
     arr: T[],
@@ -628,7 +626,7 @@ export default function SubmitPaper() {
                           <strong>
                             {apcCurrency} {apcFee.toFixed(2)}
                           </strong>{" "}
-                          per paper. Total cost for this paper:{" "}
+                          per Article. Total cost for this Article:{" "}
                           <strong>
                             {apcCurrency} {apcFee.toFixed(2)}
                           </strong>

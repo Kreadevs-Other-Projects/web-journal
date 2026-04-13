@@ -1496,7 +1496,7 @@ export default function PublisherDashboard() {
                                 </span>
                                 <span className="text-sm font-normal text-muted-foreground">
                                   {" "}
-                                  per page
+                                  per Article
                                 </span>
                               </>
                             ) : (
@@ -1505,12 +1505,6 @@ export default function PublisherDashboard() {
                               </span>
                             )}
                           </p>
-                          {originalApcFee && parseFloat(originalApcFee) > 0 && (
-                            <p className="text-xs text-muted-foreground mt-3">
-                              Example: 10 pages = {originalApcCurrency}{" "}
-                              {(parseFloat(originalApcFee) * 10).toFixed(2)}
-                            </p>
-                          )}
                         </div>
                         <Button
                           onClick={() => setIsEditingAPC(true)}
@@ -1518,7 +1512,7 @@ export default function PublisherDashboard() {
                           className="w-full gap-2"
                         >
                           <Edit3 className="h-4 w-4" />
-                          Edit APC Settings
+                          Edit APC
                         </Button>
                       </div>
                     ) : (
@@ -1674,66 +1668,6 @@ export default function PublisherDashboard() {
                       </Button>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Approval Section */}
-              <Card className="border-2 border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-500/20 rounded-lg">
-                      <CheckCircle className="h-4 w-4 text-blue-400" />
-                    </div>
-                    Issue Approval
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                    <div className="flex-1">
-                      {selectedIssue ? (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge className="bg-green-500/20 text-green-400">
-                            Selected
-                          </Badge>
-                          <span className="font-medium">
-                            {selectedIssue.label}
-                          </span>
-                          <span className="text-muted-foreground">
-                            (Vol {selectedIssue.volume}, Issue{" "}
-                            {selectedIssue.issue})
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Select an issue from above to approve
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      onClick={() =>
-                        approveJournal(
-                          selectedJournal?.id ?? "",
-                          selectedIssue?.id ?? "",
-                        )
-                      }
-                      disabled={approving || !selectedIssue}
-                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 min-w-[180px]"
-                      size="lg"
-                    >
-                      {approving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Approving...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve Selected Issue
-                        </>
-                      )}
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </div>

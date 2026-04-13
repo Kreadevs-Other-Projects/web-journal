@@ -1,5 +1,132 @@
 import { Request, Response } from "express";
-import { getBrowseDataService } from "./browse.service";
+import {
+  getBrowseDataService,
+  getPublicPaperService,
+  getPublicPaperHtmlService,
+} from "./browse.service";
+import {
+  getPublicJournalsRepo,
+  getLatestPublishedPapersRepo,
+  getOpenJournalsRepo,
+  getPublicPaperBySlugRepo,
+  getPaperSlugRepo,
+} from "./browse.repository";
+
+export const getPublicPaper = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const paper = await getPublicPaperService(paperId);
+    if (!paper) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Paper not found" });
+    }
+    res.json({ success: true, paper });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch paper" });
+  }
+};
+
+export const getPaperHtml = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const html = await getPublicPaperHtmlService(paperId);
+    res.json({ success: true, html: html || null });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to get paper HTML" });
+  }
+};
+
+export const getHomeJournals = async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 6, 20);
+    const q = req.query.q as string | undefined;
+    const type = req.query.type as string | undefined;
+    const open = req.query.open === "true";
+    const category_id = req.query.category_id as string | undefined;
+    const journals = await getPublicJournalsRepo({
+      limit,
+      q,
+      type,
+      open: open || undefined,
+      category_id,
+    });
+    res.json({ success: true, journals });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch journals" });
+  }
+};
+
+export const getOpenJournals = async (_req: Request, res: Response) => {
+  try {
+    const journals = await getOpenJournalsRepo();
+    res.json({ success: true, journals });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch open journals" });
+  }
+};
+
+export const getHomePublications = async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 6, 20);
+    const offset = Number(req.query.offset) || 0;
+    const q = req.query.q as string | undefined;
+    const category = req.query.category as string | undefined;
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const papers = await getLatestPublishedPapersRepo({
+      limit,
+      offset,
+      q,
+      category,
+      year,
+    });
+    res.json({ success: true, papers });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch publications" });
+  }
+};
+
+export const getPublicPaperBySlug = async (req: Request, res: Response) => {
+  try {
+    const { acronym, slug } = req.params;
+    const paper = await getPublicPaperBySlugRepo(acronym, slug);
+    if (!paper) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Article not found" });
+    }
+    res.json({ success: true, paper });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch article" });
+  }
+};
+
+export const getPaperSlug = async (req: Request, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const row = await getPaperSlugRepo(paperId);
+    if (!row) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Paper not found or not published" });
+    }
+    res.json({ success: true, acronym: row.acronym, url_slug: row.url_slug });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch paper slug" });
+  }
+};
 
 export const getBrowseData = async (req: Request, res: Response) => {
   try {

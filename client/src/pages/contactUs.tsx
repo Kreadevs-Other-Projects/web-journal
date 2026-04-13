@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import Navbar from "@/components/navbar";
+import { url } from "@/url";
 
 export default function ContactPage() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function ContactPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -49,20 +51,28 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError("");
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch(`${url}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
-    setFormData({
-      name: "",
-      email: "",
-      subject: "",
-      message: "",
-      department: "",
-    });
+      const data = await response.json();
 
-    setTimeout(() => setSubmitSuccess(false), 5000);
+      if (data.success) {
+        setSubmitSuccess(true);
+        setFormData({ name: "", email: "", subject: "", message: "", department: "" });
+      } else {
+        setSubmitError(data.message || "Failed to send message. Please try again.");
+      }
+    } catch {
+      setSubmitError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -187,7 +197,7 @@ export default function ContactPage() {
             <h1 className="mb-6 font-serif-roboto text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Connect with{" "}
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                JournalHub GIKI
+                GIKI Journal
               </span>
             </h1>
 
@@ -384,6 +394,10 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {submitError && (
+                  <p className="text-sm text-red-500">{submitError}</p>
+                )}
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}
@@ -431,9 +445,9 @@ export default function ContactPage() {
                 Visit Our Campus
               </h3>
               <p className="mb-4 text-sm text-muted-foreground">
-                The JournalHub editorial office is located in the Main Academic
-                Block. Visitors are welcome during office hours. Please schedule
-                an appointment for meetings with editors.
+                The GIKI Journal editorial office is located in the Main
+                Academic Block. Visitors are welcome during office hours. Please
+                schedule an appointment for meetings with editors.
               </p>
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-1">
@@ -668,7 +682,7 @@ export default function ContactPage() {
           <div className="relative">
             <Sparkles className="mx-auto mb-4 h-12 w-12 text-white/80" />
             <h2 className="mb-4 font-serif-roboto text-3xl font-bold">
-              Stay Updated with JournalHub
+              Stay Updated with GIKI Journal
             </h2>
             <p className="mx-auto mb-8 max-w-2xl text-white/90">
               Subscribe to our newsletter for the latest research, publication

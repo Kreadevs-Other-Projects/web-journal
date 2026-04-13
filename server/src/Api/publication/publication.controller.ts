@@ -1,12 +1,17 @@
 import { Response } from "express";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { getSubmittedReviews, setPaperPublished } from "./publication.service";
+import {
+  getSubmittedReviews,
+  setPaperPublished,
+  suggestDoiService,
+} from "./publication.service";
 
 export const getSubmittedReviewsService = async (
   req: AuthUser,
   res: Response,
 ) => {
-  const reviews = await getSubmittedReviews();
+  const ownerId = req.user!.id;
+  const reviews = await getSubmittedReviews(ownerId);
 
   return res.status(200).json({
     success: true,
@@ -17,33 +22,38 @@ export const getSubmittedReviewsService = async (
 export const publishPaper = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { issueId } = req.body;
+    const { issueId, doi, year_label } = req.body;
     const user = req.user!;
 
-    if (user.role !== "publisher_manager") {
-      return res.status(403).json({
-        success: false,
-        message: "Only Publisher Manager can publish paper",
-      });
-    }
-
-    if (!issueId) {
-      return res.status(400).json({
-        success: false,
-        message: "Issue ID is required",
-      });
-    }
-
-    const published = await setPaperPublished(paperId, user.id, issueId);
+    const published = await setPaperPublished(
+      paperId,
+      user.id,
+      issueId,
+      doi.trim(),
+    );
 
     return res.json({
       success: true,
       data: published,
     });
   } catch (error: any) {
-    return res.status(500).json({
+    const status = error.message?.includes("DOI") ? 400 : 500;
+    return res.status(status).json({
       success: false,
       message: error.message || "Failed to publish paper",
+    });
+  }
+};
+
+export const suggestDoi = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const doi = await suggestDoiService(paperId);
+    return res.json({ success: true, doi });
+  } catch (error: any) {
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Could not generate DOI",
     });
   }
 };

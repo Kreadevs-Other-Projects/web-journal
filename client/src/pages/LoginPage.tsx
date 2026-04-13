@@ -19,26 +19,21 @@ import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import Navbar from "@/components/navbar";
+import { OtpInput } from "@/components/OtpInput";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
 
   const { login } = useAuth();
   const { toast } = useToast();
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpEmail, setOtpEmail] = useState("");
-  const [tempToken, setTempToken] = useState<string | null>(null);
-  const [tempUser, setTempUser] = useState<any>(null);
-  const [tempRole, setTempRole] = useState<UserRole | null>(null);
+  const [otpError, setOtpError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +50,6 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
-      // TEMP: Call the normal login endpoint but skip OTP handling in frontend
       const response = await fetch(`${url}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,23 +67,12 @@ export default function LoginPage() {
         throw new Error(result.message || "Login failed");
       }
 
-      // TEMP: Directly consider login successful, skip OTP
-      login(result.token); // your auth context
-      localStorage.setItem("user", JSON.stringify(result.user));
-      localStorage.setItem("refreshToken", result.refreshToken);
-
-      const userRole = result.user.role as UserRole;
-      navigate(roleConfig[userRole].route, { replace: true });
-
+      // Credentials accepted — server sent OTP, move to verification step
+      setStep("otp");
       toast({
-        title: "Login Successful",
-        description: `Welcome ${roleConfig[userRole].label}!`,
-        variant: "default",
+        title: "Verification code sent",
+        description: `Check ${email} for your 6-digit code`,
       });
-
-      // Skip OTP step
-      // setOtpSent(true);
-      // setStep("otp");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -101,94 +84,62 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!otp.trim() || otp.length !== 6) {
-      toast({
-        title: "Invalid OTP",
-        description: "Enter a 6-digit OTP",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleVerifyOtp = async (otpCode: string) => {
     try {
       setIsLoading(true);
+      setOtpError("");
 
       const response = await fetch(`${url}/auth/verifyLoginOTP`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), otp }),
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otpCode,
+          role: selectedRole,
+        }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "OTP verification failed");
+        setOtpError(result.message || "OTP verification failed");
+        return;
       }
 
       login(result.token);
       localStorage.setItem("user", JSON.stringify(result.user));
       localStorage.setItem("refreshToken", result.refreshToken);
 
-      const userRole = result.user.role as UserRole;
-      navigate(roleConfig[userRole].route, { replace: true });
+      const activeRole = selectedRole as UserRole;
+      navigate(roleConfig[activeRole].route, { replace: true });
 
       toast({
         title: "Login Successful",
-        description: `Welcome ${roleConfig[userRole].label}!`,
+        description: `Welcome ${roleConfig[activeRole].label}!`,
         variant: "default",
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      setOtpError(error.message || "OTP verification failed");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
-    try {
-      const response = await fetch(`${url}/auth/resend-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail }),
-      });
-
+    const response = await fetch(`${url}/auth/resend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), purpose: "login" }),
+    });
+    if (!response.ok) {
       const result = await response.json();
-      return result.success;
-    } catch (error) {
-      console.error("Failed to resend OTP:", error);
-      return false;
+      throw new Error(result.message || "Failed to resend OTP");
     }
-  };
-
-  const handleVerificationSuccess = () => {
-    if (tempToken && tempRole) {
-      login(tempToken);
-
-      if (tempUser) {
-        localStorage.setItem("user", JSON.stringify(tempUser));
-      }
-
-      const config = roleConfig[tempRole];
-      if (config) {
-        toast({
-          title: "Login Successful!",
-          description: `Welcome back! Redirecting to ${config.label} dashboard...`,
-          variant: "default",
-          duration: 3000,
-        });
-
-        setTimeout(() => {
-          navigate(config.route, { replace: true });
-        }, 1500);
-      }
-    }
+    setOtpError("");
+    toast({
+      title: "Code resent",
+      description: "Check your email for a new code",
+    });
   };
 
   return (
@@ -296,15 +247,29 @@ export default function LoginPage() {
                   {selectedRole === "chief_editor" && (
                     <>
                       <p>✓ Manage paper assignments</p>
-                      <p>✓ Coordinate review process</p>
-                      <p>✓ Access analytics dashboard</p>
+                      <p>✓ Coordinate the review process</p>
+                      <p>✓ Open and close submission calls</p>
                     </>
                   )}
-                  {selectedRole === "owner" && (
+                  {selectedRole === "sub_editor" && (
                     <>
-                      <p>✓ System-wide oversight</p>
-                      <p>✓ User management</p>
-                      <p>✓ Platform configuration</p>
+                      <p>✓ Manage revisions and edits</p>
+                      <p>✓ Coordinate with authors</p>
+                      <p>✓ Prepare papers for publication</p>
+                    </>
+                  )}
+                  {selectedRole === "journal_manager" && (
+                    <>
+                      <p>✓ Manage journal issues</p>
+                      <p>✓ Oversee editorial board</p>
+                      <p>✓ Publish accepted articles</p>
+                    </>
+                  )}
+                  {selectedRole === "publisher" && (
+                    <>
+                      <p>✓ Create and manage journals</p>
+                      <p>✓ Oversee all publications</p>
+                      <p>✓ Configure journal settings</p>
                     </>
                   )}
                 </div>
@@ -325,7 +290,7 @@ export default function LoginPage() {
                 <BookOpen className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="font-serif-roboto text-2xl font-bold">
-                JournalHub
+                GIKI Journal
               </span>
             </div>
 
@@ -337,8 +302,17 @@ export default function LoginPage() {
                 Choose your role and enter your credentials
               </p>
 
-              <div className="grid grid-cols-4 gap-2 mb-6">
-                {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {(
+                  [
+                    "publisher",
+                    "journal_manager",
+                    "chief_editor",
+                    "sub_editor",
+                    "reviewer",
+                    "author",
+                  ] as UserRole[]
+                ).map((role) => {
                   const config = roleConfig[role];
                   const Icon = config.icon;
                   const isSelected = selectedRole === role;
@@ -358,7 +332,7 @@ export default function LoginPage() {
                     >
                       <Icon className="h-5 w-5" />
                       <span className="text-[10px] font-medium uppercase tracking-wider">
-                        {config.label}
+                        {role === "sub_editor" ? "Assoc. Editor" : config.label}
                       </span>
                       {isSelected && (
                         <motion.div
@@ -371,86 +345,57 @@ export default function LoginPage() {
                 })}
               </div>
 
-              <form
-                onSubmit={
-                  step === "credentials" ? handleLogin : handleVerifyOtp
-                }
-                className="space-y-4"
-              >
-                {step === "credentials" && (
-                  <>
+              {step === "credentials" ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="pl-5 pr-10 input-glow text-muted-foreground"
+                    required
+                  />
+                  <div className="relative">
                     <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Password"
                       className="pl-5 pr-10 input-glow text-muted-foreground"
                       required
                     />
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        className="pl-5 pr-10 input-glow text-muted-foreground"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </>
-                )}
-                {/* {step === "otp" && (
-                  <>
-                    <p className="text-sm input-glow text-muted-foreground">
-                      Enter the OTP sent to <strong>{email}</strong>
-                    </p>
-                    <Input
-                      id="otp"
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter 6-digit OTP"
-                      maxLength={6}
-                      required
-                      className="pl-5 pr-10 input-glow text-muted-foreground"
-                    />
-                  </>
-                )} */}
-
-                <Button type="submit" disabled={isLoading}>
-                  {step === "credentials"
-                    ? isLoading
-                      ? "Sending..."
-                      : "Send OTP"
-                    : isLoading
-                      ? "Verifying..."
-                      : "Verify OTP"}
-                </Button>
-
-                {step === "otp" && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setStep("credentials")}
-                  >
-                    Change Email
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <Button type="submit" disabled={isLoading} className="w-full">
+                    {isLoading ? "Sending code..." : "Sign In"}
                   </Button>
-                )}
-              </form>
+                </form>
+              ) : (
+                <OtpInput
+                  email={email}
+                  onComplete={handleVerifyOtp}
+                  onResend={handleResendOtp}
+                  onBack={() => {
+                    setStep("credentials");
+                    setOtpError("");
+                  }}
+                  isLoading={isLoading}
+                  error={otpError}
+                />
+              )}
 
               <div className="mt-6 pt-6 border-t border-border/50 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -472,7 +417,7 @@ export default function LoginPage() {
               className="mt-6 text-center"
             >
               <p className="text-xs text-muted-foreground">
-                Demo: Use any email and password to explore
+                Email verification required for all accounts
               </p>
             </motion.div>
           </motion.div>

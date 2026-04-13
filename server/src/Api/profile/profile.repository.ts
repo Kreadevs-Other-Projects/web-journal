@@ -11,13 +11,20 @@ export const findUserByEmail = async (email: string) => {
 
 export const findUserById = async (id: string) => {
   const res = await pool.query(
-    `SELECT id, email, username, role, created_at, profile_pic
+    `SELECT id, email, username, role, created_at, profile_pic, profile_completed, profile_completed_at
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
     [id],
   );
 
   return res.rows[0];
+};
+
+export const markProfileCompleted = async (userId: string) => {
+  await pool.query(
+    `UPDATE users SET profile_completed = TRUE, profile_completed_at = NOW() WHERE id = $1`,
+    [userId],
+  );
 };
 
 export const findUserProfile = async (userId: string) => {
@@ -126,6 +133,12 @@ export const updateUserProfile = async (
     qualifications?: string | null;
     expertise?: string[] | null;
     certifications?: string | null;
+    degrees?: string[] | null;
+    keywords?: string[] | null;
+    profile_pic_url?: string | null;
+    bio?: string | null;
+    organization_name?: string | null;
+    website?: string | null;
   },
 ) => {
   const fields: string[] = [];
@@ -149,6 +162,40 @@ export const updateUserProfile = async (
     values.push(data.certifications);
   }
 
+  if (data.degrees !== undefined) {
+    fields.push(`degrees = $${paramCount++}`);
+    values.push(
+      data.degrees && data.degrees.length > 0 ? data.degrees : null,
+    );
+  }
+
+  if (data.keywords !== undefined) {
+    fields.push(`keywords = $${paramCount++}`);
+    values.push(
+      data.keywords && data.keywords.length > 0 ? data.keywords : null,
+    );
+  }
+
+  if (data.profile_pic_url !== undefined) {
+    fields.push(`profile_pic_url = $${paramCount++}`);
+    values.push(data.profile_pic_url);
+  }
+
+  if (data.bio !== undefined) {
+    fields.push(`bio = $${paramCount++}`);
+    values.push(data.bio);
+  }
+
+  if (data.organization_name !== undefined) {
+    fields.push(`organization_name = $${paramCount++}`);
+    values.push(data.organization_name);
+  }
+
+  if (data.website !== undefined) {
+    fields.push(`website = $${paramCount++}`);
+    values.push(data.website);
+  }
+
   if (fields.length === 0) {
     return null;
   }
@@ -156,7 +203,7 @@ export const updateUserProfile = async (
   values.push(userId);
 
   const result = await pool.query(
-    `UPDATE user_profiles 
+    `UPDATE user_profiles
      SET ${fields.join(", ")}
      WHERE user_id = $${paramCount}
      RETURNING *`,
@@ -212,4 +259,50 @@ export const softDeleteUser = async (userId: string) => {
     [timestamp, userId],
   );
   return result.rows[0];
+};
+
+export const createCertificationRepo = async (data: {
+  user_id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+}) => {
+  const result = await pool.query(
+    `INSERT INTO user_certifications (user_id, file_url, file_name, file_type)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [data.user_id, data.file_url, data.file_name, data.file_type],
+  );
+  return result.rows[0];
+};
+
+export const getCertificationsByUserRepo = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM user_certifications WHERE user_id = $1 ORDER BY uploaded_at DESC`,
+    [userId],
+  );
+  return result.rows;
+};
+
+export const getCertificationByIdRepo = async (certId: string) => {
+  const result = await pool.query(
+    `SELECT * FROM user_certifications WHERE id = $1`,
+    [certId],
+  );
+  return result.rows[0];
+};
+
+export const deleteCertificationRepo = async (certId: string, userId: string) => {
+  const result = await pool.query(
+    `DELETE FROM user_certifications WHERE id = $1 AND user_id = $2 RETURNING *`,
+    [certId, userId],
+  );
+  return result.rows[0];
+};
+
+export const countCertificationsRepo = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM user_certifications WHERE user_id = $1`,
+    [userId],
+  );
+  return result.rows[0].count as number;
 };

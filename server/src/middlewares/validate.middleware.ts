@@ -14,11 +14,13 @@ export const validate = (schema: ZodSchema) => {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
-          message: "Validation error",
-          errors: error.issues.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
+          message: error.issues[0]?.message || "Validation error",
+          errors: error.issues.map((err) => {
+            const path = err.path.join(".");
+            // Strip leading "body." so field names match frontend field names
+            const field = path.startsWith("body.") ? path.slice(5) : path;
+            return { field, message: err.message };
+          }),
         });
       }
 

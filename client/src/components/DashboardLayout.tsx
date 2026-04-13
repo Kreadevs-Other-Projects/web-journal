@@ -17,11 +17,23 @@ import {
   Moon,
   Sun,
   Router,
+  ChevronDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub, // ADD
+  DropdownMenuSubTrigger, // ADD
+  DropdownMenuSubContent,
+} from "./ui/dropdown-menu";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -41,9 +53,37 @@ export function DashboardLayout({
   role,
   userName,
 }: DashboardLayoutProps) {
-  const { logout, userData } = useAuth();
+  const { logout, userData, user, switchRole, token } = useAuth();
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navBadges, setNavBadges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (role !== "chief_editor" || !token) return;
+    const fetchCount = () => {
+      fetch(`${url}/chiefEditor/applications/count?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.count > 0) {
+            setNavBadges({ "/chief-editor/applications": d.count });
+          } else {
+            setNavBadges({});
+          }
+        })
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    const onFocus = () => fetchCount();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [role, token]);
 
   const { toast } = useToast();
   const config = roleConfig[role];
@@ -109,6 +149,30 @@ export function DashboardLayout({
     }
   };
 
+  const handleSwitchRole = async (
+    newRole: UserRole,
+    journalId?: string | null,
+  ) => {
+    const sameContext =
+      newRole === role &&
+      (journalId ?? null) === (user?.active_journal_id ?? null);
+    if (sameContext || switchingRole) return;
+    try {
+      setSwitchingRole(true);
+      await switchRole(newRole, journalId);
+      const target = roleConfig[newRole]?.route ?? "/";
+      navigate(target);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to switch role",
+        variant: "destructive",
+      });
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {mobileMenuOpen && (
@@ -149,7 +213,7 @@ export function DashboardLayout({
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="font-serif text-lg font-semibold">
-                JournalHub
+                GIKI Journal
               </span>
             </motion.div>
           )}
@@ -195,6 +259,7 @@ export function DashboardLayout({
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {config.navigation.map((item) => {
             const isActive = location.pathname === item.path;
+            const badge = navBadges[item.path];
             return (
               <Link key={item.path} to={item.path}>
                 <motion.div
@@ -210,8 +275,15 @@ export function DashboardLayout({
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   {sidebarOpen && (
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-sm font-medium flex-1">
+                      {item.label}
+                    </span>
                   )}
+                  {sidebarOpen && badge ? (
+                    <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">
+                      {badge}
+                    </span>
+                  ) : null}
                 </motion.div>
               </Link>
             );
@@ -302,6 +374,99 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground border">
+                Switch Role
+              </span>
+              {user &&
+                (() => {
+                  const roleOrder = [
+                    "publisher",
+                    "journal_manager",
+                    "chief_editor",
+                    "sub_editor",
+                    "reviewer",
+                    "author",
+                    "owner",
+                  ];
+
+                  const uniqueRoles = Array.from(
+                    new Map(
+                      (user.roles ?? [])
+                        .filter((r) => r.role !== role)
+                        .sort(
+                          (a, b) =>
+                            roleOrder.indexOf(a.role) -
+                            roleOrder.indexOf(b.role),
+                        )
+                        .map((r) => [r.role, r]), // unique by role
+                    ).values(),
+                  );
+
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 max-w-[220px] h-auto py-1.5 px-3"
+                          disabled={switchingRole || uniqueRoles.length === 0}
+                        >
+                          <Shield
+                            className={cn(
+                              "h-3.5 w-3.5 flex-shrink-0",
+                              config.color,
+                            )}
+                          />
+                          <div className="flex flex-col items-start text-left min-w-0">
+                            <span className="text-xs font-semibold leading-none">
+                              {config.label}
+                            </span>
+                          </div>
+                          {uniqueRoles.length > 0 && (
+                            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      {uniqueRoles.length > 0 && (
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            Switch Role
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+
+                          {uniqueRoles.map((entry, i) => {
+                            const rc = roleConfig[entry.role as UserRole];
+                            if (!rc) return null;
+
+                            return (
+                              <DropdownMenuItem
+                                key={`${entry.role}-${i}`}
+                                onClick={() =>
+                                  handleSwitchRole(
+                                    entry.role as UserRole,
+                                    entry.journal_id,
+                                  )
+                                }
+                                className="gap-3 cursor-pointer py-2.5"
+                              >
+                                <rc.icon
+                                  className={cn(
+                                    "h-4 w-4 flex-shrink-0",
+                                    rc.color,
+                                  )}
+                                />
+                                <span className="text-sm font-medium">
+                                  {rc.label}
+                                </span>
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      )}
+                    </DropdownMenu>
+                  );
+                })()}
               <ThemeToggle />
               {/* <Button
                 variant="ghost"
@@ -315,7 +480,6 @@ export function DashboardLayout({
                   <Moon className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button> */}
-
               {/* <Button
                 variant="ghost"
                 size="sm"
@@ -328,6 +492,20 @@ export function DashboardLayout({
           </div>
         </header>
 
+        {!user?.profile_completed && (
+          <div className="bg-yellow-500 text-yellow-950 px-4 py-2 text-sm flex items-center justify-between">
+            <span>
+              Your profile is incomplete. Some features are restricted until you
+              complete it.
+            </span>
+            <Link
+              to="/complete-profile"
+              className="underline font-medium ml-4 whitespace-nowrap"
+            >
+              Complete Profile →
+            </Link>
+          </div>
+        )}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

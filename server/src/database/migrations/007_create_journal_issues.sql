@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS journal_issues (
   UNIQUE (journal_id, label)
 );
 
-CREATE UNIQUE INDEX one_open_issue_per_journal
+CREATE UNIQUE INDEX IF NOT EXISTS one_open_issue_per_journal
 ON journal_issues (journal_id)
 WHERE status = 'open';
 

@@ -2,40 +2,152 @@ import { pool } from "../../configs/db";
 
 export const createPaper = async (data: {
   title: string;
-  abstract: string;
+  abstract?: string;
   category?: string;
+  article_type?: string;
   keywords: string[];
   journal_id: string;
   author_id: string;
   issue_id?: string;
+  author_names: string[];
+  corresponding_authors?: string[];
+  author_details?: object[];
+  corresponding_author_details?: object[];
+  paper_references?: { text: string; link?: string }[];
+  manuscript_url?: string;
+  conflict_of_interest?: string;
+  funding_info?: string;
+  data_availability?: string;
+  ethical_approval?: string;
+  author_contributions?: string;
+  policies_accepted?: boolean;
+  policies_accepted_at?: Date | null;
+  is_special_issue?: boolean;
+  previously_submitted?: string;
+  preprint_available?: boolean;
+  human_subjects?: boolean;
+  other_journal_submission?: string;
 }) => {
-  const {
-    title,
-    abstract,
-    category,
-    keywords,
-    journal_id,
-    author_id,
-    issue_id,
-  } = data;
-
   const result = await pool.query(
-    `INSERT INTO papers 
-      (title, abstract, category, keywords, journal_id, author_id, issue_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO papers
+      (title, abstract, category, article_type, keywords, journal_id, author_id, issue_id,
+       author_names, corresponding_authors, author_details, corresponding_author_details,
+       paper_references, manuscript_url, conflict_of_interest, funding_info,
+       data_availability, ethical_approval, author_contributions,
+       policies_accepted, policies_accepted_at,
+       is_special_issue, previously_submitted, preprint_available, human_subjects,
+       other_journal_submission)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
      RETURNING *`,
     [
-      title,
-      abstract,
-      category,
-      keywords,
-      journal_id,
-      author_id,
-      issue_id || null,
+      data.title,
+      data.abstract || "",
+      data.category || null,
+      data.article_type || null,
+      data.keywords,
+      data.journal_id,
+      data.author_id,
+      data.issue_id || null,
+      data.author_names,
+      data.corresponding_authors || [],
+      JSON.stringify(data.author_details || []),
+      JSON.stringify(data.corresponding_author_details || []),
+      JSON.stringify(data.paper_references || []),
+      data.manuscript_url || null,
+      data.conflict_of_interest || null,
+      data.funding_info || null,
+      data.data_availability || null,
+      data.ethical_approval || null,
+      data.author_contributions || null,
+      data.policies_accepted ?? true,
+      data.policies_accepted_at ?? new Date(),
+      data.is_special_issue ?? false,
+      data.previously_submitted ?? "no",
+      data.preprint_available ?? false,
+      data.human_subjects ?? false,
+      data.other_journal_submission ?? "no",
     ],
   );
 
   return result.rows[0];
+};
+
+export const getStatusLogRepo = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT psl.id, psl.status, psl.changed_at, psl.note,
+            u.username AS changed_by_name, u.role AS changed_by_role
+     FROM paper_status_log psl
+     LEFT JOIN users u ON u.id = psl.changed_by
+     WHERE psl.paper_id = $1
+     ORDER BY psl.changed_at ASC`,
+    [paperId],
+  );
+  return result.rows;
+};
+
+export const insertStatusLog = async (data: {
+  paper_id: string;
+  status: string;
+  changed_by?: string;
+  note?: string;
+}) => {
+  await pool.query(
+    `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+     VALUES ($1, $2, $3, $4)`,
+    [data.paper_id, data.status, data.changed_by || null, data.note || null],
+  );
+};
+
+export const getKeywordSuggestions = async (q: string) => {
+  const result = await pool.query(
+    `SELECT DISTINCT unnest(keywords) AS keyword
+     FROM papers
+     WHERE EXISTS (
+       SELECT 1 FROM unnest(keywords) AS k WHERE k ILIKE $1
+     )
+     LIMIT 20`,
+    [`%${q}%`],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
+export const getPublicKeywordSuggestions = async (
+  q: string | null,
+  journalId: string | null,
+  limit: number,
+) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE ($1::uuid IS NULL OR journal_id = $1)
+         AND keywords IS NOT NULL
+     ) kw
+     WHERE ($2::text IS NULL OR keyword ILIKE '%' || $2 || '%')
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $3`,
+    [journalId || null, q || null, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
+};
+
+export const getJournalTopKeywords = async (journalId: string, limit: number) => {
+  const result = await pool.query(
+    `SELECT keyword, COUNT(*) AS usage_count
+     FROM (
+       SELECT unnest(keywords) AS keyword
+       FROM papers
+       WHERE journal_id = $1
+         AND keywords IS NOT NULL
+     ) kw
+     GROUP BY keyword
+     ORDER BY usage_count DESC, keyword ASC
+     LIMIT $2`,
+    [journalId, limit],
+  );
+  return result.rows.map((r: { keyword: string }) => r.keyword);
 };
 
 export const getPaperById = async (id: string) => {
@@ -83,9 +195,17 @@ export const getAllPapers = async () => {
 };
 
 export const getPapersByAuthor = async (author_id: string) => {
-  const result = await pool.query(`SELECT * FROM papers WHERE author_id = $1`, [
-    author_id,
-  ]);
+  const result = await pool.query(
+    `SELECT p.*, j.title AS journal_title, j.acronym, pp.status AS payment_status,
+            pub.url_slug
+     FROM papers p
+     LEFT JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN paper_payments pp ON pp.paper_id = p.id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
+     WHERE p.author_id = $1
+     ORDER BY p.created_at DESC`,
+    [author_id],
+  );
   return result.rows;
 };
 
@@ -93,7 +213,7 @@ export const updatePaperStatus = async (paper_id: string, status: string) => {
   const result = await pool.query(
     `
     UPDATE papers
-    SET status = $1,
+    SET status = $1::paper_status,
         accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
         published_at = CASE WHEN $1 = 'published' THEN NOW() ELSE published_at END,
         updated_at = NOW()
@@ -119,4 +239,178 @@ export const setCurrentVersion = async (
     `,
     [version_id, paper_id],
   );
+};
+
+export const assignPaperToIssue = async (
+  paper_id: string,
+  issue_id: string,
+) => {
+  const result = await pool.query(
+    `UPDATE papers
+     SET issue_id = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [issue_id, paper_id],
+  );
+  return result.rows[0];
+};
+
+export const getPaperTracking = async (paperId: string, authorId: string) => {
+  const paperRes = await pool.query(
+    `SELECT p.id, p.title, p.status, p.submitted_at, p.accepted_at, p.published_at,
+            p.updated_at, p.abstract, p.category, p.article_type, p.keywords,
+            p.author_names, p.corresponding_authors, p.author_details, p.corresponding_author_details,
+            j.title as journal_title,
+            ji.label as issue_label, ji.volume as issue_volume,
+            ji.issue as issue_number, ji.year as issue_year
+     FROM papers p
+     JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     WHERE p.id = $1 AND p.author_id = $2`,
+    [paperId, authorId],
+  );
+  if (!paperRes.rows.length) return null;
+
+  // Status log — omit internal editor identity for blind review
+  const logRes = await pool.query(
+    `SELECT psl.status, psl.changed_at
+     FROM paper_status_log psl
+     WHERE psl.paper_id = $1
+     ORDER BY psl.changed_at ASC`,
+    [paperId],
+  );
+
+  // Reviews — anonymised (no reviewer name/email)
+  const reviewRes = await pool.query(
+    `SELECT r.decision, r.comments, ra.submitted_at
+     FROM reviews r
+     JOIN review_assignments ra ON ra.id = r.review_assignment_id
+     WHERE ra.paper_id = $1 AND ra.status = 'submitted'
+     ORDER BY ra.submitted_at ASC`,
+    [paperId],
+  );
+
+  const pubRes = await pool.query(
+    `SELECT pub.doi, pub.published_at, pub.url_slug,
+            j.acronym,
+            ji.label as issue_label, ji.volume, ji.year
+     FROM publications pub
+     LEFT JOIN journal_issues ji ON ji.id = pub.issue_id
+     LEFT JOIN papers p2 ON p2.id = pub.paper_id
+     LEFT JOIN journals j ON j.id = p2.journal_id
+     WHERE pub.paper_id = $1`,
+    [paperId],
+  );
+
+  // Latest paper version for revision upload
+  const versionRes = await pool.query(
+    `SELECT version_number FROM paper_versions WHERE paper_id = $1 ORDER BY version_number DESC LIMIT 1`,
+    [paperId],
+  );
+
+  // Latest AE decision (for showing revision comments to author)
+  const aeDecisionRes = await pool.query(
+    `SELECT sed.decision, sed.comments, sed.decided_at, u.username AS ae_name
+     FROM sub_editor_decisions sed
+     JOIN users u ON u.id = sed.sub_editor_id
+     WHERE sed.paper_id = $1
+     ORDER BY sed.decided_at DESC
+     LIMIT 1`,
+    [paperId],
+  );
+
+  return {
+    paper: paperRes.rows[0],
+    status_log: logRes.rows,
+    reviews: reviewRes.rows,
+    publication: pubRes.rows[0] || null,
+    latest_version_number: versionRes.rows[0]?.version_number || 1,
+    ae_decision: aeDecisionRes.rows[0] || null,
+  };
+};
+
+export const getPaperMetadata = async (paperId: string) => {
+  const result = await pool.query(
+    `SELECT p.id, p.title, p.abstract, p.keywords, p.author_names, p.paper_references,
+            j.title as journal_title,
+            ji.volume, ji.issue, ji.year,
+            pub.doi, pub.published_at as publication_date
+     FROM papers p
+     LEFT JOIN journals j ON j.id = p.journal_id
+     LEFT JOIN journal_issues ji ON ji.id = p.issue_id
+     LEFT JOIN publications pub ON pub.paper_id = p.id
+     WHERE p.id = $1`,
+    [paperId],
+  );
+  return result.rows[0] || null;
+};
+
+export const editPaperMetadataRepo = async (
+  paperId: string,
+  userId: string,
+  userRole: string,
+  title?: string,
+  abstract?: string,
+) => {
+  const paperRes = await pool.query(
+    `SELECT id, status, author_id, journal_id FROM papers WHERE id = $1`,
+    [paperId],
+  );
+  const paper = paperRes.rows[0];
+  if (!paper) throw Object.assign(new Error("Paper not found"), { status: 404 });
+
+  const isCE = userRole === "chief_editor";
+  const isAuthor = paper.author_id === userId;
+
+  if (isCE) {
+    const ceCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE id = $1 AND (
+         chief_editor_id = $2
+         OR id IN (SELECT journal_id FROM user_roles WHERE user_id = $2 AND role = 'chief_editor' AND is_active = true)
+       )`,
+      [paper.journal_id, userId],
+    );
+    if (!ceCheck.rows.length) throw Object.assign(new Error("Access denied"), { status: 403 });
+  } else if (isAuthor) {
+    const EDITABLE_STATUSES = ["submitted", "pending_revision", "awaiting_payment"];
+    if (!EDITABLE_STATUSES.includes(paper.status)) {
+      throw Object.assign(
+        new Error(`Cannot edit paper metadata when status is '${paper.status}'. Editing is only allowed before review begins.`),
+        { status: 400 },
+      );
+    }
+  } else {
+    throw Object.assign(new Error("Access denied"), { status: 403 });
+  }
+
+  if (title !== undefined && title.trim().length < 3) {
+    throw Object.assign(new Error("Title must be at least 3 characters"), { status: 400 });
+  }
+  if (abstract !== undefined && abstract.trim().length < 50) {
+    throw Object.assign(new Error("Abstract must be at least 50 characters"), { status: 400 });
+  }
+
+  const result = await pool.query(
+    `UPDATE papers
+     SET title = COALESCE($1, title),
+         abstract = COALESCE($2, abstract),
+         updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, title, abstract, status, updated_at`,
+    [title ?? null, abstract ?? null, paperId],
+  );
+  const updated = result.rows[0];
+
+  if (isCE) {
+    const editedFields: string[] = [];
+    if (title !== undefined) editedFields.push("title");
+    if (abstract !== undefined) editedFields.push("abstract");
+    await pool.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by, note)
+       VALUES ($1, $2, $3, $4)`,
+      [paperId, updated.status, userId, `Metadata edited by Chief Editor: ${editedFields.join(", ")}`],
+    );
+  }
+
+  return updated;
 };

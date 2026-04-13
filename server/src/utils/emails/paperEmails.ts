@@ -27,7 +27,6 @@ export const sendSubmissionConfirmationEmail = async (
       ),
       text: `Dear ${username}, your paper "${paperTitle}" (ID: ${submissionId}) has been submitted successfully.`,
     });
-    console.log("Submission confirmation email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send submission confirmation email:", error);
@@ -60,7 +59,6 @@ export const sendEditorAssignmentEmail = async (
       ),
       text: `Dear ${username}, editor "${editorName}" has been assigned to your paper "${paperTitle}".`,
     });
-    console.log("Editor assignment email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send editor assignment email:", error);
@@ -95,7 +93,6 @@ export const sendReviewerAssignmentEmail = async (
       ),
       text: `Dear ${reviewerName}, you have been invited to review "${paperTitle}". Deadline: ${reviewDeadline}. Review here: ${reviewLink}`,
     });
-    console.log("Reviewer assignment email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send reviewer assignment email:", error);
@@ -130,7 +127,6 @@ export const sendReviewerReminderEmail = async (
       ),
       text: `Dear ${reviewerName}, reminder: your review for "${paperTitle}" is due on ${reviewDeadline}. Submit here: ${reviewLink}`,
     });
-    console.log("Reviewer reminder email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send reviewer reminder email:", error);
@@ -161,7 +157,6 @@ export const sendReviewSubmissionConfirmationEmail = async (
       ),
       text: `Dear ${reviewerName}, your review for "${paperTitle}" has been submitted successfully. Thank you.`,
     });
-    console.log("Review submission confirmation sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send review submission confirmation:", error);
@@ -209,7 +204,6 @@ export const sendEditorialDecisionEmail = async (
       ),
       text: `Dear ${username}, decision on "${paperTitle}": ${decisionLabels[decision]}. ${comments ?? ""}`,
     });
-    console.log("Editorial decision email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send editorial decision email:", error);
@@ -245,7 +239,6 @@ export const sendRevisionRequestEmail = async (
       ),
       text: `Dear ${username}, a ${revisionType} revision has been requested for "${paperTitle}". Deadline: ${revisionDeadline}. ${comments ?? ""}`,
     });
-    console.log("Revision request email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send revision request email:", error);
@@ -278,7 +271,6 @@ export const sendAcceptanceNoticeEmail = async (
       ),
       text: `Dear ${username}, congratulations! Your paper "${paperTitle}" has been accepted for publication in ${journalName}.`,
     });
-    console.log("Acceptance notice email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send acceptance notice email:", error);
@@ -313,7 +305,6 @@ export const sendProofAvailabilityEmail = async (
       ),
       text: `Dear ${username}, the proof for "${paperTitle}" is ready. Review by ${proofDeadline}: ${proofLink}`,
     });
-    console.log("Proof availability email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send proof availability email:", error);
@@ -350,7 +341,6 @@ export const sendPublicationConfirmationEmail = async (
       ),
       text: `Dear ${username}, your paper "${paperTitle}" has been published in ${journalName} (${issueLabel}). View it here: ${publicationLink}`,
     });
-    console.log("Publication confirmation email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send publication confirmation email:", error);
@@ -386,7 +376,6 @@ export const sendDOIRegistrationEmail = async (
       ),
       text: `Dear ${username}, DOI registered for "${paperTitle}": ${doi}. Access here: ${doiLink}`,
     });
-    console.log("DOI registration email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send DOI registration email:", error);

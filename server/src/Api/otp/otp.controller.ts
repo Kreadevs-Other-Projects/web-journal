@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import * as OTPService from "./otp.service";
-import * as EmailService from "../services/email.service";
+import { sendOTPEmail } from "../../utils/emails/authEmails";
 import * as AuthService from "../auth/auth.service";
+import { getUserRoles } from "../auth/auth.service";
 import { generateAccessToken, generateRefreshToken } from "../../utils/jwt";
 import { saveRefreshToken } from "../auth/auth.repository";
 import { env } from "../../configs/envs";
@@ -28,7 +29,7 @@ export const createOTP = async (req: Request, res: Response) => {
 
   const otp = await OTPService.createOTP(email, purpose);
 
-  await EmailService.sendOTPEmail(email, otp.otp_code);
+  await sendOTPEmail(email, otp.otp_code);
 
   return res.status(200).json({
     success: true,
@@ -39,9 +40,6 @@ export const createOTP = async (req: Request, res: Response) => {
 
 export const verifyLoginOTP = async (req: Request, res: Response) => {
   try {
-    console.log("===== OTP Verification API hit =====");
-    console.log("Request body:", req.body);
-
     const { email, otp } = req.body;
 
     if (!email || !otp) {
@@ -54,7 +52,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 1️⃣ Verify OTP
     const otpRecord = await OTPService.verifyOTP(email, otp);
-    console.log("OTP record found:", otpRecord);
 
     if (!otpRecord) {
       console.warn("Invalid or expired OTP for email:", email);
@@ -66,7 +63,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 2️⃣ Find user
     const user = await AuthService.findUserByEmail(email);
-    console.log("User found:", user);
 
     if (!user) {
       console.warn("No account found for email:", email);
@@ -78,13 +74,24 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     // 3️⃣ Delete used OTP
     await OTPService.deleteOTP(email);
-    console.log("OTP deleted for email:", email);
 
     // 4️⃣ Generate tokens
-    const accessToken = await generateAccessToken(user.id, user.role);
+    const userRoleRows = await getUserRoles(user.id, user.role);
+    const activeRole = user.role;
+    const matchingRow = userRoleRows.find((r) => r.role === activeRole);
+    const activeJournalId = matchingRow?.journal_id ?? null;
+
+    const accessToken = await generateAccessToken(
+      user.id,
+      user.role,
+      user.email,
+      user.username,
+      userRoleRows,
+      activeRole,
+      activeJournalId,
+      user.profile_completed ?? false,
+    );
     const refreshToken = await generateRefreshToken(user.id, user.role);
-    console.log("AccessToken:", accessToken);
-    console.log("RefreshToken:", refreshToken);
 
     // 5️⃣ Save refresh token
     const expires_at = new Date();
@@ -95,7 +102,6 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       refreshToken,
       expires_at,
     );
-    console.log("Refresh token saved with ID:", savedTokenId);
 
     if (!savedTokenId) {
       console.error("Failed to save refresh token");
@@ -112,18 +118,18 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-    console.log("Refresh token cookie set");
 
-    // 7️⃣ Respond
-    console.log("Sending success response for email:", email);
     return res.status(200).json({
       success: true,
       message: "Login successful",
       token: accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
+        username: user.username,
+        roles: userRoleRows.map((r) => r.role),
       },
     });
   } catch (error: any) {
@@ -149,7 +155,7 @@ export const resendOTP = async (req: Request, res: Response) => {
 
   const otp = await OTPService.createOTP(email, purpose);
 
-  await EmailService.sendOTPEmail(email, otp.otp_code);
+  await sendOTPEmail(email, otp.otp_code);
 
   return res.status(200).json({
     success: true,

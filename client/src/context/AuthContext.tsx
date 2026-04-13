@@ -3,11 +3,20 @@ import { jwtDecode } from "jwt-decode";
 import type { UserRole } from "@/lib/roles";
 import { url } from "@/url";
 
+export interface UserRoleContext {
+  role: string;
+  journal_id: string | null;
+  journal_name: string | null;
+}
+
 export interface AuthUser {
   id: string;
   role: UserRole;
   email?: string;
   username?: string;
+  roles: UserRoleContext[];
+  active_journal_id: string | null;
+  profile_completed: boolean;
 }
 
 export interface UserProfile {
@@ -33,6 +42,10 @@ interface JwtPayload {
   role: UserRole;
   email?: string;
   username?: string;
+  roles?: (UserRoleContext | string)[];
+  active_role?: UserRole;
+  active_journal_id?: string | null;
+  profile_completed?: boolean;
   exp: number;
 }
 
@@ -44,9 +57,44 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string) => void;
   logout: () => void;
+  switchRole: (role: UserRole, journalId?: string | null) => Promise<void>;
+  hasAnyRole: (roles: string[]) => boolean;
+  currentRoleLabel: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const ROLE_LABELS: Record<string, string> = {
+  chief_editor: "Chief Editor",
+  sub_editor: "Associate Editor",
+  reviewer: "Reviewer",
+  author: "Author",
+  publisher: "Publisher",
+  journal_manager: "Journal Manager",
+  owner: "Owner",
+};
+
+function normalizeRoles(raw: (UserRoleContext | string)[] | undefined, fallback: string): UserRoleContext[] {
+  if (!raw || raw.length === 0) return [{ role: fallback, journal_id: null, journal_name: null }];
+  return raw.map((r) =>
+    typeof r === "string" ? { role: r, journal_id: null, journal_name: null } : r,
+  );
+}
+
+function decodeAuthUser(token: string): AuthUser {
+  const decoded = jwtDecode<JwtPayload>(token);
+  const activeRole = decoded.active_role ?? decoded.role;
+  return {
+    id: decoded.id,
+    role: activeRole,
+    email: decoded.email,
+    username: decoded.username,
+    roles: normalizeRoles(decoded.roles, activeRole),
+    active_journal_id: decoded.active_journal_id ?? null,
+    // Default true for old tokens — existing users are not affected
+    profile_completed: decoded.profile_completed ?? true,
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -74,13 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        setUser({
-          id: decoded.id,
-          role: decoded.role,
-          email: decoded.email,
-          username: decoded.username,
-        });
-
+        setUser(decodeAuthUser(storedToken));
         setToken(storedToken);
       } catch {
         logout();
@@ -93,18 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const login = (newToken: string) => {
-    const decoded = jwtDecode<JwtPayload>(newToken);
-
-    const authUser: AuthUser = {
-      id: decoded.id,
-      role: decoded.role,
-      email: decoded.email,
-      username: decoded.username,
-    };
-
     localStorage.setItem("accessToken", newToken);
-
-    setUser(authUser);
+    setUser(decodeAuthUser(newToken));
     setToken(newToken);
   };
 
@@ -112,6 +144,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("accessToken");
     setUser(null);
     setToken(null);
+  };
+
+  const hasAnyRole = (roles: string[]) =>
+    user?.roles?.some((r) => roles.includes(r.role)) ?? false;
+
+  const currentRoleLabel = () => ROLE_LABELS[user?.role ?? ""] ?? user?.role ?? "";
+
+  const switchRole = async (role: UserRole, journalId?: string | null) => {
+    const storedToken = localStorage.getItem("accessToken");
+    if (!storedToken) throw new Error("Not authenticated");
+
+    const res = await fetch(`${url}/auth/switch-role`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${storedToken}`,
+      },
+      body: JSON.stringify({ role, journal_id: journalId ?? null }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to switch role");
+
+    login(data.token);
   };
 
   useEffect(() => {
@@ -165,6 +221,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isAuthenticated: !!user && !!token,
         login,
         logout,
+        switchRole,
+        hasAnyRole,
+        currentRoleLabel,
       }}
     >
       {children}

@@ -874,7 +874,7 @@ export default function Journals(): JSX.Element {
       </div>
 
       <Dialog open={newJournalModalOpen} onOpenChange={setNewJournalModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {modalMode === "journal" ? "Create Journal" : "Add Chief Editor"}
@@ -1053,7 +1053,7 @@ export default function Journals(): JSX.Element {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Journal</DialogTitle>
           </DialogHeader>
@@ -1168,7 +1168,7 @@ export default function Journals(): JSX.Element {
       </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Journal</DialogTitle>
           </DialogHeader>
@@ -1190,7 +1190,7 @@ export default function Journals(): JSX.Element {
       </Dialog>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingIssue ? "Edit Issue" : "Add Issue"}

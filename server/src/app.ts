@@ -23,7 +23,13 @@ import chiefEditorRoutes from "./Api/chiefEditor/chiefEditor.routes";
 import ownerRoutes from "./Api/owner/owner.route";
 import subEditorRoutes from "./Api/subEditor/subEditor.routes";
 import browseRoutes from "./Api/browse/browse.route";
+import archiveRouter from "./Api/archive/archive.route";
+import invitationRoutes from "./Api/invitation/invitation.routes";
 import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
+import contactRoutes from "./Api/contact/contact.route";
+import categoriesRoutes from "./Api/categories/categories.route";
+import journalCategoriesRoutes from "./Api/journalCategories/journalCategories.route";
+import conferenceRoutes from "./Api/conference/conference.route";
 
 const app = express();
 app.use(express.json());
@@ -31,6 +37,8 @@ app.use(cookieParser());
 app.use(cors());
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/api/uploads/receipts", express.static(path.join(__dirname, "..", "uploads", "receipts")));
+app.use("/api/uploads/profiles", express.static(path.join(__dirname, "..", "uploads", "profiles")));
 
 app.get("/health", (req: Request, res: Response) => {
   return res.json({ success: true, code: 200, message: "Healthy!" });
@@ -46,7 +54,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
 app.use("/api/papers", paperRoutes);
 app.use("/api/paper-versions", paperVersionRoutes);
-app.use("/api/paperPayment", paperPaymentRoutes);
+app.use("/api/payments", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);
 app.use("/api/publisher", publisherRoutes);
@@ -58,6 +66,12 @@ app.use("/api/chiefEditor", chiefEditorRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/subEditor", subEditorRoutes);
 app.use("/api/browse", browseRoutes);
+app.use("/api/archive", archiveRouter);
+app.use("/api/invitations", invitationRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/categories", categoriesRoutes);
+app.use("/api/journal-categories", journalCategoriesRoutes);
+app.use("/api/conferences", conferenceRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

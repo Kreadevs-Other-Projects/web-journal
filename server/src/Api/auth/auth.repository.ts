@@ -31,3 +31,43 @@ export const deleteRefreshToken = async (token: string) => {
 export const deleteAllUserRefreshTokens = async (userId: string) => {
   await pool.query("DELETE FROM refresh_token WHERE user_id = $1", [userId]);
 };
+
+export const getUserRoles = async (userId: string) => {
+  const result = await pool.query(
+    `SELECT ur.role, ur.journal_id, j.title AS journal_name
+     FROM user_roles ur
+     LEFT JOIN journals j ON j.id = ur.journal_id
+     WHERE ur.user_id = $1 AND ur.is_active = TRUE`,
+    [userId],
+  );
+  return result.rows as { role: string; journal_id: string | null; journal_name: string | null }[];
+};
+
+export const upsertAuthorRole = async (userId: string) => {
+  await upsertPlatformRole(userId, "author");
+};
+
+export const upsertPlatformRole = async (userId: string, role: string) => {
+  await pool.query(
+    `INSERT INTO user_roles (user_id, role, journal_id, granted_by, is_active)
+     VALUES ($1, $2, NULL, $1, true)
+     ON CONFLICT (user_id, role, journal_id) DO UPDATE SET is_active = true`,
+    [userId, role],
+  );
+};
+
+export const insertUserRole = async (
+  userId: string,
+  role: string,
+  journalId: string | null,
+  grantedBy: string | null,
+) => {
+  const result = await pool.query(
+    `INSERT INTO user_roles (user_id, role, journal_id, granted_by)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, role, journal_id) DO NOTHING
+     RETURNING id`,
+    [userId, role, journalId, grantedBy],
+  );
+  return result.rows[0]?.id;
+};

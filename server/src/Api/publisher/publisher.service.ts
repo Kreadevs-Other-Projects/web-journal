@@ -4,6 +4,9 @@ import {
   sendInvoiceEmail,
   sendPaperPaymentEmail,
 } from "../../utils/emails/paymentEmails";
+import { transporter } from "../../configs/email";
+import { env } from "../../configs/envs";
+import { baseEmailTemplate } from "../../utils/emails/baseEmailTemplate";
 
 export type Journal = {
   journalId: string;
@@ -17,17 +20,28 @@ export const approveJournalService = async (
   journalId: string,
   issueId: string,
 ) => {
-  const chiefEditorId = await repo.approveJournalRepo(journalId, issueId);
-  if (!chiefEditorId)
-    throw new Error("Journal not found or no chief editor assigned");
-
-  await repo.activateUserRepo(chiefEditorId);
-
-  return { journalId, chiefEditorId };
+  await repo.approveJournalRepo(journalId, issueId);
+  return { journalId, issueId };
 };
 
-export const fetchPublisherJournals = async () => {
-  return repo.getPublisherJournals();
+export const fetchPublisherJournals = async (publisherId: string) => {
+  return repo.getPublisherJournals(publisherId);
+};
+
+export const replaceChiefEditorService = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  await repo.replaceChiefEditorRepo(journalId, publisherId);
+  return { message: "Chief editor removed. You can now invite a new one." };
+};
+
+export const replaceJournalManagerService = async (
+  journalId: string,
+  publisherId: string,
+) => {
+  await repo.replaceJournalManagerRepo(journalId, publisherId);
+  return { message: "Journal manager removed. You can now invite a new one." };
 };
 
 export const journalPaymentInvoice = async (
@@ -235,6 +249,50 @@ export const approvePaperPaymentService = async (id: string) => {
 export const fetchJournalPayments = async () => {
   const payments = await repo.getPaymentsByJournal();
   return payments;
+};
+
+export const takedownJournalService = async (
+  journalId: string,
+  reason: string,
+  publisherId: string,
+) => {
+  await repo.takedownJournalRepo(journalId, reason, publisherId);
+  const ceRow = await repo.getJournalChiefEditorEmail(journalId);
+  if (ceRow && (ceRow as any).email) {
+    transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: (ceRow as any).email,
+      subject: `Journal Taken Down — ${(ceRow as any).journal_title}`,
+      html: baseEmailTemplate(
+      "Journal Taken Down",
+      `<p>Dear Chief Editor,</p>
+       <p>The journal <strong>${(ceRow as any).journal_title}</strong> has been taken down by the Publisher.</p>
+       <p><strong>Reason:</strong> ${reason}</p>
+       <p>Please contact the Publisher for more information.</p>`,
+    ),
+      text: `Journal "${(ceRow as any).journal_title}" has been taken down. Reason: ${reason}`,
+    }).catch(() => {});
+  }
+};
+
+export const restoreJournalService = async (journalId: string) => {
+  await repo.restoreJournalRepo(journalId);
+};
+
+export const takedownIssueService = async (issueId: string, reason: string, publisherId: string) => {
+  await repo.takedownIssueRepo(issueId, reason, publisherId);
+};
+
+export const restoreIssueService = async (issueId: string) => {
+  await repo.restoreIssueRepo(issueId);
+};
+
+export const takedownPaperService = async (paperId: string, reason: string, publisherId: string) => {
+  return repo.takedownPaperRepo(paperId, reason, publisherId);
+};
+
+export const restorePaperService = async (paperId: string) => {
+  return repo.restorePaperRepo(paperId);
 };
 
 export const updatePaymentStatus = async (

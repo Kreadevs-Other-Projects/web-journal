@@ -47,6 +47,8 @@ export const createChiefEditor = async (req: Request, res: Response) => {
 };
 
 export const sendJournalExpiry = async (req: AuthUser, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res.status(503).json({ message: "Payment flow is currently disabled." });
   try {
     const user = req.user!;
     const { journalId } = req.params;
@@ -68,6 +70,8 @@ export const sendJournalExpiry = async (req: AuthUser, res: Response) => {
 };
 
 export const uploadpaymentImage = async (req: AuthUser, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res.status(503).json({ message: "Payment flow is currently disabled." });
   try {
     const { id } = req.params;
 
@@ -88,6 +92,8 @@ export const uploadpaymentImage = async (req: AuthUser, res: Response) => {
 };
 
 export const getPendingJournalPayment = async (req: Request, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res.status(503).json({ message: "Payment flow is currently disabled." });
   try {
     const { journalId } = req.params;
 

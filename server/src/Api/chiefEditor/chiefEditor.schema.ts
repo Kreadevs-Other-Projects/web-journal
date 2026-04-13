@@ -21,7 +21,7 @@ export const assignReviewerSchema = z.object({
 export const editorDecisionSchema = z.object({
   body: z.object({
     decision: z.enum(["revision", "accepted", "rejected"]),
-    decision_note: z.string().min(5, "Decision note is required"),
+    decision_note: z.string().optional(),
   }),
 });
 

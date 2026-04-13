@@ -31,6 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import Navbar from "@/components/navbar";
+import { useAuth } from "@/context/AuthContext";
+import { OtpInput } from "@/components/OtpInput";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -41,14 +43,16 @@ export default function SignupPage() {
     password: "",
   });
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("publisher");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSignInLink, setShowSignInLink] = useState(false);
   const [step, setStep] = useState<"FORM" | "OTP">("FORM");
-  const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -60,6 +64,7 @@ export default function SignupPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+    if (name === "email") setShowSignInLink(false);
   };
 
   const handleRoleSelect = (role: UserRole) => {
@@ -105,93 +110,54 @@ export default function SignupPage() {
 
     setIsLoading(true);
     setErrors({});
+    setShowSignInLink(false);
 
     try {
-      // =========================
-      // TEMPORARY: Skip OTP step
-      // =========================
-      /*
-    const response = await fetch(`${url}/auth/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: formData.email,
-        purpose: "signup",
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to send OTP");
-    }
-
-    toast({
-      title: "OTP Sent",
-      description: "Please check your email for OTP",
-    });
-
-    setStep("OTP");
-    */
-
-      // Direct signup call
-      const signupRes = await fetch(`${url}/auth/signup`, {
+      // Step 1: send OTP to email before creating account
+      const otpRes = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          role: selectedRole,
-        }),
+        body: JSON.stringify({ email: formData.email, purpose: "signup" }),
       });
 
-      const signupResult = await signupRes.json();
+      const otpResult = await otpRes.json();
 
-      if (!signupRes.ok) {
-        throw new Error(signupResult.message || "Signup failed");
+      if (!otpRes.ok) {
+        throw new Error(otpResult.message || "Failed to send verification code");
       }
 
+      setStep("OTP");
       toast({
-        title: "Account Created",
-        description: "Signup successful! Redirecting to login...",
+        title: "Verification code sent",
+        description: `Check ${formData.email} for your 6-digit code`,
       });
-
-      navigate("/login");
     } catch (error: any) {
-      setErrors({
-        general: error.message || "Signup failed",
-      });
+      setErrors({ general: error.message || "Signup failed" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      setErrors({ general: "OTP must be 6 digits" });
-      return;
-    }
-
+  const handleVerifyOTP = async (otpCode: string) => {
     setOtpLoading(true);
-    setErrors({});
+    setOtpError("");
 
     try {
+      // Step 2: verify OTP
       const verifyRes = await fetch(`${url}/auth/verifysignup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          otp,
-        }),
+        body: JSON.stringify({ email: formData.email, otp: otpCode }),
       });
 
       const verifyResult = await verifyRes.json();
 
       if (!verifyRes.ok) {
-        throw new Error(verifyResult.message || "Invalid OTP");
+        setOtpError(verifyResult.message || "Invalid OTP");
+        return;
       }
 
+      // Step 3: create account (backend checks OTP was verified)
       const signupRes = await fetch(`${url}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,23 +171,66 @@ export default function SignupPage() {
 
       const signupResult = await signupRes.json();
 
+      // Existing account + new role: server returns a JWT
+      if (signupRes.ok && signupResult.token) {
+        login(signupResult.token);
+        if (signupResult.refreshToken) {
+          localStorage.setItem("refreshToken", signupResult.refreshToken);
+        }
+        const addedRole: string = signupResult.user?.active_role ?? selectedRole;
+        const roleLabel = addedRole.charAt(0).toUpperCase() + addedRole.slice(1);
+        toast({
+          title: `${roleLabel} role added!`,
+          description: signupResult.message || `You can now access the ${roleLabel} dashboard.`,
+        });
+        const roleRoutes: Record<string, string> = {
+          author: "/author",
+          reviewer: "/reviewer",
+          publisher: "/publisher",
+        };
+        navigate(roleRoutes[addedRole] ?? "/");
+        return;
+      }
+
       if (!signupRes.ok) {
-        throw new Error(signupResult.message || "Signup failed");
+        if (signupResult.errors && Array.isArray(signupResult.errors)) {
+          setStep("FORM");
+          const map: Record<string, string> = {};
+          signupResult.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setErrors(map);
+          setShowSignInLink(true);
+          return;
+        }
+        setOtpError(signupResult.message || "Signup failed");
+        return;
       }
 
       toast({
         title: "Account Created",
-        description: "Signup successful! Redirecting to login...",
+        description: "Signup successful! Please sign in.",
       });
-
       navigate("/login");
     } catch (error: any) {
-      setErrors({
-        general: error.message || "OTP verification failed",
-      });
+      setOtpError(error.message || "Verification failed");
     } finally {
       setOtpLoading(false);
     }
+  };
+
+  const handleResendSignupOTP = async () => {
+    const res = await fetch(`${url}/auth/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: formData.email, purpose: "signup" }),
+    });
+    if (!res.ok) {
+      const result = await res.json();
+      throw new Error(result.message || "Failed to resend OTP");
+    }
+    setOtpError("");
+    toast({ title: "Code resent", description: "Check your email for a new code" });
   };
 
   const passwordStrength = () => {
@@ -272,54 +281,22 @@ export default function SignupPage() {
             </CardHeader>
 
             <CardContent>
-              {/* {step === "OTP" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4 text-center"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-primary" />
-                  </div>
-
-                  <h3 className="text-lg font-semibold">Verify your email</h3>
-                  <p className="text-sm text-muted-foreground max-w-xs">
-                    We’ve sent a 6-digit verification code to
-                    <span className="font-medium text-foreground block">
-                      {formData.email}
-                    </span>
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <Input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    maxLength={6}
-                    autoFocus
-                    placeholder="••••••"
-                    className="text-center tracking-[0.35em] text-lg w-48 h-12"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  className="w-full bg-gradient-primary"
-                  onClick={handleVerifyOTP}
-                  disabled={otpLoading}
-                >
-                  {otpLoading ? "Verifying..." : "Verify OTP"}
-                </Button>
-              </motion.div>
-            )} */}
+              {step === "OTP" && (
+                <OtpInput
+                  email={formData.email}
+                  onComplete={handleVerifyOTP}
+                  onResend={handleResendSignupOTP}
+                  onBack={() => { setStep("FORM"); setOtpError(""); }}
+                  isLoading={otpLoading}
+                  error={otpError}
+                />
+              )}
 
               <form
                 onSubmit={handleSubmit}
                 className={cn(
                   "space-y-6 transition-opacity",
-                  step === "OTP" && "opacity-40 pointer-events-none",
+                  step === "OTP" && "hidden",
                 )}
               >
                 <div className="space-y-2">
@@ -381,10 +358,22 @@ export default function SignupPage() {
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      {errors.email}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        {errors.email}
+                      </p>
+                      {showSignInLink && (
+                        <p className="text-xs text-muted-foreground">
+                          <Link
+                            to="/login"
+                            className="text-primary font-medium hover:underline"
+                          >
+                            Sign in instead →
+                          </Link>
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -488,8 +477,8 @@ export default function SignupPage() {
                     Select Your Role
                   </Label>
 
-                  <div className="grid grid-cols-5 gap-2">
-                    {(Object.keys(roleConfig) as UserRole[]).map((role) => {
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["publisher", "author", "reviewer"] as UserRole[]).map((role) => {
                       const config = roleConfig[role];
                       const Icon = config.icon;
                       const isSelected = selectedRole === role;
@@ -544,16 +533,16 @@ export default function SignupPage() {
                 <Button
                   type="submit"
                   className="w-full btn-physics bg-gradient-primary hover:opacity-90 py-6 text-base font-medium"
-                  disabled={isLoading || step === "OTP"}
+                  disabled={isLoading}
                 >
                   {isLoading ? (
                     <>
                       <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                      Creating Account...
+                      Sending Code...
                     </>
                   ) : (
                     <>
-                      Create Account
+                      Continue
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </>
                   )}

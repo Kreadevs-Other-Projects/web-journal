@@ -23,14 +23,28 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       ra.status AS assignment_status,
       ra.assigned_at,
-      
+
+      p.ce_override,
+
       r.decision AS review_decision,
       r.comments,
-      r.signed_at AS review_submitted_at
+      r.signed_at AS review_submitted_at,
+
+      j.title AS journal_name,
+      j.acronym AS journal_acronym,
+      i.label AS issue_label,
+
+      ae_user.username AS ae_name
+
     FROM review_assignments ra
     JOIN papers p ON p.id = ra.paper_id
     LEFT JOIN paper_versions pv ON pv.id = p.current_version_id
     LEFT JOIN reviews r ON ra.id = r.review_assignment_id
+    LEFT JOIN journal_issues i ON i.id = p.issue_id
+    LEFT JOIN journals j ON j.id = i.journal_id
+    LEFT JOIN editor_assignments ea ON ea.paper_id = p.id
+      AND ea.status NOT IN ('reassigned', 'rejected', 'completed')
+    LEFT JOIN users ae_user ON ae_user.id = ea.sub_editor_id
     WHERE ra.reviewer_id = $1
     ORDER BY pv.created_at DESC
     `,
@@ -109,20 +123,39 @@ export const submitReviewByVersion = async (
     const review = await client.query(
       `
       INSERT INTO reviews
-      (review_assignment_id, decision, comments, signature_url, signed_at)
+        (review_assignment_id, decision, comments, signature_url, signed_at)
       VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (review_assignment_id)
+      DO UPDATE SET
+        decision   = EXCLUDED.decision,
+        comments   = EXCLUDED.comments,
+        signature_url = EXCLUDED.signature_url,
+        signed_at  = NOW()
       RETURNING *
       `,
       [assignmentId, decision, comments, signatureUrl],
     );
 
     await client.query(
-      `
-      UPDATE review_assignments
-      SET status = 'submitted', submitted_at = NOW()
-      WHERE id = $1
-      `,
+      `UPDATE review_assignments
+       SET status = 'submitted', submitted_at = NOW()
+       WHERE id = $1`,
       [assignmentId],
+    );
+
+    await client.query(
+      `UPDATE papers
+       SET status = 'reviewed', updated_at = NOW()
+       WHERE id = $1
+         AND status NOT IN ('pending_revision', 'rejected', 'accepted', 'published', 'sub_editor_approved')`,
+      [paperId],
+    );
+
+    await client.query(
+      `INSERT INTO paper_status_log (paper_id, status, changed_by)
+       VALUES ($1, 'reviewed', $2)
+       ON CONFLICT DO NOTHING`,
+      [paperId, reviewerId],
     );
 
     await client.query("COMMIT");

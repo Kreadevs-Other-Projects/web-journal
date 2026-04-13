@@ -7,14 +7,18 @@ import { AnimatePresence } from "framer-motion";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import BrowsePage from "./pages/BrowseJournal.tsx";
-// import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
+import AuthorDashboard from "./pages/author/AuthorDashboard.tsx";
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
+import CreateJournal from "./pages/publisher/CreateJournal.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
 import PublisherPayments from "./pages/publisher/Payments.tsx";
+import PublisherCategories from "./pages/publisher/Categories.tsx";
+import PublisherJournalCategories from "./pages/publisher/JournalCategories.tsx";
+import HomepageContent from "./pages/publisher/HomepageContent.tsx";
 import OwnerDashboard from "./pages/owner/OwnerDashboard.tsx";
 import Journals from "./pages/owner/Journals.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -23,8 +27,25 @@ import NotFound from "./pages/NotFound";
 import SubmitPaper from "./pages/author/SubmitPaper.tsx";
 import PaperVersions from "./pages/author//PaperVersions.tsx";
 import ReviewedPapers from "./pages/chiefEditor/ReviewedPapers.tsx";
+import CEJournals from "./pages/chiefEditor/CEJournals.tsx";
+import CEJournalDetail from "./pages/chiefEditor/CEJournalDetail.tsx";
+import CEPapers from "./pages/chiefEditor/CEPapers.tsx";
+import CETeam from "./pages/chiefEditor/CETeam.tsx";
+import CEApplications from "./pages/chiefEditor/CEApplications.tsx";
+import CEStats from "./pages/chiefEditor/CEStats.tsx";
+import AssignAssociateEditorPage from "./pages/chiefEditor/AssignAssociateEditorPage.tsx";
+import AssignReviewerPage from "./pages/chiefEditor/AssignReviewerPage.tsx";
+import StaffDetailPage from "./pages/chiefEditor/StaffDetailPage.tsx";
+import CEPaperViewPage from "./pages/chiefEditor/CEPaperViewPage.tsx";
+import EditJournalPage from "./pages/publisher/EditJournalPage.tsx";
+import PublisherJournalsPage from "./pages/publisher/PublisherJournalsPage.tsx";
+import PublisherJournalDetailPage from "./pages/publisher/PublisherJournalDetailPage.tsx";
+import PublisherIssueDetailPage from "./pages/publisher/PublisherIssueDetailPage.tsx";
 import ResearchPaperDetail from "./pages/ResearchPaper.tsx";
 import CompletedReview from "./pages/reviewer/completedReview.tsx";
+import ReviewDetail from "./pages/reviewer/ReviewDetail.tsx";
+import ArticlePage from "./pages/ArticlePage.tsx";
+import ArticleRedirect from "./pages/ArticleRedirect.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
 import PublisherManagerDashborad from "./pages/publisherManager/PublisherManagerDashborad.tsx";
@@ -38,6 +59,11 @@ import { ThemeProvider } from "./context/ThemeContext.tsx";
 import AboutPage from "./pages/aboutUs.tsx";
 import FAQPage from "./pages/faq.tsx";
 import ContactPage from "./pages/contactUs.tsx";
+import TrackPaper from "./pages/author/TrackPaper.tsx";
+import Archive from "./pages/Archive.tsx";
+import AcceptInvitation from "./pages/AcceptInvitation.tsx";
+import ApplyReviewer from "./pages/ApplyReviewer.tsx";
+import CompleteProfilePage from "./pages/CompleteProfilePage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -70,19 +96,57 @@ const App = () => (
                       path="/researchPapers/:paperId"
                       element={<ResearchPaperDetail />}
                     />
-                  </Route>
-                  <Route path="/unauthorized" element={<Unauthorized />} />
-                  <Route element={<ProtectedRoute allowedRoles={["author"]} />}>
-                    {/* <Route path="/author" element={<AuthorDashboard />} />
                     <Route
-                    path="/author/submissions"
-                      element={<MySubmissions />}
-                    /> */}
-                    <Route path="/author" element={<SubmitPaper />} />
+                      path="/articles/:paperId"
+                      element={<ArticleRedirect />}
+                    />
+                    <Route
+                      path="/:acronym/:slug"
+                      element={<ArticlePage />}
+                    />
+                    <Route path="/archive" element={<Archive />} />
+                    <Route path="/apply-reviewer" element={<ApplyReviewer />} />
+                  </Route>
+                  {/* accept-invitation is outside PublicRoute so authenticated users can access it */}
+                  <Route
+                    path="/accept-invitation"
+                    element={<AcceptInvitation />}
+                  />
+                  {/* complete-profile: requires auth, no role restriction, no profile guard */}
+                  <Route
+                    path="/complete-profile"
+                    element={<CompleteProfilePage />}
+                  />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
+                  <Route
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={[
+                          "author",
+                          "chief_editor",
+                          "sub_editor",
+                          "reviewer",
+                          "publisher",
+                          "journal_manager",
+                          "owner",
+                        ]}
+                      />
+                    }
+                  >
+                    <Route path="/author" element={<AuthorDashboard />} />
+                    <Route path="/author/submit" element={<SubmitPaper />} />
                     <Route path="/author/version" element={<PaperVersions />} />
+                    <Route
+                      path="/author/track/:paperId"
+                      element={<TrackPaper />}
+                    />
                   </Route>
                   <Route
-                    element={<ProtectedRoute allowedRoles={["reviewer"]} />}
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["reviewer", "chief_editor"]}
+                      />
+                    }
                   >
                     <Route path="/reviewer" element={<ReviewerDashboard />} />
 
@@ -90,9 +154,17 @@ const App = () => (
                       path="/reviewer/completed"
                       element={<CompletedReview />}
                     />
+                    <Route
+                      path="/reviewer/completed/:paperId"
+                      element={<ReviewDetail />}
+                    />
                   </Route>
                   <Route
-                    element={<ProtectedRoute allowedRoles={["sub_editor"]} />}
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["sub_editor", "chief_editor"]}
+                      />
+                    }
                   >
                     <Route
                       path="/sub-editor"
@@ -114,24 +186,73 @@ const App = () => (
                       path="/chief-editor/accepted"
                       element={<ReviewedPapers />}
                     />
+                    <Route
+                      path="/chief-editor/journals"
+                      element={<CEJournals />}
+                    />
+                    <Route
+                      path="/chief-editor/journals/:journalId"
+                      element={<CEJournalDetail />}
+                    />
+                    <Route path="/chief-editor/papers" element={<CEPapers />} />
+                    <Route
+                      path="/chief-editor/papers/:paperId/view"
+                      element={<CEPaperViewPage />}
+                    />
+                    <Route path="/chief-editor/team" element={<CETeam />} />
+                    <Route path="/chief-editor/applications" element={<CEApplications />} />
+                    <Route path="/chief-editor/stats" element={<CEStats />} />
+                    <Route path="/chief-editor/papers/:paperId/assign-ae" element={<AssignAssociateEditorPage />} />
+                    <Route path="/chief-editor/staff/:userId" element={<StaffDetailPage />} />
+                  </Route>
+                  <Route element={<ProtectedRoute allowedRoles={["chief_editor", "sub_editor"]} />}>
+                    <Route path="/chief-editor/papers/:paperId/assign-reviewer" element={<AssignReviewerPage />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route path="/publisher" element={<PublisherDashboard />} />
+                    <Route
+                      path="/publisher/create-journal"
+                      element={<CreateJournal />}
+                    />
 
                     <Route
                       path="/publisher/payments"
-                      element={<PublisherPayments journalId={""} />}
+                      element={<PublisherPayments />}
+                    />
+                    <Route
+                      path="/publisher/categories"
+                      element={<PublisherCategories />}
+                    />
+                    <Route
+                      path="/publisher/journal-categories"
+                      element={<PublisherJournalCategories />}
+                    />
+                    <Route
+                      path="/publisher/homepage-content"
+                      element={<HomepageContent />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId/edit"
+                      element={<EditJournalPage />}
+                    />
+                    <Route
+                      path="/publisher/journals"
+                      element={<PublisherJournalsPage />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId"
+                      element={<PublisherJournalDetailPage />}
+                    />
+                    <Route
+                      path="/publisher/journals/:journalId/issues/:issueId"
+                      element={<PublisherIssueDetailPage />}
                     />
                   </Route>
 
                   <Route
-                    element={
-                      <ProtectedRoute
-                        allowedRoles={["publisher", "publisher_manager"]}
-                      />
-                    }
+                    element={<ProtectedRoute allowedRoles={["publisher"]} />}
                   >
                     <Route
                       path="/publisher/publish-paper"
@@ -140,7 +261,7 @@ const App = () => (
                   </Route>
                   <Route
                     element={
-                      <ProtectedRoute allowedRoles={["publisher_manager"]} />
+                      <ProtectedRoute allowedRoles={["journal_manager"]} />
                     }
                   >
                     <Route

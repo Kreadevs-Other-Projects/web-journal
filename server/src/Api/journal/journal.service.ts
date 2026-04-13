@@ -6,7 +6,15 @@ import {
   findJournalById,
   updateJournalById,
   delteJournalById,
+  createJournalByPublisher,
+  findEditorialBoard,
+  updateJournalAPC,
+  updateJournalByPublisher,
 } from "./journal.repository";
+import { insertUserRole } from "../auth/auth.repository";
+import { sendInvitationEmail } from "../../utils/emails/userEmails";
+import { createInvitation } from "../invitation/invitation.repository";
+import { env } from "../../configs/envs";
 
 export type Journal = {
   title: string;
@@ -15,6 +23,49 @@ export type Journal = {
   issn?: string;
   website_url?: string;
   chief_editor_id: string;
+};
+
+const SKIP_WORDS = new Set(["of", "the", "and", "for", "in", "a", "an"]);
+
+function buildAcronym(title: string): string {
+  const letters = title
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !SKIP_WORDS.has(w.toLowerCase()))
+    .map((w) => w[0].toUpperCase())
+    .join("");
+  return letters || title.slice(0, 3).toUpperCase();
+}
+
+async function getUniqueAcronym(base: string): Promise<string> {
+  const check = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
+    base,
+  ]);
+  if (!check.rows.length) return base;
+  for (let n = 2; n <= 99; n++) {
+    const candidate = `${base}${n}`;
+    const r = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
+      candidate,
+    ]);
+    if (!r.rows.length) return candidate;
+  }
+  return `${base}${Date.now()}`;
+}
+
+export type PublisherJournalData = {
+  title: string;
+  acronym?: string;
+  issn?: string;
+  doi?: string | null;
+  publisher_name: string;
+  type: string;
+  peer_review_policy: string;
+  oa_policy: string;
+  author_guidelines: string;
+  aims_and_scope?: string | null;
+  publication_fee?: number | null;
+  currency?: string | null;
+  logo_url?: string | null;
+  journal_category_id?: string | null;
 };
 
 export const addJournalService = async (
@@ -110,4 +161,173 @@ export const deleteJournalService = async (id: string) => {
     console.log(error);
     throw new Error("Failed to delete journal!");
   }
+};
+
+export const updateJournalLogoService = async (
+  id: string,
+  logo_url: string,
+) => {
+  await pool.query("UPDATE journals SET logo_url = $1 WHERE id = $2", [
+    logo_url,
+    id,
+  ]);
+};
+
+export const getEditorialBoardService = async (journalId: string) => {
+  return findEditorialBoard(journalId);
+};
+
+export const publisherCreateJournalService = async (
+  publisherId: string,
+  publisherName: string,
+  data: PublisherJournalData & {
+    chief_editor: { name: string; email: string };
+    journal_manager: { name: string; email: string };
+  },
+) => {
+  // Uniqueness checks for ISSN and DOI
+  if (data.issn) {
+    const issnCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE issn = $1`,
+      [data.issn]
+    );
+    if (issnCheck.rows.length) {
+      const err: any = new Error("A journal with this ISSN already exists");
+      err.field = "issn";
+      throw err;
+    }
+  }
+  if (data.doi) {
+    const doiCheck = await pool.query(
+      `SELECT 1 FROM journals WHERE doi = $1`,
+      [data.doi]
+    );
+    if (doiCheck.rows.length) {
+      const err: any = new Error("A journal with this DOI already exists");
+      err.field = "doi";
+      throw err;
+    }
+  }
+
+  // Auto-generate acronym from title if not provided
+  if (!data.acronym) {
+    const base = buildAcronym(data.title);
+    data.acronym = await getUniqueAcronym(base);
+  }
+
+  // Create journal with null chief_editor_id — CE will be linked when they accept invitation
+  const journal = await createJournalByPublisher(publisherId, null, data);
+
+  // Auto-create first issue (Vol 1, Issue 1) as draft
+  await pool.query(
+    `INSERT INTO journal_issues (journal_id, volume, issue, year, label, status, article_index)
+     VALUES ($1, 1, 1, $2, 'Vol 1, Issue 1', 'draft', 1)`,
+    [journal.id, new Date().getFullYear()],
+  );
+
+  // Grant publisher their journal_manager role for this journal
+  await insertUserRole(publisherId, "journal_manager", journal.id, publisherId);
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const frontendUrl = env.FRONTEND_URL;
+
+  // Create CE invitation
+  const ceInvitation = await createInvitation({
+    email: data.chief_editor.email,
+    name: data.chief_editor.name,
+    role: "chief_editor",
+    journal_id: journal.id,
+    invited_by: publisherId,
+  });
+
+  // Create JM invitation
+  const jmInvitation = await createInvitation({
+    email: data.journal_manager.email,
+    name: data.journal_manager.name,
+    role: "journal_manager",
+    journal_id: journal.id,
+    invited_by: publisherId,
+  });
+
+  // Send invitation emails (fire-and-forget)
+  sendInvitationEmail({
+    to: data.chief_editor.email,
+    name: data.chief_editor.name,
+    invitedByName: publisherName,
+    journalName: journal.title,
+    role: "chief_editor",
+    expiresAt,
+    acceptLink: `${frontendUrl}/accept-invitation?token=${ceInvitation.token}`,
+  }).catch(console.error);
+
+  sendInvitationEmail({
+    to: data.journal_manager.email,
+    name: data.journal_manager.name,
+    invitedByName: publisherName,
+    journalName: journal.title,
+    role: "journal_manager",
+    expiresAt,
+    acceptLink: `${frontendUrl}/accept-invitation?token=${jmInvitation.token}`,
+  }).catch(console.error);
+
+  return journal;
+};
+
+export const updatePublisherJournalService = async (
+  journalId: string,
+  publisherId: string,
+  data: Partial<PublisherJournalData>,
+) => {
+  const journal = await findJournalById(journalId);
+  if (!journal) throw new Error("Journal not found");
+  if (journal.owner_id !== publisherId) throw new Error("Access denied");
+
+  // ISSN uniqueness check (exclude current journal)
+  if (data.issn && data.issn !== journal.issn) {
+    const check = await pool.query(
+      `SELECT 1 FROM journals WHERE issn = $1 AND id != $2`,
+      [data.issn, journalId],
+    );
+    if (check.rows.length) {
+      const err: any = new Error("A journal with this ISSN already exists");
+      err.field = "issn";
+      throw err;
+    }
+  }
+
+  // DOI uniqueness check (exclude current journal)
+  if (data.doi && data.doi !== journal.doi) {
+    const check = await pool.query(
+      `SELECT 1 FROM journals WHERE doi = $1 AND id != $2`,
+      [data.doi, journalId],
+    );
+    if (check.rows.length) {
+      const err: any = new Error("A journal with this DOI already exists");
+      err.field = "doi";
+      throw err;
+    }
+  }
+
+  // Clear ISSN/DOI if explicitly set to empty string
+  if (data.issn === "") data.issn = undefined;
+  if (data.doi === "") data.doi = undefined;
+
+  return updateJournalByPublisher(journalId, data);
+};
+
+const VALID_CURRENCIES = ["USD", "PKR", "EUR", "GBP"];
+
+export const updateJournalAPCService = async (
+  journalId: string,
+  ownerId: string,
+  fee: number,
+  currency: string,
+) => {
+  if (fee < 0) throw new Error("Fee must be >= 0");
+  if (!VALID_CURRENCIES.includes(currency))
+    throw new Error(`Currency must be one of: ${VALID_CURRENCIES.join(", ")}`);
+  const journal = await findJournalById(journalId);
+  if (!journal) throw new Error("Journal not found");
+  if (journal.owner_id !== ownerId) throw new Error("Access denied");
+  return updateJournalAPC(journalId, fee, currency);
 };

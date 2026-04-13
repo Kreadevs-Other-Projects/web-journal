@@ -6,8 +6,16 @@ import {
   fetchReviewer,
   assignReviewer,
   reviewerInvite,
+  suggestReviewer,
+  getPendingReviewerRequests,
+  reviewReviewerRequest,
+  getReviewsForPaper,
+  subEditorDecision,
+  getExistingDecision,
+  remindReviewer,
 } from "./subEditor.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   zSubEditorStatusSchema,
   assignReviewerSchema,
@@ -34,6 +42,7 @@ router.post(
   "/assignReviewer/:paperId",
   authMiddleware,
   authorize("chief_editor", "sub_editor"),
+  requireProfileCompleted,
   validate(assignReviewerSchema),
   assignReviewer,
 );
@@ -58,6 +67,57 @@ router.post(
   authMiddleware,
   authorize("sub_editor"),
   reviewerInvite,
+);
+
+router.get(
+  "/getReviewsForPaper/:paperId",
+  authMiddleware,
+  authorize("sub_editor", "chief_editor"),
+  getReviewsForPaper,
+);
+
+router.post(
+  "/decision/:paperId",
+  authMiddleware,
+  authorize("sub_editor"),
+  requireProfileCompleted,
+  subEditorDecision,
+);
+
+router.get(
+  "/existingDecision/:paperId",
+  authMiddleware,
+  authorize("sub_editor"),
+  getExistingDecision,
+);
+
+// Reviewer requests (sub_editor → chief_editor approval)
+router.post(
+  "/suggestReviewer/:paperId",
+  authMiddleware,
+  authorize("sub_editor"),
+  suggestReviewer,
+);
+
+router.get(
+  "/pending-reviewer-requests",
+  authMiddleware,
+  authorize("chief_editor"),
+  getPendingReviewerRequests,
+);
+
+router.put(
+  "/reviewer-requests/:requestId/review",
+  authMiddleware,
+  authorize("chief_editor"),
+  reviewReviewerRequest,
+);
+
+router.post(
+  "/remind-reviewer",
+  authMiddleware,
+  authorize("sub_editor"),
+  remindReviewer,
 );
 
 export default router;

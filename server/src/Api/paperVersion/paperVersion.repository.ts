@@ -52,6 +52,13 @@ export const createPaperVersion = async (
   }
 };
 
+export const updateVersionHtmlContent = async (versionId: string, html: string) => {
+  await pool.query(
+    "UPDATE paper_versions SET html_content = $1 WHERE id = $2",
+    [html, versionId],
+  );
+};
+
 export const getPaperVersions = async (paper_id: string) => {
   const result = await pool.query(
     `

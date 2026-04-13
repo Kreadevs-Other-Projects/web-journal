@@ -15,6 +15,23 @@ export const updateProfileSchema = z.object({
         .optional(),
 
       certifications: z.string().nullable().optional(),
+
+      degrees: z
+        .union([
+          z.array(z.string()),
+          z.string().transform((val) => JSON.parse(val)),
+        ])
+        .optional(),
+
+      keywords: z
+        .union([
+          z.array(z.string()).max(5, "Maximum 5 keywords allowed"),
+          z
+            .string()
+            .transform((val) => JSON.parse(val))
+            .pipe(z.array(z.string()).max(5, "Maximum 5 keywords allowed")),
+        ])
+        .optional(),
     })
     .refine((data) => Object.values(data).some(Boolean), {
       message: "At least one field must be provided",

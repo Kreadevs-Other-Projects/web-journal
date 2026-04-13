@@ -1,3 +1,10 @@
-node_modules
+node_modules/
 .env
 .env.*
+file-*
+*.html
+*.xml
+receipt-
+
+# uploads folder
+uploads/

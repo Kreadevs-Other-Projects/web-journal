@@ -10,6 +10,9 @@ export interface AuthUser extends Request {
     username: string;
     email: string;
     role: string;
+    roles: string[];
+    active_journal_id: string | null;
+    profile_completed: boolean;
   };
   file?: Express.Multer.File;
 }
@@ -19,6 +22,10 @@ interface TokenPayload extends JwtPayload {
   email: string;
   username: string;
   role: string;
+  roles?: string[];
+  active_role?: string;
+  active_journal_id?: string | null;
+  profile_completed?: boolean;
 }
 
 export const authMiddleware = (
@@ -46,7 +53,12 @@ export const authMiddleware = (
       id: payload.id,
       email: payload.email,
       username: payload.username,
-      role: payload.role,
+      // active_role is the session role; fall back to primary role for old tokens
+      role: payload.active_role ?? payload.role,
+      roles: payload.roles ?? [payload.role],
+      active_journal_id: payload.active_journal_id ?? null,
+      // Default true for old tokens that pre-date this field
+      profile_completed: payload.profile_completed ?? true,
     };
 
     next();

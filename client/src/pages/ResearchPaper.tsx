@@ -1,12 +1,27 @@
-// pages/reviewer/ResearchPaperDetail.tsx
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SignatureModal } from "@/components/SignatureModal";
 import { PageTransition } from "@/components/AnimationWrappers";
-import { 
-  ArrowLeft, FileText, Clock, Calendar, AlertTriangle, 
-  CheckCircle2, Edit3, Eye, Download, Send, Star,
-  ChevronDown, User, Building, Hash, Globe
+import {
+  ArrowLeft,
+  FileText,
+  Clock,
+  Calendar,
+  AlertTriangle,
+  CheckCircle2,
+  Edit3,
+  Eye,
+  Download,
+  Send,
+  Star,
+  ChevronDown,
+  User,
+  Building,
+  Hash,
+  Globe,
+  ExternalLink,
+  Tag,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,20 +34,52 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { useParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { url } from "@/url";
+import { useAuth } from "@/context/AuthContext";
+
+interface PublicPaper {
+  id: string;
+  title: string;
+  abstract: string;
+  keywords: string[];
+  author_names: string[];
+  author_username: string;
+  journal_title: string;
+  issn: string;
+  volume: number;
+  issue: number;
+  year: number;
+  issue_label: string;
+  doi: string | null;
+  publication_date: string;
+  published_at: string;
+  file_url: string;
+  html_content?: string;
+  status: string;
+}
 
 // This would come from your backend API
 const mockPaperData = {
   id: "REV-001",
-  title: "Machine Learning Applications in Climate Modeling: A Comprehensive Survey",
-  abstract: "This paper provides a comprehensive review of machine learning techniques applied to climate modeling, including neural networks, ensemble methods, and deep learning approaches. The study analyzes over 200 papers from the last decade, identifying key trends, challenges, and future directions in climate informatics.",
+  title:
+    "Machine Learning Applications in Climate Modeling: A Comprehensive Survey",
+  abstract:
+    "This paper provides a comprehensive review of machine learning techniques applied to climate modeling, including neural networks, ensemble methods, and deep learning approaches. The study analyzes over 200 papers from the last decade, identifying key trends, challenges, and future directions in climate informatics.",
   authors: ["Dr. Jane Smith", "Prof. John Doe", "Dr. Maria Garcia"],
   affiliations: ["University of Oxford", "MIT", "Stanford University"],
   category: "Artificial Intelligence",
   subCategory: "Climate Informatics",
-  keywords: ["Machine Learning", "Climate Modeling", "Deep Learning", "Neural Networks", "Environmental Science"],
+  keywords: [
+    "Machine Learning",
+    "Climate Modeling",
+    "Deep Learning",
+    "Neural Networks",
+    "Environmental Science",
+  ],
   submittedDate: "2024-01-15",
   dueDate: "2024-02-15",
   status: "under_review" as const,
@@ -50,9 +97,14 @@ const mockPaperData = {
   conflictsOfInterest: "None declared",
   funding: "NSF Grant #123456",
   license: "CC BY 4.0",
-  suggestedReviewers: ["Dr. Alex Johnson", "Prof. Sarah Lee", "Dr. Michael Brown"],
+  suggestedReviewers: [
+    "Dr. Alex Johnson",
+    "Prof. Sarah Lee",
+    "Dr. Michael Brown",
+  ],
   previousVersions: ["v1.0", "v1.1", "v1.2"],
-  editorComments: "This is an important contribution to the field. Please pay special attention to the methodology section.",
+  editorComments:
+    "This is an important contribution to the field. Please pay special attention to the methodology section.",
 };
 
 const reviewCriteria = [
@@ -110,9 +162,11 @@ const similarPapers = [
 export default function ResearchPaperDetail() {
   const { paperId } = useParams<{ paperId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [paper, setPaper] = useState(mockPaperData);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [publicPaper, setPublicPaper] = useState<PublicPaper | null>(null);
+
   // Review form state
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
@@ -121,45 +175,55 @@ export default function ResearchPaperDetail() {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [pdfZoom, setPdfZoom] = useState(100);
   const [activeTab, setActiveTab] = useState("review");
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
 
-  // Fetch paper data based on ID (mock for now, will be replaced with API)
+  // Fetch real public paper data for metadata display
   useEffect(() => {
-    const fetchPaperData = async () => {
-      setIsLoading(true);
+    if (!paperId) return;
+    setIsLoading(true);
+    const fetchPaper = async () => {
       try {
-        // In real implementation, this would be:
-        // const response = await fetch(`/api/papers/${paperId}`);
-        // const data = await response.json();
-        // setPaper(data);
-        
-        // For now, using mock data
-        setTimeout(() => {
-          setPaper(mockPaperData);
-          setIsLoading(false);
-        }, 300);
-      } catch (error) {
-        console.error("Error fetching paper:", error);
+        const r = await fetch(`${url}/browse/paper/${paperId}`);
+        const d = await r.json();
+        if (d.success && d.paper) {
+          setPublicPaper(d.paper);
+          if (d.paper.html_content) setHtmlContent(d.paper.html_content);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
         setIsLoading(false);
       }
     };
-
-    if (paperId) {
-      fetchPaperData();
-    }
+    fetchPaper();
   }, [paperId]);
+
+  // Option B: on-demand HTML fetch for .docx without cached html_content
+  useEffect(() => {
+    if (!publicPaper || htmlContent !== null) return;
+    if (!publicPaper.file_url || !publicPaper.file_url.endsWith(".docx"))
+      return;
+    setHtmlLoading(true);
+    const fetchHtml = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${paperId}/html`);
+        const d = await r.json();
+        if (d.success && d.html) setHtmlContent(d.html);
+      } catch (_) {
+      } finally {
+        setHtmlLoading(false);
+      }
+    };
+    fetchHtml();
+  }, [publicPaper, paperId, htmlContent]);
 
   const handleSubmitReview = () => {
     if (decision === "accept" || decision === "reject") {
       setSignatureModalOpen(true);
     } else {
       // For revision decisions
-      console.log("Review submitted:", {
-        paperId,
-        decision,
-        comments,
-        confidentialComments,
-        ratings,
-      });
+
       // In real app: API call to submit review
       // Then navigate back or show success message
       navigate("/reviewer/papers");
@@ -167,13 +231,6 @@ export default function ResearchPaperDetail() {
   };
 
   const handleSignatureConfirm = (signature: string, password: string) => {
-    console.log("Review submitted with signature:", {
-      paperId,
-      signature,
-      decision,
-      comments,
-      ratings,
-    });
     setSignatureModalOpen(false);
     navigate("/reviewer/papers");
   };
@@ -193,7 +250,7 @@ export default function ResearchPaperDetail() {
 
   if (isLoading) {
     return (
-      <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+      <DashboardLayout role="reviewer" userName={user?.username}>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -205,9 +262,129 @@ export default function ResearchPaperDetail() {
   }
 
   return (
-    <DashboardLayout role="reviewer" userName="Dr. Michael Chen">
+    <DashboardLayout role="reviewer" userName={user?.username}>
       <PageTransition>
         <div className="space-y-6">
+          {/* Public Article Metadata Panel */}
+          {publicPaper && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <BookOpen className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-lg text-foreground leading-snug">
+                      {publicPaper.title}
+                    </h2>
+                    {publicPaper.author_names?.length > 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {publicPaper.author_names.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Journal:</span>
+                    <span>{publicPaper.journal_title}</span>
+                  </div>
+                  {publicPaper.issn && (
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">ISSN:</span>
+                      <span className="font-mono">{publicPaper.issn}</span>
+                    </div>
+                  )}
+                  {(publicPaper.volume || publicPaper.issue) && (
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Issue:</span>
+                      <span>
+                        {publicPaper.issue_label ||
+                          `Vol ${publicPaper.volume}, Issue ${publicPaper.issue} (${publicPaper.year})`}
+                      </span>
+                    </div>
+                  )}
+                  {(publicPaper.publication_date ||
+                    publicPaper.published_at) && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Published:</span>
+                      <span>
+                        {new Date(
+                          publicPaper.publication_date ||
+                            publicPaper.published_at,
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">License:</span>
+                    <span>CC BY 4.0</span>
+                  </div>
+                </div>
+
+                {publicPaper.doi && (
+                  <div className="flex items-center gap-2 text-sm mt-2 pt-2 border-t border-border/50">
+                    <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-muted-foreground">DOI:</span>
+                    <a
+                      href={`https://doi.org/${publicPaper.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-mono"
+                    >
+                      https://doi.org/{publicPaper.doi}
+                    </a>
+                  </div>
+                )}
+
+                {publicPaper.abstract && (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      Abstract
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
+                      {publicPaper.abstract}
+                    </p>
+                  </div>
+                )}
+
+                {publicPaper.keywords?.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    {publicPaper.keywords.map((kw) => (
+                      <Badge key={kw} variant="secondary" className="text-xs">
+                        {kw}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {publicPaper.file_url && (
+                  <div className="mt-3">
+                    <a
+                      href={`${url}${publicPaper.file_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Download Manuscript
+                      </Button>
+                    </a>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header with navigation */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -242,7 +419,7 @@ export default function ResearchPaperDetail() {
               <h2 className="text-xl font-bold text-foreground mb-4">
                 {paper.title}
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
@@ -254,7 +431,9 @@ export default function ResearchPaperDetail() {
                       <div key={idx} className="flex items-center gap-2">
                         <span className="text-foreground">{author}</span>
                         {paper.affiliations[idx] && (
-                          <span className="text-xs">({paper.affiliations[idx]})</span>
+                          <span className="text-xs">
+                            ({paper.affiliations[idx]})
+                          </span>
                         )}
                       </div>
                     ))}
@@ -267,8 +446,13 @@ export default function ResearchPaperDetail() {
                     Timeline
                   </Label>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <div>Submitted: {new Date(paper.submittedDate).toLocaleDateString()}</div>
-                    <div>Due: {new Date(paper.dueDate).toLocaleDateString()}</div>
+                    <div>
+                      Submitted:{" "}
+                      {new Date(paper.submittedDate).toLocaleDateString()}
+                    </div>
+                    <div>
+                      Due: {new Date(paper.dueDate).toLocaleDateString()}
+                    </div>
                     <div className="text-foreground font-medium">
                       <Clock className="h-3 w-3 inline mr-1" />
                       {paper.daysLeft} days remaining
@@ -304,7 +488,11 @@ export default function ResearchPaperDetail() {
           </Card>
 
           {/* Main content with tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-4"
+          >
             <TabsList className="bg-muted/50">
               <TabsTrigger value="review">
                 <Edit3 className="h-4 w-4 mr-2" />
@@ -382,14 +570,17 @@ export default function ResearchPaperDetail() {
                                       "h-5 w-5 transition-colors",
                                       star <= (ratings[criterion.id] || 0)
                                         ? "fill-accent text-accent"
-                                        : "text-muted-foreground/30"
+                                        : "text-muted-foreground/30",
                                     )}
                                   />
                                 </motion.button>
                               ))}
                             </div>
                           </div>
-                          <Progress value={(ratings[criterion.id] || 0) * 20} className="h-1" />
+                          <Progress
+                            value={(ratings[criterion.id] || 0) * 20}
+                            className="h-1"
+                          />
                         </div>
                       ))}
                     </CardContent>
@@ -425,7 +616,9 @@ export default function ResearchPaperDetail() {
                         <Textarea
                           id="confidential"
                           value={confidentialComments}
-                          onChange={(e) => setConfidentialComments(e.target.value)}
+                          onChange={(e) =>
+                            setConfidentialComments(e.target.value)
+                          }
                           placeholder="Any confidential concerns or recommendations..."
                           className="min-h-[100px]"
                         />
@@ -445,25 +638,57 @@ export default function ResearchPaperDetail() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <RadioGroup value={decision} onValueChange={setDecision} className="space-y-3">
+                      <RadioGroup
+                        value={decision}
+                        onValueChange={setDecision}
+                        className="space-y-3"
+                      >
                         {[
-                          { value: "accept", label: "Accept", description: "Paper is ready for publication", color: "border-success bg-success/10" },
-                          { value: "minor_revision", label: "Minor Revision", description: "Small changes needed", color: "border-info bg-info/10" },
-                          { value: "major_revision", label: "Major Revision", description: "Significant changes required", color: "border-warning bg-warning/10" },
-                          { value: "reject", label: "Reject", description: "Paper does not meet standards", color: "border-destructive bg-destructive/10" },
+                          {
+                            value: "accept",
+                            label: "Accept",
+                            description: "Paper is ready for publication",
+                            color: "border-success bg-success/10",
+                          },
+                          {
+                            value: "minor_revision",
+                            label: "Minor Revision",
+                            description: "Small changes needed",
+                            color: "border-info bg-info/10",
+                          },
+                          {
+                            value: "major_revision",
+                            label: "Major Revision",
+                            description: "Significant changes required",
+                            color: "border-warning bg-warning/10",
+                          },
+                          {
+                            value: "reject",
+                            label: "Reject",
+                            description: "Paper does not meet standards",
+                            color: "border-destructive bg-destructive/10",
+                          },
                         ].map((option) => (
                           <motion.div
                             key={option.value}
                             whileHover={{ scale: 1.02 }}
                             className={cn(
                               "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                              decision === option.value ? option.color : "border-border hover:border-primary/50"
+                              decision === option.value
+                                ? option.color
+                                : "border-border hover:border-primary/50",
                             )}
                             onClick={() => setDecision(option.value)}
                           >
-                            <RadioGroupItem value={option.value} id={option.value} />
+                            <RadioGroupItem
+                              value={option.value}
+                              id={option.value}
+                            />
                             <div className="flex-1">
-                              <Label htmlFor={option.value} className="cursor-pointer font-medium">
+                              <Label
+                                htmlFor={option.value}
+                                className="cursor-pointer font-medium"
+                              >
                                 {option.label}
                               </Label>
                               <p className="text-xs text-muted-foreground">
@@ -481,17 +706,26 @@ export default function ResearchPaperDetail() {
                     <CardContent className="p-6">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Review Progress</span>
+                          <span className="text-sm font-medium">
+                            Review Progress
+                          </span>
                           <span className="text-sm font-bold text-primary">
-                            {Object.keys(ratings).length > 0 ? "In Progress" : "Not Started"}
+                            {Object.keys(ratings).length > 0
+                              ? "In Progress"
+                              : "Not Started"}
                           </span>
                         </div>
-                        <Progress 
-                          value={(Object.keys(ratings).length / reviewCriteria.length) * 100} 
+                        <Progress
+                          value={
+                            (Object.keys(ratings).length /
+                              reviewCriteria.length) *
+                            100
+                          }
                           className="h-2"
                         />
                         <div className="text-xs text-muted-foreground">
-                          {Object.keys(ratings).length} of {reviewCriteria.length} criteria rated
+                          {Object.keys(ratings).length} of{" "}
+                          {reviewCriteria.length} criteria rated
                         </div>
                       </div>
                     </CardContent>
@@ -506,24 +740,36 @@ export default function ResearchPaperDetail() {
                   >
                     <Send className="h-5 w-5 mr-2" />
                     Submit Review
-                    {(decision === "accept" || decision === "reject") && " (Requires Signature)"}
+                    {(decision === "accept" || decision === "reject") &&
+                      " (Requires Signature)"}
                   </Button>
 
                   {/* Quick Actions */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                      <CardTitle className="text-sm font-medium">
+                        Quick Actions
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Download Paper
                       </Button>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <FileText className="h-4 w-4 mr-2" />
                         View PDF
                       </Button>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <Clock className="h-4 w-4 mr-2" />
                         Request Extension
                       </Button>
@@ -560,25 +806,106 @@ export default function ResearchPaperDetail() {
                       >
                         <ChevronDown className="h-4 w-4 rotate-180" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
+                      {publicPaper?.file_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(
+                              `${url}${publicPaper.file_url}`,
+                              "_blank",
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      )}
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="aspect-[4/3] bg-muted/30">
-                    <iframe
-                      src={`${paper.pdfUrl}#view=FitH`}
-                      className="w-full h-full border-0"
-                      style={{
-                        transform: `scale(${pdfZoom / 100})`,
-                        transformOrigin: "top center",
-                      }}
-                      title="Paper PDF"
-                    />
-                  </div>
+                <CardContent className="p-4">
+                  {(() => {
+                    const fileExt = publicPaper?.file_url
+                      ?.split(".")
+                      .pop()
+                      ?.toLowerCase();
+                    if (fileExt === "pdf") {
+                      return (
+                        <div className="h-[600px]">
+                          <iframe
+                            src={`${url}${publicPaper!.file_url}`}
+                            className="w-full h-full border-0 rounded"
+                            title="Paper PDF"
+                          />
+                        </div>
+                      );
+                    }
+                    if (fileExt === "tex" || fileExt === "latex") {
+                      return (
+                        <div className="text-center space-y-3 py-8">
+                          <p className="text-muted-foreground text-sm">
+                            LaTeX files cannot be previewed. Please download to
+                            view.
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              window.open(
+                                `${url}${publicPaper!.file_url}`,
+                                "_blank",
+                              )
+                            }
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download Manuscript
+                          </Button>
+                        </div>
+                      );
+                    }
+                    if (htmlLoading) {
+                      return (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          Loading document…
+                        </div>
+                      );
+                    }
+                    if (htmlContent) {
+                      return (
+                        <div
+                          className="paper-content"
+                          style={{ fontSize: `${pdfZoom}%` }}
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(htmlContent),
+                          }}
+                        />
+                      );
+                    }
+                    return (
+                      <div className="text-center space-y-3 py-8">
+                        <p className="text-muted-foreground text-sm">
+                          Full text is not available for web viewing.
+                        </p>
+                        {publicPaper?.file_url && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              window.open(
+                                `${url}${publicPaper.file_url}`,
+                                "_blank",
+                              )
+                            }
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download Manuscript
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -596,15 +923,21 @@ export default function ResearchPaperDetail() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label>Funding Information</Label>
-                      <p className="text-sm text-muted-foreground">{paper.funding}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {paper.funding}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Conflicts of Interest</Label>
-                      <p className="text-sm text-muted-foreground">{paper.conflictsOfInterest}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {paper.conflictsOfInterest}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>License</Label>
-                      <p className="text-sm text-muted-foreground">{paper.license}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {paper.license}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -618,7 +951,10 @@ export default function ResearchPaperDetail() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {paper.supplementaryMaterials.map((material, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
                         <span className="text-sm">{material}</span>
                         <Button variant="ghost" size="sm">
                           <Download className="h-4 w-4" />
@@ -634,7 +970,9 @@ export default function ResearchPaperDetail() {
                   </CardHeader>
                   <CardContent>
                     <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-muted-foreground">{paper.editorComments}</p>
+                      <p className="text-muted-foreground">
+                        {paper.editorComments}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -650,7 +988,10 @@ export default function ResearchPaperDetail() {
                 <CardContent>
                   <div className="space-y-4">
                     {similarPapers.map((similarPaper) => (
-                      <div key={similarPaper.id} className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div
+                        key={similarPaper.id}
+                        className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
                         <div className="flex items-start justify-between">
                           <div>
                             <h4 className="font-medium text-foreground mb-1">
@@ -663,7 +1004,14 @@ export default function ResearchPaperDetail() {
                               <Badge variant="outline" className="text-xs">
                                 {similarPaper.citations} citations
                               </Badge>
-                              <Badge variant={similarPaper.relevance === "High" ? "default" : "outline"} className="text-xs">
+                              <Badge
+                                variant={
+                                  similarPaper.relevance === "High"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                className="text-xs"
+                              >
                                 {similarPaper.relevance} relevance
                               </Badge>
                             </div>

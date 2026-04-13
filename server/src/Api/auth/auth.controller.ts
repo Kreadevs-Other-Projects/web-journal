@@ -6,6 +6,7 @@ import {
   createUser,
   validatePassword,
   createUserProfile,
+  getUserRoles,
 } from "./auth.service";
 import {
   createOTP,
@@ -17,11 +18,15 @@ import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
+  verifyAccessToken,
 } from "../../utils/jwt";
 import {
   deleteRefreshToken,
   findRefreshToken,
   saveRefreshToken,
+  getUserRoles as getUserRolesRepo,
+  insertUserRole,
+  upsertPlatformRole,
 } from "./auth.repository";
 import { sendOTPEmail } from "../../utils/emails/authEmails";
 import { env } from "../../configs/envs";
@@ -66,145 +71,105 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 
-  if (user.role !== role) {
+  // Validate the requested role exists for this user
+  const userRoleRows = await getUserRoles(user.id, user.role);
+  const requestedRole = role || user.role;
+  const matchingUserRole = userRoleRows.find((r) => r.role === requestedRole);
+  const hasPrimaryRole = user.role === requestedRole;
+
+  if (!matchingUserRole && !hasPrimaryRole) {
     return res.status(403).json({
       success: false,
-      message: "Invalid role selected for this account",
+      message: `You are not registered as ${requestedRole.replace(/_/g, " ")}`,
     });
   }
 
-  // ========================
-  // DEV: Skip OTP, return token directly
-  // ========================
-  const accessToken = await generateAccessToken(
-    user.id,
-    user.role,
-    user.email,
-    user.username,
-  );
-  const refreshToken = await generateRefreshToken(user.id, user.role);
-
-  const expires_at = new Date();
-  expires_at.setDate(expires_at.getDate() + 7);
-
-  const savedTokenId = await saveRefreshToken(
-    user.id,
-    refreshToken,
-    expires_at,
-  );
-  if (!savedTokenId) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to save refresh token",
-    });
-  }
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  // Credentials valid — send OTP. JWT is issued only after OTP is verified via /auth/verifyLoginOTP
+  const otpRecord = await createOTP(email, "login");
+  await sendOTPEmail(email, otpRecord.otp_code);
 
   return res.status(200).json({
     success: true,
-    message: "Login successful (DEV MODE)",
-    token: accessToken,
-    refreshToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      username: user.username,
-    },
+    requires_otp: true,
+    message: "A verification code has been sent to your email",
   });
-
-  // ====== Comment out OTP logic ======
-  /*
-  const otp = await createOTP(email, purpose);
-  await sendOTPEmail(email, otp.otp_code);
-  return res.status(200).json({
-    success: true,
-    message: "OTP sent successfully",
-    expiresAt: otp.expiry_at,
-  });
-  */
 };
-
-// export const login = async (req: Request, res: Response) => {
-//   const { email, password, role, purpose } = req.body;
-
-//   if (!email || !password || !role || !purpose) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Email, password, role and purpose are required",
-//     });
-//   }
-
-//   if (!["login", "signup", "reset"].includes(purpose)) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Invalid purpose",
-//     });
-//   }
-
-//   const user = await findUserByEmail(email);
-//   if (!user) {
-//     return res.status(404).json({
-//       success: false,
-//       message: "Account not found!",
-//     });
-//   }
-
-//   if (user.status !== "active") {
-//     return res.status(403).json({
-//       success: false,
-//       message: "Account is not active. Please contact support.",
-//     });
-//   }
-
-//   const isValid = await validatePassword(password, user.password);
-//   if (!isValid) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Invalid password!",
-//     });
-//   }
-
-//   if (user.role !== role) {
-//     return res.status(403).json({
-//       success: false,
-//       message: "Invalid role selected for this account",
-//     });
-//   }
-
-//   const otp = await createOTP(email, purpose);
-
-//   await sendOTPEmail(email, otp.otp_code);
-
-//   return res.status(200).json({
-//     success: true,
-//     message: "OTP sent successfully",
-//     expiresAt: otp.expiry_at,
-//   });
-// };
 
 export const signup = async (req: Request, res: Response) => {
   const { email, password, username, role } = req.body;
 
-  // const otpVerified = await checkOTPVerified(email);
-  // if (!otpVerified) {
-  //   return res
-  //     .status(403)
-  //     .json({ success: false, message: "Email not verified via OTP" });
-  // }
+  const BLOCKED_ROLES = ["owner", "chief_editor", "sub_editor", "journal_manager"];
+  if (BLOCKED_ROLES.includes(role)) {
+    return res.status(400).json({ success: false, message: "Invalid role" });
+  }
+
+  // Require OTP verification before creating any account
+  const otpVerified = await checkOTPVerified(email);
+  if (!otpVerified) {
+    return res.status(400).json({
+      success: false,
+      message: "Email not verified. Please complete OTP verification.",
+    });
+  }
 
   const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
-    return res
-      .status(409)
-      .json({ success: false, message: "User already exists" });
+    const ADDABLE_ROLES = ["author", "reviewer", "publisher"];
+    if (ADDABLE_ROLES.includes(role)) {
+      await upsertPlatformRole(existingUser.id, role);
+
+      const userRoleRows = await getUserRoles(existingUser.id, existingUser.role);
+
+      const accessToken = await generateAccessToken(
+        existingUser.id,
+        existingUser.role,
+        existingUser.email,
+        existingUser.username,
+        userRoleRows,
+        role,
+        null,
+        existingUser.profile_completed ?? false,
+      );
+
+      const newRefreshToken = await generateRefreshToken(existingUser.id, existingUser.role);
+      const expires_at = new Date();
+      expires_at.setDate(expires_at.getDate() + 7);
+      await saveRefreshToken(existingUser.id, newRefreshToken, expires_at);
+
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      await deleteOTP(email);
+
+      return res.status(200).json({
+        success: true,
+        message: `${role.charAt(0).toUpperCase() + role.slice(1)} role added to your existing account`,
+        token: accessToken,
+        refreshToken: newRefreshToken,
+        user: {
+          id: existingUser.id,
+          username: existingUser.username,
+          email: existingUser.email,
+          active_role: role,
+        },
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "An account with this email already exists. Please sign in instead.",
+      errors: [
+        {
+          field: "email",
+          message: "Email already registered. Sign in to your existing account.",
+        },
+      ],
+    });
   }
 
   const hashedPassword = await hashPassword(password);
@@ -217,6 +182,9 @@ export const signup = async (req: Request, res: Response) => {
   });
 
   await createUserProfile(newUser.id);
+
+  // Add primary role to user_roles so multi-role system tracks it
+  await insertUserRole(newUser.id, role, null, null);
 
   await deleteOTP(email);
 
@@ -274,14 +242,7 @@ export const requestOTP = async (req: Request, res: Response) => {
 
 export const verifyLoginOTP = async (req: Request, res: Response) => {
   try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and OTP are required",
-      });
-    }
+    const { email, otp, role: requestedRole } = req.body;
 
     const otpRecord = await verifyOTP(email, otp);
     if (!otpRecord) {
@@ -301,22 +262,29 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
 
     await deleteOTP(email);
 
+    const userRoleRows = await getUserRoles(user.id, user.role);
+
+    // Use the role the user selected at login; fall back to primary role
+    const activeRole = requestedRole || user.role;
+    const matchingRow = userRoleRows.find((r) => r.role === activeRole);
+    const activeJournalId = matchingRow?.journal_id ?? null;
+
     const accessToken = await generateAccessToken(
       user.id,
       user.role,
       user.email,
       user.username,
+      userRoleRows,
+      activeRole,
+      activeJournalId,
+      user.profile_completed ?? false,
     );
     const refreshToken = await generateRefreshToken(user.id, user.role);
 
     const expires_at = new Date();
     expires_at.setDate(expires_at.getDate() + 7);
 
-    const savedTokenId = await saveRefreshToken(
-      user.id,
-      refreshToken,
-      expires_at,
-    );
+    const savedTokenId = await saveRefreshToken(user.id, refreshToken, expires_at);
     if (!savedTokenId) {
       return res.status(500).json({
         success: false,
@@ -340,6 +308,8 @@ export const verifyLoginOTP = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        username: user.username,
+        roles: userRoleRows.map((r) => r.role),
       },
     });
   } catch (error: any) {
@@ -415,6 +385,115 @@ export const refreshToken = async (req: Request, res: Response) => {
     success: true,
     message: "Token refreshed successfully",
     token: newAccessToken,
+  });
+};
+
+export const switchRole = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyAccessToken(token);
+
+    const { role, journal_id = null } = req.body;
+
+    // Verify user has this role in user_roles table
+    const userRoleRows = await getUserRolesRepo(payload.id);
+    const primaryRole = payload.role;
+
+    // Build the full set of roles (including primary) as structured objects.
+    // Only add the primary as a generic null-journal entry if no user_roles row
+    // exists for that role at all — avoids duplicates for journal-scoped roles.
+    const allRoles = [...userRoleRows];
+    if (!allRoles.some((r) => r.role === primaryRole)) {
+      allRoles.unshift({ role: primaryRole, journal_id: null, journal_name: null });
+    }
+
+    // Deduplicate by role+journal_id
+    const seenKeys = new Set<string>();
+    const uniqueRoles = allRoles.filter((r) => {
+      const key = `${r.role}-${r.journal_id ?? "null"}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
+
+    const hasRole = userRoleRows.some(
+      (r) =>
+        r.role === role &&
+        (journal_id ? r.journal_id === journal_id : true),
+    ) || role === primaryRole;
+
+    if (!hasRole) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have the requested role",
+      });
+    }
+
+    const user = await findUserById(payload.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Auto-discover journal_id from user_roles if client didn't provide one
+    let effectiveJournalId = journal_id;
+    if (!effectiveJournalId) {
+      const matchingRow = userRoleRows.find((r) => r.role === role);
+      effectiveJournalId = matchingRow?.journal_id ?? null;
+    }
+
+    const newToken = await generateAccessToken(
+      user.id,
+      user.role,
+      user.email,
+      user.username,
+      uniqueRoles,
+      role,
+      effectiveJournalId,
+      user.profile_completed ?? true,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Role switched successfully",
+      token: newToken,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to switch role",
+    });
+  }
+};
+
+export const createStaff = async (req: Request, res: Response) => {
+  const { name, email, password, role, journal_id, keywords, degrees } = req.body;
+
+  const BLOCKED = ["publisher", "owner"];
+  if (BLOCKED.includes(role)) {
+    return res.status(403).json({ success: false, message: "Cannot create this role via this endpoint" });
+  }
+
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ success: false, message: "Email is already in use" });
+  }
+
+  const hashed = await hashPassword(password);
+  const newUser = await createUser({ email, password: hashed, username: name, role });
+  await createUserProfile(newUser.id);
+
+  // Insert user_roles entry scoped to the journal
+  const grantedBy = (req as any).user?.id ?? null;
+  await insertUserRole(newUser.id, role, journal_id, grantedBy);
+
+  return res.status(201).json({
+    success: true,
+    user: { id: newUser.id, email: newUser.email, role: newUser.role, username: newUser.username },
   });
 };
 

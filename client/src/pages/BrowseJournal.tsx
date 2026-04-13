@@ -28,7 +28,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "@/components/AnimationWrappers";
-import { cn } from "@/lib/utils";
+import { cn, getFileUrl } from "@/lib/utils";
 import { url } from "@/url";
 import Navbar from "@/components/navbar";
 
@@ -43,9 +43,68 @@ interface Journal {
   journal_id: string;
   journal_title: string;
   issn: string;
+  aims_and_scope?: string;
+  logo_url?: string;
   issue: string;
-  published_at: string;
+  published_at: string; // journal created_at
   papers: Paper[];
+  journal_category_id?: string;
+  category_name?: string;
+  category_slug?: string;
+}
+
+function JournalLogo({
+  logoUrl,
+  title,
+  className,
+}: {
+  logoUrl?: string;
+  title: string;
+  className?: string;
+}) {
+  const initials = title
+    .split(" ")
+    .filter(
+      (w) =>
+        !["of", "the", "and", "for", "in", "a", "an"].includes(w.toLowerCase()),
+    )
+    .slice(0, 3)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  const placeholderColors = [
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-green-500",
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-pink-500",
+  ];
+  const placeholderBg =
+    placeholderColors[(title.charCodeAt(0) ?? 0) % placeholderColors.length];
+
+  if (logoUrl) {
+    return (
+      <div className={cn("aspect-[3/4] overflow-hidden rounded-lg bg-muted shrink-0", className)}>
+        <img
+          src={getFileUrl(logoUrl)}
+          alt={title}
+          className="w-full h-full object-cover object-top"
+        />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "aspect-[3/4] rounded-lg flex flex-col items-center justify-center font-bold text-white shrink-0",
+        placeholderBg,
+        className,
+      )}
+    >
+      <span className="text-4xl">{initials}</span>
+      <span className="text-xs text-white/60 mt-1">No Cover</span>
+    </div>
+  );
 }
 
 export default function BrowsePage() {
@@ -66,6 +125,8 @@ export default function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [journalCategoryChips, setJournalCategoryChips] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const fetchBrowse = async () => {
@@ -82,6 +143,10 @@ export default function BrowsePage() {
       }
     };
     fetchBrowse();
+    fetch(`${url}/journal-categories`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setJournalCategoryChips(d.categories || []); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -117,7 +182,9 @@ export default function BrowsePage() {
         selectedYear === "All Years" ||
         new Date(journal.published_at).getFullYear().toString() ===
           selectedYear;
-      return matchesJournal && matchesYear;
+      const matchesCategory =
+        !selectedCategoryId || journal.journal_category_id === selectedCategoryId;
+      return matchesJournal && matchesYear && matchesCategory;
     })
     .map((journal) => ({
       ...journal,
@@ -210,6 +277,35 @@ export default function BrowsePage() {
                 Filters
               </Button>
             </div>
+
+            {/* Category chips */}
+            {journalCategoryChips.length > 0 && (
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+                <button
+                  onClick={() => setSelectedCategoryId("")}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                    !selectedCategoryId
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {journalCategoryChips.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategoryId((prev) => prev === cat.id ? "" : cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                      selectedCategoryId === cat.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <AnimatePresence>
               {showFilters && (
@@ -384,13 +480,15 @@ export default function BrowsePage() {
                     <motion.div
                       whileHover={{ y: -5 }}
                       onClick={() => handleJournalClick(journal)}
-                      className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col"
+                      className="glass-card cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow h-full flex flex-col overflow-hidden"
                     >
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="h-12 w-12 rounded-lg bg-gradient-primary/10 flex items-center justify-center shrink-0">
-                          <Layers className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="flex-1">
+                      <JournalLogo
+                        logoUrl={journal.logo_url}
+                        title={journal.journal_title}
+                        className="w-full h-[200px]"
+                      />
+                      <div className="p-6 flex flex-col flex-1">
+                        <div className="mb-4">
                           <h2 className="font-serif-outfit text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {journal.journal_title}
                           </h2>
@@ -398,31 +496,31 @@ export default function BrowsePage() {
                             {journal.issue}
                           </p>
                         </div>
-                      </div>
 
-                      <div className="space-y-2 mb-4 flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            ISSN: {journal.issn}
+                        <div className="space-y-2 mb-4 flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Tag className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              ISSN: {journal.issn}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {formatDate(journal.published_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                          <span className="text-sm font-medium text-accent">
+                            {journal.papers.length} paper
+                            {journal.papers.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                            View Journal →
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {formatDate(journal.published_at)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="pt-4 border-t border-border/50 flex items-center justify-between">
-                        <span className="text-sm font-medium text-accent">
-                          {journal.papers.length} paper
-                          {journal.papers.length !== 1 ? "s" : ""}
-                        </span>
-                        <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                          View Journal →
-                        </span>
                       </div>
                     </motion.div>
                   ) : (
@@ -432,9 +530,11 @@ export default function BrowsePage() {
                       onClick={() => handleJournalClick(journal)}
                       className="glass-card p-6 cursor-pointer group transition-all duration-300 hover:border-primary/30 hover:shadow-glow flex items-center gap-6"
                     >
-                      <div className="h-16 w-16 rounded-lg bg-gradient-primary/10 flex items-center justify-center shrink-0">
-                        <Layers className="h-8 w-8 text-primary" />
-                      </div>
+                      <JournalLogo
+                        logoUrl={journal.logo_url}
+                        title={journal.journal_title}
+                        className="w-[78px] h-[104px] shrink-0"
+                      />
 
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                         <div className="md:col-span-2">

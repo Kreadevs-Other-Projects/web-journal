@@ -4,7 +4,7 @@ DO $$ BEGIN
     CREATE TYPE user_role AS ENUM (
       'owner',
       'publisher',
-      'publisher_manager',
+      'journal_manager',
       'chief_editor',
       'sub_editor',
       'reviewer',

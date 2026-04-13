@@ -6,6 +6,13 @@ import {
   JournalIssueData,
   updateJournalIssueService,
   deleteJournalIssueService,
+  requestNewIssueService,
+  getMyIssuesService,
+  getMyIssueRequestsService,
+  getPendingIssueRequestsService,
+  reviewIssueRequestService,
+  getManagerPapersService,
+  getNextIssuePreviewService,
 } from "./journalIssue.service";
 
 export const addJournalIssue = async (req: AuthUser, res: Response) => {
@@ -13,13 +20,11 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
     if (!req.user) throw new Error("Unauthorized");
 
     const journal_id = req.params.journalId;
-    const data: JournalIssueData = req.body;
-
-    const { issue } = await addJournalIssueService(req.user, journal_id, data);
+    const { issue } = await addJournalIssueService(req.user, journal_id);
 
     return res.status(201).json({
       success: true,
-      message: "Journal issue created. Invoice sent to your email.",
+      message: "Journal issue created successfully.",
       issue,
     });
   } catch (error: any) {
@@ -27,6 +32,16 @@ export const addJournalIssue = async (req: AuthUser, res: Response) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const getNextIssuePreview = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const preview = await getNextIssuePreviewService(journalId);
+    res.json({ success: true, preview });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
   }
 };
 
@@ -64,5 +79,67 @@ export const deleteJournalIssue = async (req: AuthUser, res: Response) => {
     res.json({ success: true, message: "Issue deleted" });
   } catch (e: any) {
     res.status(403).json({ success: false, message: e.message });
+  }
+};
+
+export const requestNewIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { journal_id } = req.body;
+    if (!journal_id) return res.status(400).json({ success: false, message: "journal_id is required" });
+    const request = await requestNewIssueService(req.user! as any, { journal_id });
+    res.status(201).json({ success: true, request });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getMyIssues = async (req: AuthUser, res: Response) => {
+  try {
+    const issues = await getMyIssuesService(req.user!.id);
+    res.json({ success: true, issues });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getMyIssueRequests = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const requests = await getMyIssueRequestsService(journalId);
+    res.json({ success: true, requests });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getPendingIssueRequests = async (req: AuthUser, res: Response) => {
+  try {
+    const requests = await getPendingIssueRequestsService(req.user!.id);
+    res.json({ success: true, requests });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const getManagerPapers = async (req: AuthUser, res: Response) => {
+  try {
+    const papers = await getManagerPapersService(req.user!.id);
+    res.json({ success: true, papers });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+export const reviewIssueRequest = async (req: AuthUser, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const { action } = req.body;
+    if (!["approved", "rejected"].includes(action)) {
+      return res.status(400).json({ success: false, message: "Invalid action" });
+    }
+    const updated = await reviewIssueRequestService(req.user!, requestId, action);
+    res.json({ success: true, request: updated });
+  } catch (e: any) {
+    res.status(400).json({ success: false, message: e.message });
   }
 };

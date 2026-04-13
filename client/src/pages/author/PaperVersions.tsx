@@ -144,7 +144,6 @@ export default function PaperVersions() {
       if (!res.ok) throw new Error("Failed to fetch versions");
 
       const data = await res.json();
-      console.log(data);
 
       setVersions(data.versions || []);
       setFilteredVersions(data.versions || []);

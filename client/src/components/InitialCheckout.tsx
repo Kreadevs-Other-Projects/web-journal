@@ -18,6 +18,13 @@ const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
     if (!user?.role) return;
     if (hasRedirected.current) return;
 
+    // Redirect to profile completion if not done yet
+    if (!user.profile_completed && location.pathname !== "/complete-profile") {
+      hasRedirected.current = true;
+      navigate("/complete-profile", { replace: true });
+      return;
+    }
+
     const isPublicEntry = PUBLIC_ENTRY_PATHS.includes(location.pathname);
 
     if (isPublicEntry) {
@@ -28,7 +35,7 @@ const InitialAuthCheck = ({ children }: { children: React.ReactNode }) => {
         navigate(config.route, { replace: true });
       }
     }
-  }, [isLoading, user?.role, location.pathname, navigate]);
+  }, [isLoading, user?.role, user?.profile_completed, location.pathname, navigate]);
 
   if (isLoading) {
     return <LoadingSpinner text="Checking authentication..." />;

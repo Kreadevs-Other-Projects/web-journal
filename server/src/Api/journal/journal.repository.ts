@@ -1,5 +1,5 @@
 import { pool } from "../../configs/db";
-import { Journal } from "./journal.service";
+import { Journal, PublisherJournalData } from "./journal.service";
 
 export const createJournal = async (owner_id: string, data: Journal) => {
   const { title, acronym, description, issn, website_url, chief_editor_id } =
@@ -71,7 +71,135 @@ export const updateJournalById = async (id: string, data: Journal) => {
   return result.rows[0];
 };
 
+export const updateJournalAPC = async (
+  journalId: string,
+  fee: number,
+  currency: string,
+) => {
+  const result = await pool.query(
+    `UPDATE journals
+     SET publication_fee = $1, currency = $2, updated_at = NOW()
+     WHERE id = $3
+     RETURNING id, publication_fee, currency`,
+    [fee, currency, journalId],
+  );
+  return result.rows[0];
+};
+
 export const delteJournalById = async (id: string) => {
   await pool.query("DELETE FROM journals WHERE id = $1", [id]);
   return true;
+};
+
+export const findEditorialBoard = async (journalId: string) => {
+  const result = await pool.query(
+    `SELECT DISTINCT ON (u.id)
+      u.id,
+      u.username AS name,
+      up.profile_pic_url,
+      up.degrees,
+      up.keywords,
+      src.role
+    FROM (
+      -- Source 1: explicitly assigned via user_roles
+      SELECT user_id, role
+      FROM user_roles
+      WHERE journal_id = $1
+        AND is_active = true
+        AND role IN ('chief_editor', 'sub_editor')
+
+      UNION
+
+      -- Source 2: sub editors assigned to papers in this journal via editor_assignments
+      SELECT ea.sub_editor_id AS user_id, 'sub_editor' AS role
+      FROM editor_assignments ea
+      JOIN papers p ON p.id = ea.paper_id
+      WHERE p.journal_id = $1
+    ) src
+    JOIN users u ON u.id = src.user_id
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    ORDER BY u.id, (src.role = 'chief_editor') DESC`,
+    [journalId],
+  );
+
+  const chief_editors = result.rows.filter((r) => r.role === "chief_editor");
+  const associate_editors = result.rows.filter((r) => r.role === "sub_editor");
+  return { chief_editors, associate_editors };
+};
+
+export const updateJournalByPublisher = async (
+  journalId: string,
+  data: Partial<PublisherJournalData>,
+) => {
+  const result = await pool.query(
+    `UPDATE journals
+     SET
+       title = COALESCE($1, title),
+       issn = COALESCE($2, issn),
+       doi = COALESCE($3, doi),
+       publisher_name = COALESCE($4, publisher_name),
+       type = COALESCE($5, type),
+       peer_review_policy = COALESCE($6, peer_review_policy),
+       oa_policy = COALESCE($7, oa_policy),
+       author_guidelines = COALESCE($8, author_guidelines),
+       aims_and_scope = COALESCE($9, aims_and_scope),
+       publication_fee = COALESCE($10, publication_fee),
+       currency = COALESCE($11, currency),
+       logo_url = COALESCE($12, logo_url),
+       updated_at = NOW()
+     WHERE id = $13
+     RETURNING *`,
+    [
+      data.title ?? null,
+      data.issn ?? null,
+      data.doi ?? null,
+      data.publisher_name ?? null,
+      data.type ?? null,
+      data.peer_review_policy ?? null,
+      data.oa_policy ?? null,
+      data.author_guidelines ?? null,
+      data.aims_and_scope ?? null,
+      data.publication_fee ?? null,
+      data.currency ?? null,
+      data.logo_url ?? null,
+      journalId,
+    ],
+  );
+  return result.rows[0];
+};
+
+export const createJournalByPublisher = async (
+  publisher_id: string,
+  chief_editor_id: string | null,
+  data: PublisherJournalData,
+) => {
+  const result = await pool.query(
+    `
+    INSERT INTO journals
+      (owner_id, chief_editor_id, title, acronym, issn, doi, publisher_name,
+       type, peer_review_policy, oa_policy, author_guidelines, aims_and_scope, publication_fee, currency, logo_url, journal_category_id, status)
+    VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'active')
+    RETURNING id, title, acronym
+    `,
+    [
+      publisher_id,
+      chief_editor_id,
+      data.title,
+      (data.acronym ?? "").toUpperCase(),
+      data.issn || null,
+      data.doi || null,
+      data.publisher_name,
+      data.type,
+      data.peer_review_policy,
+      data.oa_policy,
+      data.author_guidelines,
+      data.aims_and_scope ?? null,
+      data.publication_fee ?? null,
+      data.currency ?? null,
+      data.logo_url ?? null,
+      data.journal_category_id || null,
+    ],
+  );
+  return result.rows[0];
 };

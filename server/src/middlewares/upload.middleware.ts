@@ -38,3 +38,81 @@ export const upload = multer({
     }
   },
 });
+
+export const manuscriptUpload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
+      "application/x-tex",
+      "text/x-tex",
+      "application/x-latex",
+      "text/plain", // .tex files may be sent as text/plain
+    ];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExts = [".docx", ".pdf", ".tex", ".latex"];
+
+    if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only .docx, .pdf and .tex/.latex files are accepted"));
+    }
+  },
+});
+
+const receiptDir = path.join(process.cwd(), "uploads", "receipts");
+if (!fs.existsSync(receiptDir)) fs.mkdirSync(receiptDir, { recursive: true });
+
+const receiptStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, receiptDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `receipt-${Date.now()}${ext}`);
+  },
+});
+
+export const receiptUpload = multer({
+  storage: receiptStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG, PNG or PDF receipts are accepted"));
+  },
+});
+
+export const logoUpload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
+    }
+  },
+});
+
+const certDir = path.join(process.cwd(), "uploads", "certifications");
+if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
+
+const certStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, certDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `cert-${Date.now()}${ext}`);
+  },
+});
+
+export const certificationUpload = multer({
+  storage: certStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF, JPG, and PNG files are accepted"));
+  },
+});

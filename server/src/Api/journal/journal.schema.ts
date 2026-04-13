@@ -34,3 +34,42 @@ export const getOwnerJournalSchema = z.object({
     id: z.string().uuid("Invalid journal ID"),
   }),
 });
+
+const staffMemberSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Valid email is required"),
+});
+
+export const publisherCreateJournalSchema = z.object({
+  body: z.object({
+    title: z
+      .string()
+      .min(3, "Journal name must be at least 3 characters")
+      .max(255, "Journal name cannot exceed 255 characters"),
+    acronym: z
+      .string()
+      .max(10, "Acronym cannot exceed 10 characters")
+      .optional(),
+    issn: z
+      .string()
+      .regex(/^\d{4}-\d{3}[\dX]$/, "ISSN must be in format XXXX-XXXX (e.g. 1234-567X)")
+      .optional()
+      .nullable(),
+    doi: z
+      .string()
+      .regex(/^10\.\d{4,}\/\S+$/, 'Invalid DOI format. Must start with "10." followed by registrant code and suffix (e.g. 10.12345/journal.2026.001)')
+      .optional()
+      .nullable()
+      .or(z.literal("")),
+    publisher_name: z.string().min(1, "Publisher name is required"),
+    type: z.enum(["open_access", "subscription"]),
+    peer_review_policy: z.string().min(1, "Peer review policy is required"),
+    oa_policy: z.string().min(1, "OA policy is required"),
+    author_guidelines: z.string().min(1, "Author guidelines are required"),
+    aims_and_scope: z.string().optional().nullable(),
+    publication_fee: z.number().optional().nullable(),
+    currency: z.enum(["USD", "PKR"]).optional().nullable(),
+    chief_editor: staffMemberSchema,
+    journal_manager: staffMemberSchema,
+  }),
+});

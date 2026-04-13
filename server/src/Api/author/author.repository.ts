@@ -3,9 +3,21 @@ import { pool } from "../../configs/db";
 export const getAuthorJournals = async () => {
   const res = await pool.query(
     `
-    SELECT *
-    FROM journals
-    WHERE status = 'active';
+    SELECT DISTINCT ON (j.id)
+      j.*,
+      (
+        SELECT GREATEST(0, 99 - COUNT(p.id)::int)
+        FROM journal_issues ji2
+        LEFT JOIN papers p ON p.issue_id = ji2.id
+        WHERE ji2.journal_id = j.id AND ji2.status = 'open'
+        GROUP BY ji2.id
+        ORDER BY ji2.created_at ASC
+        LIMIT 1
+      ) AS available_slots
+    FROM journals j
+    JOIN journal_issues ji ON ji.journal_id = j.id
+    WHERE ji.status = 'open'
+    ORDER BY j.id, j.created_at DESC;
     `,
   );
   return res.rows;

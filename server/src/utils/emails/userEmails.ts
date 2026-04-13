@@ -5,7 +5,7 @@ import { baseEmailTemplate } from "./baseEmailTemplate";
 export const sendWelcomeEmail = async (
   email: string,
   username: string,
-  password: string,
+  _password: string, // kept for backwards-compat; no longer included in email
 ) => {
   try {
     await transporter.sendMail({
@@ -17,18 +17,68 @@ export const sendWelcomeEmail = async (
         `
           <p>Hi <strong>${username}</strong>,</p>
           <p>Welcome to <strong>GIKI JournalHub</strong> — your platform for scientific publishing and peer review.</p>
-          <p>You can now submit, review, and manage your research papers with confidence.</p>
-          <p><strong>Your temporary password:</strong></p>
-          <div class="code">${password}</div>
-          <p>Please change your password after logging in for security.</p>
+          <p>Your account is now active. You can log in with your email and the password you set when accepting your invitation.</p>
         `,
       ),
-      text: `Hi ${username}, welcome to GIKI JournalHub! Your temporary password is: ${password}. Please change it after logging in.`,
+      text: `Hi ${username}, welcome to GIKI JournalHub! You can now log in with your email address.`,
     });
-    console.log("Welcome email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send welcome email:", error);
+    return false;
+  }
+};
+
+const ROLE_DISPLAY: Record<string, string> = {
+  chief_editor: "Editor-in-Chief",
+  journal_manager: "Journal Manager",
+  sub_editor: "Associate Editor",
+  reviewer: "Reviewer",
+};
+
+function formatDate(d: Date | string) {
+  return new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export const sendInvitationEmail = async (params: {
+  to: string;
+  name: string;
+  invitedByName: string;
+  journalName: string;
+  role: string;
+  expiresAt: Date | string;
+  acceptLink: string;
+}) => {
+  const { to, name, invitedByName, journalName, role, expiresAt, acceptLink } =
+    params;
+  const roleLabel = ROLE_DISPLAY[role] || role;
+  try {
+    await transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to,
+      subject: `You have been invited to join ${journalName} on GIKI JournalHub`,
+      html: baseEmailTemplate(
+        "You've Been Invited",
+        `
+          <p>Hi <strong>${name}</strong>,</p>
+          <p><strong>${invitedByName}</strong> has invited you to join <strong>${journalName}</strong> as <strong>${roleLabel}</strong>.</p>
+          <p>This invitation expires on <strong>${formatDate(expiresAt)}</strong>.</p>
+          <p>Click the button below to accept the invitation and create your account:</p>
+          <a href="${acceptLink}" class="button">Accept Invitation &amp; Create Account</a>
+          <p style="margin-top:24px;font-size:13px;color:#9CA3AF;">
+            If you did not expect this invitation, you can safely ignore this email.
+          </p>
+        `,
+      ),
+      text: `Hi ${name}, you have been invited to join ${journalName} as ${roleLabel}. Accept here: ${acceptLink} (expires ${formatDate(expiresAt)})`,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send invitation email:", error);
     return false;
   }
 };
@@ -54,7 +104,6 @@ export const sendSubEditorInviteEmail = async (
       ),
       text: `You have been invited to join GIKI JournalHub as a Sub-Editor. Complete your signup here: ${signupLink}`,
     });
-    console.log("Sub-editor invite email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send sub-editor invite email:", error);
@@ -84,7 +133,6 @@ export const sendReviewerInviteEmail = async (
       ),
       text: `You have been invited to join GIKI JournalHub as a Reviewer. Complete your signup here: ${signupLink}`,
     });
-    console.log("Reviewer invite email sent to:", email);
     return true;
   } catch (error) {
     console.error("Failed to send reviewer invite email:", error);

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   User,
   Mail,
@@ -11,11 +10,13 @@ import {
   Edit2,
   Save,
   X,
-  Trash2,
   Lock,
   Eye,
   EyeOff,
   AlertCircle,
+  Upload,
+  Trash2,
+  Download,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageTransition } from "@/components/AnimationWrappers";
@@ -38,6 +39,10 @@ import { useAuth } from "@/context/AuthContext";
 import { UserRole, roleConfig } from "@/lib/roles";
 import { url } from "../url";
 import { useToast } from "@/hooks/use-toast";
+import { FieldHint } from "@/components/FieldHint";
+import { KeywordInput } from "@/components/KeywordInput";
+
+const EDITORIAL_ROLES: UserRole[] = ["chief_editor", "sub_editor", "reviewer"];
 
 const defaultUserData = {
   id: "",
@@ -54,6 +59,8 @@ const defaultUserData = {
   expertise: [] as string[],
   qualifications: "" as string | null,
   certifications: "" as string | null,
+  degrees: [] as string[],
+  keywords: [] as string[],
   role: null as UserRole | null,
 };
 
@@ -75,6 +82,71 @@ export default function ProfilePage() {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [newDegree, setNewDegree] = useState("");
+
+  interface Certification {
+    id: string;
+    file_url: string;
+    file_name: string;
+    file_type: string;
+    uploaded_at: string;
+  }
+  const certInputRef = useRef<HTMLInputElement | null>(null);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [uploadingCert, setUploadingCert] = useState(false);
+
+  const fetchCertifications = async () => {
+    try {
+      const res = await fetch(`${url}/profile/certifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await res.json();
+      if (result.success) setCertifications(result.certifications || []);
+    } catch {}
+  };
+
+  const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB per file.", variant: "destructive" });
+      return;
+    }
+    setUploadingCert(true);
+    try {
+      const fd = new FormData();
+      fd.append("certification", file);
+      const res = await fetch(`${url}/profile/certifications`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || "Upload failed");
+      toast({ title: "Uploaded", description: "Certification added." });
+      fetchCertifications();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingCert(false);
+      if (certInputRef.current) certInputRef.current.value = "";
+    }
+  };
+
+  const handleCertDelete = async (certId: string) => {
+    try {
+      const res = await fetch(`${url}/profile/certifications/${certId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message);
+      toast({ title: "Deleted", description: "Certification removed." });
+      fetchCertifications();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   const config = userData.role ? roleConfig[userData.role] : null;
 
@@ -114,6 +186,10 @@ export default function ProfilePage() {
             : [],
           qualifications: apiProfile.qualifications || "",
           certifications: apiProfile.certifications || "",
+          degrees: Array.isArray(apiProfile.degrees) ? apiProfile.degrees : [],
+          keywords: Array.isArray(apiProfile.keywords)
+            ? apiProfile.keywords
+            : [],
         });
       } else {
         toast({
@@ -136,6 +212,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchProfile();
+    fetchCertifications();
   }, []);
 
   const handleUpdate = async () => {
@@ -143,13 +220,14 @@ export default function ProfilePage() {
       setLoading(true);
       const formData = new FormData();
       formData.append("username", userData.username);
-      formData.append("email", userData.email);
       if (userData.qualifications)
         formData.append("qualifications", userData.qualifications);
-      if (userData.certifications)
-        formData.append("certifications", userData.certifications);
       if (userData.expertise.length)
         formData.append("expertise", JSON.stringify(userData.expertise));
+      if (userData.degrees.length)
+        formData.append("degrees", JSON.stringify(userData.degrees));
+      if (userData.keywords.length)
+        formData.append("keywords", JSON.stringify(userData.keywords));
       if (profilePic) formData.append("profilePic", profilePic);
 
       const res = await fetch(`${url}/profile/updateProfile`, {
@@ -460,19 +538,12 @@ export default function ProfilePage() {
                             <Mail className="h-4 w-4 text-muted-foreground" />{" "}
                             Email Address
                           </Label>
-                          {isEditing ? (
-                            <Input
-                              value={userData.email}
-                              onChange={(e) =>
-                                setUserData({
-                                  ...userData,
-                                  email: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            <p>{userData.email}</p>
-                          )}
+                          <Input
+                            value={userData.email}
+                            disabled
+                            className="bg-muted cursor-not-allowed text-muted-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground">Email cannot be changed. Contact support if needed.</p>
                         </div>
                         <div className="space-y-4">
                           <Label className="flex items-center gap-2 text-sm">
@@ -491,6 +562,7 @@ export default function ProfilePage() {
 
                       <div className="space-y-4">
                         <Label>Areas of Expertise</Label>
+                        <FieldHint text="Add topics you specialize in. These help match you to relevant papers." />
                         {isEditing ? (
                           <Input
                             value={userData.expertise.join(", ")}
@@ -522,6 +594,7 @@ export default function ProfilePage() {
                         )}
 
                         <Label>Qualifications</Label>
+                        <FieldHint text="Your academic or professional qualifications (e.g. PhD, MSc, Professional certification)." />
                         {isEditing ? (
                           <Textarea
                             value={userData.qualifications || ""}
@@ -540,24 +613,181 @@ export default function ProfilePage() {
                           </p>
                         )}
 
-                        <Label>Certifications</Label>
-                        {isEditing ? (
-                          <Textarea
-                            value={userData.certifications || ""}
-                            onChange={(e) =>
-                              setUserData({
-                                ...userData,
-                                certifications: e.target.value,
-                              })
-                            }
-                            rows={3}
-                          />
-                        ) : (
-                          <p>
-                            {userData.certifications ||
-                              "No certifications added yet"}
-                          </p>
-                        )}
+                        <div className="space-y-3">
+                          <Label>Certifications &amp; Documents</Label>
+                          <p className="text-xs text-muted-foreground">PDF, JPG, PNG · max 5MB each · up to 5 files</p>
+                          {certifications.length > 0 && (
+                            <div className="space-y-2">
+                              {certifications.map((cert) => (
+                                <div key={cert.id} className="flex items-center justify-between gap-3 rounded-md border p-2.5 text-sm bg-muted/30">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium truncate">{cert.file_name}</p>
+                                    <p className="text-xs text-muted-foreground">{new Date(cert.uploaded_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                                  </div>
+                                  <div className="flex gap-1.5 shrink-0">
+                                    <a href={cert.file_url} target="_blank" rel="noopener noreferrer">
+                                      <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
+                                        <Download className="h-3 w-3" /> View
+                                      </Button>
+                                    </a>
+                                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => handleCertDelete(cert.id)}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {certifications.length < 5 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => certInputRef.current?.click()}
+                                disabled={uploadingCert}
+                                className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                              >
+                                {uploadingCert ? (
+                                  <span className="flex items-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Uploading…</span>
+                                ) : (
+                                  <>
+                                    <Upload className="h-5 w-5" />
+                                    <span>Click or drag to upload a certification</span>
+                                  </>
+                                )}
+                              </button>
+                              <input ref={certInputRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleCertUpload} />
+                            </>
+                          )}
+                          {certifications.length >= 5 && (
+                            <p className="text-xs text-muted-foreground">Maximum 5 certifications reached.</p>
+                          )}
+                        </div>
+
+                        {userData.role &&
+                          EDITORIAL_ROLES.includes(userData.role) && (
+                            <>
+                              <Label>Degrees</Label>
+                              <FieldHint text="Add your academic qualifications (e.g. PhD Computer Science, MIT, 2018)" />
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-2">
+                                    {userData.degrees.map((deg, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-sm"
+                                      >
+                                        {deg}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setUserData({
+                                              ...userData,
+                                              degrees: userData.degrees.filter(
+                                                (_, i) => i !== idx,
+                                              ),
+                                            })
+                                          }
+                                          className="text-muted-foreground hover:text-destructive ml-1"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={newDegree}
+                                      onChange={(e) =>
+                                        setNewDegree(e.target.value)
+                                      }
+                                      placeholder="e.g. PhD Computer Science"
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key === "Enter" &&
+                                          newDegree.trim()
+                                        ) {
+                                          e.preventDefault();
+                                          setUserData({
+                                            ...userData,
+                                            degrees: [
+                                              ...userData.degrees,
+                                              newDegree.trim(),
+                                            ],
+                                          });
+                                          setNewDegree("");
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (newDegree.trim()) {
+                                          setUserData({
+                                            ...userData,
+                                            degrees: [
+                                              ...userData.degrees,
+                                              newDegree.trim(),
+                                            ],
+                                          });
+                                          setNewDegree("");
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {userData.degrees.length ? (
+                                    userData.degrees.map((deg, idx) => (
+                                      <Badge key={idx} variant="secondary">
+                                        {deg}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      No degrees added yet
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              <Label>
+                                Keywords{" "}
+                                <span className="text-xs text-muted-foreground">
+                                  (max 5)
+                                </span>
+                              </Label>
+                              <FieldHint text="Add up to 5 topics you specialize in. These help match you to relevant paper submissions." />
+                              {isEditing ? (
+                                <KeywordInput
+                                  value={userData.keywords}
+                                  onChange={(kws) =>
+                                    setUserData({ ...userData, keywords: kws })
+                                  }
+                                  max={5}
+                                  placeholder="e.g. Machine Learning"
+                                />
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {userData.keywords.length ? (
+                                    userData.keywords.map((kw, idx) => (
+                                      <Badge key={idx} variant="outline">
+                                        {kw}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      No keywords added yet
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
                       </div>
                     </CardContent>
                   </Card>
@@ -671,57 +901,6 @@ export default function ProfilePage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="glass-card border-destructive/20">
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-destructive mb-2">
-                            Danger Zone
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Once you delete your account, there is no going
-                            back. Please be certain.
-                          </p>
-                        </div>
-                        {!showDeleteConfirm ? (
-                          <Button
-                            variant="destructive"
-                            className="w-full gap-2"
-                            onClick={() => setShowDeleteConfirm(true)}
-                          >
-                            <Trash2 className="h-4 w-4" /> Delete Account
-                          </Button>
-                        ) : (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            className="flex flex-col gap-2"
-                          >
-                            <p className="text-sm text-destructive">
-                              Are you sure? This action cannot be undone.
-                            </p>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={() => setShowDeleteConfirm(false)}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                className="flex-1"
-                                onClick={handleDeleteAccount}
-                                disabled={loading}
-                              >
-                                Yes, Delete
-                              </Button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
             </TabsContent>

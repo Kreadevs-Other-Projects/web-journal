@@ -6,10 +6,21 @@ import {
   getJournal,
   updateJournal,
   deleteJournal,
+  publisherCreateJournal,
+  uploadJournalLogo,
+  getEditorialBoard,
+  getAuthorGuidelines,
+  updateJournalAPC,
+  updatePublisherJournal,
 } from "./journal.controller";
 import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
 import { validate } from "../../middlewares/validate.middleware";
-import { createJournalSchema, getOwnerJournalSchema } from "./journal.schema";
+import {
+  createJournalSchema,
+  getOwnerJournalSchema,
+  publisherCreateJournalSchema,
+} from "./journal.schema";
+import { logoUpload } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -44,5 +55,60 @@ router.delete(
   authorize("owner"),
   deleteJournal,
 );
+
+router.post(
+  "/publisherCreate",
+  authMiddleware,
+  authorize("publisher"),
+  logoUpload.single("logo"),
+  // Parse nested JSON fields sent as strings in FormData
+  (req, _res, next) => {
+    for (const key of ["chief_editor", "journal_manager"]) {
+      if (typeof req.body[key] === "string") {
+        try { req.body[key] = JSON.parse(req.body[key]); } catch {}
+      }
+    }
+    if (req.body.publication_fee !== undefined) {
+      const n = Number(req.body.publication_fee);
+      req.body.publication_fee = isNaN(n) ? null : n;
+    }
+    next();
+  },
+  validate(publisherCreateJournalSchema),
+  publisherCreateJournal,
+);
+
+router.post(
+  "/:id/logo",
+  authMiddleware,
+  authorize("publisher", "journal_manager"),
+  logoUpload.single("logo"),
+  uploadJournalLogo,
+);
+
+router.patch(
+  "/:journalId/update",
+  authMiddleware,
+  authorize("publisher"),
+  logoUpload.single("logo"),
+  (req, _res, next) => {
+    if (req.body.publication_fee !== undefined) {
+      const n = Number(req.body.publication_fee);
+      req.body.publication_fee = isNaN(n) ? undefined : n;
+    }
+    next();
+  },
+  updatePublisherJournal,
+);
+
+router.patch(
+  "/:journalId/apc",
+  authMiddleware,
+  authorize("publisher"),
+  updateJournalAPC,
+);
+
+router.get("/:id/editorial-board", getEditorialBoard);
+router.get("/:id/guidelines", getAuthorGuidelines);
 
 export default router;

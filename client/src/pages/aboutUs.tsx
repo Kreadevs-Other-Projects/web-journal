@@ -220,7 +220,7 @@ export default function AboutPage() {
           viewport={{ once: true }}
           className="mb-12 text-center font-serif-roboto text-3xl font-bold"
         >
-          Why Publish with <span className="text-primary">JournalHub GIKI</span>
+          Why Publish with <span className="text-primary">GIKI Journal</span>
         </motion.h2>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

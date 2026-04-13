@@ -30,11 +30,49 @@ export const approveJournal = async (req: Request, res: Response) => {
 };
 
 export const getJournals = async (req: AuthUser, res: Response) => {
-  const journals = await service.fetchPublisherJournals();
+  const journals = await service.fetchPublisherJournals(req.user!.id);
   res.json({ success: true, journals });
 };
 
+export const replaceChiefEditor = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const result = await service.replaceChiefEditorService(
+      journalId,
+      req.user!.id,
+    );
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: err.message || "Failed to replace chief editor",
+      });
+  }
+};
+
+export const replaceJournalManager = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const result = await service.replaceJournalManagerService(
+      journalId,
+      req.user!.id,
+    );
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to replace journal manager",
+    });
+  }
+};
+
 export const sendInvoice = async (req: AuthUser, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const user = req.user!;
     const { journalId, issueId, amount } = req.body;
@@ -90,6 +128,10 @@ export const getPapersByIssueId = async (req: Request, res: Response) => {
 };
 
 export const sendPaymentEmail = async (req: Request, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const {
       paperId,
@@ -145,6 +187,10 @@ export const sendPaymentEmail = async (req: Request, res: Response) => {
 };
 
 export const approvePaper = async (req: Request, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { paymentId } = req.params;
 
@@ -164,6 +210,10 @@ export const approvePaper = async (req: Request, res: Response) => {
 };
 
 export const getJournalPayments = async (req: Request, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { journalId } = req.params;
     const payments = await service.fetchJournalPayments();
@@ -182,6 +232,10 @@ export const getJournalPayments = async (req: Request, res: Response) => {
 };
 
 export const updatePaymentStatus = async (req: Request, res: Response) => {
+  // PAYMENT_DISABLED: Temporarily disabled per client instruction (Mar 2026)
+  return res
+    .status(503)
+    .json({ message: "Payment flow is currently disabled." });
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -207,5 +261,84 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
       success: false,
       message: error.message || "Internal Server Error",
     });
+  }
+};
+
+import { triggerIssueReset } from '../../cron/issueResetCron';
+
+export const manualIssueReset = async (req: Request, res: Response) => {
+  try {
+    const count = await triggerIssueReset();
+    return res.json({ success: true, message: `Closed ${count} open issue(s)`, count });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ===== TAKEDOWN ENDPOINTS =====
+
+export const takedownJournal = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    await service.takedownJournalService(journalId, reason, req.user!.id);
+    res.json({ success: true, message: "Journal taken down" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restoreJournal = async (req: AuthUser, res: Response) => {
+  try {
+    const { journalId } = req.params;
+    await service.restoreJournalService(journalId);
+    res.json({ success: true, message: "Journal restored" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const takedownIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { issueId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    await service.takedownIssueService(issueId, reason, req.user!.id);
+    res.json({ success: true, message: "Issue taken down" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restoreIssue = async (req: AuthUser, res: Response) => {
+  try {
+    const { issueId } = req.params;
+    await service.restoreIssueService(issueId);
+    res.json({ success: true, message: "Issue restored" });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const takedownPaper = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    const paper = await service.takedownPaperService(paperId, reason, req.user!.id);
+    res.json({ success: true, message: "Paper taken down", data: paper });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const restorePaper = async (req: AuthUser, res: Response) => {
+  try {
+    const { paperId } = req.params;
+    const paper = await service.restorePaperService(paperId);
+    res.json({ success: true, message: "Paper restored", data: paper });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
   }
 };

@@ -13,6 +13,7 @@ import {
   Clock,
   XCircle,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +34,7 @@ import { url } from "@/url";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import DOMPurify from "dompurify";
 import { useToast } from "@/hooks/use-toast";
 
 interface SubmittedReview {
@@ -47,6 +49,8 @@ interface SubmittedReview {
   versionCreatedAt: string;
   paperStatus: string;
   reviewerId: string;
+  reviewerName: string;
+  subEditorName: string;
   submittedAt: string;
 }
 
@@ -59,16 +63,26 @@ export default function ChiefEditorSubmittedReviews() {
   const [filteredReviews, setFilteredReviews] = useState<SubmittedReview[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
+  const [viewerHtml, setViewerHtml] = useState<string | null>(null);
+  const [viewerHtmlLoading, setViewerHtmlLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
 
-  const [openDecision, setOpenDecision] = useState(false);
-  const [selectedReview, setSelectedReview] = useState<SubmittedReview | null>(
-    null,
-  );
-  const [decision, setDecision] = useState("accepted");
-  const [decisionNote, setDecisionNote] = useState("");
+  const [cEModalOpen, setCEModalOpen] = useState(false);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
+  const [cePendingDecision, setCePendingDecision] = useState<
+    "accepted" | "revision" | "rejected" | null
+  >(null);
+  const [ceDecisionNote, setCeDecisionNote] = useState("");
+  const [ceConfirmEmail, setCeConfirmEmail] = useState("");
+  const [ceConfirmPassword, setCeConfirmPassword] = useState("");
+  const [paperDecisions, setPaperDecisions] = useState<
+    Record<
+      string,
+      { decision: string; decision_note: string; decided_at: string }
+    >
+  >({});
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -77,25 +91,45 @@ export default function ChiefEditorSubmittedReviews() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        console.log(data);
 
         if (data.success) {
           const mapped = data.data.map((r: any) => ({
             paperId: r.paper_id,
             reviewId: r.review_id,
             title: r.title,
-            comments: r.comments,
-            decision: r.decision,
+            comments: r.sub_editor_comments,
+            decision: r.sub_editor_decision,
             assignmentStatus: r.assignment_status,
             fileUrl: r.file_url,
             versionNumber: r.version_number,
             versionCreatedAt: r.version_created_at,
             paperStatus: r.paper_status,
             reviewerId: r.reviewer_id,
+            reviewerName: r.reviewer_name || "",
+            subEditorName: r.sub_editor_name || "",
             submittedAt: r.submitted_at,
           }));
           setReviews(mapped);
           setFilteredReviews(mapped);
+          const decided: Record<
+            string,
+            { decision: string; decision_note: string; decided_at: string }
+          > = {};
+          mapped.forEach((r: any) => {
+            if (
+              ["accepted", "rejected", "pending_revision"].includes(
+                r.paperStatus,
+              ) &&
+              !decided[r.paperId]
+            ) {
+              decided[r.paperId] = {
+                decision: r.paperStatus,
+                decision_note: "",
+                decided_at: "",
+              };
+            }
+          });
+          setPaperDecisions(decided);
         } else {
           throw new Error("Failed to fetch reviews");
         }
@@ -134,6 +168,25 @@ export default function ChiefEditorSubmittedReviews() {
     setCurrentPage(1);
   }, [reviews, searchQuery, activeTab]);
 
+  useEffect(() => {
+    setViewerHtml(null);
+    if (!viewPdf?.fileUrl) return;
+    const ext = viewPdf.fileUrl.split(".").pop()?.toLowerCase();
+    if (ext !== "docx") return;
+    setViewerHtmlLoading(true);
+    const fetchHtml = async () => {
+      try {
+        const r = await fetch(`${url}/browse/paper/${viewPdf.paperId}/html`);
+        const d = await r.json();
+        if (d.success && d.html) setViewerHtml(d.html);
+      } catch (_) {
+      } finally {
+        setViewerHtmlLoading(false);
+      }
+    };
+    fetchHtml();
+  }, [viewPdf?.paperId]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "accepted":
@@ -142,6 +195,8 @@ export default function ChiefEditorSubmittedReviews() {
         return <Clock className="h-4 w-4 text-amber-500" />;
       case "rejected":
         return <XCircle className="h-4 w-4 text-red-500" />;
+      case "resubmitted":
+        return <RotateCcw className="h-4 w-4 text-cyan-500" />;
       default:
         return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
@@ -157,6 +212,8 @@ export default function ChiefEditorSubmittedReviews() {
         return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20";
       case "published":
         return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20";
+      case "resubmitted":
+        return "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -175,33 +232,61 @@ export default function ChiefEditorSubmittedReviews() {
     }
   };
 
-  const saveDecision = async () => {
-    if (!selectedReview) return;
+  const openCEModal = (
+    paperId: string,
+    decision: "accepted" | "revision" | "rejected",
+  ) => {
+    setSelectedPaperId(paperId);
+    setCePendingDecision(decision);
+    setCeDecisionNote("");
+    setCeConfirmEmail("");
+    setCeConfirmPassword("");
+    setCEModalOpen(true);
+  };
+
+  const submitCEDecision = async () => {
+    if (cePendingDecision !== "accepted" && !ceDecisionNote.trim()) {
+      toast({
+        title: "Notes required",
+        description: "Decision notes are required for revision/rejection.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!ceConfirmEmail || !ceConfirmPassword) {
+      toast({
+        title: "Credentials required",
+        description:
+          "Email and password are required to confirm this decision.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const res = await fetch(
-        `${url}/chiefEditor/decide/${selectedReview.paperId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ decision, decision_note: decisionNote }),
+      const res = await fetch(`${url}/chiefEditor/decide/${selectedPaperId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          decision: cePendingDecision,
+          decision_note: ceDecisionNote,
+          email: ceConfirmEmail,
+          password: ceConfirmPassword,
+        }),
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
         if (data.errors && Array.isArray(data.errors)) {
-          const errorMessages = data.errors
-            .map((err: { field: string; message: string }) => err.message)
-            .join(", ");
-
           toast({
             title: "Validation Error",
-            description: errorMessages,
+            description: data.errors
+              .map((e: { message: string }) => e.message)
+              .join(", "),
             variant: "destructive",
           });
         } else {
@@ -214,21 +299,18 @@ export default function ChiefEditorSubmittedReviews() {
         return;
       }
 
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.reviewId === selectedReview.reviewId
-            ? { ...r, decision, paperStatus: decision }
-            : r,
-        ),
-      );
-
-      setOpenDecision(false);
-      setSelectedReview(null);
-      setDecisionNote("");
-
+      setPaperDecisions((prev) => ({
+        ...prev,
+        [selectedPaperId!]: {
+          decision: cePendingDecision!,
+          decision_note: ceDecisionNote,
+          decided_at: new Date().toISOString(),
+        },
+      }));
+      setCEModalOpen(false);
       toast({
         title: "Decision saved",
-        description: "The editor decision has been updated successfully.",
+        description: "The editor decision has been submitted successfully.",
       });
     } catch (err) {
       console.error(err);
@@ -300,7 +382,7 @@ export default function ChiefEditorSubmittedReviews() {
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-fit bg-muted/50 p-1">
+            <TabsList className="grid grid-cols-2 md:grid-cols-6 lg:w-fit bg-muted/50 p-1">
               <TabsTrigger
                 value="all"
                 className="data-[state=active]:bg-background"
@@ -321,6 +403,18 @@ export default function ChiefEditorSubmittedReviews() {
                   Pending Revision
                   <Badge variant="secondary" className="ml-1">
                     {getTabCount("pending_revision")}
+                  </Badge>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="resubmitted"
+                className="data-[state=active]:bg-background"
+              >
+                <div className="flex items-center gap-2">
+                  {getStatusIcon("resubmitted")}
+                  Resubmitted
+                  <Badge variant="secondary" className="ml-1">
+                    {getTabCount("resubmitted")}
                   </Badge>
                 </div>
               </TabsTrigger>
@@ -425,7 +519,7 @@ export default function ChiefEditorSubmittedReviews() {
                                   </Badge>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Reviewer ID: {review.reviewerId}
+                                  Sub Editor: {review.subEditorName || "—"}
                                 </div>
                               </div>
 
@@ -436,7 +530,7 @@ export default function ChiefEditorSubmittedReviews() {
                               <div className="bg-muted/30 rounded-lg p-4 mb-4">
                                 <p className="text-sm text-foreground">
                                   <span className="font-semibold">
-                                    Reviewer Comments:
+                                    Sub Editor Comments:
                                   </span>{" "}
                                   {review.comments || "No comments provided"}
                                 </p>
@@ -488,39 +582,85 @@ export default function ChiefEditorSubmittedReviews() {
                                   </Button>
                                 )}
                               </div>
-                              <div className="flex gap-2">
-                                {review.paperStatus !== "published" && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={() => {
-                                      setSelectedReview(review);
-                                      setDecision("pending_revision");
-                                      setDecisionNote("");
-                                      setOpenDecision(true);
-                                    }}
-                                  >
-                                    Make Decision
-                                  </Button>
-                                )}
-                              </div>
 
-                              {review.paperStatus === "published" && (
-                                <div className="flex flex-col gap-1 text-center">
-                                  {["Decision Made", "Published"].map(
-                                    (label) => (
-                                      <Badge
-                                        key={label}
-                                        className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"
-                                      >
-                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                        {label}
-                                      </Badge>
-                                    ),
-                                  )}
-                                </div>
-                              )}
+                              {(() => {
+                                const decided = paperDecisions[review.paperId];
+                                if (review.paperStatus === "published") {
+                                  return (
+                                    <div className="flex flex-col gap-1 text-center">
+                                      {["Decision Made", "Published"].map(
+                                        (label) => (
+                                          <Badge
+                                            key={label}
+                                            className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"
+                                          >
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            {label}
+                                          </Badge>
+                                        ),
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                if (decided) {
+                                  return (
+                                    <div className="mt-1 p-3 bg-muted rounded-lg border">
+                                      <p className="text-sm font-semibold">
+                                        Final Decision:{" "}
+                                        {decided.decision.replace("_", " ")}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {decided.decision_note ||
+                                          "No notes added"}
+                                      </p>
+                                      {decided.decided_at && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Decided on{" "}
+                                          {new Date(
+                                            decided.decided_at,
+                                          ).toLocaleDateString("en-GB", {
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric",
+                                          })}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="flex flex-col gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "accepted")
+                                      }
+                                    >
+                                      Accept Paper
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "revision")
+                                      }
+                                    >
+                                      Request Revision
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() =>
+                                        openCEModal(review.paperId, "rejected")
+                                      }
+                                    >
+                                      Reject Paper
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </CardContent>
@@ -616,71 +756,166 @@ export default function ChiefEditorSubmittedReviews() {
                     Download
                   </Button>
                 </div>
-                <Worker workerUrl="/pdf.worker.min.js">
-                  <div className="h-full">
-                    <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} />
-                  </div>
-                </Worker>
+                {(() => {
+                  const ext = viewPdf.fileUrl?.split(".").pop()?.toLowerCase();
+                  if (ext === "pdf") {
+                    return (
+                      <Worker workerUrl="/pdf.worker.min.js">
+                        <div className="h-full">
+                          <Viewer fileUrl={`${url}${viewPdf.fileUrl}`} />
+                        </div>
+                      </Worker>
+                    );
+                  }
+                  if (ext === "tex" || ext === "latex") {
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full gap-4">
+                        <p className="text-sm text-muted-foreground">
+                          LaTeX files cannot be previewed. Please download to
+                          view.
+                        </p>
+                        <Button
+                          onClick={() =>
+                            window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                          }
+                          className="gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download Manuscript
+                        </Button>
+                      </div>
+                    );
+                  }
+                  if (viewerHtmlLoading) {
+                    return (
+                      <div className="flex items-center justify-center h-full gap-2 text-sm text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Loading document…
+                      </div>
+                    );
+                  }
+                  if (viewerHtml) {
+                    return (
+                      <div
+                        className="paper-content h-full overflow-y-auto p-6"
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(viewerHtml),
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <p className="text-sm text-muted-foreground">
+                        Document preview not available.
+                      </p>
+                      <Button
+                        onClick={() =>
+                          window.open(`${url}${viewPdf.fileUrl}`, "_blank")
+                        }
+                        className="gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
 
-          <Dialog open={openDecision} onOpenChange={setOpenDecision}>
-            <DialogContent className="sm:max-w-md">
+          <Dialog open={cEModalOpen} onOpenChange={setCEModalOpen}>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5" />
-                  Editor Decision
+                <DialogTitle>
+                  {cePendingDecision === "accepted"
+                    ? "Accept Paper"
+                    : cePendingDecision === "revision"
+                      ? "Request Revision"
+                      : "Reject Paper"}
                 </DialogTitle>
+                <DialogDescription>
+                  This decision is final and cannot be changed.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Decision
-                  </label>
-                  <select
-                    className="w-full border rounded-lg p-3 bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    value={decision}
-                    onChange={(e) => setDecision(e.target.value)}
-                  >
-                    <option value="pending_revision">Pending Revision</option>
-                    <option value="accepted">Accept</option>
-                    <option value="rejected">Reject</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Decision Note
-                    <span className="text-muted-foreground text-xs ml-2">
-                      (minimum 5 characters)
+                  <label className="text-sm font-medium">
+                    Decision Notes{" "}
+                    <span className="text-muted-foreground text-xs">
+                      {cePendingDecision !== "accepted"
+                        ? "(required)"
+                        : "(optional)"}
                     </span>
                   </label>
                   <textarea
-                    className="w-full border rounded-lg p-3 bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all min-h-[120px]"
-                    value={decisionNote}
-                    onChange={(e) => setDecisionNote(e.target.value)}
-                    placeholder="Provide detailed feedback and reasoning for your decision..."
+                    className="w-full mt-1 p-2 border rounded-md min-h-[100px] bg-background"
+                    placeholder={
+                      cePendingDecision === "accepted"
+                        ? "Add any notes for the editorial team..."
+                        : cePendingDecision === "revision"
+                          ? "Explain what revisions are required..."
+                          : "Provide detailed rejection reason..."
+                    }
+                    value={ceDecisionNote}
+                    onChange={(e) => setCeDecisionNote(e.target.value)}
                   />
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {decisionNote.length}/5 characters
+                </div>
+                <div className="border-t pt-4">
+                  <p className="text-sm font-semibold mb-3">
+                    VERIFY YOUR IDENTITY
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Your Email</label>
+                      <Input
+                        type="email"
+                        className="mt-1"
+                        placeholder="your@email.com"
+                        value={ceConfirmEmail}
+                        onChange={(e) => setCeConfirmEmail(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Your Password
+                      </label>
+                      <Input
+                        type="password"
+                        className="mt-1"
+                        value={ceConfirmPassword}
+                        onChange={(e) => setCeConfirmPassword(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCEModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={submitCEDecision}
+                    className={
+                      cePendingDecision === "accepted"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : cePendingDecision === "revision"
+                          ? "bg-yellow-600 hover:bg-yellow-700"
+                          : "bg-red-600 hover:bg-red-700"
+                    }
+                  >
+                    Confirm{" "}
+                    {cePendingDecision === "accepted"
+                      ? "Acceptance"
+                      : cePendingDecision === "revision"
+                        ? "Revision Request"
+                        : "Rejection"}
+                  </Button>
+                </div>
               </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenDecision(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={saveDecision}
-                  disabled={decisionNote.length < 5}
-                >
-                  Save Decision
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>

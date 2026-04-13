@@ -434,7 +434,7 @@ export default function JournalDetail() {
             </div>
             <div className="shrink-0 flex flex-col sm:flex-row gap-2">
               <Button asChild className="bg-gradient-primary hover:opacity-90">
-                <Link to={`/author/submit?journal=${journal.id}`}>
+                <Link to={`/signup`}>
                   <Send className="h-4 w-4 mr-2" /> Submit an Article
                 </Link>
               </Button>

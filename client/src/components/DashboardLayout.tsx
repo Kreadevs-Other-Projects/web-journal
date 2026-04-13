@@ -30,6 +30,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub, // ADD
+  DropdownMenuSubTrigger, // ADD
+  DropdownMenuSubContent,
 } from "./ui/dropdown-menu";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
@@ -376,7 +379,6 @@ export function DashboardLayout({
               </span>
               {user &&
                 (() => {
-                  // Roles the user can switch TO (exclude currently active role+journal)
                   const roleOrder = [
                     "publisher",
                     "journal_manager",
@@ -386,28 +388,19 @@ export function DashboardLayout({
                     "author",
                     "owner",
                   ];
-                  const switchableRoles = (user.roles ?? [])
-                    .filter(
-                      (r) =>
-                        !(
-                          r.role === role &&
-                          (r.journal_id ?? null) ===
-                            (user.active_journal_id ?? null)
-                        ),
-                    )
-                    .sort(
-                      (a, b) =>
-                        roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
-                    );
 
-                  // Journal name for the currently active context
-                  const activeJournalName =
-                    user.roles?.find(
-                      (r) =>
-                        r.role === role &&
-                        (r.journal_id ?? null) ===
-                          (user.active_journal_id ?? null),
-                    )?.journal_name ?? null;
+                  const uniqueRoles = Array.from(
+                    new Map(
+                      (user.roles ?? [])
+                        .filter((r) => r.role !== role)
+                        .sort(
+                          (a, b) =>
+                            roleOrder.indexOf(a.role) -
+                            roleOrder.indexOf(b.role),
+                        )
+                        .map((r) => [r.role, r]), // unique by role
+                    ).values(),
+                  );
 
                   return (
                     <DropdownMenu>
@@ -416,9 +409,7 @@ export function DashboardLayout({
                           variant="outline"
                           size="sm"
                           className="gap-2 max-w-[220px] h-auto py-1.5 px-3"
-                          disabled={
-                            switchingRole || switchableRoles.length === 0
-                          }
+                          disabled={switchingRole || uniqueRoles.length === 0}
                         >
                           <Shield
                             className={cn(
@@ -430,64 +421,47 @@ export function DashboardLayout({
                             <span className="text-xs font-semibold leading-none">
                               {config.label}
                             </span>
-                            {/* {activeJournalName && (
-                              <span className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate max-w-[140px]">
-                                {activeJournalName}
-                              </span>
-                            )} */}
                           </div>
-                          {switchableRoles.length > 0 && (
+                          {uniqueRoles.length > 0 && (
                             <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      {switchableRoles.length > 0 && (
+
+                      {uniqueRoles.length > 0 && (
                         <DropdownMenuContent align="end" className="w-56">
                           <DropdownMenuLabel className="text-xs text-muted-foreground">
                             Switch Role
                           </DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          {(() => {
-                            let lastRole = "";
-                            return switchableRoles.map((r, i) => {
-                              const rc = roleConfig[r.role as UserRole];
-                              if (!rc) return null;
-                              const showDivider =
-                                lastRole !== "" && lastRole !== r.role;
-                              lastRole = r.role;
-                              return (
-                                <div key={r.role + (r.journal_id ?? "") + i}>
-                                  {showDivider && <DropdownMenuSeparator />}
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleSwitchRole(
-                                        r.role as UserRole,
-                                        r.journal_id,
-                                      )
-                                    }
-                                    className="gap-3 cursor-pointer py-2.5"
-                                  >
-                                    <rc.icon
-                                      className={cn(
-                                        "h-4 w-4 flex-shrink-0",
-                                        rc.color,
-                                      )}
-                                    />
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-sm font-medium leading-none">
-                                        {rc.label}
-                                      </span>
-                                      {/* {r.journal_name && (
-                                        <span className="text-xs text-muted-foreground leading-none mt-1 truncate max-w-[160px]">
-                                          {r.journal_name}
-                                        </span>
-                                      )} */}
-                                    </div>
-                                  </DropdownMenuItem>
-                                </div>
-                              );
-                            });
-                          })()}
+
+                          {uniqueRoles.map((entry, i) => {
+                            const rc = roleConfig[entry.role as UserRole];
+                            if (!rc) return null;
+
+                            return (
+                              <DropdownMenuItem
+                                key={`${entry.role}-${i}`}
+                                onClick={() =>
+                                  handleSwitchRole(
+                                    entry.role as UserRole,
+                                    entry.journal_id,
+                                  )
+                                }
+                                className="gap-3 cursor-pointer py-2.5"
+                              >
+                                <rc.icon
+                                  className={cn(
+                                    "h-4 w-4 flex-shrink-0",
+                                    rc.color,
+                                  )}
+                                />
+                                <span className="text-sm font-medium">
+                                  {rc.label}
+                                </span>
+                              </DropdownMenuItem>
+                            );
+                          })}
                         </DropdownMenuContent>
                       )}
                     </DropdownMenu>
@@ -520,8 +494,14 @@ export function DashboardLayout({
 
         {!user?.profile_completed && (
           <div className="bg-yellow-500 text-yellow-950 px-4 py-2 text-sm flex items-center justify-between">
-            <span>Your profile is incomplete. Some features are restricted until you complete it.</span>
-            <Link to="/complete-profile" className="underline font-medium ml-4 whitespace-nowrap">
+            <span>
+              Your profile is incomplete. Some features are restricted until you
+              complete it.
+            </span>
+            <Link
+              to="/complete-profile"
+              className="underline font-medium ml-4 whitespace-nowrap"
+            >
               Complete Profile →
             </Link>
           </div>

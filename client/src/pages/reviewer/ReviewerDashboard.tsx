@@ -202,6 +202,13 @@ export default function ReviewerDashboard() {
     return new File([u8arr], filename, { type: mime });
   };
 
+  const requiresSignature = [
+    "accepted",
+    "minor_revision",
+    "major_revision",
+    "rejected",
+  ].includes(decision);
+
   const submitReview = async () => {
     if (!selectedPaper || !decision || !comments.trim()) {
       toast({
@@ -212,7 +219,7 @@ export default function ReviewerDashboard() {
       return;
     }
 
-    if (decision === "accepted" || decision === "rejected") {
+    if (requiresSignature) {
       setSignatureModalOpen(true);
     } else {
       await handleReviewSubmission();
@@ -232,7 +239,7 @@ export default function ReviewerDashboard() {
       formData.append("comments", comments);
       formData.append("confidentialComments", confidentialComments);
 
-      if (decision === "accepted" || decision === "rejected") {
+      if (requiresSignature) {
         if (!signature || !password) {
           toast({
             title: "Error",
@@ -414,7 +421,8 @@ export default function ReviewerDashboard() {
   useEffect(() => {
     const fileUrl = selectedVersion?.file_url || selectedPaper?.file_url;
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
-    const needsHtml = viewMode === "text" || (viewMode === "pdf" && ext === "docx");
+    const needsHtml =
+      viewMode === "text" || (viewMode === "pdf" && ext === "docx");
     if (!needsHtml || !selectedPaper?.paper_id) return;
     const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
     if (!versionId) return;
@@ -548,7 +556,12 @@ export default function ReviewerDashboard() {
                           }`}
                         >
                           <FileText className="h-3.5 w-3.5" />
-                          {(selectedVersion?.file_url || selectedPaper.file_url)?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF"}
+                          {(selectedVersion?.file_url || selectedPaper.file_url)
+                            ?.split(".")
+                            .pop()
+                            ?.toLowerCase() === "docx"
+                            ? "Document"
+                            : "PDF"}
                         </button>
                         <button
                           onClick={() => setViewMode("text")}
@@ -669,7 +682,9 @@ export default function ReviewerDashboard() {
                                 <div className="flex items-center justify-center h-full">
                                   <div className="text-center">
                                     <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                                    <p className="text-sm text-muted-foreground">Converting document...</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Converting document...
+                                    </p>
                                   </div>
                                 </div>
                               ) : htmlContent ? (
@@ -680,22 +695,32 @@ export default function ReviewerDashboard() {
                                     </h1>
                                     {selectedPaper.abstract && (
                                       <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedPaper.abstract}</p>
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                          Abstract
+                                        </p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                          {selectedPaper.abstract}
+                                        </p>
                                       </div>
                                     )}
                                   </div>
                                   <div
                                     className="paper-webview-content"
-                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                                    dangerouslySetInnerHTML={{
+                                      __html: DOMPurify.sanitize(htmlContent),
+                                    }}
                                   />
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center h-full">
                                   <div className="text-center p-8">
                                     <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                                    <p className="text-sm font-medium">Document preview unavailable</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Could not convert this document.</p>
+                                    <p className="text-sm font-medium">
+                                      Document preview unavailable
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Could not convert this document.
+                                    </p>
                                   </div>
                                 </div>
                               )}
@@ -1039,9 +1064,7 @@ export default function ReviewerDashboard() {
                           >
                             <Send className="h-4 w-4 mr-2" />
                             Submit Review
-                            {(decision === "accepted" ||
-                              decision === "rejected") &&
-                              " (Requires Signature)"}
+                            {requiresSignature && " (Requires Signature)"}
                           </Button>
                         )}
                       </div>
@@ -1338,7 +1361,7 @@ export default function ReviewerDashboard() {
         onClose={() => setSignatureModalOpen(false)}
         onConfirm={handleSignatureConfirm}
         paperTitle={selectedPaper?.title || ""}
-        decision={decision === "accepted" ? "accept" : "reject"}
+        decision={decision === "rejected" ? "reject" : "accept"}
       />
     </DashboardLayout>
   );

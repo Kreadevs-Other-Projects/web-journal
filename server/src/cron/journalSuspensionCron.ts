@@ -22,15 +22,11 @@ const journalSuspensionCron = () => {
           )
       `);
 
-      console.log("Journals to suspend:", rows.length);
-
       for (const journal of rows) {
         await pool.query(
           `UPDATE journals SET status = 'suspended' WHERE id = $1`,
           [journal.id],
         );
-
-        console.log(`⛔ Journal suspended → ${journal.id}`);
       }
     } catch (error) {
       console.error("❌ Journal suspension cron error:", error);

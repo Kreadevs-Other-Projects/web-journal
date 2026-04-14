@@ -172,13 +172,11 @@ async function convertVersionToHtml(version: {
   for (const candidate of altPaths) {
     if (fsSync.existsSync(candidate)) {
       resolvedPath = candidate;
-      console.log(`[html] Found file at: ${resolvedPath}`);
       break;
     }
   }
 
   if (!resolvedPath) {
-    console.log(`[html] File not found on disk. Tried: ${altPaths.join(", ")}`);
     return null;
   }
 
@@ -190,7 +188,6 @@ async function convertVersionToHtml(version: {
         await cacheVersionHtmlRepo(version.id, result.value);
         return result.value;
       }
-      console.log(`[html] mammoth returned empty value`);
     } catch (err) {
       console.error("[html] mammoth conversion failed:", err);
     }
@@ -203,7 +200,6 @@ async function convertVersionToHtml(version: {
       const pdfParse = (await import("pdf-parse")).default;
       const buffer = await fs.readFile(resolvedPath);
       const data = await pdfParse(buffer);
-      console.log(`[html] pdf-parse extracted ${data.text?.length ?? 0} chars`);
       const html = pdfTextToHtml(data.text);
       if (html) {
         await cacheVersionHtmlRepo(version.id, html);
@@ -223,7 +219,6 @@ export const getPublicPaperHtmlService = async (
 ): Promise<string | null> => {
   const version = await getPaperVersionForHtmlRepo(paperId);
   if (!version) {
-    console.log(`[html] No version found for paper ${paperId}`);
     return null;
   }
   return convertVersionToHtml(version);
@@ -235,7 +230,6 @@ export const getPaperVersionHtmlService = async (
 ): Promise<string | null> => {
   const version = await getVersionForHtmlByIdRepo(paperId, versionId);
   if (!version) {
-    console.log(`[html] Version ${versionId} not found for paper ${paperId}`);
     return null;
   }
   return convertVersionToHtml(version);

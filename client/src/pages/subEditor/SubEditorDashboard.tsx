@@ -904,41 +904,7 @@ export default function SubEditorDashboard() {
     }
 
     if (ext === "docx") {
-      return (
-        <div className="rounded-lg border border-border p-10 text-center space-y-4 bg-muted/20">
-          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <FileText className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground mb-1">
-              PDF view unavailable for DOCX
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Switch to Web View to read this document inline.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setViewMode("web")}
-            >
-              <Globe className="h-3.5 w-3.5 mr-1.5" />
-              Switch to Web View
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                window.open(`${url}${selectedVersion?.file_url}`, "_blank")
-              }
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Download DOCX
-            </Button>
-          </div>
-        </div>
-      );
+      return renderWebView();
     }
 
     return (
@@ -1129,7 +1095,7 @@ export default function SubEditorDashboard() {
                               )}
                             >
                               <FileText className="h-3.5 w-3.5" />
-                              PDF View
+                              {selectedVersion?.file_url?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF View"}
                             </button>
                             <button
                               onClick={() => setViewMode("web")}

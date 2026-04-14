@@ -456,7 +456,7 @@ export default function ReviewerDashboard() {
                 onClick={resetForm}
                 className="h-10 w-10 p-0 bg-white"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-black" />
               </Button>
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">

@@ -1111,7 +1111,7 @@ export default function ReviewerDashboard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 {
                   label: "Pending Reviews",
@@ -1131,12 +1131,12 @@ export default function ReviewerDashboard() {
                   icon: AlertTriangle,
                   color: "text-destructive",
                 },
-                {
-                  label: "Avg Response Time",
-                  value: "4.2 days",
-                  icon: Calendar,
-                  color: "text-info",
-                },
+                // {
+                //   label: "Avg Response Time",
+                //   value: "4.2 days",
+                //   icon: Calendar,
+                //   color: "text-info",
+                // },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}

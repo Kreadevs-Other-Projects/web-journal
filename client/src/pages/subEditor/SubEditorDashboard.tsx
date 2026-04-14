@@ -181,7 +181,6 @@ export default function SubEditorDashboard() {
 
       setPapers(data.papers || []);
       setFilteredPapers(data.papers || []);
-      console.log(data);
 
       const underReview = data.papers.filter(
         (p) => p.status === "under_review",
@@ -356,26 +355,29 @@ export default function SubEditorDashboard() {
     }
   };
 
-  const fetchDocxHtml = useCallback(async (paperId: string, versionId: string) => {
-    try {
-      setDocxLoading(true);
-      setDocxHtml(null);
-      const res = await fetch(
-        `${url}/papers/${paperId}/version/${versionId}/html`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const data = await res.json();
-      if (data.success && data.html) {
-        setDocxHtml(data.html);
-      } else {
+  const fetchDocxHtml = useCallback(
+    async (paperId: string, versionId: string) => {
+      try {
+        setDocxLoading(true);
+        setDocxHtml(null);
+        const res = await fetch(
+          `${url}/papers/${paperId}/version/${versionId}/html`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = await res.json();
+        if (data.success && data.html) {
+          setDocxHtml(data.html);
+        } else {
+          setDocxHtml("");
+        }
+      } catch {
         setDocxHtml("");
+      } finally {
+        setDocxLoading(false);
       }
-    } catch {
-      setDocxHtml("");
-    } finally {
-      setDocxLoading(false);
-    }
-  }, [token]);
+    },
+    [token],
+  );
 
   const fetchPaperReviews = async (paperId: string) => {
     try {

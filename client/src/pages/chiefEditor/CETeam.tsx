@@ -188,7 +188,6 @@ export default function CETeam() {
       ]);
       if (seData.success) setSubEditors(seData.data || []);
       if (rvData.success) setReviewers(rvData.data || []);
-      console.log(seData, rvData);
 
       // Fetch pending invitations for this CE's journal
       if (user?.active_journal_id) {

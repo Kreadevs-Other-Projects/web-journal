@@ -92,7 +92,6 @@ export default function PublisherJournalsPage() {
       });
       const data = await res.json();
       if (data.success) setJournals(data.journals);
-      console.log(data);
     } catch {
       toast({
         title: "Error",

@@ -147,7 +147,6 @@ export default function RevisionPaper() {
       }
 
       setReviews(data.data || []);
-      console.log(data);
     } catch (err) {
       console.error("Error fetching sub-editor papers:", err);
       toast({
@@ -467,7 +466,8 @@ export default function RevisionPaper() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
             <Shield className="h-5 w-5 text-blue-400" />
             <span className="text-sm font-medium">
-              {uniquePaperCount} Paper{uniquePaperCount !== 1 ? "s" : ""} Assigned
+              {uniquePaperCount} Paper{uniquePaperCount !== 1 ? "s" : ""}{" "}
+              Assigned
             </span>
           </div>
         </div>

@@ -25,6 +25,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "@/components/navbar";
 
 export default function FAQPage() {
@@ -409,17 +410,19 @@ export default function FAQPage() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button
-                size="lg"
-                className="gap-2 bg-primary text-white hover:bg-primary/90"
-              >
-                <Mail className="h-5 w-5" />
-                Contact Support
-              </Button>
-              <Button size="lg" variant="outline" className="gap-2">
+              <Link to={`/contact-us`}>
+                <Button
+                  size="lg"
+                  className="gap-2 bg-primary text-white hover:bg-primary/90"
+                >
+                  <Mail className="h-5 w-5" />
+                  Contact Support
+                </Button>
+              </Link>
+              {/* <Button size="lg" variant="outline" className="gap-2">
                 <BookOpen className="h-5 w-5" />
                 Read Documentation
-              </Button>
+              </Button> */}
             </div>
 
             <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">

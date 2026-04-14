@@ -216,7 +216,9 @@ export default function LandingPage() {
   useEffect(() => {
     fetch(`${url}/conferences`)
       .then((r) => r.json())
-      .then((d) => { if (d.success) setConferences(d.conferences || []); })
+      .then((d) => {
+        if (d.success) setConferences(d.conferences || []);
+      })
       .catch(() => {});
   }, []);
 
@@ -834,7 +836,7 @@ export default function LandingPage() {
                             </span>
                           )}
                       </div>
-                      <Link to={`/author/submit?journal=${j.id}`}>
+                      <Link to={`/signup`}>
                         <Button
                           size="sm"
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-auto"

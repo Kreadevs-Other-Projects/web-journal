@@ -17,6 +17,7 @@ import {
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
+import { extractLatexToHtml } from "../../utils/latexToHtml";
 
 const MAX_PAPERS_PER_ISSUE = 99;
 
@@ -87,7 +88,6 @@ export const createPaperService = async (
         }
       } else if (mPath.endsWith(".tex") || mPath.endsWith(".latex")) {
         try {
-          const { extractLatexToHtml } = await import("../../utils/latexToHtml");
           const html = extractLatexToHtml(mPath);
           if (html && html.length > 50) {
             await updateVersionHtmlContent(version.id, html);

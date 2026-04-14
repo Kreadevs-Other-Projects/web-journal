@@ -6,6 +6,7 @@ import {
   getVersionForHtmlByIdRepo,
   cacheVersionHtmlRepo,
 } from "./browse.repository";
+import { extractLatexToHtml } from "../../utils/latexToHtml";
 
 export const getBrowseDataService = async (filters: any) => {
   const rows = await getBrowseDataRepo(filters);
@@ -213,7 +214,6 @@ async function convertVersionToHtml(version: {
 
   if (lowerUrl.endsWith(".tex") || lowerUrl.endsWith(".latex")) {
     try {
-      const { extractLatexToHtml } = await import("../../utils/latexToHtml");
       const html = extractLatexToHtml(resolvedPath);
       if (html && html.length > 50) {
         await cacheVersionHtmlRepo(version.id, html);

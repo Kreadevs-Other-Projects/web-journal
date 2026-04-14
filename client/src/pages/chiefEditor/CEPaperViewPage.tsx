@@ -219,11 +219,13 @@ export default function CEPaperViewPage() {
     setViewMode("pdf");
   }, [selectedVersion?.id]);
 
-  // Fetch HTML for text view or when viewing a DOCX in "pdf" (Document) mode
+  // Fetch HTML for text view or when viewing a DOCX/LaTeX in "pdf" (Document) mode
   useEffect(() => {
     const fileUrl = selectedVersion?.file_url || paper?.file_url;
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
-    const needsHtml = viewMode === "text" || (viewMode === "pdf" && ext === "docx");
+    const needsHtml =
+      viewMode === "text" ||
+      (viewMode === "pdf" && (ext === "docx" || ext === "tex" || ext === "latex"));
     if (!needsHtml || !paperId) return;
     const versionId = selectedVersion?.id;
     if (!versionId) return;
@@ -473,7 +475,12 @@ export default function CEPaperViewPage() {
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    {displayFileUrl?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF"}
+                    {(() => {
+                      const _ext = displayFileUrl?.split(".").pop()?.toLowerCase();
+                      if (_ext === "docx") return "Document";
+                      if (_ext === "tex" || _ext === "latex") return "LaTeX";
+                      return "PDF";
+                    })()}
                   </button>
                   <button
                     onClick={() => setViewMode("text")}
@@ -607,7 +614,8 @@ export default function CEPaperViewPage() {
                 {viewMode === "pdf" ? (
                   (() => {
                     const ext = displayFileUrl?.split(".").pop()?.toLowerCase();
-                    if (ext === "docx") {
+                    const isLatex = ext === "tex" || ext === "latex";
+                    if (ext === "docx" || isLatex) {
                       return (
                         <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
                           {htmlLoading ? (
@@ -619,6 +627,13 @@ export default function CEPaperViewPage() {
                             </div>
                           ) : htmlContent ? (
                             <div className="max-w-[700px] mx-auto px-8 py-10">
+                              {isLatex && (
+                                <div className="flex justify-end mb-4">
+                                  <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded font-mono">
+                                    LaTeX Source
+                                  </span>
+                                </div>
+                              )}
                               <div className="mb-8 pb-6 border-b">
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
                                   {displayPaper.title}
@@ -631,7 +646,7 @@ export default function CEPaperViewPage() {
                                 )}
                               </div>
                               <div
-                                className="paper-webview-content"
+                                className={isLatex ? "paper-webview-content latex-content" : "paper-webview-content"}
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
                               />
                             </div>

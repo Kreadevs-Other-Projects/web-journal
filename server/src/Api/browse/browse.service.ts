@@ -211,6 +211,20 @@ async function convertVersionToHtml(version: {
     return null;
   }
 
+  if (lowerUrl.endsWith(".tex") || lowerUrl.endsWith(".latex")) {
+    try {
+      const { extractLatexToHtml } = await import("../../utils/latexToHtml");
+      const html = extractLatexToHtml(resolvedPath);
+      if (html && html.length > 50) {
+        await cacheVersionHtmlRepo(version.id, html);
+        return html;
+      }
+    } catch (err) {
+      console.error("[html] latex conversion failed:", err);
+    }
+    return null;
+  }
+
   return null;
 }
 

@@ -601,7 +601,7 @@ export default function SubEditorDashboard() {
   useEffect(() => {
     if (!selectedVersion || !selectedPaper) return;
     const ext = selectedVersion.file_url?.split(".").pop()?.toLowerCase();
-    if (ext === "docx") {
+    if (ext === "docx" || ext === "tex" || ext === "latex") {
       fetchDocxHtml(selectedPaper.id, selectedVersion.id);
     } else {
       setDocxHtml(null);
@@ -903,7 +903,7 @@ export default function SubEditorDashboard() {
       );
     }
 
-    if (ext === "docx") {
+    if (ext === "docx" || ext === "tex" || ext === "latex") {
       return renderWebView();
     }
 
@@ -1095,7 +1095,12 @@ export default function SubEditorDashboard() {
                               )}
                             >
                               <FileText className="h-3.5 w-3.5" />
-                              {selectedVersion?.file_url?.split(".").pop()?.toLowerCase() === "docx" ? "Document" : "PDF View"}
+                              {(() => {
+                                const _sext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
+                                if (_sext === "docx") return "Document";
+                                if (_sext === "tex" || _sext === "latex") return "LaTeX";
+                                return "PDF View";
+                              })()}
                             </button>
                             <button
                               onClick={() => setViewMode("web")}

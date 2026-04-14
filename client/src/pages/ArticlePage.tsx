@@ -115,7 +115,7 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!article || htmlContent !== null || !resolvedPaperId) return;
     const ext = article.file_url?.toLowerCase();
-    if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf"))) return;
+    if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf") && !ext.endsWith(".tex") && !ext.endsWith(".latex"))) return;
     setHtmlLoading(true);
     const fetchHtml = async () => {
       try {
@@ -308,7 +308,7 @@ export default function ArticlePage() {
                 ) : null}
 
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {/* PDF: use generated pdf_url first, fallback to file_url */}
+                  {/* File download: label depends on file type */}
                   {(article.pdf_url || article.file_url) && (
                     <Button
                       size="sm"
@@ -321,7 +321,12 @@ export default function ArticlePage() {
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
-                      Download PDF
+                      {(() => {
+                        const _ext = (article.pdf_url || article.file_url)?.split(".").pop()?.toLowerCase();
+                        if (_ext === "docx") return "Download Word Document";
+                        if (_ext === "tex" || _ext === "latex") return "Download LaTeX Source";
+                        return "Download PDF";
+                      })()}
                     </Button>
                   )}
                   {/* HTML format */}

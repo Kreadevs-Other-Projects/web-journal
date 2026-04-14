@@ -48,6 +48,7 @@ interface JournalIssue {
   issue: number;
   issueStatus: string;
   paper_count?: number;
+  published_paper_count?: number;
 }
 
 interface Journal {
@@ -173,9 +174,7 @@ export default function PublisherJournalsPage() {
     j.issues.reduce((sum, i) => sum + (i.paper_count ?? 0), 0);
 
   const publishedPapers = (j: Journal) =>
-    j.issues
-      .filter((i) => i.issueStatus === "published")
-      .reduce((sum, i) => sum + (i.paper_count ?? 0), 0);
+    j.issues.reduce((sum, i) => sum + (i.published_paper_count ?? 0), 0);
 
   return (
     <DashboardLayout role={user?.role} userName={user?.username ?? ""}>

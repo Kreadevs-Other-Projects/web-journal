@@ -520,6 +520,25 @@ export default function SignupPage() {
                       - {roleConfig[selectedRole].description}
                     </p>
                   </div>
+
+                  {errors.role && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <Shield className="h-3 w-3 shrink-0" />
+                        {errors.role}
+                      </p>
+                      {showSignInLink && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <Link
+                            to="/login"
+                            className="text-primary font-medium hover:underline"
+                          >
+                            Sign in instead →
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {errors.general && (

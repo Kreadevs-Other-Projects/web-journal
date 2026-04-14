@@ -74,6 +74,22 @@ export const getInvitationsForJournal = async (journal_id: string) => {
   return result.rows;
 };
 
+export const getInvitationsByInviter = async (invitedBy: string) => {
+  const result = await pool.query(
+    `SELECT si.id, si.name, si.email, si.role, si.status,
+            si.expires_at, si.created_at,
+            j.title AS journal_name
+     FROM staff_invitations si
+     LEFT JOIN journals j ON j.id = si.journal_id
+     WHERE si.invited_by = $1
+       AND si.role IN ('sub_editor', 'reviewer')
+       AND si.status = 'pending'
+     ORDER BY si.created_at DESC`,
+    [invitedBy],
+  );
+  return result.rows;
+};
+
 export const expirePendingInvitations = async () => {
   const result = await pool.query(
     `UPDATE staff_invitations

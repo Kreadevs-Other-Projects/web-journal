@@ -21,10 +21,12 @@ import {
   UserPlus,
   Clock,
   XCircle,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 interface InviteDialogProps {
   open: boolean;
@@ -144,6 +146,7 @@ interface TeamMember {
   degrees?: string[] | null;
   keywords?: string[] | null;
   profile_pic_url?: string | null;
+  journal_names?: string | null;
   active_assignments?: number;
 }
 
@@ -155,6 +158,7 @@ interface PendingInvitation {
   status: string;
   expires_at: string;
   created_at: string;
+  journal_name?: string | null;
 }
 
 export default function CETeam() {
@@ -178,33 +182,20 @@ export default function CETeam() {
     if (!token) return;
     setLoading(true);
     try {
-      const [seData, rvData] = await Promise.all([
+      const [seData, rvData, invData] = await Promise.all([
         fetch(`${url}/chiefEditor/getSubEditors`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((r) => r.json()),
         fetch(`${url}/chiefEditor/getReviewers`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((r) => r.json()),
+        fetch(`${url}/invitations/mine`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => r.json()),
       ]);
       if (seData.success) setSubEditors(seData.data || []);
       if (rvData.success) setReviewers(rvData.data || []);
-
-      // Fetch pending invitations for this CE's journal
-      if (user?.active_journal_id) {
-        const invData = await fetch(
-          `${url}/invitations/journal/${user.active_journal_id}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        ).then((r) => r.json());
-        if (invData.success) {
-          setInvitations(
-            (invData.invitations || []).filter(
-              (i: PendingInvitation) =>
-                i.status === "pending" &&
-                ["sub_editor", "reviewer"].includes(i.role),
-            ),
-          );
-        }
-      }
+      if (invData.success) setInvitations(invData.invitations || []);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -326,10 +317,24 @@ export default function CETeam() {
             ))}
           </div>
         )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {member.active_assignments ?? 0} active assignment
-          {member.active_assignments !== 1 ? "s" : ""}
-        </p>
+        {member.journal_names && (
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {member.journal_names}
+          </p>
+        )}
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs text-muted-foreground">
+            {member.active_assignments ?? 0} active assignment
+            {member.active_assignments !== 1 ? "s" : ""}
+          </p>
+          <Link
+            to={`/chief-editor/staff/${member.id}`}
+            className="text-xs text-primary hover:underline flex items-center gap-0.5"
+          >
+            View Details
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -342,6 +347,11 @@ export default function CETeam() {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">{inv.name}</p>
         <p className="text-xs text-muted-foreground">{inv.email}</p>
+        {inv.journal_name && (
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {inv.journal_name}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground mt-0.5">
           Expires{" "}
           {new Date(inv.expires_at).toLocaleDateString("en-GB", {

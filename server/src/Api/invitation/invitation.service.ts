@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { pool } from "../../configs/db";
 import { env } from "../../configs/envs";
-import { generateAccessToken } from "../../utils/jwt";
-import { getUserRoles, insertUserRole } from "../auth/auth.repository";
+import { generateAccessToken, generateRefreshToken } from "../../utils/jwt";
+import { getUserRoles, insertUserRole, saveRefreshToken } from "../auth/auth.repository";
 import { createUser, createUserProfile } from "../auth/auth.service";
 import {
   createInvitation,
@@ -258,10 +258,17 @@ export const acceptInvitationService = async (
     allRoles,
     inv.role,
     inv.journal_id ?? null,
+    user.profile_completed ?? false,
   );
+
+  const refreshToken = await generateRefreshToken(user.id, user.role);
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  await saveRefreshToken(user.id, refreshToken, expiresAt);
 
   return {
     token: accessToken,
+    refreshToken,
     user: {
       id: user.id,
       username: user.username,
@@ -297,6 +304,11 @@ export const getJournalInvitationsService = async (journal_id: string) => {
   const { getInvitationsForJournal } =
     await import("./invitation.repository.js");
   return getInvitationsForJournal(journal_id);
+};
+
+export const getMyInvitationsService = async (invitedBy: string) => {
+  const { getInvitationsByInviter } = await import("./invitation.repository.js");
+  return getInvitationsByInviter(invitedBy);
 };
 
 import crypto from "crypto";

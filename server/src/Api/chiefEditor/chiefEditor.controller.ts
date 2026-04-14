@@ -51,8 +51,9 @@ export const getAllPapers = async (req: AuthUser, res: Response) => {
   res.json({ success: true, data: papers });
 };
 
-export const fetchSubEditors = async (req: Request, res: Response) => {
-  const users = await service.getSubEditors();
+export const fetchSubEditors = async (req: AuthUser, res: Response) => {
+  const ceId = req.user?.role === "chief_editor" ? req.user.id : undefined;
+  const users = await service.getSubEditors(ceId);
 
   res.json({
     success: true,
@@ -97,8 +98,9 @@ export const getJournalStaff = asyncHandler(
   },
 );
 
-export const fetchReviewers = async (req: Request, res: Response) => {
-  const users = await service.getReviewers();
+export const fetchReviewers = async (req: AuthUser, res: Response) => {
+  const ceId = req.user?.role === "chief_editor" ? req.user.id : undefined;
+  const users = await service.getReviewers(ceId);
 
   res.json({
     success: true,

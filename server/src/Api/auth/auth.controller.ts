@@ -117,6 +117,25 @@ export const signup = async (req: Request, res: Response) => {
   if (existingUser) {
     const ADDABLE_ROLES = ["author", "reviewer", "publisher"];
     if (ADDABLE_ROLES.includes(role)) {
+      // Block duplicate role signup
+      const existingRoles = await getUserRolesRepo(existingUser.id);
+      const alreadyHasRole =
+        existingUser.role === role ||
+        existingRoles.some((r) => r.role === role);
+
+      if (alreadyHasRole) {
+        return res.status(409).json({
+          success: false,
+          message: `You are already signed up as ${role.replace(/_/g, " ")}. Please sign in instead.`,
+          errors: [
+            {
+              field: "role",
+              message: `This account already has the ${role.replace(/_/g, " ")} role.`,
+            },
+          ],
+        });
+      }
+
       await upsertPlatformRole(existingUser.id, role);
 
       const userRoleRows = await getUserRoles(existingUser.id, existingUser.role);

@@ -31,6 +31,7 @@ export const createOTPSchema = z.object({
   body: z.object({
     email: z.string().email("Invalid email format"),
     purpose: z.enum(["signup", "login", "reset"]).optional(),
+    role: z.enum(["author", "reviewer", "publisher"]).optional(),
   }),
 });
 

@@ -117,12 +117,22 @@ export default function SignupPage() {
       const otpRes = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, purpose: "signup" }),
+        body: JSON.stringify({ email: formData.email, purpose: "signup", role: selectedRole }),
       });
 
       const otpResult = await otpRes.json();
 
       if (!otpRes.ok) {
+        // Duplicate role — show error on the form without sending OTP
+        if (otpRes.status === 409 && otpResult.errors && Array.isArray(otpResult.errors)) {
+          const map: Record<string, string> = {};
+          otpResult.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setErrors(map);
+          setShowSignInLink(true);
+          return;
+        }
         throw new Error(otpResult.message || "Failed to send verification code");
       }
 

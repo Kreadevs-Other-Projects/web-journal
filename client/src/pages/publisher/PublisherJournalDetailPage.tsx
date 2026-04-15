@@ -105,7 +105,6 @@ export default function PublisherJournalDetailPage() {
             logo_url: found.logo_url,
             is_taken_down: found.is_taken_down,
           });
-          console.log(found);
 
           const tp = (found.issues ?? []).reduce(
             (sum: number, i: any) => sum + (i.paper_count ?? 0),

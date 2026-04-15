@@ -30,9 +30,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub, // ADD
-  DropdownMenuSubTrigger, // ADD
-  DropdownMenuSubContent,
 } from "./ui/dropdown-menu";
 import MySubmissions from "@/pages/author/MySubmissions";
 import { useAuth } from "@/context/AuthContext";
@@ -92,11 +89,6 @@ export function DashboardLayout({
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.classList.contains("dark"),
   );
-
-  // const toggleTheme = () => {
-  //   setIsDark(!isDark);
-  //   document.documentElement.classList.toggle("dark");
-  // };
 
   const handleLogout = async () => {
     try {
@@ -327,18 +319,6 @@ export function DashboardLayout({
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-
-          {/* {sidebarOpen && (
-            <div className="mt-4 flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1 justify-start bg-muted/50 hover:bg-muted text-muted-foreground"
-              >
-                <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
-                Settings
-              </Button>
-            </div>
-          )} */}
         </div>
       </motion.aside>
 
@@ -468,26 +448,6 @@ export function DashboardLayout({
                   );
                 })()}
               <ThemeToggle />
-              {/* <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleTheme}
-                className="h-9 w-9 p-0"
-              >
-                {isDark ? (
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Moon className="h-4 w-4 text-muted-foreground" />
-                )}
-              </Button> */}
-              {/* <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0 relative"
-              >
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-              </Button> */}
             </div>
           </div>
         </header>

@@ -36,8 +36,8 @@ export const fetchAllPapers = async (journalId: string) => {
   return repo.getAllPapers(journalId);
 };
 
-export const getSubEditors = async () => {
-  return repo.findSubEditors();
+export const getSubEditors = async (ceId?: string) => {
+  return repo.findSubEditors(undefined, undefined, ceId);
 };
 
 export const getStaffProfileService = async (userId: string) => {
@@ -52,8 +52,8 @@ export const getJournalStaffService = async (
   return repo.getJournalStaff(journalId, role, paperId);
 };
 
-export const getReviewers = async () => {
-  return repo.findReviewers();
+export const getReviewers = async (ceId?: string) => {
+  return repo.findReviewers(undefined, undefined, ceId);
 };
 
 export const addSubEditor = async (

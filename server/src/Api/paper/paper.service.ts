@@ -17,6 +17,7 @@ import {
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
 import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
+import { extractLatexToHtml } from "../../utils/latexToHtml";
 
 const MAX_PAPERS_PER_ISSUE = 99;
 
@@ -72,16 +73,28 @@ export const createPaperService = async (
     });
     await setCurrentVersion(paper.id, version.id);
 
-    // Option A: extract HTML from .docx on upload for inline web view
-    if (data.manuscript_path && data.manuscript_path.endsWith(".docx")) {
-      try {
-        const mammoth = (await import("mammoth")).default;
-        const result = await mammoth.convertToHtml({ path: data.manuscript_path });
-        if (result.value) {
-          await updateVersionHtmlContent(version.id, result.value);
+    // Option A: extract HTML from .docx/.tex on upload for inline web view
+    if (data.manuscript_path) {
+      const mPath = data.manuscript_path;
+      if (mPath.endsWith(".docx")) {
+        try {
+          const mammoth = (await import("mammoth")).default;
+          const result = await mammoth.convertToHtml({ path: mPath });
+          if (result.value) {
+            await updateVersionHtmlContent(version.id, result.value);
+          }
+        } catch {
+          // non-fatal
         }
-      } catch {
-        // non-fatal — paper is still saved, just no inline view
+      } else if (mPath.endsWith(".tex") || mPath.endsWith(".latex")) {
+        try {
+          const html = extractLatexToHtml(mPath);
+          if (html && html.length > 50) {
+            await updateVersionHtmlContent(version.id, html);
+          }
+        } catch {
+          // non-fatal
+        }
       }
     }
   }

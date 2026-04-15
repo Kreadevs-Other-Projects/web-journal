@@ -181,7 +181,6 @@ export default function SubEditorDashboard() {
 
       setPapers(data.papers || []);
       setFilteredPapers(data.papers || []);
-      console.log(data);
 
       const underReview = data.papers.filter(
         (p) => p.status === "under_review",
@@ -356,26 +355,29 @@ export default function SubEditorDashboard() {
     }
   };
 
-  const fetchDocxHtml = useCallback(async (paperId: string, versionId: string) => {
-    try {
-      setDocxLoading(true);
-      setDocxHtml(null);
-      const res = await fetch(
-        `${url}/papers/${paperId}/version/${versionId}/html`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const data = await res.json();
-      if (data.success && data.html) {
-        setDocxHtml(data.html);
-      } else {
+  const fetchDocxHtml = useCallback(
+    async (paperId: string, versionId: string) => {
+      try {
+        setDocxLoading(true);
+        setDocxHtml(null);
+        const res = await fetch(
+          `${url}/papers/${paperId}/version/${versionId}/html`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = await res.json();
+        if (data.success && data.html) {
+          setDocxHtml(data.html);
+        } else {
+          setDocxHtml("");
+        }
+      } catch {
         setDocxHtml("");
+      } finally {
+        setDocxLoading(false);
       }
-    } catch {
-      setDocxHtml("");
-    } finally {
-      setDocxLoading(false);
-    }
-  }, [token]);
+    },
+    [token],
+  );
 
   const fetchPaperReviews = async (paperId: string) => {
     try {
@@ -599,7 +601,7 @@ export default function SubEditorDashboard() {
   useEffect(() => {
     if (!selectedVersion || !selectedPaper) return;
     const ext = selectedVersion.file_url?.split(".").pop()?.toLowerCase();
-    if (ext === "docx") {
+    if (ext === "docx" || ext === "tex" || ext === "latex") {
       fetchDocxHtml(selectedPaper.id, selectedVersion.id);
     } else {
       setDocxHtml(null);
@@ -901,42 +903,8 @@ export default function SubEditorDashboard() {
       );
     }
 
-    if (ext === "docx") {
-      return (
-        <div className="rounded-lg border border-border p-10 text-center space-y-4 bg-muted/20">
-          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <FileText className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground mb-1">
-              PDF view unavailable for DOCX
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Switch to Web View to read this document inline.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setViewMode("web")}
-            >
-              <Globe className="h-3.5 w-3.5 mr-1.5" />
-              Switch to Web View
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                window.open(`${url}${selectedVersion?.file_url}`, "_blank")
-              }
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Download DOCX
-            </Button>
-          </div>
-        </div>
-      );
+    if (ext === "docx" || ext === "tex" || ext === "latex") {
+      return renderWebView();
     }
 
     return (
@@ -1127,7 +1095,12 @@ export default function SubEditorDashboard() {
                               )}
                             >
                               <FileText className="h-3.5 w-3.5" />
-                              PDF View
+                              {(() => {
+                                const _sext = selectedVersion?.file_url?.split(".").pop()?.toLowerCase();
+                                if (_sext === "docx") return "Document";
+                                if (_sext === "tex" || _sext === "latex") return "LaTeX";
+                                return "PDF View";
+                              })()}
                             </button>
                             <button
                               onClick={() => setViewMode("web")}

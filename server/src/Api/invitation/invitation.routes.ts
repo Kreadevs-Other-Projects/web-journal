@@ -7,6 +7,7 @@ import {
   acceptInvitation,
   cancelInvitation,
   getJournalInvitations,
+  getMyInvitations,
   resendInvitation,
 } from "./invitation.controller";
 
@@ -41,6 +42,14 @@ router.get(
   authMiddleware,
   authorize("publisher", "chief_editor", "owner"),
   getJournalInvitations,
+);
+
+// List all pending invitations sent by the caller (CE's own invitations across journals)
+router.get(
+  "/mine",
+  authMiddleware,
+  authorize("publisher", "chief_editor", "owner"),
+  getMyInvitations,
 );
 
 // Endpoint: POST /api/invitations/resend

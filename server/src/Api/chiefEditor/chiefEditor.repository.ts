@@ -219,7 +219,57 @@ export const getStaffProfile = async (userId: string) => {
   };
 };
 
-export const findSubEditors = async (journalId?: string, paperId?: string) => {
+export const findSubEditors = async (journalId?: string, paperId?: string, ceId?: string) => {
+  // When called by a CE, return only staff belonging to their journals
+  if (ceId) {
+    const result = await pool.query(
+      `SELECT DISTINCT
+        u.id, u.username, u.email,
+        up.degrees, up.keywords, up.profile_pic_url,
+        (
+          SELECT STRING_AGG(DISTINCT j2.title, ', ')
+          FROM user_roles ur2
+          JOIN journals j2 ON j2.id = ur2.journal_id
+          WHERE ur2.user_id = u.id AND ur2.role = 'sub_editor' AND ur2.is_active = true
+            AND (
+              ur2.granted_by = $1
+              OR ur2.journal_id IN (
+                SELECT id FROM journals WHERE chief_editor_id = $1
+                UNION
+                SELECT journal_id FROM user_roles
+                WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+              )
+            )
+        ) AS journal_names,
+        (
+          SELECT COUNT(*)::int
+          FROM editor_assignments ea
+          JOIN papers p ON p.id = ea.paper_id
+          WHERE ea.sub_editor_id = u.id
+            AND p.status NOT IN ('accepted', 'rejected', 'published')
+        ) AS active_assignments
+      FROM user_roles ur
+      JOIN users u ON u.id = ur.user_id
+      LEFT JOIN user_profiles up ON up.user_id = u.id
+      WHERE ur.role = 'sub_editor'
+        AND ur.is_active = true
+        AND u.status = 'active'
+        AND u.deleted_at IS NULL
+        AND (
+          ur.granted_by = $1
+          OR ur.journal_id IN (
+            SELECT id FROM journals WHERE chief_editor_id = $1
+            UNION
+            SELECT journal_id FROM user_roles
+            WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+          )
+        )
+      ORDER BY u.username ASC`,
+      [ceId],
+    );
+    return result.rows;
+  }
+
   const result = await pool.query(
     `
     SELECT DISTINCT
@@ -253,7 +303,58 @@ export const findSubEditors = async (journalId?: string, paperId?: string) => {
   return result.rows;
 };
 
-export const findReviewers = async (journalId?: string, paperId?: string) => {
+export const findReviewers = async (journalId?: string, paperId?: string, ceId?: string) => {
+  // When called by a CE, return only staff belonging to their journals
+  if (ceId) {
+    const result = await pool.query(
+      `SELECT DISTINCT
+        u.id, u.username, u.email,
+        up.degrees, up.keywords, up.profile_pic_url,
+        (
+          SELECT STRING_AGG(DISTINCT j2.title, ', ')
+          FROM user_roles ur2
+          JOIN journals j2 ON j2.id = ur2.journal_id
+          WHERE ur2.user_id = u.id AND ur2.role = 'reviewer' AND ur2.is_active = true
+            AND (
+              ur2.granted_by = $1
+              OR ur2.journal_id IN (
+                SELECT id FROM journals WHERE chief_editor_id = $1
+                UNION
+                SELECT journal_id FROM user_roles
+                WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+              )
+            )
+        ) AS journal_names,
+        (
+          SELECT COUNT(*)::int
+          FROM review_assignments ra
+          JOIN papers p ON p.id = ra.paper_id
+          WHERE ra.reviewer_id = u.id
+            AND ra.status = 'assigned'
+            AND p.status NOT IN ('accepted', 'rejected', 'published')
+        ) AS active_assignments
+      FROM user_roles ur
+      JOIN users u ON u.id = ur.user_id
+      LEFT JOIN user_profiles up ON up.user_id = u.id
+      WHERE ur.role = 'reviewer'
+        AND ur.is_active = true
+        AND u.status = 'active'
+        AND u.deleted_at IS NULL
+        AND (
+          ur.granted_by = $1
+          OR ur.journal_id IN (
+            SELECT id FROM journals WHERE chief_editor_id = $1
+            UNION
+            SELECT journal_id FROM user_roles
+            WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+          )
+        )
+      ORDER BY u.username ASC`,
+      [ceId],
+    );
+    return result.rows;
+  }
+
   const result = await pool.query(
     `
     SELECT DISTINCT
@@ -292,6 +393,7 @@ export const getJournalStaff = async (
   journalId: string,
   role: "sub_editor" | "reviewer",
   paperId?: string,
+  ceId?: string,
 ) => {
   const workloadSubquery =
     role === "sub_editor"
@@ -301,13 +403,16 @@ export const getJournalStaff = async (
       : `(SELECT COUNT(*)::int FROM review_assignments ra
            WHERE ra.reviewer_id = u.id AND ra.status = 'assigned')`;
 
+  // Return all platform users with this role who joined via any chief editor invitation
+  const params: any[] = [role];
   const keywordSubquery = paperId
     ? `(SELECT COUNT(*)::int FROM unnest(COALESCE(up.keywords, '{}')) k
-         WHERE k = ANY(SELECT unnest(p.keywords) FROM papers p WHERE p.id = $3))`
+         WHERE k = ANY(SELECT unnest(p.keywords) FROM papers p WHERE p.id = $2))`
     : `0`;
+  if (paperId) params.push(paperId);
 
   const result = await pool.query(
-    `SELECT
+    `SELECT DISTINCT
        u.id, u.username, u.email,
        up.degrees, up.keywords, up.profile_pic_url,
        ${keywordSubquery} AS keyword_matches,
@@ -315,13 +420,12 @@ export const getJournalStaff = async (
      FROM user_roles ur
      JOIN users u ON u.id = ur.user_id
      LEFT JOIN user_profiles up ON up.user_id = u.id
-     WHERE ur.journal_id = $1
-       AND ur.role = $2
+     WHERE ur.role = $1
        AND ur.is_active = true
        AND u.status = 'active'
        AND u.deleted_at IS NULL
      ORDER BY keyword_matches DESC, active_papers ASC`,
-    paperId ? [journalId, role, paperId] : [journalId, role],
+    params,
   );
 
   return result.rows;

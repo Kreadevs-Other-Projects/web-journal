@@ -566,3 +566,39 @@
   color: hsl(var(--muted-foreground));
   font-style: italic;
 }
+
+/* LaTeX-specific overrides */
+.latex-content .equation {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  white-space: pre;
+}
+
+.latex-content .inline-eq {
+  font-family: 'Courier New', monospace;
+  background: #f5f5f5;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.latex-content .abstract {
+  border-left: 3px solid #2563eb;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  .latex-content .equation,
+  .latex-content .inline-eq {
+    background: #1e1e1e;
+    border-color: #444;
+  }
+}

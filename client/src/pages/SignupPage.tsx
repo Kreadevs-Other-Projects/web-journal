@@ -117,12 +117,22 @@ export default function SignupPage() {
       const otpRes = await fetch(`${url}/auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, purpose: "signup" }),
+        body: JSON.stringify({ email: formData.email, purpose: "signup", role: selectedRole }),
       });
 
       const otpResult = await otpRes.json();
 
       if (!otpRes.ok) {
+        // Duplicate role — show error on the form without sending OTP
+        if (otpRes.status === 409 && otpResult.errors && Array.isArray(otpResult.errors)) {
+          const map: Record<string, string> = {};
+          otpResult.errors.forEach((e: { field: string; message: string }) => {
+            map[e.field] = e.message;
+          });
+          setErrors(map);
+          setShowSignInLink(true);
+          return;
+        }
         throw new Error(otpResult.message || "Failed to send verification code");
       }
 
@@ -520,6 +530,25 @@ export default function SignupPage() {
                       - {roleConfig[selectedRole].description}
                     </p>
                   </div>
+
+                  {errors.role && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <Shield className="h-3 w-3 shrink-0" />
+                        {errors.role}
+                      </p>
+                      {showSignInLink && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <Link
+                            to="/login"
+                            className="text-primary font-medium hover:underline"
+                          >
+                            Sign in instead →
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {errors.general && (

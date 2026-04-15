@@ -22,6 +22,13 @@ const ROLE_LABELS: Record<string, string> = {
   reviewer: "Reviewer",
 };
 
+const ROLE_ROUTES: Record<string, string> = {
+  chief_editor: "/chief-editor",
+  journal_manager: "/publisher-manager",
+  sub_editor: "/sub-editor",
+  reviewer: "/reviewer",
+};
+
 interface InvitationInfo {
   name: string;
   email: string;
@@ -106,6 +113,9 @@ export default function AcceptInvitation() {
         throw new Error(data.message || "Failed to accept invitation");
 
       // Log user in with the returned token
+      if (data.refreshToken) {
+        localStorage.setItem("refreshToken", data.refreshToken);
+      }
       await login(data.token);
       setPageState("success");
     } catch (err: any) {
@@ -169,7 +179,15 @@ export default function AcceptInvitation() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => navigate("/")}>
+            <Button
+              className="w-full"
+              onClick={() =>
+                navigate(
+                  ROLE_ROUTES[invitation?.role ?? ""] ?? "/",
+                  { replace: true },
+                )
+              }
+            >
               Go to Dashboard
             </Button>
           </CardContent>

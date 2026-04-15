@@ -69,7 +69,8 @@ export const getPublisherJournals = async (publisherId: string) => {
             'issueStatus', ji.status,
             'published_at', ji.published_at,
             'updated_at', ji.updated_at,
-            'paper_count', COALESCE(ipc.cnt, 0)
+            'paper_count', COALESCE(ipc.cnt, 0),
+            'published_paper_count', COALESCE(ipc.published_cnt, 0)
           ) ORDER BY ji.created_at DESC
         ) FILTER (WHERE ji.id IS NOT NULL),
         '[]'
@@ -90,7 +91,12 @@ export const getPublisherJournals = async (publisherId: string) => {
     ) inv ON inv.journal_id = j.id
 
     LEFT JOIN (
-      SELECT issue_id, COUNT(*)::int AS cnt FROM papers GROUP BY issue_id
+      SELECT 
+        issue_id, 
+        COUNT(*)::int AS cnt,
+        COUNT(*) FILTER (WHERE status = 'published')::int AS published_cnt
+      FROM papers 
+      GROUP BY issue_id
     ) ipc ON ipc.issue_id = ji.id
 
     WHERE j.owner_id = $1
@@ -397,7 +403,11 @@ export const restoreJournalRepo = async (journalId: string) => {
   );
 };
 
-export const takedownIssueRepo = async (issueId: string, reason: string, publisherId: string) => {
+export const takedownIssueRepo = async (
+  issueId: string,
+  reason: string,
+  publisherId: string,
+) => {
   await pool.query(
     `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW() WHERE id = $2`,
     [reason, issueId],
@@ -416,7 +426,11 @@ export const restoreIssueRepo = async (issueId: string) => {
   );
 };
 
-export const takedownPaperRepo = async (paperId: string, reason: string, publisherId: string) => {
+export const takedownPaperRepo = async (
+  paperId: string,
+  reason: string,
+  publisherId: string,
+) => {
   const result = await pool.query(
     `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2 WHERE id = $3 RETURNING *`,
     [reason, publisherId, paperId],
@@ -432,7 +446,9 @@ export const restorePaperRepo = async (paperId: string) => {
   return result.rows[0];
 };
 
-export const getJournalChiefEditorEmail = async (journalId: string): Promise<string | null> => {
+export const getJournalChiefEditorEmail = async (
+  journalId: string,
+): Promise<string | null> => {
   const result = await pool.query(
     `SELECT u.email, j.title AS journal_title
      FROM journals j

@@ -117,6 +117,25 @@ export const signup = async (req: Request, res: Response) => {
   if (existingUser) {
     const ADDABLE_ROLES = ["author", "reviewer", "publisher"];
     if (ADDABLE_ROLES.includes(role)) {
+      // Block duplicate role signup
+      const existingRoles = await getUserRolesRepo(existingUser.id);
+      const alreadyHasRole =
+        existingUser.role === role ||
+        existingRoles.some((r) => r.role === role);
+
+      if (alreadyHasRole) {
+        return res.status(409).json({
+          success: false,
+          message: `You are already signed up as ${role.replace(/_/g, " ")}. Please sign in instead.`,
+          errors: [
+            {
+              field: "role",
+              message: `You are already signed up as ${role.replace(/_/g, " ")}. Please sign in instead.`,
+            },
+          ],
+        });
+      }
+
       await upsertPlatformRole(existingUser.id, role);
 
       const userRoleRows = await getUserRoles(existingUser.id, existingUser.role);
@@ -210,7 +229,7 @@ export const verify = async (req: Request, res: Response) => {
 };
 
 export const requestOTP = async (req: Request, res: Response) => {
-  const { email, purpose } = req.body;
+  const { email, purpose, role } = req.body;
 
   if (!email || !purpose) {
     return res.status(400).json({
@@ -226,6 +245,30 @@ export const requestOTP = async (req: Request, res: Response) => {
         success: false,
         message: "No account found with this email",
       });
+    }
+  }
+
+  // For signup, check if this email already holds the requested role before sending OTP
+  if (purpose === "signup" && role) {
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      const existingRoles = await getUserRolesRepo(existingUser.id);
+      const alreadyHasRole =
+        existingUser.role === role ||
+        existingRoles.some((r) => r.role === role);
+
+      if (alreadyHasRole) {
+        return res.status(409).json({
+          success: false,
+          message: `You are already signed up as ${role.replace(/_/g, " ")}. Please sign in instead.`,
+          errors: [
+            {
+              field: "role",
+              message: `You are already signed up as ${role.replace(/_/g, " ")}. Please sign in instead.`,
+            },
+          ],
+        });
+      }
     }
   }
 

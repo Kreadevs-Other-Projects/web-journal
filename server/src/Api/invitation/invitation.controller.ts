@@ -6,6 +6,7 @@ import {
   acceptInvitationService,
   cancelInvitationService,
   getJournalInvitationsService,
+  getMyInvitationsService,
   resendInvitationService,
 } from "./invitation.service";
 
@@ -40,6 +41,14 @@ export const acceptInvitation = async (req: Request, res: Response) => {
       });
     }
     const result = await acceptInvitationService(req.params.token, password);
+
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.status(201).json({ success: true, ...result });
   } catch (e: any) {
     const status = (e as any).statusCode || 400;
@@ -72,6 +81,17 @@ export const getJournalInvitations = async (req: AuthUser, res: Response) => {
     return res.status(400).json({ success: false, message: e.message });
   }
 };
+export const getMyInvitations = async (req: AuthUser, res: Response) => {
+  try {
+    if (!req.user)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const invitations = await getMyInvitationsService(req.user.id);
+    return res.json({ success: true, invitations });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, message: e.message });
+  }
+};
+
 export const resendInvitation = async (req: AuthUser, res: Response) => {
   try {
     const { email, role, journal_id, chiedEditorName, title } = req.body;

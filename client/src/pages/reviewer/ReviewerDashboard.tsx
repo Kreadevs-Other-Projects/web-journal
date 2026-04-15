@@ -134,7 +134,6 @@ export default function ReviewerDashboard() {
       });
 
       const result = await res.json();
-      console.log(result);
 
       if (!res.ok) {
         console.error("Failed to fetch papers:", result.message || result);
@@ -422,7 +421,8 @@ export default function ReviewerDashboard() {
     const fileUrl = selectedVersion?.file_url || selectedPaper?.file_url;
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
     const needsHtml =
-      viewMode === "text" || (viewMode === "pdf" && ext === "docx");
+      viewMode === "text" ||
+      (viewMode === "pdf" && (ext === "docx" || ext === "tex" || ext === "latex"));
     if (!needsHtml || !selectedPaper?.paper_id) return;
     const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
     if (!versionId) return;
@@ -457,7 +457,7 @@ export default function ReviewerDashboard() {
                 onClick={resetForm}
                 className="h-10 w-10 p-0 bg-white"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-black" />
               </Button>
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -556,12 +556,12 @@ export default function ReviewerDashboard() {
                           }`}
                         >
                           <FileText className="h-3.5 w-3.5" />
-                          {(selectedVersion?.file_url || selectedPaper.file_url)
-                            ?.split(".")
-                            .pop()
-                            ?.toLowerCase() === "docx"
-                            ? "Document"
-                            : "PDF"}
+                          {(() => {
+                            const _rext = (selectedVersion?.file_url || selectedPaper.file_url)?.split(".").pop()?.toLowerCase();
+                            if (_rext === "docx") return "Document";
+                            if (_rext === "tex" || _rext === "latex") return "LaTeX";
+                            return "PDF";
+                          })()}
                         </button>
                         <button
                           onClick={() => setViewMode("text")}
@@ -675,7 +675,8 @@ export default function ReviewerDashboard() {
                           ?.split(".")
                           .pop()
                           ?.toLowerCase();
-                        if (ext === "docx") {
+                        const isLatex = ext === "tex" || ext === "latex";
+                        if (ext === "docx" || isLatex) {
                           return (
                             <div className="h-full overflow-y-auto bg-white dark:bg-gray-950">
                               {htmlLoading ? (
@@ -689,6 +690,13 @@ export default function ReviewerDashboard() {
                                 </div>
                               ) : htmlContent ? (
                                 <div className="max-w-[700px] mx-auto px-8 py-10">
+                                  {isLatex && (
+                                    <div className="flex justify-end mb-4">
+                                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded font-mono">
+                                        LaTeX Source
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="mb-8 pb-6 border-b">
                                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
                                       {selectedPaper.title}
@@ -705,7 +713,7 @@ export default function ReviewerDashboard() {
                                     )}
                                   </div>
                                   <div
-                                    className="paper-webview-content"
+                                    className={isLatex ? "paper-webview-content latex-content" : "paper-webview-content"}
                                     dangerouslySetInnerHTML={{
                                       __html: DOMPurify.sanitize(htmlContent),
                                     }}
@@ -1112,7 +1120,7 @@ export default function ReviewerDashboard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 {
                   label: "Pending Reviews",
@@ -1132,12 +1140,12 @@ export default function ReviewerDashboard() {
                   icon: AlertTriangle,
                   color: "text-destructive",
                 },
-                {
-                  label: "Avg Response Time",
-                  value: "4.2 days",
-                  icon: Calendar,
-                  color: "text-info",
-                },
+                // {
+                //   label: "Avg Response Time",
+                //   value: "4.2 days",
+                //   icon: Calendar,
+                //   color: "text-info",
+                // },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}

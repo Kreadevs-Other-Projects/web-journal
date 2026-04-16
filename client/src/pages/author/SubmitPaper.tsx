@@ -254,7 +254,7 @@ export default function SubmitPaper() {
     setManuscript(file);
     setExtractedBanner(false);
 
-    if (ext === "docx") {
+    if (ext === "docx" || ext === "pdf" || ext === "tex" || ext === "latex") {
       setExtracting(true);
       try {
         const fd = new FormData();

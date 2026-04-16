@@ -248,19 +248,29 @@ const parseMetadataFromText = (lines: string[]): {
     keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
   }
 
-  // Authors: lines between title and abstract containing @ or short enough to be names
+  // Authors: lines between title and abstract — skip affiliation lines
   let authors: string[] = [];
   const titleLineIdx = nonEmpty.findIndex(l => l === title);
   const absSearchIdx = absIdx >= 0 ? absIdx : nonEmpty.findIndex(l => /^abstract\b/i.test(l));
   if (titleLineIdx >= 0 && absSearchIdx > titleLineIdx + 1) {
     const between = nonEmpty.slice(titleLineIdx + 1, absSearchIdx);
-    // prefer lines with @ (author + email) or short name-like lines
+    const affiliationKw = /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
     const candidates = between.filter(l =>
-      (l.includes("@") || (l.length > 2 && l.length < 100 && !/^\d/.test(l) && !/^(abstract|introduction|keywords?)/i.test(l)))
+      !affiliationKw.test(l) &&
+      (l.includes("@") || (l.length > 2 && l.length < 120 && !/^\d/.test(l) && !/^(abstract|introduction|keywords?)/i.test(l)))
     );
-    authors = candidates
-      .map(l => l.replace(/\s*\d+\s*$/, "").replace(/\s*[,;]\s*$/, "").trim())
-      .filter(l => l.length > 1)
+    // handle both comma-separated names on one line and one-per-line
+    const rawAuthors: string[] = [];
+    for (const line of candidates) {
+      if (line.includes(",") && /[A-Z][a-z]/.test(line)) {
+        rawAuthors.push(...line.split(/,\s*/).map(p => p.trim()).filter(p => p.length > 2));
+      } else {
+        rawAuthors.push(line);
+      }
+    }
+    authors = rawAuthors
+      .map(a => a.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "").replace(/\s*\d+\s*$/, "").replace(/\s*[,;]\s*$/, "").trim())
+      .filter(a => a.length > 1)
       .slice(0, 5);
   }
 
@@ -291,6 +301,54 @@ const parseMetadataFromText = (lines: string[]): {
   return { title, abstract, keywords, authors, references };
 };
 
+const extractLatexMetadata = (content: string): { title: string; abstract: string; keywords: string[]; authors: string[]; references: string[] } => {
+  // Remove LaTeX comments
+  const clean = content.replace(/%[^\n]*/g, "");
+
+  const stripLatex = (s: string) =>
+    s.replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1").replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+
+  // Title
+  const titleMatch = clean.match(/\\title\{([\s\S]*?)\}/);
+  const title = titleMatch ? stripLatex(titleMatch[1]) : "";
+
+  // Authors — may be separated by \and or \\
+  let authors: string[] = [];
+  const authorMatch = clean.match(/\\author\{([\s\S]*?)\}(?:\s*\\affil|\s*\\address|\s*\\institute|\s*\\maketitle|\s*\\date|\s*\\begin)/);
+  const authorBlock = authorMatch?.[1] || clean.match(/\\author\{([\s\S]*?)\}/)?.[1] || "";
+  if (authorBlock) {
+    authors = authorBlock
+      .split(/\\and|\\\\|\n/)
+      .map(a => stripLatex(a).replace(/\^?\{?[\d,]+\}?/g, "").trim())
+      .filter(a => a.length > 1 && a.length < 150 && !/\b(university|dept|department|institute|school|email|orcid)\b/i.test(a))
+      .slice(0, 5);
+  }
+
+  // Abstract
+  const abstractMatch = clean.match(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/);
+  const abstract = abstractMatch ? stripLatex(abstractMatch[1]).slice(0, 1000) : "";
+
+  // Keywords
+  let keywords: string[] = [];
+  const kwMatch = clean.match(/\\begin\{keyword\}([\s\S]*?)\\end\{keyword\}/) ||
+                  clean.match(/\\keywords?\{([^}]+)\}/);
+  if (kwMatch) {
+    keywords = kwMatch[1].split(/[,;·•]/).map(k => stripLatex(k).trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+  }
+
+  // References from bibliography
+  const references: string[] = [];
+  const bibMatch = clean.match(/\\begin\{thebibliography\}[^\n]*\n([\s\S]*?)\\end\{thebibliography\}/);
+  if (bibMatch) {
+    bibMatch[1].split("\\bibitem").filter(s => s.trim()).slice(0, 5).forEach(item => {
+      const ref = stripLatex(item.replace(/^\{[^}]+\}/, "")).replace(/\s+/g, " ").trim();
+      if (ref.length > 10) references.push(ref);
+    });
+  }
+
+  return { title, abstract, keywords, authors, references };
+};
+
 export const extractMetadataService = async (filePath: string, ext: string): Promise<{
   title: string;
   abstract: string;
@@ -298,6 +356,12 @@ export const extractMetadataService = async (filePath: string, ext: string): Pro
   authors: string[];
   references: string[];
 }> => {
+  if (ext === "tex" || ext === "latex") {
+    const fs = (await import("fs")).default;
+    const content = fs.readFileSync(filePath, "utf-8");
+    return extractLatexMetadata(content);
+  }
+
   if (ext === "pdf") {
     const pdfParse = (await import("pdf-parse")).default;
     const fs = (await import("fs")).default;
@@ -346,14 +410,25 @@ export const extractMetadataService = async (filePath: string, ext: string): Pro
     keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
   }
 
-  // Authors: blocks between title and abstract
+  // Authors: blocks between title and abstract — skip affiliation lines
   let authors: string[] = [];
   const titleIdx = blocks.findIndex(b => b.text === title);
   const absSearchIdx = absIdx >= 0 ? absIdx : blocks.findIndex(b => /^abstract\b/i.test(b.text));
   if (titleIdx >= 0 && absSearchIdx > titleIdx + 1) {
-    authors = blocks.slice(titleIdx + 1, absSearchIdx)
-      .filter(b => b.text.length > 2 && b.text.length < 150 && !/^(abstract|introduction|keywords?)/i.test(b.text))
-      .map(b => b.text)
+    const affiliationKw = /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
+    const authorBlocks = blocks.slice(titleIdx + 1, absSearchIdx)
+      .filter(b => b.text.length > 2 && b.text.length < 200 && !/^(abstract|introduction|keywords?)/i.test(b.text) && !affiliationKw.test(b.text));
+    const rawAuthors: string[] = [];
+    for (const block of authorBlocks) {
+      if (block.text.includes(",") && /[A-Z][a-z]/.test(block.text)) {
+        rawAuthors.push(...block.text.split(/,\s*/).map(p => p.trim()).filter(p => p.length > 2));
+      } else {
+        rawAuthors.push(block.text);
+      }
+    }
+    authors = rawAuthors
+      .map(a => a.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "").replace(/\s*\d+\s*$/, "").trim())
+      .filter(a => a.length > 2)
       .slice(0, 5);
   }
 

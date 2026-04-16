@@ -18,7 +18,8 @@
       "Bash(node_modules/.bin/tsc --noEmit 2>&1 | head -50)",
       "Bash(xargs grep:*)",
       "Bash(grep -h \"import.*from.*controller\" /e/coding/Kreadevs-Other-Projects/web-journal/server/src/Api/*/*.routes.ts /e/coding/Kreadevs-Other-Projects/web-journal/server/src/Api/*/*.route.ts)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(xargs grep *)"
     ]
   }
 }

@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  GripVertical,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageTransition } from "@/components/AnimationWrappers";
@@ -88,14 +89,15 @@ export default function SubmitPaper() {
   const [authorDetails, setAuthorDetails] = useState<AuthorDetail[]>([
     { name: "", email: "", affiliation: "", orcid: "" },
   ]);
-  const [correspondingAuthorDetails, setCorrespondingAuthorDetails] = useState<
-    CorrespondingAuthorDetail[]
-  >([{ name: "", email: "", affiliation: "", phone: "" }]);
+  const [correspondingAuthor, setCorrespondingAuthor] =
+    useState<CorrespondingAuthorDetail>({ name: "", email: "", affiliation: "", phone: "" });
   const [keywords, setKeywords] = useState<string[]>([]);
   const [references, setReferences] = useState<Reference[]>([
     { text: "", link: "" },
   ]);
   const [manuscript, setManuscript] = useState<File | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
@@ -287,6 +289,15 @@ export default function SubmitPaper() {
                 .map((t: string) => ({ text: t, link: "" })),
             );
           }
+          if (data.correspondingAuthors?.[0]) {
+            const ca = data.correspondingAuthors[0];
+            setCorrespondingAuthor({
+              name: ca.name || "",
+              email: ca.email || "",
+              affiliation: ca.affiliation || "",
+              phone: ca.phone || "",
+            });
+          }
           setExtractedBanner(true);
         }
       } catch {
@@ -319,8 +330,8 @@ export default function SubmitPaper() {
     if (!articleType) return "Please select an article type.";
     if (keywords.length === 0) return "At least one keyword is required.";
     if (keywords.length > 5) return "Maximum 5 keywords allowed.";
-    if (correspondingAuthorDetails.filter((c) => c.name.trim()).length > 5)
-      return "Maximum 5 corresponding authors allowed.";
+    if (!correspondingAuthor.name.trim())
+      return "Corresponding author name is required.";
     if (references.filter((r) => r.text.trim()).length > 5)
       return "Maximum 5 references allowed.";
     if (!manuscript) return "Please upload your manuscript.";
@@ -355,16 +366,16 @@ export default function SubmitPaper() {
         JSON.stringify(filledAuthors.map((a) => a.name)),
       );
 
-      const filledCorresponding = correspondingAuthorDetails.filter((c) =>
-        c.name.trim(),
-      );
+      const correspondingAuthorList = correspondingAuthor.name.trim()
+        ? [correspondingAuthor]
+        : [];
       formData.append(
         "corresponding_author_details",
-        JSON.stringify(filledCorresponding),
+        JSON.stringify(correspondingAuthorList),
       );
       formData.append(
         "corresponding_authors",
-        JSON.stringify(filledCorresponding.map((c) => c.name)),
+        JSON.stringify(correspondingAuthorList.map((c) => c.name)),
       );
 
       formData.append("keywords", JSON.stringify(keywords));
@@ -430,6 +441,38 @@ export default function SubmitPaper() {
       setSubmitting(false);
       setShowReview(false);
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+    if (isNaN(fromIndex) || fromIndex === dropIndex) {
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...authorDetails];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(dropIndex, 0, moved);
+    setAuthorDetails(updated);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const selectedJournal = journals.find((j) => j.id === journalId);
@@ -817,16 +860,30 @@ export default function SubmitPaper() {
             {/* 4. Author Details */}
             <div>
               <Label className="mb-1.5 block">Author(s) *</Label>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {authorDetails.map((author, i) => (
                   <div
                     key={i}
-                    className="rounded-lg border border-border p-4 space-y-3 relative"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, i)}
+                    onDragOver={(e) => handleDragOver(e, i)}
+                    onDrop={(e) => handleDrop(e, i)}
+                    onDragEnd={handleDragEnd}
+                    className={`rounded-lg border p-4 space-y-3 relative transition-colors ${
+                      dragOverIndex === i && draggedIndex !== i
+                        ? "border-primary bg-primary/5"
+                        : draggedIndex === i
+                          ? "opacity-40 border-dashed"
+                          : "border-border"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Author {i + 1}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Author {i + 1}
+                        </span>
+                      </div>
                       {authorDetails.length > 1 && (
                         <Button
                           type="button"
@@ -849,15 +906,10 @@ export default function SubmitPaper() {
                         <Input
                           value={author.name}
                           onChange={(e) =>
-                            updateArrayField(
-                              authorDetails,
-                              setAuthorDetails,
-                              i,
-                              {
-                                ...author,
-                                name: e.target.value,
-                              },
-                            )
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              name: e.target.value,
+                            })
                           }
                           placeholder="Dr. Jane Smith"
                         />
@@ -868,15 +920,10 @@ export default function SubmitPaper() {
                           type="email"
                           value={author.email}
                           onChange={(e) =>
-                            updateArrayField(
-                              authorDetails,
-                              setAuthorDetails,
-                              i,
-                              {
-                                ...author,
-                                email: e.target.value,
-                              },
-                            )
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              email: e.target.value,
+                            })
                           }
                           placeholder="jane@university.edu"
                         />
@@ -888,15 +935,10 @@ export default function SubmitPaper() {
                         <Input
                           value={author.affiliation}
                           onChange={(e) =>
-                            updateArrayField(
-                              authorDetails,
-                              setAuthorDetails,
-                              i,
-                              {
-                                ...author,
-                                affiliation: e.target.value,
-                              },
-                            )
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              affiliation: e.target.value,
+                            })
                           }
                           placeholder="University of Science"
                         />
@@ -906,15 +948,10 @@ export default function SubmitPaper() {
                         <Input
                           value={author.orcid}
                           onChange={(e) =>
-                            updateArrayField(
-                              authorDetails,
-                              setAuthorDetails,
-                              i,
-                              {
-                                ...author,
-                                orcid: e.target.value,
-                              },
-                            )
+                            updateArrayField(authorDetails, setAuthorDetails, i, {
+                              ...author,
+                              orcid: e.target.value,
+                            })
                           }
                           placeholder="0000-0000-0000-0000"
                         />
@@ -941,129 +978,67 @@ export default function SubmitPaper() {
               </Button>
             </div>
 
-            {/* 5. Corresponding Authors */}
+            {/* 5. Corresponding Author */}
             <div>
-              <Label className="mb-1.5 block">
-                Corresponding Author(s){" "}
-                <span className="text-muted-foreground text-xs">(max 5)</span>
-              </Label>
-              <div className="space-y-4">
-                {correspondingAuthorDetails.map((ca, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg border border-border p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Corresponding Author {i + 1}
-                      </span>
-                      {correspondingAuthorDetails.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            removeRow(
-                              correspondingAuthorDetails,
-                              setCorrespondingAuthorDetails,
-                              i,
-                            )
-                          }
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs mb-1 block">
-                          Full Name *
-                        </Label>
-                        <Input
-                          value={ca.name}
-                          onChange={(e) =>
-                            updateArrayField(
-                              correspondingAuthorDetails,
-                              setCorrespondingAuthorDetails,
-                              i,
-                              { ...ca, name: e.target.value },
-                            )
-                          }
-                          placeholder="Dr. Jane Smith"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Email *</Label>
-                        <Input
-                          type="email"
-                          value={ca.email}
-                          onChange={(e) =>
-                            updateArrayField(
-                              correspondingAuthorDetails,
-                              setCorrespondingAuthorDetails,
-                              i,
-                              { ...ca, email: e.target.value },
-                            )
-                          }
-                          placeholder="jane@university.edu"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">
-                          Affiliation *
-                        </Label>
-                        <Input
-                          value={ca.affiliation}
-                          onChange={(e) =>
-                            updateArrayField(
-                              correspondingAuthorDetails,
-                              setCorrespondingAuthorDetails,
-                              i,
-                              { ...ca, affiliation: e.target.value },
-                            )
-                          }
-                          placeholder="University of Science"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Phone</Label>
-                        <Input
-                          type="tel"
-                          value={ca.phone}
-                          onChange={(e) =>
-                            updateArrayField(
-                              correspondingAuthorDetails,
-                              setCorrespondingAuthorDetails,
-                              i,
-                              { ...ca, phone: e.target.value },
-                            )
-                          }
-                          placeholder="+1 (555) 000-0000"
-                        />
-                      </div>
-                    </div>
+              <Label className="mb-1.5 block">Corresponding Author *</Label>
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs mb-1 block">Full Name *</Label>
+                    <Input
+                      value={correspondingAuthor.name}
+                      onChange={(e) =>
+                        setCorrespondingAuthor((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      placeholder="Dr. Jane Smith"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <Label className="text-xs mb-1 block">Email *</Label>
+                    <Input
+                      type="email"
+                      value={correspondingAuthor.email}
+                      onChange={(e) =>
+                        setCorrespondingAuthor((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                      placeholder="jane@university.edu"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Affiliation *</Label>
+                    <Input
+                      value={correspondingAuthor.affiliation}
+                      onChange={(e) =>
+                        setCorrespondingAuthor((prev) => ({
+                          ...prev,
+                          affiliation: e.target.value,
+                        }))
+                      }
+                      placeholder="University of Science"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Phone</Label>
+                    <Input
+                      type="tel"
+                      value={correspondingAuthor.phone}
+                      onChange={(e) =>
+                        setCorrespondingAuthor((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
+                </div>
               </div>
-              {correspondingAuthorDetails.length < 5 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() =>
-                    addRow(
-                      correspondingAuthorDetails,
-                      setCorrespondingAuthorDetails,
-                      { name: "", email: "", affiliation: "", phone: "" },
-                      5,
-                    )
-                  }
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add corresponding author
-                </Button>
-              )}
             </div>
 
             {/* 6. Keywords */}
@@ -1576,39 +1551,23 @@ export default function SubmitPaper() {
                     ))}
                 </ul>
               </div>
-              {correspondingAuthorDetails.filter((c) => c.name.trim()).length >
-                0 && (
+              {correspondingAuthor.name.trim() && (
                 <div>
                   <p className="font-medium text-muted-foreground">
-                    Corresponding Authors
+                    Corresponding Author
                   </p>
-                  <ul className="space-y-1 mt-1">
-                    {correspondingAuthorDetails
-                      .filter((c) => c.name.trim())
-                      .map((c, i) => (
-                        <li key={i}>
-                          <span className="font-medium">{c.name}</span>
-                          {c.affiliation && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              · {c.affiliation}
-                            </span>
-                          )}
-                          {c.email && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              · {c.email}
-                            </span>
-                          )}
-                          {c.phone && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              · {c.phone}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                  </ul>
+                  <p className="mt-1">
+                    <span className="font-medium">{correspondingAuthor.name}</span>
+                    {correspondingAuthor.affiliation && (
+                      <span className="text-muted-foreground"> · {correspondingAuthor.affiliation}</span>
+                    )}
+                    {correspondingAuthor.email && (
+                      <span className="text-muted-foreground"> · {correspondingAuthor.email}</span>
+                    )}
+                    {correspondingAuthor.phone && (
+                      <span className="text-muted-foreground"> · {correspondingAuthor.phone}</span>
+                    )}
+                  </p>
                 </div>
               )}
               <div>

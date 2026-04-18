@@ -219,7 +219,11 @@ export const getStaffProfile = async (userId: string) => {
   };
 };
 
-export const findSubEditors = async (journalId?: string, paperId?: string, ceId?: string) => {
+export const findSubEditors = async (
+  journalId?: string,
+  paperId?: string,
+  ceId?: string,
+) => {
   // When called by a CE, return only staff belonging to their journals
   if (ceId) {
     const result = await pool.query(
@@ -303,7 +307,11 @@ export const findSubEditors = async (journalId?: string, paperId?: string, ceId?
   return result.rows;
 };
 
-export const findReviewers = async (journalId?: string, paperId?: string, ceId?: string) => {
+export const findReviewers = async (
+  journalId?: string,
+  paperId?: string,
+  ceId?: string,
+) => {
   // When called by a CE, return only staff belonging to their journals
   if (ceId) {
     const result = await pool.query(
@@ -670,17 +678,16 @@ export const getPaperByIdRepo = async (paperId: string) => {
 
 export const getPaperDecisionHistoryRepo = async (paperId: string) => {
   const result = await pool.query(
-    `SELECT 'reviewer' AS role_type, r.decision, r.comments, r.reviewed_at AS decided_at,
-            u.username, pv.version_number
+    `SELECT 'reviewer' AS role_type, r.decision::text, r.comments, r.reviewed_at AS decided_at,
+            u.username, NULL::int AS version_number
      FROM reviews r
      JOIN review_assignments ra ON ra.id = r.review_assignment_id
      JOIN users u ON u.id = ra.reviewer_id
-     LEFT JOIN paper_versions pv ON pv.id = r.paper_version_id
      WHERE ra.paper_id = $1
 
      UNION ALL
 
-     SELECT 'sub_editor' AS role_type, sed.decision, sed.comments, sed.decided_at,
+     SELECT 'sub_editor' AS role_type, sed.decision::text, sed.comments, sed.decided_at,
             u.username, pv.version_number
      FROM sub_editor_decisions sed
      JOIN users u ON u.id = sed.sub_editor_id

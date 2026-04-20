@@ -57,6 +57,7 @@ interface Reviewer {
   email: string;
   decision?: string;
   comments?: string;
+  confidential_comments?: string;
   reviewed_at?: string;
   all_reviews?: Array<{ decision: string; reviewed_at: string }>;
 }
@@ -1306,10 +1307,21 @@ export default function RevisionPaper() {
                         {reviewer.comments && (
                           <div className="bg-muted/50 rounded p-3">
                             <p className="text-xs text-muted-foreground mb-1 font-medium">
-                              Comments:
+                              Comments for Authors:
                             </p>
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">
                               {reviewer.comments}
+                            </p>
+                          </div>
+                        )}
+                        {reviewer.confidential_comments && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 mt-2">
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-1 font-medium flex items-center gap-1">
+                              <Lock className="h-3 w-3" />
+                              Confidential Comments (AE only):
+                            </p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                              {reviewer.confidential_comments}
                             </p>
                           </div>
                         )}

@@ -19,7 +19,8 @@
       "Bash(xargs grep:*)",
       "Bash(grep -h \"import.*from.*controller\" /e/coding/Kreadevs-Other-Projects/web-journal/server/src/Api/*/*.routes.ts /e/coding/Kreadevs-Other-Projects/web-journal/server/src/Api/*/*.route.ts)",
       "Bash(npm list:*)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(psql -U postgres -d giki -f src/database/migrations/052_add_confidential_comments_to_reviews.sql)"
     ]
   }
 }

@@ -943,6 +943,22 @@ export default function ReviewerDashboard() {
                           />
                         </div>
 
+                        <div className="space-y-2">
+                          <Label htmlFor="confidentialComments">
+                            Confidential Comments to Associate Editor
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              (not visible to the author)
+                            </span>
+                          </Label>
+                          <Textarea
+                            id="confidentialComments"
+                            value={confidentialComments}
+                            onChange={(e) => setConfidentialComments(e.target.value)}
+                            placeholder="Optional private notes for the associate editor..."
+                            className="min-h-[100px] input-glow"
+                          />
+                        </div>
+
                         <div className="space-y-3">
                           <Label>Your Decision *</Label>
                           <RadioGroup

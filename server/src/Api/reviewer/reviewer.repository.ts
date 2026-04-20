@@ -60,6 +60,7 @@ export const submitReviewByVersion = async (
   comments: string,
   password?: string,
   signatureFilename?: string,
+  confidentialComments?: string,
 ) => {
   const client = await pool.connect();
 
@@ -123,17 +124,18 @@ export const submitReviewByVersion = async (
     const review = await client.query(
       `
       INSERT INTO reviews
-        (review_assignment_id, decision, comments, signature_url, signed_at)
-      VALUES ($1, $2, $3, $4, NOW())
+        (review_assignment_id, decision, comments, confidential_comments, signature_url, signed_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
       ON CONFLICT (review_assignment_id)
       DO UPDATE SET
-        decision   = EXCLUDED.decision,
-        comments   = EXCLUDED.comments,
-        signature_url = EXCLUDED.signature_url,
-        signed_at  = NOW()
+        decision              = EXCLUDED.decision,
+        comments              = EXCLUDED.comments,
+        confidential_comments = EXCLUDED.confidential_comments,
+        signature_url         = EXCLUDED.signature_url,
+        signed_at             = NOW()
       RETURNING *
       `,
-      [assignmentId, decision, comments, signatureUrl],
+      [assignmentId, decision, comments, confidentialComments ?? null, signatureUrl],
     );
 
     await client.query(

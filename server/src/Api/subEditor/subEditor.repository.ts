@@ -139,6 +139,7 @@ export const getAssignedReviewers = async (paperId: string) => {
        u.email,
        latest_r.decision,
        latest_r.comments,
+       latest_r.confidential_comments,
        latest_r.signed_at AS reviewed_at,
        COALESCE(
          (SELECT json_agg(
@@ -152,7 +153,7 @@ export const getAssignedReviewers = async (paperId: string) => {
      FROM review_assignments ra
      JOIN users u ON u.id = ra.reviewer_id
      LEFT JOIN LATERAL (
-       SELECT decision, comments, signed_at
+       SELECT decision, comments, confidential_comments, signed_at
        FROM reviews
        WHERE review_assignment_id = ra.id
        ORDER BY signed_at DESC

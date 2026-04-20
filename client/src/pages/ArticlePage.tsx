@@ -86,6 +86,25 @@ export default function ArticlePage() {
   const [htmlLoading, setHtmlLoading] = useState(false);
   const [showArticleInfo, setShowArticleInfo] = useState(false);
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
+  const [latestJournals, setLatestJournals] = useState<
+    {
+      id: string;
+      title: string;
+      issn?: string;
+      logo_url?: string;
+      article_count: number;
+      type?: string;
+    }[]
+  >([]);
+
+  useEffect(() => {
+    fetch(`${url}/browse/home/journals?limit=6`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setLatestJournals(data.journals || []);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchPaper = async () => {
@@ -116,7 +135,14 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!article || htmlContent !== null || !resolvedPaperId) return;
     const ext = article.file_url?.toLowerCase();
-    if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf") && !ext.endsWith(".tex") && !ext.endsWith(".latex"))) return;
+    if (
+      !ext ||
+      (!ext.endsWith(".docx") &&
+        !ext.endsWith(".pdf") &&
+        !ext.endsWith(".tex") &&
+        !ext.endsWith(".latex"))
+    )
+      return;
     setHtmlLoading(true);
     const fetchHtml = async () => {
       try {
@@ -143,14 +169,18 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!article?.author_details?.length) return;
     const authorNames = article.author_details.map((a) => a.name).join(", ");
-    let meta = document.querySelector('meta[name="author"]') as HTMLMetaElement | null;
+    let meta = document.querySelector(
+      'meta[name="author"]',
+    ) as HTMLMetaElement | null;
     if (!meta) {
       meta = document.createElement("meta");
       meta.name = "author";
       document.head.appendChild(meta);
     }
     meta.content = authorNames;
-    return () => { meta?.remove(); };
+    return () => {
+      meta?.remove();
+    };
   }, [article]);
 
   if (loading) {
@@ -254,47 +284,70 @@ export default function ArticlePage() {
               </h1>
 
               {/* Structured authors with affiliation superscripts */}
-              {article.author_details && article.author_details.length > 0 ? (
-                <div className="mt-3 mb-2">
-                  <p className="text-base text-gray-700 dark:text-gray-300">
+              {article.author_details?.length > 0 ? (
+                <>
+                  {/* Authors */}
+                  <div className="flex flex-wrap items-center gap-x-2 text-sm">
                     {article.author_details.map((author, i) => (
-                      <span key={i}>
-                        {i > 0 && ", "}
-                        <span className="font-medium">{author.name}</span>
+                      <span key={i} className="flex items-center gap-1">
+                        <span className="font-semibold text-foreground">
+                          {author.name}
+                        </span>
+
                         {author.affiliation && (
-                          <sup className="text-primary text-xs ml-0.5">{i + 1}</sup>
+                          <span className="text-xs text-muted-foreground">
+                            [{i + 1}]
+                          </span>
+                        )}
+
+                        {i !== article.author_details.length - 1 && (
+                          <span className="text-muted-foreground">•</span>
                         )}
                       </span>
                     ))}
-                  </p>
-                  <div className="mt-1 space-y-0.5">
+                  </div>
+
+                  {/* Affiliations */}
+                  <div className="mt-2 space-y-1">
                     {article.author_details.map((author, i) =>
                       author.affiliation ? (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          <sup>{i + 1}</sup> {author.affiliation}
-                        </p>
-                      ) : null
+                        <div
+                          key={i}
+                          className="text-xs text-muted-foreground flex items-start gap-2"
+                        >
+                          <span className="font-medium text-primary">
+                            [{i + 1}]
+                          </span>
+                          <span>{author.affiliation}</span>
+                        </div>
+                      ) : null,
                     )}
                   </div>
+
+                  {/* Corresponding Author */}
                   {article.corresponding_author_details?.[0] && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      <span className="font-medium">Corresponding author:</span>{" "}
+                    <div className="mt-3 text-xs bg-muted/50 px-3 py-2 rounded-lg border">
+                      <span className="font-medium text-foreground">
+                        Corresponding Author:
+                      </span>{" "}
                       {article.corresponding_author_details[0].name}
                       {article.corresponding_author_details[0].email && (
                         <a
                           href={`mailto:${article.corresponding_author_details[0].email}`}
-                          className="text-primary ml-1"
+                          className="ml-2 text-primary hover:underline"
                         >
-                          ({article.corresponding_author_details[0].email})
+                          {article.corresponding_author_details[0].email}
                         </a>
                       )}
-                    </p>
+                    </div>
                   )}
-                </div>
+                </>
               ) : (
-                <div className="text-base text-muted-foreground">
-                  <span className="font-medium text-foreground">{authorsDisplay}</span>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {authorsDisplay}
+                  </span>
+                </p>
               )}
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -368,9 +421,13 @@ export default function ArticlePage() {
                     >
                       <Download className="h-4 w-4" />
                       {(() => {
-                        const _ext = (article.pdf_url || article.file_url)?.split(".").pop()?.toLowerCase();
+                        const _ext = (article.pdf_url || article.file_url)
+                          ?.split(".")
+                          .pop()
+                          ?.toLowerCase();
                         if (_ext === "docx") return "Download Word Document";
-                        if (_ext === "tex" || _ext === "latex") return "Download LaTeX Source";
+                        if (_ext === "tex" || _ext === "latex")
+                          return "Download LaTeX Source";
                         return "Download PDF";
                       })()}
                     </Button>
@@ -602,6 +659,62 @@ export default function ArticlePage() {
           </motion.div>
         </div>
       </main>
+
+      {/* LATEST JOURNALS */}
+      {latestJournals.length > 0 && (
+        <section className="border-t border-border bg-muted/30 py-12">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-foreground">
+                Latest Journals
+              </h2>
+              <Link
+                to="/browse"
+                onClick={() => window.scrollTo(0, 0)}
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                View all →
+              </Link>
+            </div>
+
+            {/* GRID */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {latestJournals.map((j) => (
+                <Link
+                  key={j.id}
+                  to={`/journal/${j.id}`}
+                  onClick={() => window.scrollTo(0, 0)}
+                  className="group"
+                >
+                  <div className="relative rounded-lg overflow-hidden border border-border bg-background hover:shadow-md transition">
+                    {j.logo_url ? (
+                      <img
+                        src={`${url}/${j.logo_url}`}
+                        alt={j.title}
+                        className="w-full h-40 object-cover group-hover:scale-105 transition"
+                      />
+                    ) : (
+                      <div className="w-full h-40 flex items-center justify-center bg-primary/10">
+                        <BookOpen className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
+
+                    {/* TITLE */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                      <p className="text-[11px] text-white line-clamp-2">
+                        {j.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {j.issn}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

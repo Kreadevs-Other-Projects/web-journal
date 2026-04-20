@@ -136,6 +136,7 @@ WHERE j.chief_editor_id = $1
     SELECT journal_id FROM user_roles
     WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
   )
+  OR ea.sub_editor_id = $1
 GROUP BY
   p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
   p.ce_override,

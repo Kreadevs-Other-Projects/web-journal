@@ -95,10 +95,15 @@ export default function AEAssignReviewerPage() {
                   ? JSON.parse(found.reviewers)
                   : found.reviewers || [],
             });
+          } else {
+            // Paper not found — stop loading so the UI doesn't hang
+            setLoading(false);
           }
+        } else {
+          setLoading(false);
         }
       })
-      .catch(() => {});
+      .catch(() => setLoading(false));
   }, [token, paperId]);
 
   // Fetch reviewers for journal
@@ -432,7 +437,9 @@ export default function AEAssignReviewerPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
                         disabled={currentPage === 1}
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -446,15 +453,18 @@ export default function AEAssignReviewerPage() {
                               page === totalPages ||
                               Math.abs(page - currentPage) <= 1,
                           )
-                          .reduce((acc: (number | string)[], page, idx, arr) => {
-                            if (
-                              idx > 0 &&
-                              (page as number) - (arr[idx - 1] as number) > 1
-                            )
-                              acc.push("...");
-                            acc.push(page);
-                            return acc;
-                          }, [])
+                          .reduce(
+                            (acc: (number | string)[], page, idx, arr) => {
+                              if (
+                                idx > 0 &&
+                                (page as number) - (arr[idx - 1] as number) > 1
+                              )
+                                acc.push("...");
+                              acc.push(page);
+                              return acc;
+                            },
+                            [],
+                          )
                           .map((page, idx) =>
                             page === "..." ? (
                               <span
@@ -557,7 +567,9 @@ export default function AEAssignReviewerPage() {
                           {kw}
                           <button
                             onClick={() =>
-                              setInviteKeywords((p) => p.filter((k) => k !== kw))
+                              setInviteKeywords((p) =>
+                                p.filter((k) => k !== kw),
+                              )
                             }
                           >
                             <X className="h-2.5 w-2.5" />

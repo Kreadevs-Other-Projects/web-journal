@@ -139,6 +139,20 @@ export default function ArticlePage() {
     });
   };
 
+  // SEO meta tag for authors — must be before any early returns (Rules of Hooks)
+  useEffect(() => {
+    if (!article?.author_details?.length) return;
+    const authorNames = article.author_details.map((a) => a.name).join(", ");
+    let meta = document.querySelector('meta[name="author"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "author";
+      document.head.appendChild(meta);
+    }
+    meta.content = authorNames;
+    return () => { meta?.remove(); };
+  }, [article]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -204,20 +218,6 @@ export default function ArticlePage() {
       ? { label: "Author Contributions", value: article.author_contributions }
       : null,
   ].filter(Boolean) as { label: string; value: string }[];
-
-  // SEO meta tag for authors
-  useEffect(() => {
-    if (!article?.author_details?.length) return;
-    const authorNames = article.author_details.map((a) => a.name).join(", ");
-    let meta = document.querySelector('meta[name="author"]') as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "author";
-      document.head.appendChild(meta);
-    }
-    meta.content = authorNames;
-    return () => { meta?.remove(); };
-  }, [article]);
 
   return (
     <div className="min-h-screen bg-background">

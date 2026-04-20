@@ -116,7 +116,14 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!article || htmlContent !== null || !resolvedPaperId) return;
     const ext = article.file_url?.toLowerCase();
-    if (!ext || (!ext.endsWith(".docx") && !ext.endsWith(".pdf") && !ext.endsWith(".tex") && !ext.endsWith(".latex"))) return;
+    if (
+      !ext ||
+      (!ext.endsWith(".docx") &&
+        !ext.endsWith(".pdf") &&
+        !ext.endsWith(".tex") &&
+        !ext.endsWith(".latex"))
+    )
+      return;
     setHtmlLoading(true);
     const fetchHtml = async () => {
       try {
@@ -143,14 +150,18 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!article?.author_details?.length) return;
     const authorNames = article.author_details.map((a) => a.name).join(", ");
-    let meta = document.querySelector('meta[name="author"]') as HTMLMetaElement | null;
+    let meta = document.querySelector(
+      'meta[name="author"]',
+    ) as HTMLMetaElement | null;
     if (!meta) {
       meta = document.createElement("meta");
       meta.name = "author";
       document.head.appendChild(meta);
     }
     meta.content = authorNames;
-    return () => { meta?.remove(); };
+    return () => {
+      meta?.remove();
+    };
   }, [article]);
 
   if (loading) {
@@ -254,47 +265,70 @@ export default function ArticlePage() {
               </h1>
 
               {/* Structured authors with affiliation superscripts */}
-              {article.author_details && article.author_details.length > 0 ? (
-                <div className="mt-3 mb-2">
-                  <p className="text-base text-gray-700 dark:text-gray-300">
+              {article.author_details?.length > 0 ? (
+                <>
+                  {/* Authors */}
+                  <div className="flex flex-wrap items-center gap-x-2 text-sm">
                     {article.author_details.map((author, i) => (
-                      <span key={i}>
-                        {i > 0 && ", "}
-                        <span className="font-medium">{author.name}</span>
+                      <span key={i} className="flex items-center gap-1">
+                        <span className="font-semibold text-foreground">
+                          {author.name}
+                        </span>
+
                         {author.affiliation && (
-                          <sup className="text-primary text-xs ml-0.5">{i + 1}</sup>
+                          <span className="text-xs text-muted-foreground">
+                            [{i + 1}]
+                          </span>
+                        )}
+
+                        {i !== article.author_details.length - 1 && (
+                          <span className="text-muted-foreground">•</span>
                         )}
                       </span>
                     ))}
-                  </p>
-                  <div className="mt-1 space-y-0.5">
+                  </div>
+
+                  {/* Affiliations */}
+                  <div className="mt-2 space-y-1">
                     {article.author_details.map((author, i) =>
                       author.affiliation ? (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          <sup>{i + 1}</sup> {author.affiliation}
-                        </p>
-                      ) : null
+                        <div
+                          key={i}
+                          className="text-xs text-muted-foreground flex items-start gap-2"
+                        >
+                          <span className="font-medium text-primary">
+                            [{i + 1}]
+                          </span>
+                          <span>{author.affiliation}</span>
+                        </div>
+                      ) : null,
                     )}
                   </div>
+
+                  {/* Corresponding Author */}
                   {article.corresponding_author_details?.[0] && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      <span className="font-medium">Corresponding author:</span>{" "}
+                    <div className="mt-3 text-xs bg-muted/50 px-3 py-2 rounded-lg border">
+                      <span className="font-medium text-foreground">
+                        Corresponding Author:
+                      </span>{" "}
                       {article.corresponding_author_details[0].name}
                       {article.corresponding_author_details[0].email && (
                         <a
                           href={`mailto:${article.corresponding_author_details[0].email}`}
-                          className="text-primary ml-1"
+                          className="ml-2 text-primary hover:underline"
                         >
-                          ({article.corresponding_author_details[0].email})
+                          {article.corresponding_author_details[0].email}
                         </a>
                       )}
-                    </p>
+                    </div>
                   )}
-                </div>
+                </>
               ) : (
-                <div className="text-base text-muted-foreground">
-                  <span className="font-medium text-foreground">{authorsDisplay}</span>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {authorsDisplay}
+                  </span>
+                </p>
               )}
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -368,9 +402,13 @@ export default function ArticlePage() {
                     >
                       <Download className="h-4 w-4" />
                       {(() => {
-                        const _ext = (article.pdf_url || article.file_url)?.split(".").pop()?.toLowerCase();
+                        const _ext = (article.pdf_url || article.file_url)
+                          ?.split(".")
+                          .pop()
+                          ?.toLowerCase();
                         if (_ext === "docx") return "Download Word Document";
-                        if (_ext === "tex" || _ext === "latex") return "Download LaTeX Source";
+                        if (_ext === "tex" || _ext === "latex")
+                          return "Download LaTeX Source";
                         return "Download PDF";
                       })()}
                     </Button>

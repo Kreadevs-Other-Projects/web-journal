@@ -9,7 +9,6 @@ export const submitPaperReview = async (
   reviewerId: string,
   decision: string,
   comments: string,
-  confidentialComments: string, // Add this
   password?: string,
   signatureFilename?: string,
 ) => {
@@ -18,7 +17,6 @@ export const submitPaperReview = async (
     reviewerId,
     decision,
     comments,
-    confidentialComments, // Pass it here
     password,
     signatureFilename,
   );

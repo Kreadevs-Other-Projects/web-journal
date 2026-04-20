@@ -292,8 +292,6 @@ export default function LandingPage() {
     <PageTransition className="min-h-screen bg-background">
       <div className="noise-overlay" />
 
-      <Navbar />
-
       {/* Hero Section */}
       <section
         ref={heroRef}
@@ -1257,8 +1255,6 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-
-      <Footer />
     </PageTransition>
   );
 }

@@ -67,6 +67,8 @@ export const getPublicPaperBySlugRepo = async (
       p.keywords,
       p.author_names,
       p.corresponding_authors,
+      p.author_details,
+      p.corresponding_author_details,
       p.paper_references,
       p.submitted_at,
       p.accepted_at,

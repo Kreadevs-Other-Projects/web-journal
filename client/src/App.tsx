@@ -12,6 +12,7 @@ import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard.tsx";
 import ChiefEditorDashboard from "./pages/chiefEditor/ChiefEditorDashboard.tsx";
 import SubEditorDashboard from "./pages/subEditor/SubEditorDashboard.tsx";
 import RevisionPaper from "./pages/subEditor/RevisionPaper.tsx";
+import AEAssignReviewerPage from "./pages/subEditor/AEAssignReviewerPage.tsx";
 import PublisherDashboard from "./pages/publisher/publisherDashboard.tsx";
 import CreateJournal from "./pages/publisher/CreateJournal.tsx";
 import PublishPapers from "./pages/publisher/PublishPapers.tsx";
@@ -64,6 +65,7 @@ import Archive from "./pages/Archive.tsx";
 import AcceptInvitation from "./pages/AcceptInvitation.tsx";
 import ApplyReviewer from "./pages/ApplyReviewer.tsx";
 import CompleteProfilePage from "./pages/CompleteProfilePage.tsx";
+import PaperApprovalPage from "./pages/PaperApprovalPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +109,9 @@ const App = () => (
                     <Route path="/archive" element={<Archive />} />
                     <Route path="/apply-reviewer" element={<ApplyReviewer />} />
                   </Route>
+                  {/* Public paper approval — no auth required */}
+                  <Route path="/paper-approval/:token" element={<PaperApprovalPage />} />
+
                   {/* accept-invitation is outside PublicRoute so authenticated users can access it */}
                   <Route
                     path="/accept-invitation"
@@ -173,6 +178,10 @@ const App = () => (
                     <Route
                       path="/sub-editor/revision"
                       element={<RevisionPaper />}
+                    />
+                    <Route
+                      path="/sub-editor/papers/:paperId/assign-reviewer"
+                      element={<AEAssignReviewerPage />}
                     />
                   </Route>
                   <Route

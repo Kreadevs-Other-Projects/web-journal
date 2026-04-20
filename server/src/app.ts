@@ -29,6 +29,7 @@ import contactRoutes from "./Api/contact/contact.route";
 import categoriesRoutes from "./Api/categories/categories.route";
 import journalCategoriesRoutes from "./Api/journalCategories/journalCategories.route";
 import conferenceRoutes from "./Api/conference/conference.route";
+import paperApprovalRoutes from "./Api/paperApproval/paperApproval.route";
 
 const app = express();
 app.use(express.json());
@@ -70,6 +71,7 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/journal-categories", journalCategoriesRoutes);
 app.use("/api/conferences", conferenceRoutes);
+app.use("/api/paper-approval", paperApprovalRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

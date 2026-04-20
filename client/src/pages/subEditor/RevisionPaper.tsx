@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ import {
   Lock,
   AlignLeft,
   FileX,
+  Bell,
+  Inbox,
+  UserPlus,
 } from "lucide-react";
 
 import { Worker, Viewer } from "@react-pdf-viewer/core";
@@ -94,10 +98,15 @@ interface ExistingDecision {
   decided_at: string;
 }
 
+const daysSince = (date: string) =>
+  Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+
 export default function RevisionPaper() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
+  const [tab, setTab] = useState<"pending" | "resubmitted">("pending");
   const [reviews, setReviews] = useState<SubmittedReview[]>([]);
   const [viewPdf, setViewPdf] = useState<SubmittedReview | null>(null);
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
@@ -451,405 +460,330 @@ export default function RevisionPaper() {
     ),
   );
 
+  const pendingGroups = Object.values(
+    reviews
+      .filter((r) => r.paperStatus === "pending_revision")
+      .reduce(
+        (acc, r) => {
+          if (!acc[r.paperId]) acc[r.paperId] = { paper: r, reviewList: [r] };
+          else acc[r.paperId].reviewList.push(r);
+          return acc;
+        },
+        {} as Record<string, { paper: SubmittedReview; reviewList: SubmittedReview[] }>,
+      ),
+  );
+
+  const resubmittedGroups = Object.values(
+    reviews
+      .filter((r) => r.paperStatus === "resubmitted")
+      .reduce(
+        (acc, r) => {
+          if (!acc[r.paperId]) acc[r.paperId] = { paper: r, reviewList: [r] };
+          else acc[r.paperId].reviewList.push(r);
+          return acc;
+        },
+        {} as Record<string, { paper: SubmittedReview; reviewList: SubmittedReview[] }>,
+      ),
+  );
+
+  const activeGroups = tab === "pending" ? pendingGroups : resubmittedGroups;
+
   return (
     <DashboardLayout role={user?.role} userName={user?.username}>
-      <div className="space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Associate Editor Dashboard
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Manage and oversee submitted paper reviews
-            </p>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <span className="text-sm font-medium">
-              {uniquePaperCount} Paper{uniquePaperCount !== 1 ? "s" : ""}{" "}
-              Assigned
-            </span>
-          </div>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Revision Papers</h1>
+          <p className="text-muted-foreground mt-1">
+            Papers awaiting revision or resubmitted by authors for your review
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Under Review</p>
-                  <p className="text-2xl font-bold mt-1">
-                    {
-                      new Set(
-                        reviews
-                          .filter((r) => r.paperStatus === "under_review")
-                          .map((r) => r.paperId),
-                      ).size
-                    }
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-blue-500/20">
-                  <Eye className="h-6 w-6 text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Pending Revision
-                  </p>
-                  <p className="text-2xl font-bold mt-1">
-                    {
-                      new Set(
-                        reviews
-                          .filter((r) => r.paperStatus === "pending_revision")
-                          .map((r) => r.paperId),
-                      ).size
-                    }
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-amber-500/20">
-                  <Edit className="h-6 w-6 text-amber-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Resubmitted</p>
-                  <p className="text-2xl font-bold mt-1">
-                    {
-                      new Set(
-                        reviews
-                          .filter((r) => r.paperStatus === "resubmitted")
-                          .map((r) => r.paperId),
-                      ).size
-                    }
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-emerald-500/20">
-                  <CheckCircle className="h-6 w-6 text-emerald-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit mb-6">
+          <button
+            onClick={() => setTab("pending")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === "pending"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Awaiting Revision
+            {pendingGroups.length > 0 && (
+              <span className="ml-2 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-xs px-1.5 py-0.5 rounded-full">
+                {pendingGroups.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setTab("resubmitted")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === "resubmitted"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Resubmitted
+            {resubmittedGroups.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-1.5 py-0.5 rounded-full">
+                {resubmittedGroups.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        <Card className="border-border">
-          <CardContent className="pt-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Filter className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Filter by Assignment Status
-                  </h3>
-                </div>
-                <Badge variant="outline" className="text-muted-foreground">
-                  Showing {filteredPaperGroups.length} of {uniquePaperCount}{" "}
-                  papers
-                </Badge>
-              </div>
-
-              <Tabs
-                defaultValue="all"
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
+        {/* Paper cards */}
+        {activeGroups.length === 0 ? (
+          tab === "pending" ? (
+            <div className="text-center py-16">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3 opacity-50" />
+              <p className="font-medium">No papers awaiting revision</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                All revision requests have been resubmitted by authors
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="font-medium">No resubmitted papers</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Authors have not yet uploaded revised versions
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="space-y-4">
+            {activeGroups.map(({ paper: r, reviewList }) => (
+              <div
+                key={r.paperId}
+                className="border rounded-xl p-5 bg-card hover:shadow-md transition-shadow"
               >
-                <TabsList className="grid grid-cols-5 w-full p-1">
-                  <TabsTrigger
-                    value="all"
-                    className="data-[state=active]:bg-white/10"
+                {/* Top row */}
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base leading-tight line-clamp-2">
+                      {r.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      v{r.versionNumber} · {formatDate(r.versionCreatedAt)}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(r.paperStatus)}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span>All</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {reviews.length}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="pending"
-                    className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Pending</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {getCountByStatus("pending")}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="accepted"
-                    className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Accepted</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {getCountByStatus("accepted")}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="rejected"
-                    className="data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Rejected</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {getCountByStatus("rejected")}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="completed"
-                    className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Completed</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {getCountByStatus("completed")}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                </TabsList>
+                    {r.paperStatus.replace(/_/g, " ")}
+                  </span>
+                </div>
 
-                <div className="mt-6">
-                  {filteredReviews.length === 0 ? (
-                    <div className="text-center py-12 space-y-4">
-                      <div className="inline-flex p-4 rounded-full bg-muted border border-border">
-                        <AlertCircle className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-foreground">
-                          No Papers Found
-                        </h3>
-                        <p className="text-muted-foreground mt-2">
-                          No papers with "{activeTab}" assignment status
-                        </p>
-                      </div>
+                {/* Info grid */}
+                <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Submitted</p>
+                    <p className="text-sm font-medium">
+                      {formatDate(r.versionCreatedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Version</p>
+                    <p className="text-sm font-medium font-mono">
+                      v{r.versionNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Days Since Update
+                    </p>
+                    <p
+                      className={`text-sm font-medium ${
+                        daysSince(r.versionCreatedAt) > 14
+                          ? "text-red-500"
+                          : daysSince(r.versionCreatedAt) > 7
+                            ? "text-yellow-500"
+                            : "text-green-500"
+                      }`}
+                    >
+                      {daysSince(r.versionCreatedAt)}d ago
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status context */}
+                {tab === "pending" ? (
+                  <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-orange-500" />
+                      <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                        Waiting for author revision
+                      </p>
+                    </div>
+                    <p className="text-xs text-orange-700 dark:text-orange-300">
+                      Revision was requested. The author has not yet uploaded a
+                      new version.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        New version uploaded
+                      </p>
+                    </div>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Author has submitted a revised manuscript. Review the new
+                      version and proceed.
+                    </p>
+                  </div>
+                )}
+
+                {/* Reviewers */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Reviewers
+                  </p>
+                  {reviewList.length > 0 ? (
+                    <div className="space-y-2">
+                      {reviewList.map((reviewer, idx) => (
+                        <div
+                          key={reviewer.reviewAssignmentId || idx}
+                          className="flex items-center justify-between py-1.5 px-3 bg-muted/40 rounded-lg"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium">
+                              {reviewer.reviewerName?.charAt(0) || "R"}
+                            </div>
+                            <span className="text-sm">
+                              Reviewer {idx + 1}
+                              {reviewer.reviewerName
+                                ? ` · ${reviewer.reviewerName}`
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {reviewer.reviewAssignmentStatus === "submitted" ? (
+                              <>
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                <span className="text-xs text-green-600 font-medium">
+                                  Completed
+                                </span>
+                                {reviewer.decision && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-muted border capitalize">
+                                    {reviewer.decision}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="h-3.5 w-3.5 text-yellow-500" />
+                                <span className="text-xs text-yellow-600">
+                                  Pending
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-xs px-2"
+                                  onClick={() =>
+                                    sendReminderToReviewer(
+                                      reviewer.reviewerId,
+                                      r.paperId,
+                                    )
+                                  }
+                                  disabled={reminderSent[reviewer.reviewerId]}
+                                >
+                                  <Bell className="h-3 w-3 mr-1" />
+                                  {reminderSent[reviewer.reviewerId]
+                                    ? "Sent ✓"
+                                    : "Remind"}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {filteredPaperGroups.map(({ paper: r, reviewList }) => (
-                        <Card
-                          key={r.paperId}
-                          className="border-border hover:border-primary/40 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
-                        >
-                          <CardHeader className="pb-4">
-                            <div className="flex justify-between items-start">
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-5 w-5 text-blue-400" />
-                                  <CardTitle className="text-xl font-bold line-clamp-1">
-                                    {r.title}
-                                  </CardTitle>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(r.paperStatus)} flex items-center gap-1.5`}
-                                  >
-                                    {getStatusIcon(r.paperStatus)}
-                                    {r.paperStatus.replace("_", " ")}
-                                  </span>
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getAssignmentStatusColor(r.editorAssignmentStatus)}`}
-                                  >
-                                    {r.editorAssignmentStatus}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {formatDate(r.versionCreatedAt)}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="text-sm px-3 py-1 rounded-lg bg-muted border border-border">
-                                v{r.versionNumber}
-                              </span>
-                            </div>
-                          </CardHeader>
+                    <p className="text-xs text-muted-foreground italic">
+                      No reviewers assigned
+                    </p>
+                  )}
+                </div>
 
-                          <CardContent className="space-y-6">
-                            {/* Resubmitted notice */}
-                            {r.paperStatus === "resubmitted" && (
-                              <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-lg p-3">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                                    Author has submitted a revised version
-                                  </p>
-                                </div>
-                                <p className="text-xs text-orange-700 dark:text-orange-300">
-                                  Existing reviewers have been notified to
-                                  re-review. You can assign additional reviewers
-                                  if needed.
-                                </p>
-                              </div>
-                            )}
+                {/* Action buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {r.fileUrl && (
+                    <Button
+                      size="sm"
+                      onClick={() => setViewPdf(r)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Paper
+                    </Button>
+                  )}
 
-                            <div className="space-y-4">
-                              {/* Latest reviewer review */}
-                              {(() => {
-                                const latest = [...reviewList].sort(
-                                  (a, b) =>
-                                    new Date(b.submittedAt).getTime() -
-                                    new Date(a.submittedAt).getTime(),
-                                )[0];
-                                return (
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                      <User className="h-4 w-4" />
-                                      Latest Review
-                                      {reviewList.length > 1 && (
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                          ({reviewList.length} total — see "View
-                                          Reviewers")
-                                        </span>
-                                      )}
-                                    </p>
-                                    <div className="text-sm bg-muted rounded-lg p-3 border border-border space-y-1.5">
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium text-foreground">
-                                          {latest.reviewerName ||
-                                            (latest.reviewerId
-                                              ? "Assigned"
-                                              : "Not assigned")}
-                                        </span>
-                                        <span className="capitalize text-xs font-medium px-2 py-0.5 rounded bg-background border border-border">
-                                          {latest.decision || "Pending"}
-                                        </span>
-                                      </div>
-                                      {latest.comments ? (
-                                        <p className="text-muted-foreground line-clamp-2 text-xs">
-                                          {latest.comments}
-                                        </p>
-                                      ) : (
-                                        <p className="text-muted-foreground italic text-xs">
-                                          No comments provided
-                                        </p>
-                                      )}
-                                      {latest.signatureUrl && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 text-xs gap-1 px-2 hover:text-emerald-400"
-                                          onClick={() => {
-                                            setSelectedSignature(
-                                              `${url}${latest.signatureUrl}`,
-                                            );
-                                            setSignatureModalOpen(true);
-                                          }}
-                                        >
-                                          <CheckCircle className="h-3 w-3" />
-                                          View Signature
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      navigate(`/sub-editor/papers/${r.paperId}/assign-reviewer`)
+                    }
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    {tab === "resubmitted" ? "Add Reviewer" : "Assign Reviewer"}
+                  </Button>
 
-                              {r.fileUrl && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2 hover:border-blue-500/50 hover:bg-blue-500/10"
-                                  onClick={() => setViewPdf(r)}
-                                >
-                                  <Eye className="h-4 w-4" /> View Paper
-                                </Button>
-                              )}
-                            </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fetchReviewers(r.paperId, r.paperStatus)}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    View Reviewers
+                  </Button>
 
-                            <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                              {existingDecisions[r.paperId] ? (
-                                <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                                  <Lock className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                  <div className="space-y-1 min-w-0">
-                                    <p className="text-sm font-semibold text-emerald-400">
-                                      Decision Submitted
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Decision:{" "}
-                                      <span className="font-medium capitalize text-foreground">
-                                        {existingDecisions[r.paperId]!.decision}
-                                      </span>
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Submitted:{" "}
-                                      {formatDate(
-                                        existingDecisions[r.paperId]!
-                                          .decided_at,
-                                      )}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground italic">
-                                      A new decision can only be made after the
-                                      author uploads a revised version.
-                                    </p>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={() => {
-                                      setActivePaperId(r.paperId);
-                                      setPendingDecision("approve");
-                                      setDecisionModalOpen(true);
-                                    }}
-                                    disabled={r.paperStatus === "published"}
-                                  >
-                                    <ThumbsUp className="h-3.5 w-3.5" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1 gap-1.5 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                                    onClick={() => {
-                                      setActivePaperId(r.paperId);
-                                      setPendingDecision("revision");
-                                      setDecisionModalOpen(true);
-                                    }}
-                                    disabled={r.paperStatus === "published"}
-                                  >
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                    Revision
-                                  </Button>
-                                </div>
-                              )}
+                  {tab === "resubmitted" && !existingDecisions[r.paperId] && (
+                    <>
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          setActivePaperId(r.paperId);
+                          setPendingDecision("approve");
+                          setDecisionModalOpen(true);
+                        }}
+                      >
+                        <ThumbsUp className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                        onClick={() => {
+                          setActivePaperId(r.paperId);
+                          setPendingDecision("revision");
+                          setDecisionModalOpen(true);
+                        }}
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Revision
+                      </Button>
+                    </>
+                  )}
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full gap-2 hover:border-purple-500/50 hover:bg-purple-500/10"
-                                onClick={() =>
-                                  fetchReviewers(r.paperId, r.paperStatus)
-                                }
-                              >
-                                <Users className="h-4 w-4" />
-                                View Reviewers
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                  {existingDecisions[r.paperId] && (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 px-2 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                      <Lock className="h-3 w-3" />
+                      Decision submitted ·{" "}
+                      {existingDecisions[r.paperId]!.decision}
                     </div>
                   )}
                 </div>
-              </Tabs>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         {viewPdf && (
           <div className="fixed inset-0 z-50">

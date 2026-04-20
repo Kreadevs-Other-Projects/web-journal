@@ -22,7 +22,9 @@ export type PaperStatus =
   | "ready_for_publication"
   | "sub_editor_approved"
   | "reviewed"
-  | "assigned_to_sub_editor";
+  | "assigned_to_sub_editor"
+  | "pending_ca_approval"
+  | "ca_rejected";
 
 interface StatusBadgeProps {
   status: PaperStatus | string;
@@ -107,6 +109,16 @@ const statusConfig: Record<string, { label: string; className: string; dotColor:
     className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
     dotColor: "bg-purple-500",
   },
+  pending_ca_approval: {
+    label: "Awaiting CA Approval",
+    className: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+    dotColor: "bg-orange-500",
+  },
+  ca_rejected: {
+    label: "Rejected by CA",
+    className: "bg-destructive/10 text-destructive border-destructive/20",
+    dotColor: "bg-destructive",
+  },
 };
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
@@ -122,6 +134,8 @@ const STATUS_DESCRIPTIONS: Record<string, string> = {
   payment_review: "Author has uploaded payment receipt. Awaiting publisher approval.",
   ready_for_publication: "Payment confirmed. Paper is ready to be published.",
   rejected: "The paper has been rejected and will not be published in this journal.",
+  pending_ca_approval: "Waiting for the corresponding author to approve this submission via email.",
+  ca_rejected: "The corresponding author has rejected this submission.",
   published: "Paper has been published and is publicly accessible.",
   draft: "Issue has been created but is not yet open for submissions.",
   open: "This issue is currently accepting paper submissions from authors.",

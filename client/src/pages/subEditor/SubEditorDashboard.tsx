@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -102,6 +103,7 @@ interface Review {
 export default function SubEditorDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
@@ -1199,7 +1201,7 @@ export default function SubEditorDashboard() {
                     <Button
                       variant="outline"
                       className="w-full justify-start hover:bg-white/10"
-                      onClick={() => setOpenAssignReviewerDialog(true)}
+                      onClick={() => selectedPaper && navigate(`/sub-editor/papers/${selectedPaper.id}/assign-reviewer`)}
                     >
                       <Users className="h-4 w-4 mr-2" />
                       Assign New Reviewer
@@ -1737,7 +1739,9 @@ export default function SubEditorDashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      {/* Assign reviewer dialog replaced by /sub-editor/papers/:paperId/assign-reviewer page */}
+      {false && (
+        <Dialog
         open={openAssignReviewerDialog}
         onOpenChange={setOpenAssignReviewerDialog}
       >
@@ -1873,6 +1877,7 @@ export default function SubEditorDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       <Dialog open={openDecisionDialog} onOpenChange={setOpenDecisionDialog}>
         <DialogContent className="max-w-2xl">

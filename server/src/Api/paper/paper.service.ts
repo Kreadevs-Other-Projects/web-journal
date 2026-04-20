@@ -16,7 +16,8 @@ import {
 } from "./paper.repository";
 import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
-import { sendSubmissionConfirmationEmail } from "../../utils/emails/paperEmails";
+import { sendSubmissionConfirmationEmail, sendCorrAuthorApprovalEmail } from "../../utils/emails/paperEmails";
+import crypto from "crypto";
 import { extractLatexToHtml } from "../../utils/latexToHtml";
 
 const MAX_PAPERS_PER_ISSUE = 99;
@@ -104,13 +105,45 @@ export const createPaperService = async (
     await autoAssignToIssue(paper.id, data.journal_id).catch(() => {});
   }
 
-  if (authorEmail && authorUsername) {
+  // Handle corresponding author approval flow
+  const corrAuthor = data.corresponding_author_details?.[0] as { name?: string; email?: string } | undefined;
+
+  if (corrAuthor?.email) {
+    const approvalToken = crypto.randomBytes(32).toString("hex");
+
+    // Look up journal name for the email
+    const journalRes = await pool.query("SELECT title FROM journals WHERE id = $1", [data.journal_id]);
+    const journalName = journalRes.rows[0]?.title || "GIKI JournalHub";
+
+    // Check if CA has an account
+    const existingUser = await pool.query("SELECT id FROM users WHERE email = $1", [corrAuthor.email]);
+    const hasAccount = existingUser.rows.length > 0;
+
+    await pool.query(
+      `INSERT INTO paper_approvals (paper_id, corr_author_email, corr_author_name, token)
+       VALUES ($1, $2, $3, $4)`,
+      [paper.id, corrAuthor.email, corrAuthor.name || "Author", approvalToken],
+    );
+
+    sendCorrAuthorApprovalEmail({
+      corrAuthorEmail: corrAuthor.email,
+      corrAuthorName: corrAuthor.name || "Author",
+      paperTitle: paper.title,
+      authorName: authorUsername || "Submitting Author",
+      journalName,
+      approvalToken,
+      hasAccount,
+    }).catch((err) => console.error("[email] CA approval email failed:", err));
+  } else if (authorEmail && authorUsername) {
+    // No CA specified — go straight to submitted
+    await pool.query("UPDATE papers SET status = 'submitted', updated_at = NOW() WHERE id = $1", [paper.id]);
     sendSubmissionConfirmationEmail(authorEmail, authorUsername, paper.title, paper.id).catch(
       (err) => console.error("[email] submission confirmation failed:", err),
     );
+    return { ...paper, status: "submitted" };
   }
 
-  return { ...paper, status: "submitted" };
+  return { ...paper, status: corrAuthor?.email ? "pending_ca_approval" : "submitted" };
 };
 
 export const getPaperVersionsService = async (paperId: string) => {

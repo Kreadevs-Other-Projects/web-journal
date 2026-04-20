@@ -35,6 +35,7 @@ interface ArticleData {
   author_names: string[];
   author_details?: AuthorDetail[];
   corresponding_authors?: string[];
+  corresponding_author_details?: AuthorDetail[];
   paper_references?: { text: string; link?: string }[];
   submitted_at: string;
   published_at?: string;
@@ -204,6 +205,20 @@ export default function ArticlePage() {
       : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
+  // SEO meta tag for authors
+  useEffect(() => {
+    if (!article?.author_details?.length) return;
+    const authorNames = article.author_details.map((a) => a.name).join(", ");
+    let meta = document.querySelector('meta[name="author"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "author";
+      document.head.appendChild(meta);
+    }
+    meta.content = authorNames;
+    return () => { meta?.remove(); };
+  }, [article]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -238,18 +253,49 @@ export default function ArticlePage() {
                 {article.title}
               </h1>
 
-              <div className="text-base text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {authorsDisplay}
-                </span>
-              </div>
-
-              {article.corresponding_authors?.length ? (
-                <p className="text-sm text-muted-foreground">
-                  Corresponding author(s):{" "}
-                  {article.corresponding_authors.join(", ")}
-                </p>
-              ) : null}
+              {/* Structured authors with affiliation superscripts */}
+              {article.author_details && article.author_details.length > 0 ? (
+                <div className="mt-3 mb-2">
+                  <p className="text-base text-gray-700 dark:text-gray-300">
+                    {article.author_details.map((author, i) => (
+                      <span key={i}>
+                        {i > 0 && ", "}
+                        <span className="font-medium">{author.name}</span>
+                        {author.affiliation && (
+                          <sup className="text-primary text-xs ml-0.5">{i + 1}</sup>
+                        )}
+                      </span>
+                    ))}
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    {article.author_details.map((author, i) =>
+                      author.affiliation ? (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          <sup>{i + 1}</sup> {author.affiliation}
+                        </p>
+                      ) : null
+                    )}
+                  </div>
+                  {article.corresponding_author_details?.[0] && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <span className="font-medium">Corresponding author:</span>{" "}
+                      {article.corresponding_author_details[0].name}
+                      {article.corresponding_author_details[0].email && (
+                        <a
+                          href={`mailto:${article.corresponding_author_details[0].email}`}
+                          className="text-primary ml-1"
+                        >
+                          ({article.corresponding_author_details[0].email})
+                        </a>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-base text-muted-foreground">
+                  <span className="font-medium text-foreground">{authorsDisplay}</span>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 {publishedDate && (

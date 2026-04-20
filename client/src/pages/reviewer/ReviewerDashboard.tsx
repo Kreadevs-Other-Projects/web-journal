@@ -57,6 +57,7 @@ import { url } from "@/url";
 import { useToast } from "@/hooks/use-toast";
 
 interface Paper {
+  confidentialComments: import("react/jsx-runtime").JSX.Element;
   updated_at: any;
   review_submitted_at: any;
   paper_id: string;
@@ -97,6 +98,7 @@ export default function ReviewerDashboard() {
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
+  const [commentsForAE, setCommentsForAE] = useState("");
   const [confidentialComments, setConfidentialComments] = useState("");
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
@@ -236,8 +238,7 @@ export default function ReviewerDashboard() {
 
       formData.append("decision", decision);
       formData.append("comments", comments);
-      formData.append("confidentialComments", confidentialComments);
-
+      formData.append("confidentialComments", commentsForAE);
       if (requiresSignature) {
         if (!signature || !password) {
           toast({
@@ -332,6 +333,7 @@ export default function ReviewerDashboard() {
     setSelectedPaper(null);
     setDecision("");
     setComments("");
+    setCommentsForAE("");
     setConfidentialComments("");
     setRatings({});
   };
@@ -422,7 +424,8 @@ export default function ReviewerDashboard() {
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
     const needsHtml =
       viewMode === "text" ||
-      (viewMode === "pdf" && (ext === "docx" || ext === "tex" || ext === "latex"));
+      (viewMode === "pdf" &&
+        (ext === "docx" || ext === "tex" || ext === "latex"));
     if (!needsHtml || !selectedPaper?.paper_id) return;
     const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
     if (!versionId) return;
@@ -557,9 +560,16 @@ export default function ReviewerDashboard() {
                         >
                           <FileText className="h-3.5 w-3.5" />
                           {(() => {
-                            const _rext = (selectedVersion?.file_url || selectedPaper.file_url)?.split(".").pop()?.toLowerCase();
+                            const _rext = (
+                              selectedVersion?.file_url ||
+                              selectedPaper.file_url
+                            )
+                              ?.split(".")
+                              .pop()
+                              ?.toLowerCase();
                             if (_rext === "docx") return "Document";
-                            if (_rext === "tex" || _rext === "latex") return "LaTeX";
+                            if (_rext === "tex" || _rext === "latex")
+                              return "LaTeX";
                             return "PDF";
                           })()}
                         </button>
@@ -713,7 +723,11 @@ export default function ReviewerDashboard() {
                                     )}
                                   </div>
                                   <div
-                                    className={isLatex ? "paper-webview-content latex-content" : "paper-webview-content"}
+                                    className={
+                                      isLatex
+                                        ? "paper-webview-content latex-content"
+                                        : "paper-webview-content"
+                                    }
                                     dangerouslySetInnerHTML={{
                                       __html: DOMPurify.sanitize(htmlContent),
                                     }}
@@ -880,6 +894,19 @@ export default function ReviewerDashboard() {
                       </div>
                     )}
 
+                    {/* PASTE THIS START */}
+                    {selectedPaper.confidentialComments && (
+                      <div className="space-y-2 pt-2">
+                        <Label className="text-sm font-medium text-primary/80">
+                          Confidential Comments to AE
+                        </Label>
+                        <p className="text-sm text-primary/90 bg-primary/5 border border-primary/10 p-4 rounded-lg whitespace-pre-wrap italic">
+                          {selectedPaper.confidentialComments}
+                        </p>
+                      </div>
+                    )}
+                    {/* PASTE THIS END */}
+
                     {selectedPaper.review_submitted_at && (
                       <p className="text-xs text-muted-foreground">
                         Submitted on{" "}
@@ -929,6 +956,32 @@ export default function ReviewerDashboard() {
                             className="min-h-[150px] input-glow"
                             required
                           />
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                          <Label
+                            htmlFor="ae-comments"
+                            className="flex items-center gap-2"
+                          >
+                            Comments for Associate Editor (AE)
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] h-4 bg-primary/10 text-primary border-none"
+                            >
+                              Confidential
+                            </Badge>
+                          </Label>
+                          <Textarea
+                            id="ae-comments"
+                            value={commentsForAE}
+                            onChange={(e) => setCommentsForAE(e.target.value)}
+                            placeholder="Private notes for the AE (Authors will not see this)..."
+                            className="min-h-[100px] border-dashed border-primary/30 focus:border-primary"
+                          />
+                          <p className="text-[11px] text-muted-foreground italic">
+                            * These comments are only visible to the AE and
+                            Chief Editor.
+                          </p>
                         </div>
 
                         <div className="space-y-3">

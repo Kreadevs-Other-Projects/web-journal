@@ -28,6 +28,7 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       r.decision AS review_decision,
       r.comments,
+      r.confidential_comments, 
       r.signed_at AS review_submitted_at,
 
       j.title AS journal_name,
@@ -58,6 +59,7 @@ export const submitReviewByVersion = async (
   reviewerId: string,
   decision: string,
   comments: string,
+  confidentialComments: string, // Add this
   password?: string,
   signatureFilename?: string,
 ) => {
@@ -122,18 +124,19 @@ export const submitReviewByVersion = async (
 
     const review = await client.query(
       `
-      INSERT INTO reviews
-        (review_assignment_id, decision, comments, signature_url, signed_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (review_assignment_id)
-      DO UPDATE SET
-        decision   = EXCLUDED.decision,
-        comments   = EXCLUDED.comments,
-        signature_url = EXCLUDED.signature_url,
-        signed_at  = NOW()
-      RETURNING *
-      `,
-      [assignmentId, decision, comments, signatureUrl],
+    INSERT INTO reviews
+      (review_assignment_id, decision, comments, confidential_comments, signature_url, signed_at)
+    VALUES ($1, $2, $3, $4, $5, NOW())
+    ON CONFLICT (review_assignment_id)
+    DO UPDATE SET
+      decision   = EXCLUDED.decision,
+      comments   = EXCLUDED.comments,
+      confidential_comments = EXCLUDED.confidential_comments, -- Add this line
+      signature_url = EXCLUDED.signature_url,
+      signed_at  = NOW()
+    RETURNING *
+    `,
+      [assignmentId, decision, comments, confidentialComments, signatureUrl], // Add to array
     );
 
     await client.query(

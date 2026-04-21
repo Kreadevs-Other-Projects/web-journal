@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon",
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "create": "ts-node src/database/create.db.ts",
     "drop": "ts-node src/database/drop.db.ts",
     "migrate": "ts-node src/database/migrate.db.ts",

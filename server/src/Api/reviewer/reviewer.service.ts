@@ -11,6 +11,7 @@ export const submitPaperReview = async (
   comments: string,
   password?: string,
   signatureFilename?: string,
+  confidentialComments?: string,
 ) => {
   return repo.submitReviewByVersion(
     paperId,
@@ -19,5 +20,6 @@ export const submitPaperReview = async (
     comments,
     password,
     signatureFilename,
+    confidentialComments,
   );
 };

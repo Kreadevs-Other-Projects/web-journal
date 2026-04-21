@@ -218,7 +218,7 @@ export default function StaffDetailPage() {
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
           <Link
-            to="/chief-editor"
+            to={user?.role === "sub_editor" ? "/sub-editor" : "/chief-editor"}
             className="hover:text-foreground transition-colors"
           >
             Dashboard

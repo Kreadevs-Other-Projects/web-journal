@@ -422,7 +422,8 @@ export default function ReviewerDashboard() {
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
     const needsHtml =
       viewMode === "text" ||
-      (viewMode === "pdf" && (ext === "docx" || ext === "tex" || ext === "latex"));
+      (viewMode === "pdf" &&
+        (ext === "docx" || ext === "tex" || ext === "latex"));
     if (!needsHtml || !selectedPaper?.paper_id) return;
     const versionId = selectedVersion?.id ?? selectedPaper.paper_version_id;
     if (!versionId) return;
@@ -557,9 +558,16 @@ export default function ReviewerDashboard() {
                         >
                           <FileText className="h-3.5 w-3.5" />
                           {(() => {
-                            const _rext = (selectedVersion?.file_url || selectedPaper.file_url)?.split(".").pop()?.toLowerCase();
+                            const _rext = (
+                              selectedVersion?.file_url ||
+                              selectedPaper.file_url
+                            )
+                              ?.split(".")
+                              .pop()
+                              ?.toLowerCase();
                             if (_rext === "docx") return "Document";
-                            if (_rext === "tex" || _rext === "latex") return "LaTeX";
+                            if (_rext === "tex" || _rext === "latex")
+                              return "LaTeX";
                             return "PDF";
                           })()}
                         </button>
@@ -713,7 +721,11 @@ export default function ReviewerDashboard() {
                                     )}
                                   </div>
                                   <div
-                                    className={isLatex ? "paper-webview-content latex-content" : "paper-webview-content"}
+                                    className={
+                                      isLatex
+                                        ? "paper-webview-content latex-content"
+                                        : "paper-webview-content"
+                                    }
                                     dangerouslySetInnerHTML={{
                                       __html: DOMPurify.sanitize(htmlContent),
                                     }}
@@ -928,6 +940,22 @@ export default function ReviewerDashboard() {
                             placeholder="Provide detailed feedback for the authors..."
                             className="min-h-[150px] input-glow"
                             required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="confidentialComments">
+                            Confidential Comments to Associate Editor
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              (not visible to the author)
+                            </span>
+                          </Label>
+                          <Textarea
+                            id="confidentialComments"
+                            value={confidentialComments}
+                            onChange={(e) => setConfidentialComments(e.target.value)}
+                            placeholder="Optional private notes for the associate editor..."
+                            className="min-h-[100px] input-glow"
                           />
                         </div>
 

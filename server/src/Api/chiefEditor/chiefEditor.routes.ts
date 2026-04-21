@@ -66,7 +66,7 @@ router.get(
 router.get(
   "/getAllPapers",
   authMiddleware,
-  authorize("chief_editor"),
+  authorize("chief_editor", "sub_editor"),
   getAllPapers,
 );
 
@@ -217,9 +217,29 @@ router.get(
 );
 
 // Reviewer applications
-router.get("/applications", authMiddleware, authorize("chief_editor"), getApplications);
-router.get("/applications/count", authMiddleware, authorize("chief_editor"), getApplicationsCount);
-router.post("/applications/:applicationId/invite", authMiddleware, authorize("chief_editor"), inviteApplication);
-router.post("/applications/:applicationId/decline", authMiddleware, authorize("chief_editor"), declineApplication);
+router.get(
+  "/applications",
+  authMiddleware,
+  authorize("chief_editor"),
+  getApplications,
+);
+router.get(
+  "/applications/count",
+  authMiddleware,
+  authorize("chief_editor"),
+  getApplicationsCount,
+);
+router.post(
+  "/applications/:applicationId/invite",
+  authMiddleware,
+  authorize("chief_editor"),
+  inviteApplication,
+);
+router.post(
+  "/applications/:applicationId/decline",
+  authMiddleware,
+  authorize("chief_editor"),
+  declineApplication,
+);
 
 export default router;

@@ -160,13 +160,13 @@ export const extractMetadata = async (req: AuthUser, res: Response) => {
       .json({ success: false, message: "No file uploaded" });
   }
   const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
-  if (!["docx", "pdf"].includes(ext)) {
+  if (!["docx", "pdf", "tex", "latex"].includes(ext)) {
     fs.unlink(req.file.path, () => {});
     return res
       .status(400)
       .json({
         success: false,
-        message: "Only .docx and .pdf files support metadata extraction",
+        message: "Only .docx, .pdf, and .tex/.latex files support metadata extraction",
       });
   }
   try {

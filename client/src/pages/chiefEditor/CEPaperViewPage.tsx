@@ -108,7 +108,8 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: "bg-green-500/10 text-green-600 border-green-500/30",
   awaiting_payment: "bg-yellow-500/10 text-yellow-700 border-yellow-500/30",
   payment_review: "bg-lime-500/10 text-lime-700 border-lime-500/30",
-  ready_for_publication: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
+  ready_for_publication:
+    "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   rejected: "bg-red-500/10 text-red-600 border-red-500/30",
   published: "bg-teal-500/10 text-teal-600 border-teal-500/30",
 };
@@ -140,7 +141,9 @@ export default function CEPaperViewPage() {
 
   // Versions
   const [versions, setVersions] = useState<PaperVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<PaperVersion | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<PaperVersion | null>(
+    null,
+  );
   const [versionsLoading, setVersionsLoading] = useState(true);
 
   // Document viewer
@@ -150,7 +153,9 @@ export default function CEPaperViewPage() {
   const [pdfZoom, setPdfZoom] = useState(100);
 
   // Decision history
-  const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEntry[]>([]);
+  const [decisionHistory, setDecisionHistory] = useState<
+    DecisionHistoryEntry[]
+  >([]);
 
   // Status log
   const [statusLog, setStatusLog] = useState<any[]>([]);
@@ -167,7 +172,9 @@ export default function CEPaperViewPage() {
 
   // CE decision
   const [ceDecisionModalOpen, setCeDecisionModalOpen] = useState(false);
-  const [pendingDecision, setPendingDecision] = useState<"accepted" | "revision" | "rejected" | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<
+    "accepted" | "revision" | "rejected" | null
+  >(null);
   const [decisionNote, setDecisionNote] = useState("");
   const [decisionEmail, setDecisionEmail] = useState("");
   const [decisionPassword, setDecisionPassword] = useState("");
@@ -187,7 +194,9 @@ export default function CEPaperViewPage() {
       setLocalPaper(paper);
       setTitleValue(paper.title);
       setAbstractValue(paper.abstract || "");
-      setPaperDecided(["accepted", "rejected", "published"].includes(paper.status));
+      setPaperDecided(
+        ["accepted", "rejected", "published"].includes(paper.status),
+      );
     }
   }, []);
 
@@ -201,11 +210,14 @@ export default function CEPaperViewPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.versions) {
-          const sorted = [...d.versions].sort((a, b) => a.version_number - b.version_number);
+          const sorted = [...d.versions].sort(
+            (a, b) => a.version_number - b.version_number,
+          );
           setVersions(sorted);
           const current =
-            sorted.find((v) => v.version_number === paper?.current_version_number) ||
-            sorted[sorted.length - 1];
+            sorted.find(
+              (v) => v.version_number === paper?.current_version_number,
+            ) || sorted[sorted.length - 1];
           setSelectedVersion(current || null);
         }
       })
@@ -225,7 +237,8 @@ export default function CEPaperViewPage() {
     const ext = fileUrl?.split(".").pop()?.toLowerCase();
     const needsHtml =
       viewMode === "text" ||
-      (viewMode === "pdf" && (ext === "docx" || ext === "tex" || ext === "latex"));
+      (viewMode === "pdf" &&
+        (ext === "docx" || ext === "tex" || ext === "latex"));
     if (!needsHtml || !paperId) return;
     const versionId = selectedVersion?.id;
     if (!versionId) return;
@@ -248,6 +261,7 @@ export default function CEPaperViewPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setDecisionHistory(d.history || []);
+        console.log(d.history);
       })
       .catch(() => {});
   }, [paperId, token]);
@@ -279,7 +293,10 @@ export default function CEPaperViewPage() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Save failed");
-      toast({ title: "Saved", description: `${field === "title" ? "Title" : "Abstract"} updated.` });
+      toast({
+        title: "Saved",
+        description: `${field === "title" ? "Title" : "Abstract"} updated.`,
+      });
       if (field === "title") {
         setEditingTitle(false);
         setLocalPaper((prev) => (prev ? { ...prev, title: value } : prev));
@@ -289,13 +306,19 @@ export default function CEPaperViewPage() {
         setLocalPaper((prev) => (prev ? { ...prev, abstract: value } : prev));
       }
     } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Save failed",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSavingMeta(false);
     }
   };
 
-  const openDecisionModal = (decision: "accepted" | "revision" | "rejected") => {
+  const openDecisionModal = (
+    decision: "accepted" | "revision" | "rejected",
+  ) => {
     setPendingDecision(decision);
     setDecisionNote("");
     setDecisionEmail("");
@@ -332,7 +355,10 @@ export default function CEPaperViewPage() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      toast({ title: "Decision saved", description: "The editor decision has been submitted." });
+      toast({
+        title: "Decision saved",
+        description: "The editor decision has been submitted.",
+      });
       setCeDecisionModalOpen(false);
       setPaperDecided(true);
       setLocalPaper((prev) =>
@@ -340,19 +366,30 @@ export default function CEPaperViewPage() {
           ? {
               ...prev,
               status:
-                pendingDecision === "revision" ? "pending_revision" : pendingDecision,
+                pendingDecision === "revision"
+                  ? "pending_revision"
+                  : pendingDecision,
             }
           : prev,
       );
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Failed",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setSubmittingDecision(false);
     }
   };
 
   const submitOverride = async () => {
-    if (!overrideStatus || !overrideReason || !overrideEmail || !overridePassword) {
+    if (
+      !overrideStatus ||
+      !overrideReason ||
+      !overrideEmail ||
+      !overridePassword
+    ) {
       toast({ title: "All fields required", variant: "destructive" });
       return;
     }
@@ -381,9 +418,15 @@ export default function CEPaperViewPage() {
         description: `Status updated to "${overrideStatus.replace(/_/g, " ")}"`,
       });
       setOverrideOpen(false);
-      setLocalPaper((prev) => (prev ? { ...prev, status: overrideStatus } : prev));
+      setLocalPaper((prev) =>
+        prev ? { ...prev, status: overrideStatus } : prev,
+      );
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Failed",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setOverrideLoading(false);
     }
@@ -396,7 +439,10 @@ export default function CEPaperViewPage() {
           <p className="text-muted-foreground">
             Paper not found. Please go back and try again.
           </p>
-          <Button variant="outline" onClick={() => navigate("/chief-editor/papers")}>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/chief-editor/papers")}
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Papers
           </Button>
@@ -407,7 +453,9 @@ export default function CEPaperViewPage() {
 
   const displayPaper = localPaper || paper;
   const displayFileUrl = selectedVersion?.file_url || paper.file_url;
-  const reviewerHistory = decisionHistory.filter((h) => h.role_type === "reviewer");
+  const reviewerHistory = decisionHistory.filter(
+    (h) => h.role_type === "reviewer",
+  );
   const aeHistory = decisionHistory.filter((h) => h.role_type === "sub_editor");
   const canMakeDecision =
     !paperDecided &&
@@ -476,7 +524,10 @@ export default function CEPaperViewPage() {
                   >
                     <FileText className="h-3.5 w-3.5" />
                     {(() => {
-                      const _ext = displayFileUrl?.split(".").pop()?.toLowerCase();
+                      const _ext = displayFileUrl
+                        ?.split(".")
+                        .pop()
+                        ?.toLowerCase();
                       if (_ext === "docx") return "Document";
                       if (_ext === "tex" || _ext === "latex") return "LaTeX";
                       return "PDF";
@@ -532,7 +583,9 @@ export default function CEPaperViewPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => window.open(`${url}${displayFileUrl}`, "_blank")}
+                        onClick={() =>
+                          window.open(`${url}${displayFileUrl}`, "_blank")
+                        }
                       >
                         <Maximize2 className="h-3.5 w-3.5" />
                       </Button>
@@ -559,7 +612,9 @@ export default function CEPaperViewPage() {
               {/* Version selector */}
               {!versionsLoading && versions.length > 0 && (
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground shrink-0">Version:</span>
+                  <span className="text-sm text-muted-foreground shrink-0">
+                    Version:
+                  </span>
                   <Select
                     value={selectedVersion?.id ?? ""}
                     onValueChange={(val) => {
@@ -574,7 +629,9 @@ export default function CEPaperViewPage() {
                       {versions.map((v) => (
                         <SelectItem key={v.id} value={v.id} className="text-xs">
                           v{v.version_number}
-                          {v.version_number === paper.current_version_number ? " (current)" : ""}
+                          {v.version_number === paper.current_version_number
+                            ? " (current)"
+                            : ""}
                           {" — "}
                           {formatDate(v.created_at)}
                           {v.version_label ? ` · ${v.version_label}` : ""}
@@ -589,11 +646,14 @@ export default function CEPaperViewPage() {
             <CardContent className="p-0">
               {/* Old version banner */}
               {selectedVersion &&
-                selectedVersion.version_number !== paper.current_version_number && (
+                selectedVersion.version_number !==
+                  paper.current_version_number && (
                   <div className="bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-2">
                     <p className="text-xs text-amber-800 dark:text-amber-200">
                       You are viewing{" "}
-                      <span className="font-semibold">v{selectedVersion.version_number}</span>{" "}
+                      <span className="font-semibold">
+                        v{selectedVersion.version_number}
+                      </span>{" "}
                       — this is not the current version.
                     </p>
                     <button
@@ -601,7 +661,8 @@ export default function CEPaperViewPage() {
                       onClick={() => {
                         const current =
                           versions.find(
-                            (v) => v.version_number === paper.current_version_number,
+                            (v) =>
+                              v.version_number === paper.current_version_number,
                           ) || versions[versions.length - 1];
                         if (current) setSelectedVersion(current);
                       }}
@@ -622,7 +683,9 @@ export default function CEPaperViewPage() {
                             <div className="flex items-center justify-center h-full">
                               <div className="text-center">
                                 <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                                <p className="text-sm text-muted-foreground">Converting document...</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Converting document...
+                                </p>
                               </div>
                             </div>
                           ) : htmlContent ? (
@@ -640,22 +703,36 @@ export default function CEPaperViewPage() {
                                 </h1>
                                 {displayPaper.abstract && (
                                   <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Abstract</p>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{displayPaper.abstract}</p>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                      Abstract
+                                    </p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                      {displayPaper.abstract}
+                                    </p>
                                   </div>
                                 )}
                               </div>
                               <div
-                                className={isLatex ? "paper-webview-content latex-content" : "paper-webview-content"}
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+                                className={
+                                  isLatex
+                                    ? "paper-webview-content latex-content"
+                                    : "paper-webview-content"
+                                }
+                                dangerouslySetInnerHTML={{
+                                  __html: DOMPurify.sanitize(htmlContent),
+                                }}
                               />
                             </div>
                           ) : (
                             <div className="flex items-center justify-center h-full">
                               <div className="text-center p-8">
                                 <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                                <p className="text-sm font-medium">Document preview unavailable</p>
-                                <p className="text-xs text-muted-foreground mt-1">Could not convert this document.</p>
+                                <p className="text-sm font-medium">
+                                  Document preview unavailable
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Could not convert this document.
+                                </p>
                               </div>
                             </div>
                           )}
@@ -721,7 +798,9 @@ export default function CEPaperViewPage() {
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center p-8">
                           <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-sm font-medium">Text view unavailable</p>
+                          <p className="text-sm font-medium">
+                            Text view unavailable
+                          </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Could not convert this document to text.
                           </p>
@@ -840,7 +919,9 @@ export default function CEPaperViewPage() {
                         <Button
                           size="sm"
                           disabled={savingMeta}
-                          onClick={() => saveMetadata("abstract", abstractValue)}
+                          onClick={() =>
+                            saveMetadata("abstract", abstractValue)
+                          }
                         >
                           {savingMeta && (
                             <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -865,7 +946,9 @@ export default function CEPaperViewPage() {
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
                       Author
                     </p>
-                    <p className="font-medium">{displayPaper.author_name || "—"}</p>
+                    <p className="font-medium">
+                      {displayPaper.author_name || "—"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
@@ -886,7 +969,9 @@ export default function CEPaperViewPage() {
                       Submitted
                     </p>
                     <p className="font-medium">
-                      {displayPaper.submitted_at ? formatDate(displayPaper.submitted_at) : "—"}
+                      {displayPaper.submitted_at
+                        ? formatDate(displayPaper.submitted_at)
+                        : "—"}
                     </p>
                   </div>
                   {displayPaper.accepted_at && (
@@ -894,7 +979,9 @@ export default function CEPaperViewPage() {
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
                         Accepted
                       </p>
-                      <p className="font-medium">{formatDate(displayPaper.accepted_at)}</p>
+                      <p className="font-medium">
+                        {formatDate(displayPaper.accepted_at)}
+                      </p>
                     </div>
                   )}
                   {displayPaper.published_at && (
@@ -902,7 +989,9 @@ export default function CEPaperViewPage() {
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
                         Published
                       </p>
-                      <p className="font-medium">{formatDate(displayPaper.published_at)}</p>
+                      <p className="font-medium">
+                        {formatDate(displayPaper.published_at)}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -923,8 +1012,48 @@ export default function CEPaperViewPage() {
                   <p className="font-medium">
                     {displayPaper.current_ae_name || "Unassigned"}
                   </p>
-                  {displayPaper.ae_decision && (
-                    <div className="mt-1.5 space-y-1">
+                  {aeHistory.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {aeHistory.map((ae, i) => (
+                        <div
+                          key={i}
+                          className="rounded-md border border-border/50 p-3 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-xs">{ae.username}</p>
+                            {ae.version_number && (
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                v{ae.version_number}
+                              </span>
+                            )}
+                          </div>
+                          <Badge
+                            className={`text-[10px] h-4 px-1.5 ${
+                              AE_DECISION_COLORS[ae.decision] ||
+                              "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {ae.decision}
+                          </Badge>
+                          {ae.comments ? (
+                            <p className="text-xs text-muted-foreground leading-relaxed italic">
+                              "{ae.comments}"
+                            </p>
+                          ) : ae.decision !== "approve" ? (
+                            <p className="text-xs text-muted-foreground italic">
+                              No comment provided
+                            </p>
+                          ) : null}
+                          {ae.decided_at && (
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatDate(ae.decided_at)}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : displayPaper.ae_decision ? (
+                    <div className="mt-1.5">
                       <Badge
                         className={
                           AE_DECISION_COLORS[displayPaper.ae_decision] ||
@@ -933,13 +1062,8 @@ export default function CEPaperViewPage() {
                       >
                         {displayPaper.ae_decision}
                       </Badge>
-                      {aeHistory.length > 0 && aeHistory[0].comments && (
-                        <p className="text-xs text-muted-foreground italic">
-                          "{aeHistory[0].comments}"
-                        </p>
-                      )}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Reviewer feedback from decision history */}
@@ -992,27 +1116,28 @@ export default function CEPaperViewPage() {
                 )}
 
                 {/* Fallback: show basic reviewer list if no detailed history */}
-                {reviewerHistory.length === 0 && displayPaper.reviewers.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Reviewers
-                    </p>
-                    <div className="space-y-1">
-                      {displayPaper.reviewers.map((r) => (
-                        <div
-                          key={r.id}
-                          className="flex items-center justify-between text-xs"
-                        >
-                          <span className="font-medium">{r.name}</span>
-                          <span className="text-muted-foreground capitalize">
-                            {r.status}
-                            {r.decision ? ` · ${r.decision}` : ""}
-                          </span>
-                        </div>
-                      ))}
+                {reviewerHistory.length === 0 &&
+                  displayPaper.reviewers.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Reviewers
+                      </p>
+                      <div className="space-y-1">
+                        {displayPaper.reviewers.map((r) => (
+                          <div
+                            key={r.id}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="font-medium">{r.name}</span>
+                            <span className="text-muted-foreground capitalize">
+                              {r.status}
+                              {r.decision ? ` · ${r.decision}` : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </CardContent>
             </Card>
 
@@ -1020,11 +1145,14 @@ export default function CEPaperViewPage() {
             {canMakeDecision && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Chief Editor Decision</CardTitle>
+                  <CardTitle className="text-sm">
+                    Chief Editor Decision
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Make a final decision on this paper. Credential verification is required.
+                    Make a final decision on this paper. Credential verification
+                    is required.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <Button
@@ -1164,7 +1292,10 @@ export default function CEPaperViewPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCeDecisionModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCeDecisionModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -1193,7 +1324,10 @@ export default function CEPaperViewPage() {
       </Dialog>
 
       {/* Override Modal */}
-      <Dialog open={overrideOpen} onOpenChange={(open) => !open && setOverrideOpen(false)}>
+      <Dialog
+        open={overrideOpen}
+        onOpenChange={(open) => !open && setOverrideOpen(false)}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1201,8 +1335,8 @@ export default function CEPaperViewPage() {
               Override Paper Status
             </DialogTitle>
             <DialogDescription>
-              Forcefully change the paper status. The author will be notified. Credential
-              verification is required.
+              Forcefully change the paper status. The author will be notified.
+              Credential verification is required.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1269,7 +1403,9 @@ export default function CEPaperViewPage() {
               onClick={submitOverride}
               disabled={overrideLoading}
             >
-              {overrideLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {overrideLoading && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
               Override Status
             </Button>
           </DialogFooter>

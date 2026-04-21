@@ -10,7 +10,7 @@ export const getReviewerPapers = async (req: AuthUser, res: Response) => {
 export const submitReview = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
-    const { decision, comments, password } = req.body;
+    const { decision, comments, confidentialComments, password } = req.body;
 
     const signatureFile = req.file;
 
@@ -21,6 +21,7 @@ export const submitReview = async (req: AuthUser, res: Response) => {
       comments,
       password,
       signatureFile?.filename,
+      confidentialComments,
     );
 
     res.json({ success: true, data: review });

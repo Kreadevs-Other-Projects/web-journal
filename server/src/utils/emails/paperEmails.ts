@@ -348,7 +348,107 @@ export const sendPublicationConfirmationEmail = async (
   }
 };
 
-// 11. DOI Registration Confirmation
+// 11. Corresponding Author Approval Request
+export const sendCorrAuthorApprovalEmail = async (opts: {
+  corrAuthorEmail: string;
+  corrAuthorName: string;
+  paperTitle: string;
+  authorName: string;
+  journalName: string;
+  approvalToken: string;
+  hasAccount: boolean;
+}) => {
+  const approvalUrl = `${env.FRONTEND_URL}/paper-approval/${opts.approvalToken}`;
+  try {
+    await transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: opts.corrAuthorEmail,
+      subject: `Paper Submission Notification — ${opts.paperTitle}`,
+      html: baseEmailTemplate(
+        "Corresponding Author Approval Required",
+        `
+          <p>Dear <strong>${opts.corrAuthorName}</strong>,</p>
+          <p>You have been listed as the <strong>Corresponding Author</strong> for the following submission:</p>
+          <p><strong>Paper Title:</strong> ${opts.paperTitle}</p>
+          <p><strong>Submitted by:</strong> ${opts.authorName} · <strong>Journal:</strong> ${opts.journalName}</p>
+          <p>As the corresponding author, your approval is required before this paper proceeds to editorial review.</p>
+          ${!opts.hasAccount ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;">You don't have a GIKI JournalHub account yet. Please create one to approve this submission.</p>` : ""}
+          <a href="${approvalUrl}" class="button">${!opts.hasAccount ? "Create Account & Approve" : "Review & Approve Paper"}</a>
+          <p style="color:#6b7280;font-size:13px;text-align:center;">This approval link expires in 7 days. If you did not expect this email, please ignore it.</p>
+        `,
+      ),
+      text: `Dear ${opts.corrAuthorName}, you have been listed as corresponding author for "${opts.paperTitle}". Please approve or reject here: ${approvalUrl}`,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send CA approval email:", error);
+    throw error;
+  }
+};
+
+// 12. Notify submitting author — CA approved
+export const sendCAApprovedNotificationEmail = async (
+  email: string,
+  authorName: string,
+  paperTitle: string,
+) => {
+  try {
+    await transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Your Paper Has Been Approved by the Corresponding Author",
+      html: baseEmailTemplate(
+        "Paper Approved — Now Under Editorial Review",
+        `
+          <p>Dear <strong>${authorName}</strong>,</p>
+          <p>Great news! The corresponding author has <strong style="color:#16A34A;">approved</strong> your paper submission.</p>
+          <p><strong>Paper Title:</strong> ${paperTitle}</p>
+          <p>Your paper is now officially submitted and will be assigned to an editor for review shortly.</p>
+          <a href="${env.CORS_ORIGIN}/author/track" class="button">Track Your Submission</a>
+        `,
+      ),
+      text: `Dear ${authorName}, the corresponding author has approved "${paperTitle}". Your paper is now under editorial review.`,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send CA approved notification:", error);
+    throw error;
+  }
+};
+
+// 13. Notify submitting author — CA rejected
+export const sendCARejectedNotificationEmail = async (
+  email: string,
+  authorName: string,
+  paperTitle: string,
+  reason?: string,
+) => {
+  try {
+    await transporter.sendMail({
+      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Your Paper Submission Was Rejected by the Corresponding Author",
+      html: baseEmailTemplate(
+        "Paper Submission Rejected",
+        `
+          <p>Dear <strong>${authorName}</strong>,</p>
+          <p>The corresponding author has <strong style="color:#DC2626;">rejected</strong> your paper submission.</p>
+          <p><strong>Paper Title:</strong> ${paperTitle}</p>
+          ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
+          <p>If you believe this was an error, please contact the corresponding author directly and resubmit.</p>
+          <a href="${env.CORS_ORIGIN}/author" class="button">Go to Dashboard</a>
+        `,
+      ),
+      text: `Dear ${authorName}, the corresponding author rejected "${paperTitle}".${reason ? ` Reason: ${reason}` : ""}`,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send CA rejected notification:", error);
+    throw error;
+  }
+};
+
+// 14. DOI Registration Confirmation
 export const sendDOIRegistrationEmail = async (
   email: string,
   username: string,

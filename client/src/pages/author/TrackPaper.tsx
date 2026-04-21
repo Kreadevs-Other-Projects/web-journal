@@ -91,6 +91,7 @@ const STAGES = [
 ];
 
 function getStageIndex(status: string): number {
+  if (status === "pending_ca_approval" || status === "ca_rejected") return -1;
   if (status === "submitted" || status === "assigned_to_sub_editor") return 0;
   if (status === "under_review" || status === "resubmitted" || status === "pending_revision") return 1;
   if (status === "accepted" || status === "rejected" || status === "sub_editor_approved") return 2;
@@ -327,6 +328,39 @@ export default function TrackPaper() {
               {paper.category && <Badge variant="outline">{paper.category}</Badge>}
             </div>
           </div>
+
+          {/* CA Approval Banner */}
+          {paper.status === "pending_ca_approval" && (
+            <Card className="mb-6 border-orange-400/40 bg-orange-50 dark:bg-orange-950/20">
+              <CardContent className="pt-4 pb-4 text-sm space-y-2">
+                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400 font-semibold">
+                  <Clock className="h-4 w-4" />
+                  Waiting for Corresponding Author Approval
+                </div>
+                <p className="text-muted-foreground">
+                  An approval email has been sent to the corresponding author. The paper will proceed to editorial review once approved.
+                </p>
+                {paper.corresponding_authors?.[0] && (
+                  <p className="text-xs text-muted-foreground">
+                    Email sent to: <span className="font-medium">{paper.corresponding_authors[0]}</span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {paper.status === "ca_rejected" && (
+            <Card className="mb-6 border-red-400/40 bg-red-50 dark:bg-red-950/20">
+              <CardContent className="pt-4 pb-4 text-sm space-y-2">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-semibold">
+                  <AlertTriangle className="h-4 w-4" />
+                  Submission Rejected by Corresponding Author
+                </div>
+                <p className="text-muted-foreground">
+                  The corresponding author has rejected this submission. Please contact them and resubmit if needed.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Payment Banner — driven by payment.status, not paper.status */}
           {(payment?.status === "pending" || payment?.status === "failed" || payment?.status === "payment_review") && (

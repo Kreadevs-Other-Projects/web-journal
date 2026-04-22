@@ -18,11 +18,15 @@ export const getApprovalDetailsService = async (token: string) => {
     token_valid: approval.status === "pending" && new Date(approval.expires_at) > new Date(),
     status: approval.status,
     paper: {
+      id: approval.paper_id_val,
       title: approval.title,
       abstract: approval.abstract,
       journal_name: approval.journal_name,
       submitted_by: approval.submitted_by,
+      submitted_at: approval.submitted_at,
+      current_version_id: approval.current_version_id,
       authors: Array.isArray(approval.author_details) ? approval.author_details : [],
+      author_details: Array.isArray(approval.author_details) ? approval.author_details : [],
     },
     corr_author: {
       name: approval.corr_author_name,

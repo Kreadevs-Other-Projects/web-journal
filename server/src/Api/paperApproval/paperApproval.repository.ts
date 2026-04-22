@@ -2,7 +2,8 @@ import { pool } from "../../configs/db";
 
 export const getApprovalByToken = async (token: string) => {
   const result = await pool.query(
-    `SELECT pa.*, p.title, p.abstract, p.author_names, p.author_details, p.journal_id,
+    `SELECT pa.*, p.id AS paper_id_val, p.title, p.abstract, p.author_names, p.author_details,
+            p.journal_id, p.current_version_id, p.submitted_at,
             j.title AS journal_name,
             u.username AS submitted_by, u.email AS author_email
      FROM paper_approvals pa

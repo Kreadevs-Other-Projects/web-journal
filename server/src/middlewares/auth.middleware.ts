@@ -70,6 +70,35 @@ export const authMiddleware = (
   }
 };
 
+export const optionalAuth = (
+  req: AuthUser,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, ACCESS_TOKEN, {
+      algorithms: ["HS256"],
+    }) as TokenPayload;
+    req.user = {
+      id: payload.id,
+      email: payload.email,
+      username: payload.username,
+      role: payload.active_role ?? payload.role,
+      roles: payload.roles ?? [payload.role],
+      active_journal_id: payload.active_journal_id ?? null,
+      profile_completed: payload.profile_completed ?? true,
+    };
+  } catch {
+    // Invalid token — proceed without user
+  }
+  next();
+};
+
 export const authorize = (...allowedRoles: string[]) => {
   return (req: AuthUser, res: Response, next: NextFunction) => {
     if (!req.user) {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authMiddleware, authorize } from "../../middlewares/auth.middleware";
+import { authMiddleware, authorize, optionalAuth } from "../../middlewares/auth.middleware";
 import { requireProfileCompleted } from "../../middlewares/profileCompleted.middleware";
 import {
   createPaper,
@@ -88,8 +88,7 @@ router.post(
 
 router.get(
   "/:paperId/version/:versionId/html",
-  authMiddleware,
-  authorize("sub_editor", "reviewer", "chief_editor", "author", "publisher"),
+  optionalAuth,
   getPaperVersionHtmlController,
 );
 

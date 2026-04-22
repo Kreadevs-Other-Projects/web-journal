@@ -125,6 +125,11 @@ export const createPaperService = async (
       [paper.id, corrAuthor.email, corrAuthor.name || "Author", approvalToken],
     );
 
+    const allAuthors = Array.isArray(data.author_details)
+      ? (data.author_details as Array<{ name?: string }>).map((a) => a.name).filter(Boolean).join(", ")
+      : (authorUsername || "");
+    const submissionDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
     sendCorrAuthorApprovalEmail({
       corrAuthorEmail: corrAuthor.email,
       corrAuthorName: corrAuthor.name || "Author",
@@ -133,6 +138,9 @@ export const createPaperService = async (
       journalName,
       approvalToken,
       hasAccount,
+      abstract: paper.abstract || "",
+      allAuthors,
+      submissionDate,
     }).catch((err) => console.error("[email] CA approval email failed:", err));
   } else if (authorEmail && authorUsername) {
     // No CA specified — go straight to submitted

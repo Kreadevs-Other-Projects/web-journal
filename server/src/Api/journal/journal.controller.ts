@@ -165,7 +165,8 @@ export const updatePublisherJournal = async (req: AuthUser, res: Response) => {
     const { journalId } = req.params;
     const logo_url = req.file ? `uploads/${req.file.filename}` : undefined;
 
-    const body = { ...req.body };
+    const { doi: _doi, issn: _issn, ...rest } = req.body;
+    const body = { ...rest };
     // Parse numeric fields
     if (body.publication_fee !== undefined) {
       const n = Number(body.publication_fee);

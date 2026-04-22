@@ -357,26 +357,76 @@ export const sendCorrAuthorApprovalEmail = async (opts: {
   journalName: string;
   approvalToken: string;
   hasAccount: boolean;
+  abstract?: string;
+  allAuthors?: string;
+  submissionDate?: string;
 }) => {
   const approvalUrl = `${env.FRONTEND_URL}/paper-approval/${opts.approvalToken}`;
+  const year = new Date().getFullYear();
+  const html = `
+<div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto;">
+  <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 30px; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">GIKI JournalHub</h1>
+    <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 13px;">Corresponding Author Approval Required</p>
+  </div>
+  <div style="padding: 35px 40px; background: #ffffff;">
+    <h2 style="color: #1e3a5f; margin: 0 0 8px;">Your Approval is Required</h2>
+    <p>Dear <strong>${opts.corrAuthorName}</strong>,</p>
+    <p>You have been listed as the corresponding author for the following manuscript submitted to <strong>${opts.journalName}</strong>.</p>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin: 0 0 12px; color: #1e3a5f; font-size: 18px;">${opts.paperTitle}</h3>
+
+      <table style="width: 100%; font-size: 13px; margin-bottom: 16px; border-collapse: collapse;">
+        <tr>
+          <td style="color: #6b7280; padding: 4px 0; width: 140px; vertical-align: top;">Journal:</td>
+          <td style="font-weight: 500;">${opts.journalName}</td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">Submitted by:</td>
+          <td>${opts.authorName}</td>
+        </tr>
+        ${opts.allAuthors ? `<tr>
+          <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">All Authors:</td>
+          <td>${opts.allAuthors}</td>
+        </tr>` : ""}
+        ${opts.submissionDate ? `<tr>
+          <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">Submission Date:</td>
+          <td>${opts.submissionDate}</td>
+        </tr>` : ""}
+      </table>
+
+      ${opts.abstract ? `
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
+        <p style="font-size: 12px; font-weight: 600; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">Abstract</p>
+        <p style="font-size: 14px; line-height: 1.7; color: #374151; margin: 0;">${opts.abstract}</p>
+      </div>` : ""}
+    </div>
+
+    <p style="font-weight: 500;">As corresponding author, please review and approve or reject this submission:</p>
+
+    ${!opts.hasAccount ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:13px;">You don't have a GIKI JournalHub account yet. Please create one to approve this submission.</p>` : ""}
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${approvalUrl}"
+         style="background: #2563eb; color: white; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+        ${!opts.hasAccount ? "Create Account &amp; Approve" : "Review &amp; Respond"}
+      </a>
+    </div>
+
+    <p style="color: #6b7280; font-size: 13px;">This link expires in 7 days. If you did not expect this email, please ignore it.</p>
+  </div>
+  <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
+    <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} GIKI JournalHub</p>
+  </div>
+</div>`;
+
   try {
     await transporter.sendMail({
       from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
       to: opts.corrAuthorEmail,
-      subject: `Paper Submission Notification — ${opts.paperTitle}`,
-      html: baseEmailTemplate(
-        "Corresponding Author Approval Required",
-        `
-          <p>Dear <strong>${opts.corrAuthorName}</strong>,</p>
-          <p>You have been listed as the <strong>Corresponding Author</strong> for the following submission:</p>
-          <p><strong>Paper Title:</strong> ${opts.paperTitle}</p>
-          <p><strong>Submitted by:</strong> ${opts.authorName} · <strong>Journal:</strong> ${opts.journalName}</p>
-          <p>As the corresponding author, your approval is required before this paper proceeds to editorial review.</p>
-          ${!opts.hasAccount ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;">You don't have a GIKI JournalHub account yet. Please create one to approve this submission.</p>` : ""}
-          <a href="${approvalUrl}" class="button">${!opts.hasAccount ? "Create Account & Approve" : "Review & Approve Paper"}</a>
-          <p style="color:#6b7280;font-size:13px;text-align:center;">This approval link expires in 7 days. If you did not expect this email, please ignore it.</p>
-        `,
-      ),
+      subject: `Corresponding Author Approval Required — ${opts.paperTitle}`,
+      html,
       text: `Dear ${opts.corrAuthorName}, you have been listed as corresponding author for "${opts.paperTitle}". Please approve or reject here: ${approvalUrl}`,
     });
     return true;

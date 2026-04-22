@@ -91,6 +91,7 @@ export default function SubmitPaper() {
   ]);
   const [correspondingAuthor, setCorrespondingAuthor] =
     useState<CorrespondingAuthorDetail>({ name: "", email: "", affiliation: "", phone: "" });
+  const [corrAuthorIsSelf, setCorrAuthorIsSelf] = useState(true);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [references, setReferences] = useState<Reference[]>([
     { text: "", link: "" },
@@ -330,7 +331,7 @@ export default function SubmitPaper() {
     if (!articleType) return "Please select an article type.";
     if (keywords.length === 0) return "At least one keyword is required.";
     if (keywords.length > 5) return "Maximum 5 keywords allowed.";
-    if (!correspondingAuthor.name.trim())
+    if (!corrAuthorIsSelf && !correspondingAuthor.name.trim())
       return "Corresponding author name is required.";
     if (references.filter((r) => r.text.trim()).length > 5)
       return "Maximum 5 references allowed.";
@@ -366,9 +367,9 @@ export default function SubmitPaper() {
         JSON.stringify(filledAuthors.map((a) => a.name)),
       );
 
-      const correspondingAuthorList = correspondingAuthor.name.trim()
-        ? [correspondingAuthor]
-        : [];
+      const correspondingAuthorList = corrAuthorIsSelf
+        ? [{ name: user?.username || "", email: user?.email || "", affiliation: "", phone: "" }]
+        : correspondingAuthor.name.trim() ? [correspondingAuthor] : [];
       formData.append(
         "corresponding_author_details",
         JSON.stringify(correspondingAuthorList),
@@ -980,65 +981,80 @@ export default function SubmitPaper() {
 
             {/* 5. Corresponding Author */}
             <div>
-              <Label className="mb-1.5 block">Corresponding Author *</Label>
-              <div className="rounded-lg border border-border p-4 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1 block">Full Name *</Label>
-                    <Input
-                      value={correspondingAuthor.name}
-                      onChange={(e) =>
-                        setCorrespondingAuthor((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      placeholder="Dr. Jane Smith"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Email *</Label>
-                    <Input
-                      type="email"
-                      value={correspondingAuthor.email}
-                      onChange={(e) =>
-                        setCorrespondingAuthor((prev) => ({
-                          ...prev,
-                          email: e.target.value,
-                        }))
-                      }
-                      placeholder="jane@university.edu"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Affiliation *</Label>
-                    <Input
-                      value={correspondingAuthor.affiliation}
-                      onChange={(e) =>
-                        setCorrespondingAuthor((prev) => ({
-                          ...prev,
-                          affiliation: e.target.value,
-                        }))
-                      }
-                      placeholder="University of Science"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Phone</Label>
-                    <Input
-                      type="tel"
-                      value={correspondingAuthor.phone}
-                      onChange={(e) =>
-                        setCorrespondingAuthor((prev) => ({
-                          ...prev,
-                          phone: e.target.value,
-                        }))
-                      }
-                      placeholder="+1 (555) 000-0000"
-                    />
+              <Label className="mb-1.5 block">Corresponding Author</Label>
+              <div className="flex items-center gap-3 mb-3 p-3 bg-muted/30 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="corrAuthorIsSelf"
+                  checked={corrAuthorIsSelf}
+                  onChange={(e) => setCorrAuthorIsSelf(e.target.checked)}
+                  className="w-4 h-4 accent-primary"
+                />
+                <label htmlFor="corrAuthorIsSelf" className="text-sm cursor-pointer select-none">
+                  I am the corresponding author
+                </label>
+              </div>
+              {!corrAuthorIsSelf && (
+                <div className="rounded-lg border border-border p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Corresponding Author Details</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block">Full Name *</Label>
+                      <Input
+                        value={correspondingAuthor.name}
+                        onChange={(e) =>
+                          setCorrespondingAuthor((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
+                        placeholder="Dr. Jane Smith"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">Email *</Label>
+                      <Input
+                        type="email"
+                        value={correspondingAuthor.email}
+                        onChange={(e) =>
+                          setCorrespondingAuthor((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
+                        placeholder="jane@university.edu"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">Affiliation *</Label>
+                      <Input
+                        value={correspondingAuthor.affiliation}
+                        onChange={(e) =>
+                          setCorrespondingAuthor((prev) => ({
+                            ...prev,
+                            affiliation: e.target.value,
+                          }))
+                        }
+                        placeholder="University of Science"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">Phone</Label>
+                      <Input
+                        type="tel"
+                        value={correspondingAuthor.phone}
+                        onChange={(e) =>
+                          setCorrespondingAuthor((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
+                        placeholder="+1 (555) 000-0000"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* 6. Keywords */}
@@ -1551,11 +1567,15 @@ export default function SubmitPaper() {
                     ))}
                 </ul>
               </div>
-              {correspondingAuthor.name.trim() && (
-                <div>
-                  <p className="font-medium text-muted-foreground">
-                    Corresponding Author
+              <div>
+                <p className="font-medium text-muted-foreground">
+                  Corresponding Author
+                </p>
+                {corrAuthorIsSelf ? (
+                  <p className="mt-1 text-muted-foreground italic text-sm">
+                    {user?.username} (submitting author) · {user?.email}
                   </p>
+                ) : correspondingAuthor.name.trim() ? (
                   <p className="mt-1">
                     <span className="font-medium">{correspondingAuthor.name}</span>
                     {correspondingAuthor.affiliation && (
@@ -1568,8 +1588,8 @@ export default function SubmitPaper() {
                       <span className="text-muted-foreground"> · {correspondingAuthor.phone}</span>
                     )}
                   </p>
-                </div>
-              )}
+                ) : null}
+              </div>
               <div>
                 <p className="font-medium text-muted-foreground">Keywords</p>
                 <div className="flex flex-wrap gap-1 mt-1">

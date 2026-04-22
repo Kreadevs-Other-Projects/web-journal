@@ -38,6 +38,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { url } from "@/url";
@@ -92,6 +93,7 @@ interface DecisionHistoryEntry {
   role_type: "reviewer" | "sub_editor" | "chief_editor";
   decision: string;
   comments: string;
+  confidential_comments?: string;
   decided_at: string;
   username: string;
   version_number: number | null;
@@ -1104,6 +1106,17 @@ export default function CEPaperViewPage() {
                               {r.comments}
                             </p>
                           )}
+                          {/* {r.confidential_comments && (
+                            <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 rounded p-2 mt-1">
+                              <p className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 mb-0.5 flex items-center gap-1">
+                                <Lock className="h-2.5 w-2.5" /> Confidential
+                                (editors only)
+                              </p>
+                              <p className="text-xs text-purple-900 dark:text-purple-100">
+                                {r.confidential_comments}
+                              </p>
+                            </div>
+                          )} */}
                           {r.decided_at && (
                             <p className="text-[10px] text-muted-foreground">
                               {formatDate(r.decided_at)}

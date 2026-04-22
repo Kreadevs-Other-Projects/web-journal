@@ -29,6 +29,7 @@ import {
   Loader2,
   Pencil,
   ChevronRight,
+  Lock,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
@@ -173,8 +174,6 @@ export default function EditJournalPage() {
       const formData = new FormData();
       if (logo) formData.append("logo", logo);
       formData.append("title", title);
-      if (issn) formData.append("issn", issn);
-      if (doi) formData.append("doi", doi);
       formData.append("publisher_name", publisherName);
       formData.append("type", type);
       formData.append("peer_review_policy", peerReviewPolicy);
@@ -373,49 +372,27 @@ export default function EditJournalPage() {
               </div>
               <div className="space-y-1">
                 <Label>ISSN</Label>
-                <Input
+                <input
                   value={issn}
-                  onChange={(e) => {
-                    const cleaned = e.target.value
-                      .replace(/[^0-9Xx]/g, "")
-                      .toUpperCase();
-                    const formatted =
-                      cleaned.length <= 4
-                        ? cleaned
-                        : cleaned.slice(0, 4) + "-" + cleaned.slice(4, 8);
-                    setIssn(formatted);
-                  }}
-                  placeholder="0000-000X"
-                  maxLength={9}
-                  className={fieldErrors["issn"] ? "border-destructive" : ""}
+                  disabled
+                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm cursor-not-allowed opacity-70"
                 />
-                {fieldErrors["issn"] ? (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors["issn"]}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Format: XXXX-XXXX · Last character can be a number or X
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  ISSN cannot be changed after journal creation
+                </p>
               </div>
               <div className="space-y-1">
                 <Label>DOI</Label>
-                <Input
+                <input
                   value={doi}
-                  onChange={(e) => setDoi(e.target.value)}
-                  placeholder="e.g. 10.12345/journal.2026.001"
-                  className={fieldErrors["doi"] ? "border-destructive" : ""}
+                  disabled
+                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm cursor-not-allowed opacity-70"
                 />
-                {fieldErrors["doi"] ? (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors["doi"]}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Format: 10.XXXXX/suffix
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  DOI cannot be changed after journal creation
+                </p>
               </div>
               <div className="space-y-1">
                 <Label>

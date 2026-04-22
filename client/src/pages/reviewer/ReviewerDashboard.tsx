@@ -941,22 +941,24 @@ export default function ReviewerDashboard() {
                             className="min-h-[150px] input-glow"
                             required
                           />
+                          <p className="text-xs text-muted-foreground">These comments will be shared with the authors.</p>
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="confidentialComments">
-                            Confidential Comments to Associate Editor
+                            Confidential Comments for Editors
                             <span className="ml-1 text-xs font-normal text-muted-foreground">
-                              (not visible to the author)
+                              (optional)
                             </span>
                           </Label>
                           <Textarea
                             id="confidentialComments"
                             value={confidentialComments}
                             onChange={(e) => setConfidentialComments(e.target.value)}
-                            placeholder="Optional private notes for the associate editor..."
+                            placeholder="Add comments for the editorial team only — not visible to authors..."
                             className="min-h-[100px] input-glow"
                           />
+                          <p className="text-xs text-muted-foreground">These comments are only visible to Associate Editor and Chief Editor.</p>
                         </div>
 
                         <div className="space-y-3">

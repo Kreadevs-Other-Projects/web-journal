@@ -84,7 +84,7 @@ export default function PublisherPapersDashboard() {
   const [openPublish, setOpenPublish] = useState(false);
   const [doi, setDoi] = useState("");
   const [doiLoading, setDoiLoading] = useState(false);
-  const [yearLabel, setYearLabel] = useState("");
+  const [publishYear, setPublishYear] = useState<number>(new Date().getFullYear());
   const [publishing, setPublishing] = useState(false);
 
   const fetchPapers = async () => {
@@ -118,7 +118,9 @@ export default function PublisherPapersDashboard() {
   const handleOpenPublish = async (paper: Paper) => {
     setSelectedPaper(paper);
     setDoi("");
-    setYearLabel("");
+    // Extract year from issue label (e.g. "Vol 1, Issue 1 (2026)" → 2026)
+    const yearMatch = paper.issueLabel?.match(/\b(20\d{2}|19\d{2})\b/);
+    setPublishYear(yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear());
     setOpenPublish(true);
 
     try {
@@ -166,7 +168,7 @@ export default function PublisherPapersDashboard() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            year_label: yearLabel || undefined,
+            year_label: String(publishYear),
             issueId: selectedPaper.issueId || undefined,
             doi: doi.trim() || undefined,
           }),
@@ -586,37 +588,32 @@ export default function PublisherPapersDashboard() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  DOI <span className="text-muted-foreground">(optional)</span>
+                <label className="text-sm font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  DOI (auto-generated)
                 </label>
                 <div className="relative">
                   <Input
-                    placeholder="Generating DOI..."
-                    value={doi}
-                    disabled={doiLoading}
-                    onChange={(e) => setDoi(e.target.value)}
-                    className={doiLoading ? "pr-10 opacity-70" : ""}
+                    value={doiLoading ? "Generating…" : doi}
+                    disabled
+                    className="bg-muted cursor-not-allowed opacity-70 pr-10"
                   />
                   {doiLoading && (
                     <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {doiLoading
-                    ? "Generating DOI…"
-                    : "Auto-generated. You can edit if needed."}
+                  DOI is auto-generated and cannot be edited.
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Year Label{" "}
-                  <span className="text-muted-foreground">(optional)</span>
+                <label className="text-sm font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  Publication Year (from issue)
                 </label>
                 <Input
-                  placeholder="e.g., 2026-Vol1"
-                  value={yearLabel}
-                  onChange={(e) => setYearLabel(e.target.value)}
+                  value={publishYear}
+                  disabled
+                  className="bg-muted cursor-not-allowed opacity-70"
                 />
               </div>
 

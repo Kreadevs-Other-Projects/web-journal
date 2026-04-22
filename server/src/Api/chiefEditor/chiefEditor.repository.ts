@@ -131,12 +131,15 @@ LEFT JOIN review_assignments ra ON ra.paper_id = p.id
   AND ra.status != 'reassigned'
 LEFT JOIN users rv ON rv.id = ra.reviewer_id
 LEFT JOIN reviews r ON r.review_assignment_id = ra.id
-WHERE j.chief_editor_id = $1
-  OR j.id IN (
-    SELECT journal_id FROM user_roles
-    WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+WHERE (
+    j.chief_editor_id = $1
+    OR j.id IN (
+      SELECT journal_id FROM user_roles
+      WHERE user_id = $1 AND role = 'chief_editor' AND is_active = true
+    )
+    OR ea.sub_editor_id = $1
   )
-  OR ea.sub_editor_id = $1
+  AND p.status::text NOT IN ('pending_ca_approval', 'ca_rejected', 'draft')
 GROUP BY
   p.id, p.title, p.abstract, p.status, p.submitted_at, p.published_at, p.created_at, p.updated_at,
   p.ce_override,
@@ -679,7 +682,7 @@ export const getPaperByIdRepo = async (paperId: string) => {
 
 export const getPaperDecisionHistoryRepo = async (paperId: string) => {
   const result = await pool.query(
-    `SELECT 'reviewer' AS role_type, r.decision::text, r.comments, r.reviewed_at AS decided_at,
+    `SELECT 'reviewer' AS role_type, r.decision::text, r.comments, r.confidential_comments, r.reviewed_at AS decided_at,
             u.username, NULL::int AS version_number
      FROM reviews r
      JOIN review_assignments ra ON ra.id = r.review_assignment_id
@@ -688,7 +691,7 @@ export const getPaperDecisionHistoryRepo = async (paperId: string) => {
 
      UNION ALL
 
-     SELECT 'sub_editor' AS role_type, sed.decision::text, sed.comments, sed.decided_at,
+     SELECT 'sub_editor' AS role_type, sed.decision::text, sed.comments, NULL AS confidential_comments, sed.decided_at,
             u.username, pv.version_number
      FROM sub_editor_decisions sed
      JOIN users u ON u.id = sed.sub_editor_id
@@ -697,7 +700,7 @@ export const getPaperDecisionHistoryRepo = async (paperId: string) => {
 
      UNION ALL
 
-     SELECT 'chief_editor' AS role_type, ed.decision::text, ed.decision_note AS comments, ed.decided_at,
+     SELECT 'chief_editor' AS role_type, ed.decision::text, ed.decision_note AS comments, NULL AS confidential_comments, ed.decided_at,
             u.username, NULL::int AS version_number
      FROM editor_decisions ed
      JOIN users u ON u.id = ed.decided_by

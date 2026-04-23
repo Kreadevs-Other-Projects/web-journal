@@ -41,26 +41,20 @@ export const createUserProfile = async (userId: string) => {
   return await createUserProfileRepo(userId);
 };
 
-/**
- * Returns all active roles for a user from the user_roles table.
- * Always includes the user's primary role from the users table.
- */
 export const getUserRoles = async (
   userId: string,
   primaryRole: string,
-): Promise<{ role: string; journal_id: string | null; journal_name: string | null }[]> => {
+): Promise<
+  { role: string; journal_id: string | null; journal_name: string | null }[]
+> => {
   const rows = await getUserRolesRepo(userId);
 
-  // Only add primary role as generic fallback if it doesn't appear in user_roles at all.
-  // Checking any journal_id (not just null) prevents duplicate entries when the role
-  // already exists as journal-scoped (e.g. chief_editor for Journal A).
   const hasPrimary = rows.some((r) => r.role === primaryRole);
 
   const all = hasPrimary
     ? rows
     : [{ role: primaryRole, journal_id: null, journal_name: null }, ...rows];
 
-  // Deduplicate by role+journal_id in case of any overlap
   const seen = new Set<string>();
   return all.filter((r) => {
     const key = `${r.role}-${r.journal_id ?? "null"}`;

@@ -17,7 +17,10 @@ import {
 } from "./paper.service";
 import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
-import { getPublicPaperHtmlService, getPaperVersionHtmlService } from "../browse/browse.service";
+import {
+  getPublicPaperHtmlService,
+  getPaperVersionHtmlService,
+} from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
 import { uploadToSupabase } from "../../utils/uploadToSupabase";
 
@@ -45,8 +48,30 @@ export const createPaper = async (req: AuthUser, res: Response) => {
   };
 
   let manuscript_url: string | undefined;
+  let manuscript_html: string | undefined;
+
   if (req.file) {
-    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
+    const localPath = req.file.path;
+    const lowerName = req.file.originalname.toLowerCase();
+
+    try {
+      if (lowerName.endsWith(".docx")) {
+        const mammoth = (await import("mammoth")).default;
+        const result = await mammoth.convertToHtml({ path: localPath });
+        if (result.value) manuscript_html = result.value;
+      } else if (lowerName.endsWith(".tex") || lowerName.endsWith(".latex")) {
+        const { extractLatexToHtml } =
+          await import("../../utils/latexToHtml.js");
+        const html = extractLatexToHtml(localPath);
+        if (html && html.length > 50) manuscript_html = html;
+      }
+    } catch {}
+
+    const uploaded = await uploadToSupabase(
+      localPath,
+      "manuscripts",
+      req.file.originalname,
+    );
     manuscript_url = uploaded.url;
   }
 
@@ -65,7 +90,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     corresponding_author_details: parse(body.corresponding_author_details),
     paper_references: parse(body.paper_references),
     manuscript_url,
-    manuscript_path: req.file?.path,
+    manuscript_html,
     manuscript_size: req.file?.size,
     manuscript_type: req.file?.mimetype,
     conflict_of_interest: body.conflict_of_interest,
@@ -98,15 +123,25 @@ export const getKeywordSuggestions = async (req: Request, res: Response) => {
   res.json({ success: true, keywords });
 };
 
-export const getPublicKeywordSuggestionsController = async (req: Request, res: Response) => {
+export const getPublicKeywordSuggestionsController = async (
+  req: Request,
+  res: Response,
+) => {
   const q = String(req.query.q || "").trim() || null;
   const journalId = String(req.query.journal_id || "").trim() || null;
   const limit = Math.min(Number(req.query.limit) || 10, 30);
-  const keywords = await getPublicKeywordSuggestionsService(q, journalId, limit);
+  const keywords = await getPublicKeywordSuggestionsService(
+    q,
+    journalId,
+    limit,
+  );
   res.json({ success: true, keywords });
 };
 
-export const getJournalTopKeywordsController = async (req: Request, res: Response) => {
+export const getJournalTopKeywordsController = async (
+  req: Request,
+  res: Response,
+) => {
   const { journalId } = req.params;
   const limit = Math.min(Number(req.query.limit) || 20, 50);
   const keywords = await getJournalTopKeywordsService(journalId, limit);
@@ -167,12 +202,11 @@ export const extractMetadata = async (req: AuthUser, res: Response) => {
   const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
   if (!["docx", "pdf", "tex", "latex"].includes(ext)) {
     fs.unlink(req.file.path, () => {});
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Only .docx, .pdf, and .tex/.latex files support metadata extraction",
-      });
+    return res.status(400).json({
+      success: false,
+      message:
+        "Only .docx, .pdf, and .tex/.latex files support metadata extraction",
+    });
   }
   try {
     const metadata = await extractMetadataService(req.file.path, ext);
@@ -212,14 +246,19 @@ export const getPaperHtmlController = async (req: AuthUser, res: Response) => {
   }
 };
 
-export const getPaperVersionHtmlController = async (req: AuthUser, res: Response) => {
+export const getPaperVersionHtmlController = async (
+  req: AuthUser,
+  res: Response,
+) => {
   const { paperId, versionId } = req.params;
   try {
     const html = await getPaperVersionHtmlService(paperId, versionId);
     res.json({ success: true, html: html || null });
   } catch (err) {
     console.error("getPaperVersionHtmlController error:", err);
-    res.status(500).json({ success: false, message: "Failed to get version HTML" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to get version HTML" });
   }
 };
 
@@ -235,7 +274,11 @@ export const uploadRevisionController = async (
   }
   try {
     const versionNumber = parseInt(req.body.version_number, 10) || 2;
-    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
+    const uploaded = await uploadToSupabase(
+      req.file.path,
+      "manuscripts",
+      req.file.originalname,
+    );
     const version = await uploadPaperVersionService(req.user, paperId, {
       version_label: `v${versionNumber}`,
       file_url: uploaded.url,
@@ -267,13 +310,24 @@ export const getStatusLogController = async (req: AuthUser, res: Response) => {
   return res.status(200).json({ success: true, log });
 };
 
-export const editPaperMetadataController = async (req: AuthUser, res: Response) => {
+export const editPaperMetadataController = async (
+  req: AuthUser,
+  res: Response,
+) => {
   const { paperId } = req.params;
   const { title, abstract } = req.body;
   try {
-    const paper = await editPaperMetadataService(paperId, req.user!.id, req.user!.role, title, abstract);
+    const paper = await editPaperMetadataService(
+      paperId,
+      req.user!.id,
+      req.user!.role,
+      title,
+      abstract,
+    );
     return res.json({ success: true, paper });
   } catch (err: any) {
-    return res.status(err.status || 400).json({ success: false, message: err.message });
+    return res
+      .status(err.status || 400)
+      .json({ success: false, message: err.message });
   }
 };

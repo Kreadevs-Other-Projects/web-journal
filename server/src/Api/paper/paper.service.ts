@@ -14,15 +14,24 @@ import {
   getPublicKeywordSuggestions,
   getJournalTopKeywords,
 } from "./paper.repository";
-import { createPaperVersion, getPaperVersions, updateVersionHtmlContent } from "../paperVersion/paperVersion.repository";
+import {
+  createPaperVersion,
+  getPaperVersions,
+  updateVersionHtmlContent,
+} from "../paperVersion/paperVersion.repository";
 import { pool } from "../../configs/db";
-import { sendSubmissionConfirmationEmail, sendCorrAuthorApprovalEmail } from "../../utils/emails/paperEmails";
+import {
+  sendSubmissionConfirmationEmail,
+  sendCorrAuthorApprovalEmail,
+} from "../../utils/emails/paperEmails";
 import crypto from "crypto";
-import { extractLatexToHtml } from "../../utils/latexToHtml";
 
 const MAX_PAPERS_PER_ISSUE = 99;
 
-const autoAssignToIssue = async (paperId: string, journalId: string): Promise<void> => {
+const autoAssignToIssue = async (
+  paperId: string,
+  journalId: string,
+): Promise<void> => {
   // Find first open issue with < 99 papers
   const issueRes = await pool.query(
     `SELECT ji.id, COUNT(p.id)::int AS paper_count
@@ -39,11 +48,17 @@ const autoAssignToIssue = async (paperId: string, journalId: string): Promise<vo
   if (!issueRes.rows.length) return; // no open issue with space — leave unassigned
 
   const issue = issueRes.rows[0];
-  await pool.query(`UPDATE papers SET issue_id = $1, updated_at = NOW() WHERE id = $2`, [issue.id, paperId]);
+  await pool.query(
+    `UPDATE papers SET issue_id = $1, updated_at = NOW() WHERE id = $2`,
+    [issue.id, paperId],
+  );
 
   const newCount = issue.paper_count + 1;
   if (newCount >= MAX_PAPERS_PER_ISSUE) {
-    await pool.query(`UPDATE journal_issues SET status = 'closed', updated_at = NOW() WHERE id = $1`, [issue.id]);
+    await pool.query(
+      `UPDATE journal_issues SET status = 'closed', updated_at = NOW() WHERE id = $1`,
+      [issue.id],
+    );
   }
 };
 export const createPaperService = async (
@@ -74,29 +89,9 @@ export const createPaperService = async (
     });
     await setCurrentVersion(paper.id, version.id);
 
-    // Option A: extract HTML from .docx/.tex on upload for inline web view
-    if (data.manuscript_path) {
-      const mPath = data.manuscript_path;
-      if (mPath.endsWith(".docx")) {
-        try {
-          const mammoth = (await import("mammoth")).default;
-          const result = await mammoth.convertToHtml({ path: mPath });
-          if (result.value) {
-            await updateVersionHtmlContent(version.id, result.value);
-          }
-        } catch {
-          // non-fatal
-        }
-      } else if (mPath.endsWith(".tex") || mPath.endsWith(".latex")) {
-        try {
-          const html = extractLatexToHtml(mPath);
-          if (html && html.length > 50) {
-            await updateVersionHtmlContent(version.id, html);
-          }
-        } catch {
-          // non-fatal
-        }
-      }
+    // Cache HTML immediately if the controller pre-extracted it before Supabase upload
+    if (data.manuscript_html) {
+      await updateVersionHtmlContent(version.id, data.manuscript_html);
     }
   }
 
@@ -106,17 +101,25 @@ export const createPaperService = async (
   }
 
   // Handle corresponding author approval flow
-  const corrAuthor = data.corresponding_author_details?.[0] as { name?: string; email?: string } | undefined;
+  const corrAuthor = data.corresponding_author_details?.[0] as
+    | { name?: string; email?: string }
+    | undefined;
 
   if (corrAuthor?.email) {
     const approvalToken = crypto.randomBytes(32).toString("hex");
 
     // Look up journal name for the email
-    const journalRes = await pool.query("SELECT title FROM journals WHERE id = $1", [data.journal_id]);
+    const journalRes = await pool.query(
+      "SELECT title FROM journals WHERE id = $1",
+      [data.journal_id],
+    );
     const journalName = journalRes.rows[0]?.title || "GIKI JournalHub";
 
     // Check if CA has an account
-    const existingUser = await pool.query("SELECT id FROM users WHERE email = $1", [corrAuthor.email]);
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [corrAuthor.email],
+    );
     const hasAccount = existingUser.rows.length > 0;
 
     await pool.query(
@@ -126,9 +129,16 @@ export const createPaperService = async (
     );
 
     const allAuthors = Array.isArray(data.author_details)
-      ? (data.author_details as Array<{ name?: string }>).map((a) => a.name).filter(Boolean).join(", ")
-      : (authorUsername || "");
-    const submissionDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      ? (data.author_details as Array<{ name?: string }>)
+          .map((a) => a.name)
+          .filter(Boolean)
+          .join(", ")
+      : authorUsername || "";
+    const submissionDate = new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
 
     sendCorrAuthorApprovalEmail({
       corrAuthorEmail: corrAuthor.email,
@@ -144,14 +154,25 @@ export const createPaperService = async (
     }).catch((err) => console.error("[email] CA approval email failed:", err));
   } else if (authorEmail && authorUsername) {
     // No CA specified — go straight to submitted
-    await pool.query("UPDATE papers SET status = 'submitted', updated_at = NOW() WHERE id = $1", [paper.id]);
-    sendSubmissionConfirmationEmail(authorEmail, authorUsername, paper.title, paper.id).catch(
-      (err) => console.error("[email] submission confirmation failed:", err),
+    await pool.query(
+      "UPDATE papers SET status = 'submitted', updated_at = NOW() WHERE id = $1",
+      [paper.id],
+    );
+    sendSubmissionConfirmationEmail(
+      authorEmail,
+      authorUsername,
+      paper.title,
+      paper.id,
+    ).catch((err) =>
+      console.error("[email] submission confirmation failed:", err),
     );
     return { ...paper, status: "submitted" };
   }
 
-  return { ...paper, status: corrAuthor?.email ? "pending_ca_approval" : "submitted" };
+  return {
+    ...paper,
+    status: corrAuthor?.email ? "pending_ca_approval" : "submitted",
+  };
 };
 
 export const getPaperVersionsService = async (paperId: string) => {
@@ -170,7 +191,10 @@ export const getPublicKeywordSuggestionsService = async (
   return getPublicKeywordSuggestions(q, journalId, limit);
 };
 
-export const getJournalTopKeywordsService = async (journalId: string, limit: number) => {
+export const getJournalTopKeywordsService = async (
+  journalId: string,
+  limit: number,
+) => {
   return getJournalTopKeywords(journalId, limit);
 };
 
@@ -243,14 +267,16 @@ export const updatePaperStatusService = async (
   return updatePaperStatus(paper_id, status);
 };
 
-const parseMetadataFromText = (lines: string[]): {
+const parseMetadataFromText = (
+  lines: string[],
+): {
   title: string;
   abstract: string;
   keywords: string[];
   authors: string[];
   references: string[];
 } => {
-  const nonEmpty = lines.map(l => l.trim()).filter(l => l.length > 1);
+  const nonEmpty = lines.map((l) => l.trim()).filter((l) => l.length > 1);
 
   // Title: first non-empty line that looks like a title (no trailing period, < 200 chars, not all-caps institution)
   let title = "";
@@ -264,15 +290,22 @@ const parseMetadataFromText = (lines: string[]): {
 
   // Abstract
   let abstract = "";
-  const absIdx = nonEmpty.findIndex(l => /^abstract\s*[:\-–]?/i.test(l));
+  const absIdx = nonEmpty.findIndex((l) => /^abstract\s*[:\-–]?/i.test(l));
   if (absIdx >= 0) {
-    const inline = nonEmpty[absIdx].replace(/^abstract\s*[:\-–]?\s*/i, "").trim();
+    const inline = nonEmpty[absIdx]
+      .replace(/^abstract\s*[:\-–]?\s*/i, "")
+      .trim();
     if (inline.length > 20) {
       abstract = inline;
     } else {
       const chunks: string[] = [];
       for (let i = absIdx + 1; i < nonEmpty.length; i++) {
-        if (/^(introduction|keywords?|key\s+words?|index\s+terms?|1\.?\s)/i.test(nonEmpty[i])) break;
+        if (
+          /^(introduction|keywords?|key\s+words?|index\s+terms?|1\.?\s)/i.test(
+            nonEmpty[i],
+          )
+        )
+          break;
         chunks.push(nonEmpty[i]);
         if (chunks.join(" ").length > 800) break;
       }
@@ -282,42 +315,70 @@ const parseMetadataFromText = (lines: string[]): {
 
   // Keywords
   let keywords: string[] = [];
-  const kwIdx = nonEmpty.findIndex(l => /^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?/i.test(l));
+  const kwIdx = nonEmpty.findIndex((l) =>
+    /^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?/i.test(l),
+  );
   if (kwIdx >= 0) {
-    const inline = nonEmpty[kwIdx].replace(/^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?\s*/i, "").trim();
-    const src = inline.length > 3 ? inline : (nonEmpty[kwIdx + 1] || "");
-    keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+    const inline = nonEmpty[kwIdx]
+      .replace(/^(keywords?|key\s+words?|index\s+terms?)\s*[:\-–]?\s*/i, "")
+      .trim();
+    const src = inline.length > 3 ? inline : nonEmpty[kwIdx + 1] || "";
+    keywords = src
+      .split(/[,;·•]/)
+      .map((k) => k.trim())
+      .filter((k) => k.length > 1 && k.length < 60)
+      .slice(0, 5);
   }
 
   // Authors: lines between title and abstract — skip affiliation lines
   let authors: string[] = [];
-  const titleLineIdx = nonEmpty.findIndex(l => l === title);
-  const absSearchIdx = absIdx >= 0 ? absIdx : nonEmpty.findIndex(l => /^abstract\b/i.test(l));
+  const titleLineIdx = nonEmpty.findIndex((l) => l === title);
+  const absSearchIdx =
+    absIdx >= 0 ? absIdx : nonEmpty.findIndex((l) => /^abstract\b/i.test(l));
   if (titleLineIdx >= 0 && absSearchIdx > titleLineIdx + 1) {
     const between = nonEmpty.slice(titleLineIdx + 1, absSearchIdx);
-    const affiliationKw = /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
-    const candidates = between.filter(l =>
-      !affiliationKw.test(l) &&
-      (l.includes("@") || (l.length > 2 && l.length < 120 && !/^\d/.test(l) && !/^(abstract|introduction|keywords?)/i.test(l)))
+    const affiliationKw =
+      /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
+    const candidates = between.filter(
+      (l) =>
+        !affiliationKw.test(l) &&
+        (l.includes("@") ||
+          (l.length > 2 &&
+            l.length < 120 &&
+            !/^\d/.test(l) &&
+            !/^(abstract|introduction|keywords?)/i.test(l))),
     );
     // handle both comma-separated names on one line and one-per-line
     const rawAuthors: string[] = [];
     for (const line of candidates) {
       if (line.includes(",") && /[A-Z][a-z]/.test(line)) {
-        rawAuthors.push(...line.split(/,\s*/).map(p => p.trim()).filter(p => p.length > 2));
+        rawAuthors.push(
+          ...line
+            .split(/,\s*/)
+            .map((p) => p.trim())
+            .filter((p) => p.length > 2),
+        );
       } else {
         rawAuthors.push(line);
       }
     }
     authors = rawAuthors
-      .map(a => a.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "").replace(/\s*\d+\s*$/, "").replace(/\s*[,;]\s*$/, "").trim())
-      .filter(a => a.length > 1)
+      .map((a) =>
+        a
+          .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "")
+          .replace(/\s*\d+\s*$/, "")
+          .replace(/\s*[,;]\s*$/, "")
+          .trim(),
+      )
+      .filter((a) => a.length > 1)
       .slice(0, 5);
   }
 
   // References: section near end starting with "References" or "Bibliography"
   let references: string[] = [];
-  const refIdx = nonEmpty.findIndex(l => /^(references?|bibliography)\s*$/i.test(l));
+  const refIdx = nonEmpty.findIndex((l) =>
+    /^(references?|bibliography)\s*$/i.test(l),
+  );
   if (refIdx >= 0) {
     const refLines = nonEmpty.slice(refIdx + 1);
     const entries: string[] = [];
@@ -335,19 +396,32 @@ const parseMetadataFromText = (lines: string[]): {
     references = entries.slice(0, 5);
     // fallback: just take first 5 non-empty lines after heading
     if (references.length === 0) {
-      references = refLines.filter(l => l.length > 10).slice(0, 5);
+      references = refLines.filter((l) => l.length > 10).slice(0, 5);
     }
   }
 
   return { title, abstract, keywords, authors, references };
 };
 
-const extractLatexMetadata = (content: string): { title: string; abstract: string; keywords: string[]; authors: string[]; references: string[] } => {
+const extractLatexMetadata = (
+  content: string,
+): {
+  title: string;
+  abstract: string;
+  keywords: string[];
+  authors: string[];
+  references: string[];
+} => {
   // Remove LaTeX comments
   const clean = content.replace(/%[^\n]*/g, "");
 
   const stripLatex = (s: string) =>
-    s.replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1").replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+    s
+      .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1")
+      .replace(/\\[a-zA-Z]+/g, "")
+      .replace(/[{}]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
 
   // Title
   const titleMatch = clean.match(/\\title\{([\s\S]*?)\}/);
@@ -355,42 +429,76 @@ const extractLatexMetadata = (content: string): { title: string; abstract: strin
 
   // Authors — may be separated by \and or \\
   let authors: string[] = [];
-  const authorMatch = clean.match(/\\author\{([\s\S]*?)\}(?:\s*\\affil|\s*\\address|\s*\\institute|\s*\\maketitle|\s*\\date|\s*\\begin)/);
-  const authorBlock = authorMatch?.[1] || clean.match(/\\author\{([\s\S]*?)\}/)?.[1] || "";
+  const authorMatch = clean.match(
+    /\\author\{([\s\S]*?)\}(?:\s*\\affil|\s*\\address|\s*\\institute|\s*\\maketitle|\s*\\date|\s*\\begin)/,
+  );
+  const authorBlock =
+    authorMatch?.[1] || clean.match(/\\author\{([\s\S]*?)\}/)?.[1] || "";
   if (authorBlock) {
     authors = authorBlock
       .split(/\\and|\\\\|\n/)
-      .map(a => stripLatex(a).replace(/\^?\{?[\d,]+\}?/g, "").trim())
-      .filter(a => a.length > 1 && a.length < 150 && !/\b(university|dept|department|institute|school|email|orcid)\b/i.test(a))
+      .map((a) =>
+        stripLatex(a)
+          .replace(/\^?\{?[\d,]+\}?/g, "")
+          .trim(),
+      )
+      .filter(
+        (a) =>
+          a.length > 1 &&
+          a.length < 150 &&
+          !/\b(university|dept|department|institute|school|email|orcid)\b/i.test(
+            a,
+          ),
+      )
       .slice(0, 5);
   }
 
   // Abstract
-  const abstractMatch = clean.match(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/);
-  const abstract = abstractMatch ? stripLatex(abstractMatch[1]).slice(0, 1000) : "";
+  const abstractMatch = clean.match(
+    /\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/,
+  );
+  const abstract = abstractMatch
+    ? stripLatex(abstractMatch[1]).slice(0, 1000)
+    : "";
 
   // Keywords
   let keywords: string[] = [];
-  const kwMatch = clean.match(/\\begin\{keyword\}([\s\S]*?)\\end\{keyword\}/) ||
-                  clean.match(/\\keywords?\{([^}]+)\}/);
+  const kwMatch =
+    clean.match(/\\begin\{keyword\}([\s\S]*?)\\end\{keyword\}/) ||
+    clean.match(/\\keywords?\{([^}]+)\}/);
   if (kwMatch) {
-    keywords = kwMatch[1].split(/[,;·•]/).map(k => stripLatex(k).trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+    keywords = kwMatch[1]
+      .split(/[,;·•]/)
+      .map((k) => stripLatex(k).trim())
+      .filter((k) => k.length > 1 && k.length < 60)
+      .slice(0, 5);
   }
 
   // References from bibliography
   const references: string[] = [];
-  const bibMatch = clean.match(/\\begin\{thebibliography\}[^\n]*\n([\s\S]*?)\\end\{thebibliography\}/);
+  const bibMatch = clean.match(
+    /\\begin\{thebibliography\}[^\n]*\n([\s\S]*?)\\end\{thebibliography\}/,
+  );
   if (bibMatch) {
-    bibMatch[1].split("\\bibitem").filter(s => s.trim()).slice(0, 5).forEach(item => {
-      const ref = stripLatex(item.replace(/^\{[^}]+\}/, "")).replace(/\s+/g, " ").trim();
-      if (ref.length > 10) references.push(ref);
-    });
+    bibMatch[1]
+      .split("\\bibitem")
+      .filter((s) => s.trim())
+      .slice(0, 5)
+      .forEach((item) => {
+        const ref = stripLatex(item.replace(/^\{[^}]+\}/, ""))
+          .replace(/\s+/g, " ")
+          .trim();
+        if (ref.length > 10) references.push(ref);
+      });
   }
 
   return { title, abstract, keywords, authors, references };
 };
 
-export const extractMetadataService = async (filePath: string, ext: string): Promise<{
+export const extractMetadataService = async (
+  filePath: string,
+  ext: string,
+): Promise<{
   title: string;
   abstract: string;
   keywords: string[];
@@ -418,7 +526,11 @@ export const extractMetadataService = async (filePath: string, ext: string): Pro
   const html = result.value;
 
   const stripTags = (s: string) =>
-    s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+    s
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   const blocks: Array<{ level: number; text: string }> = [];
   const re = /<(h[1-6]|p)[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -431,62 +543,95 @@ export const extractMetadataService = async (filePath: string, ext: string): Pro
   }
 
   // Title: first heading h1-h3, else first block
-  const firstHeading = blocks.find(b => b.level >= 1 && b.level <= 3);
+  const firstHeading = blocks.find((b) => b.level >= 1 && b.level <= 3);
   const title = firstHeading?.text || blocks[0]?.text || "";
 
   // Abstract
   let abstract = "";
-  const absIdx = blocks.findIndex(b => /^abstract\b/i.test(b.text));
+  const absIdx = blocks.findIndex((b) => /^abstract\b/i.test(b.text));
   if (absIdx >= 0) {
-    const raw = blocks[absIdx].text.replace(/^abstract\s*[:\-–]?\s*/i, "").trim();
-    abstract = raw.length > 20 ? raw : (blocks[absIdx + 1]?.text || "");
+    const raw = blocks[absIdx].text
+      .replace(/^abstract\s*[:\-–]?\s*/i, "")
+      .trim();
+    abstract = raw.length > 20 ? raw : blocks[absIdx + 1]?.text || "";
   }
 
   // Keywords
   let keywords: string[] = [];
-  const kwIdx = blocks.findIndex(b => /^key[\s-]?words?\b/i.test(b.text));
+  const kwIdx = blocks.findIndex((b) => /^key[\s-]?words?\b/i.test(b.text));
   if (kwIdx >= 0) {
-    const raw = blocks[kwIdx].text.replace(/^key[\s-]?words?\s*[:\-–]?\s*/i, "").trim();
-    const src = raw.length > 3 ? raw : (blocks[kwIdx + 1]?.text || "");
-    keywords = src.split(/[,;·•]/).map(k => k.trim()).filter(k => k.length > 1 && k.length < 60).slice(0, 5);
+    const raw = blocks[kwIdx].text
+      .replace(/^key[\s-]?words?\s*[:\-–]?\s*/i, "")
+      .trim();
+    const src = raw.length > 3 ? raw : blocks[kwIdx + 1]?.text || "";
+    keywords = src
+      .split(/[,;·•]/)
+      .map((k) => k.trim())
+      .filter((k) => k.length > 1 && k.length < 60)
+      .slice(0, 5);
   }
 
   // Authors: blocks between title and abstract — skip affiliation lines
   let authors: string[] = [];
-  const titleIdx = blocks.findIndex(b => b.text === title);
-  const absSearchIdx = absIdx >= 0 ? absIdx : blocks.findIndex(b => /^abstract\b/i.test(b.text));
+  const titleIdx = blocks.findIndex((b) => b.text === title);
+  const absSearchIdx =
+    absIdx >= 0 ? absIdx : blocks.findIndex((b) => /^abstract\b/i.test(b.text));
   if (titleIdx >= 0 && absSearchIdx > titleIdx + 1) {
-    const affiliationKw = /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
-    const authorBlocks = blocks.slice(titleIdx + 1, absSearchIdx)
-      .filter(b => b.text.length > 2 && b.text.length < 200 && !/^(abstract|introduction|keywords?)/i.test(b.text) && !affiliationKw.test(b.text));
+    const affiliationKw =
+      /\b(university|universit|dept|department|institute|institution|school|college|laboratory|lab|center|centre|faculty|division|hospital|clinic|research centre|national|academy)\b/i;
+    const authorBlocks = blocks
+      .slice(titleIdx + 1, absSearchIdx)
+      .filter(
+        (b) =>
+          b.text.length > 2 &&
+          b.text.length < 200 &&
+          !/^(abstract|introduction|keywords?)/i.test(b.text) &&
+          !affiliationKw.test(b.text),
+      );
     const rawAuthors: string[] = [];
     for (const block of authorBlocks) {
       if (block.text.includes(",") && /[A-Z][a-z]/.test(block.text)) {
-        rawAuthors.push(...block.text.split(/,\s*/).map(p => p.trim()).filter(p => p.length > 2));
+        rawAuthors.push(
+          ...block.text
+            .split(/,\s*/)
+            .map((p) => p.trim())
+            .filter((p) => p.length > 2),
+        );
       } else {
         rawAuthors.push(block.text);
       }
     }
     authors = rawAuthors
-      .map(a => a.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "").replace(/\s*\d+\s*$/, "").trim())
-      .filter(a => a.length > 2)
+      .map((a) =>
+        a
+          .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "")
+          .replace(/\s*\d+\s*$/, "")
+          .trim(),
+      )
+      .filter((a) => a.length > 2)
       .slice(0, 5);
   }
 
   // References
   let references: string[] = [];
-  const refIdx = blocks.findIndex(b => /^(references?|bibliography)\s*$/i.test(b.text));
+  const refIdx = blocks.findIndex((b) =>
+    /^(references?|bibliography)\s*$/i.test(b.text),
+  );
   if (refIdx >= 0) {
-    references = blocks.slice(refIdx + 1, refIdx + 20)
-      .filter(b => b.text.length > 10)
-      .map(b => b.text)
+    references = blocks
+      .slice(refIdx + 1, refIdx + 20)
+      .filter((b) => b.text.length > 10)
+      .map((b) => b.text)
       .slice(0, 5);
   }
 
   return { title, abstract, keywords, authors, references };
 };
 
-export const getPaperTrackingService = async (paperId: string, authorId: string) => {
+export const getPaperTrackingService = async (
+  paperId: string,
+  authorId: string,
+) => {
   const data = await getPaperTracking(paperId, authorId);
   if (!data) throw new Error("Paper not found or access denied");
   return data;
@@ -497,26 +642,36 @@ export const getPaperMetadataCheckService = async (paperId: string) => {
   if (!paper) throw new Error("Paper not found");
 
   const checks: Record<string, boolean> = {
-    title: !!(paper.title?.trim()),
-    authors: Array.isArray(paper.author_names) && paper.author_names.filter((a: string) => a.trim()).length > 0,
-    abstract: !!(paper.abstract?.trim()),
+    title: !!paper.title?.trim(),
+    authors:
+      Array.isArray(paper.author_names) &&
+      paper.author_names.filter((a: string) => a.trim()).length > 0,
+    abstract: !!paper.abstract?.trim(),
     keywords: Array.isArray(paper.keywords) && paper.keywords.length > 0,
     references: (() => {
       try {
-        const refs = typeof paper.paper_references === "string"
-          ? JSON.parse(paper.paper_references)
-          : paper.paper_references;
-        return Array.isArray(refs) && refs.filter((r: any) => r.text?.trim()).length > 0;
-      } catch { return false; }
+        const refs =
+          typeof paper.paper_references === "string"
+            ? JSON.parse(paper.paper_references)
+            : paper.paper_references;
+        return (
+          Array.isArray(refs) &&
+          refs.filter((r: any) => r.text?.trim()).length > 0
+        );
+      } catch {
+        return false;
+      }
     })(),
-    journal_title: !!(paper.journal_title?.trim()),
+    journal_title: !!paper.journal_title?.trim(),
     volume: paper.volume != null,
     issue: paper.issue != null,
-    doi: !!(paper.doi?.trim()),
-    publication_date: !!(paper.publication_date),
+    doi: !!paper.doi?.trim(),
+    publication_date: !!paper.publication_date,
   };
 
-  const missing_fields = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+  const missing_fields = Object.entries(checks)
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
 
   return {
     valid: missing_fields.length === 0,
@@ -534,4 +689,3 @@ export const editPaperMetadataService = async (
 ) => {
   return editPaperMetadataRepo(paperId, userId, userRole, title, abstract);
 };
-

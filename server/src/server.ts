@@ -12,6 +12,6 @@ invitationExpiryCron();
 issueResetCron();
 verifyEmailConfig();
 
-app.listen(env.PORT || "5000", () => {
+app.listen(env.PORT, () => {
   console.log(`Server is running on port: ${env.PORT}`);
 });

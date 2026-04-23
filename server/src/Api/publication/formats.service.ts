@@ -1,10 +1,8 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { pool } from "../../configs/db";
-
-const ensureDir = (dir: string) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
+import { uploadToSupabase } from "../../utils/uploadToSupabase";
 
 export const generateFormatsService = async (
   paperId: string,
@@ -28,12 +26,10 @@ export const generateFormatsService = async (
   if (!result.rows.length) return;
 
   const d = result.rows[0];
-  const uploadsBase = path.join(process.cwd(), "uploads");
+  const tmpDir = os.tmpdir();
 
   // 1. HTML FORMAT
-  const htmlDir = path.join(uploadsBase, "html");
-  ensureDir(htmlDir);
-  const htmlFilePath = path.join(htmlDir, `${paperId}.html`);
+  const htmlFilePath = path.join(tmpDir, `${paperId}.html`);
 
   const authors = Array.isArray(d.author_names)
     ? d.author_names.join(", ")
@@ -77,12 +73,15 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
 </html>`;
 
   fs.writeFileSync(htmlFilePath, standaloneHtml, "utf8");
-  const html_url = `/uploads/html/${paperId}.html`;
+  const htmlUpload = await uploadToSupabase(
+    htmlFilePath,
+    "publications",
+    `${paperId}.html`,
+  );
+  const html_url = htmlUpload.url;
 
   // 2. XML FORMAT (JATS)
-  const xmlDir = path.join(uploadsBase, "xml");
-  ensureDir(xmlDir);
-  const xmlFilePath = path.join(xmlDir, `${paperId}.xml`);
+  const xmlFilePath = path.join(tmpDir, `${paperId}.xml`);
 
   const escapeXml = (s: string) =>
     String(s || "")
@@ -144,7 +143,12 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
 </article>`;
 
   fs.writeFileSync(xmlFilePath, jatsXml, "utf8");
-  const xml_url = `/uploads/xml/${paperId}.xml`;
+  const xmlUpload = await uploadToSupabase(
+    xmlFilePath,
+    "publications",
+    `${paperId}.xml`,
+  );
+  const xml_url = xmlUpload.url;
 
   // 3. PDF FORMAT (puppeteer, non-fatal if unavailable)
   let pdf_url: string | null = null;
@@ -155,16 +159,19 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
     });
     const page = await browser.newPage();
     await page.setContent(standaloneHtml, { waitUntil: "networkidle0" });
-    const pdfDir = path.join(uploadsBase, "pdf");
-    ensureDir(pdfDir);
-    const pdfFilePath = path.join(pdfDir, `${paperId}.pdf`);
+    const pdfFilePath = path.join(tmpDir, `${paperId}.pdf`);
     await page.pdf({
       path: pdfFilePath,
       format: "A4",
       margin: { top: "40px", bottom: "40px", left: "40px", right: "40px" },
     });
     await browser.close();
-    pdf_url = `/uploads/pdf/${paperId}.pdf`;
+    const pdfUpload = await uploadToSupabase(
+      pdfFilePath,
+      "publications",
+      `${paperId}.pdf`,
+    );
+    pdf_url = pdfUpload.url;
   } catch {
     // puppeteer not available or failed — non-fatal
   }

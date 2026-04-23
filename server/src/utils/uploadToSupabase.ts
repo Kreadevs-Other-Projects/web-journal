@@ -10,13 +10,17 @@ export type UploadFolder =
   | "certificates"
   | "receipts"
   | "journal-logos"
+  | "publications"
   | "other";
 
 const MIME_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
-  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".docx":
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".tex": "application/x-tex",
   ".latex": "application/x-latex",
+  ".html": "text/html",
+  ".xml": "application/xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -42,7 +46,9 @@ export async function uploadToSupabase(
     throw new Error(`Supabase upload failed: ${error.message}`);
   }
 
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+  const { data: urlData } = supabase.storage
+    .from(BUCKET)
+    .getPublicUrl(storagePath);
 
   try {
     fs.unlinkSync(localFilePath);
@@ -59,7 +65,9 @@ export async function deleteFromSupabase(storagePath: string): Promise<void> {
   // Extract relative path from a full Supabase URL if needed
   let resolvedPath = storagePath;
   if (storagePath.startsWith("http")) {
-    const match = storagePath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
+    const match = storagePath.match(
+      /\/storage\/v1\/object\/public\/[^/]+\/(.+)/,
+    );
     if (!match) return;
     resolvedPath = match[1];
   }

@@ -2,6 +2,7 @@ import { Response } from "express";
 import path from "path";
 import fs from "fs";
 import { AuthUser } from "../../middlewares/auth.middleware";
+import { uploadToSupabase, deleteFromSupabase } from "../../utils/uploadToSupabase";
 import {
   getFullProfile,
   updateProfileService,
@@ -38,8 +39,9 @@ export const getProfile = async (req: AuthUser, res: Response) => {
   }
 
   const baseUrl = `${req.protocol}://${req.get("host")}`;
-  const profilePicUrl = profile.user.profile_pic
-    ? `${baseUrl}${profile.user.profile_pic}`
+  const pic = profile.user.profile_pic;
+  const profilePicUrl = pic
+    ? (pic.startsWith("http") ? pic : `${baseUrl}${pic}`)
     : `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.user.username}`;
 
   return res.status(200).json({
@@ -108,7 +110,8 @@ export const editProfile = async (req: AuthUser, res: Response) => {
 
     let uploadedPicUrl: string | undefined;
     if (req.file) {
-      uploadedPicUrl = `/api/uploads/${req.file.filename}`;
+      const uploaded = await uploadToSupabase(req.file.path, "profiles", req.file.originalname);
+      uploadedPicUrl = uploaded.url;
       userData.profile_pic = uploadedPicUrl;
     }
 
@@ -230,12 +233,11 @@ export const uploadCertification = async (req: AuthUser, res: Response) => {
     return res.status(400).json({ success: false, message: "Maximum 5 certifications allowed" });
   }
 
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
-  const fileUrl = `${baseUrl}/api/uploads/certifications/${req.file.filename}`;
+  const uploaded = await uploadToSupabase(req.file.path, "certificates", req.file.originalname);
 
   const cert = await createCertificationRepo({
     user_id: userId,
-    file_url: fileUrl,
+    file_url: uploaded.url,
     file_name: req.file.originalname,
     file_type: req.file.mimetype,
   });
@@ -260,10 +262,8 @@ export const deleteCertification = async (req: AuthUser, res: Response) => {
   if (!cert) return res.status(404).json({ success: false, message: "Certification not found" });
   if (cert.user_id !== userId) return res.status(403).json({ success: false, message: "Forbidden" });
 
-  // Delete file from disk
-  const filename = path.basename(cert.file_url);
-  const filePath = path.join(process.cwd(), "uploads", "certifications", filename);
-  fs.unlink(filePath, () => {});
+  // Delete file from Supabase storage
+  await deleteFromSupabase(cert.file_url);
 
   await deleteCertificationRepo(certId, userId);
   return res.json({ success: true, message: "Certification deleted" });
@@ -305,9 +305,9 @@ export const completeProfile = async (req: AuthUser, res: Response) => {
     if (website) profileData.website = website;
 
     if (req.file) {
-      const picUrl = `/api/uploads/${req.file.filename}`;
-      userData.profile_pic = picUrl;
-      profileData.profile_pic_url = picUrl;
+      const uploaded = await uploadToSupabase(req.file.path, "profiles", req.file.originalname);
+      userData.profile_pic = uploaded.url;
+      profileData.profile_pic_url = uploaded.url;
     }
 
     await completeProfileService(userId, role, userData, profileData);

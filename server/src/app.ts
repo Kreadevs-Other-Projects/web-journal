@@ -36,6 +36,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
 
+// Keep for backward compatibility with files uploaded before Supabase migration
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api/uploads/receipts", express.static(path.join(__dirname, "..", "uploads", "receipts")));
 app.use("/api/uploads/profiles", express.static(path.join(__dirname, "..", "uploads", "profiles")));

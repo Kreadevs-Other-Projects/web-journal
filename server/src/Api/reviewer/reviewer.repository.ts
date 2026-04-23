@@ -59,7 +59,7 @@ export const submitReviewByVersion = async (
   decision: string,
   comments: string,
   password?: string,
-  signatureFilename?: string,
+  signatureUrl?: string,
   confidentialComments?: string,
 ) => {
   const client = await pool.connect();
@@ -94,10 +94,8 @@ export const submitReviewByVersion = async (
 
     const assignmentId = ra.rows[0].id;
 
-    let signatureUrl: string | null = null;
-
     if (decision === "accepted" || decision === "rejected") {
-      if (!password || !signatureFilename) {
+      if (!password || !signatureUrl) {
         throw new Error("Password and signature are required");
       }
 
@@ -117,8 +115,6 @@ export const submitReviewByVersion = async (
       if (!isMatch) {
         throw new Error("Invalid password");
       }
-
-      signatureUrl = `/uploads/${signatureFilename}`;
     }
 
     const review = await client.query(

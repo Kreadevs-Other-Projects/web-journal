@@ -72,6 +72,8 @@ export const sendJournalExpiryInvoice = async (
 export const uploadReceipt = async (paymentId: string, file: any) => {
   if (!file) throw new Error("Receipt file is required");
 
+  // NOTE: uploadpaymentImage endpoint is currently PAYMENT_DISABLED.
+  // When re-enabled, wire this through uploadToSupabase instead.
   const imagePath = `/uploads/${file.filename}`;
 
   const updated = await updateReceiptImage(paymentId, imagePath);

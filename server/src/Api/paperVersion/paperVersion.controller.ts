@@ -4,6 +4,7 @@ import {
   uploadPaperVersionService,
   getPaperVersionsService,
 } from "./paperVersion.service";
+import { uploadToSupabase } from "../../utils/uploadToSupabase";
 
 export const uploadPaperVersion = async (req: any, res: Response) => {
   try {
@@ -14,12 +15,13 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
       });
     }
 
+    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
     const version = await uploadPaperVersionService(
       req.user,
       req.params.paperId,
       {
         version_label: req.body.version_label,
-        file_url: `/uploads/${req.file.filename}`,
+        file_url: uploaded.url,
         file_size: req.file.size,
         file_type: req.file.mimetype,
       },

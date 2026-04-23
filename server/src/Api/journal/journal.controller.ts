@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AuthUser } from "../../middlewares/auth.middleware";
+import { uploadToSupabase } from "../../utils/uploadToSupabase";
 import {
   addJournalService,
   getOwnerJournalService,
@@ -106,9 +107,9 @@ export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
       return res
         .status(400)
         .json({ success: false, message: "No file uploaded" });
-    const logo_url = `uploads/${req.file.filename}`;
-    await updateJournalLogoService(id, logo_url);
-    res.json({ success: true, logo_url });
+    const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+    await updateJournalLogoService(id, uploaded.url);
+    res.json({ success: true, logo_url: uploaded.url });
   } catch (e: any) {
     res.status(400).json({ success: false, message: e.message });
   }
@@ -163,7 +164,11 @@ export const updatePublisherJournal = async (req: AuthUser, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     const { journalId } = req.params;
-    const logo_url = req.file ? `uploads/${req.file.filename}` : undefined;
+    let logo_url: string | undefined;
+    if (req.file) {
+      const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+      logo_url = uploaded.url;
+    }
 
     const { doi: _doi, issn: _issn, ...rest } = req.body;
     const body = { ...rest };
@@ -205,7 +210,11 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const logo_url = req.file ? `uploads/${req.file.filename}` : null;
+    let logo_url: string | null = null;
+    if (req.file) {
+      const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+      logo_url = uploaded.url;
+    }
     const journal = await publisherCreateJournalService(
       req.user.id,
       req.user.username,

@@ -10,7 +10,7 @@ export const submitPaperReview = async (
   decision: string,
   comments: string,
   password?: string,
-  signatureFilename?: string,
+  signatureUrl?: string,
   confidentialComments?: string,
 ) => {
   return repo.submitReviewByVersion(
@@ -19,7 +19,7 @@ export const submitPaperReview = async (
     decision,
     comments,
     password,
-    signatureFilename,
+    signatureUrl,
     confidentialComments,
   );
 };

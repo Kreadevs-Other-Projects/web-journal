@@ -2,24 +2,21 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = path.join(process.cwd(), "uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+const tempDir = path.join(process.cwd(), "temp-uploads");
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
+const tempStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, tempDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `file-${Date.now()}${ext}`);
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, unique + path.extname(file.originalname));
   },
 });
 
 export const upload = multer({
-  storage,
+  storage: tempStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = [
@@ -30,7 +27,6 @@ export const upload = multer({
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
-
     if (!allowedMimeTypes.includes(file.mimetype)) {
       cb(new Error("Only images, PDFs, and Word documents are allowed"));
     } else {
@@ -40,7 +36,7 @@ export const upload = multer({
 });
 
 export const manuscriptUpload = multer({
-  storage,
+  storage: tempStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = [
@@ -49,11 +45,10 @@ export const manuscriptUpload = multer({
       "application/x-tex",
       "text/x-tex",
       "application/x-latex",
-      "text/plain", // .tex files may be sent as text/plain
+      "text/plain",
     ];
     const ext = path.extname(file.originalname).toLowerCase();
     const allowedExts = [".docx", ".pdf", ".tex", ".latex"];
-
     if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
       cb(null, true);
     } else {
@@ -62,19 +57,8 @@ export const manuscriptUpload = multer({
   },
 });
 
-const receiptDir = path.join(process.cwd(), "uploads", "receipts");
-if (!fs.existsSync(receiptDir)) fs.mkdirSync(receiptDir, { recursive: true });
-
-const receiptStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, receiptDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `receipt-${Date.now()}${ext}`);
-  },
-});
-
 export const receiptUpload = multer({
-  storage: receiptStorage,
+  storage: tempStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "application/pdf"];
@@ -84,7 +68,7 @@ export const receiptUpload = multer({
 });
 
 export const logoUpload = multer({
-  storage,
+  storage: tempStorage,
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -96,19 +80,8 @@ export const logoUpload = multer({
   },
 });
 
-const certDir = path.join(process.cwd(), "uploads", "certifications");
-if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
-
-const certStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, certDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `cert-${Date.now()}${ext}`);
-  },
-});
-
 export const certificationUpload = multer({
-  storage: certStorage,
+  storage: tempStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "application/pdf"];

@@ -19,6 +19,7 @@ import { getStatusLogRepo } from "./paper.repository";
 import { uploadPaperVersionService } from "../paperVersion/paperVersion.service";
 import { getPublicPaperHtmlService, getPaperVersionHtmlService } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
+import { uploadToSupabase } from "../../utils/uploadToSupabase";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
   const body = req.body;
@@ -43,7 +44,11 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     return field;
   };
 
-  const manuscript_url = req.file ? `/uploads/${req.file.filename}` : undefined;
+  let manuscript_url: string | undefined;
+  if (req.file) {
+    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
+    manuscript_url = uploaded.url;
+  }
 
   const data = {
     title: body.title,
@@ -230,9 +235,10 @@ export const uploadRevisionController = async (
   }
   try {
     const versionNumber = parseInt(req.body.version_number, 10) || 2;
+    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
     const version = await uploadPaperVersionService(req.user, paperId, {
       version_label: `v${versionNumber}`,
-      file_url: `/uploads/${req.file.filename}`,
+      file_url: uploaded.url,
       file_size: req.file.size,
       file_type: req.file.mimetype,
     });

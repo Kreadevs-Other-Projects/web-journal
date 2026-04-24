@@ -107,7 +107,11 @@ export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
       return res
         .status(400)
         .json({ success: false, message: "No file uploaded" });
-    const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+    const uploaded = await uploadToSupabase(
+      req.file.path,
+      "journal-logos",
+      req.file.originalname,
+    );
     await updateJournalLogoService(id, uploaded.url);
     res.json({ success: true, logo_url: uploaded.url });
   } catch (e: any) {
@@ -166,11 +170,15 @@ export const updatePublisherJournal = async (req: AuthUser, res: Response) => {
     const { journalId } = req.params;
     let logo_url: string | undefined;
     if (req.file) {
-      const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+      const uploaded = await uploadToSupabase(
+        req.file.path,
+        "journal-logos",
+        req.file.originalname,
+      );
       logo_url = uploaded.url;
     }
 
-    const { doi: _doi, issn: _issn, ...rest } = req.body;
+    const { doi: _doi, issn: _issn, publisher_name: _pn, ...rest } = req.body;
     const body = { ...rest };
     // Parse numeric fields
     if (body.publication_fee !== undefined) {
@@ -210,15 +218,32 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
+    // Resolve publisher display name from profile (server-side, not from form body)
+    const { pool } = await import("../../configs/db.js");
+    const profileRes = await pool.query(
+      `SELECT up.organization_name, u.username
+       FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id
+       WHERE u.id = $1`,
+      [req.user.id],
+    );
+    const publisherName =
+      profileRes.rows[0]?.organization_name ||
+      profileRes.rows[0]?.username ||
+      req.user.username;
+
     let logo_url: string | null = null;
     if (req.file) {
-      const uploaded = await uploadToSupabase(req.file.path, "journal-logos", req.file.originalname);
+      const uploaded = await uploadToSupabase(
+        req.file.path,
+        "journal-logos",
+        req.file.originalname,
+      );
       logo_url = uploaded.url;
     }
     const journal = await publisherCreateJournalService(
       req.user.id,
-      req.user.username,
-      { ...req.body, logo_url },
+      publisherName,
+      { ...req.body, publisher_name: publisherName, logo_url },
     );
 
     return res.status(201).json({

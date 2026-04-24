@@ -83,7 +83,7 @@ export const initiatePaperPaymentService = async (
     invoiceNumber,
     invoiceDate: formatDateStr(now),
     dueDate: formatDateStr(due),
-    pages,
+    pages: null,
     pricePerPage,
     totalAmount,
     currency,
@@ -119,7 +119,7 @@ export const uploadReceiptService = async (
       authorName: authorId,
       paperTitle: paperRes.rows[0].title,
       invoiceNumber: payment.invoice_number || "",
-      paperUrl: `${env.CORS_ORIGIN || "http://localhost:5173"}/publisher`,
+      paperUrl: `${env.FRONTEND_URL || "http://localhost:5173"}/publisher`,
     }).catch(() => {});
   }
 
@@ -216,7 +216,7 @@ export const resendInvoiceService = async (paperId: string): Promise<void> => {
     invoiceNumber: payment.invoice_number || generateInvoiceNumber(),
     invoiceDate,
     dueDate: formatDateStr(due),
-    pages: payment.pages || DEFAULT_PAGES,
+    pages: payment.pages ?? null,
     pricePerPage: parseFloat(payment.price_per_page) || 50,
     totalAmount: payment.total_amount,
     currency: payment.currency || "USD",
@@ -240,7 +240,7 @@ export const sendPaymentReminderService = async (
     }
   }
 
-  const paperUrl = `${env.CORS_ORIGIN || "http://localhost:5173"}/author`;
+  const paperUrl = `${env.FRONTEND_URL || "http://localhost:5173"}/author`;
   const invoiceDate = payment.created_at
     ? new Date(payment.created_at).toLocaleDateString("en-GB", {
         day: "2-digit",

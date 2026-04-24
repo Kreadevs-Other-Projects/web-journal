@@ -18,7 +18,7 @@ export const env = {
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
   EMAIL_FROM: process.env.EMAIL_USER,
 
-  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:8080",
+  FRONTEND_URL: process.env.FRONTEND_URL,
 
   SUPABASE_URL: process.env.SUPABASE_URL as string,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY as string,

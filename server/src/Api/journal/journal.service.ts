@@ -25,15 +25,61 @@ export type Journal = {
   chief_editor_id: string;
 };
 
-const SKIP_WORDS = new Set(["of", "the", "and", "for", "in", "a", "an"]);
+const STOP_WORDS = new Set([
+  "of",
+  "the",
+  "and",
+  "in",
+  "for",
+  "on",
+  "at",
+  "to",
+  "a",
+  "an",
+  "by",
+  "with",
+  "de",
+  "journal",
+]);
 
-function buildAcronym(title: string): string {
-  const letters = title
+function generateAcronym(title: string): string {
+  const words = title
     .split(/\s+/)
-    .filter((w) => w.length > 0 && !SKIP_WORDS.has(w.toLowerCase()))
-    .map((w) => w[0].toUpperCase())
-    .join("");
-  return letters || title.slice(0, 3).toUpperCase();
+    .map((w) => w.replace(/[^a-zA-Z]/g, ""))
+    .filter((w) => w.length > 0 && !STOP_WORDS.has(w.toLowerCase()));
+
+  let acronym = "";
+
+  if (words.length >= 4) {
+    acronym = words
+      .slice(0, 4)
+      .map((w) => w[0].toUpperCase())
+      .join("");
+  } else if (words.length === 3) {
+    acronym = words.map((w) => w[0].toUpperCase()).join("");
+    const longest = words.reduce((a, b) => (a.length >= b.length ? a : b));
+    acronym += (longest[1] ?? longest[0]).toUpperCase();
+  } else if (words.length === 2) {
+    acronym = words.map((w) => w.slice(0, 2).toUpperCase()).join("");
+  } else if (words.length === 1) {
+    acronym = words[0].slice(0, 4).toUpperCase();
+  } else {
+    const clean = title.replace(/\s/g, "").replace(/[^a-zA-Z]/g, "");
+    acronym = clean.slice(0, 4).toUpperCase();
+  }
+
+  // Ensure exactly 4 characters
+  if (acronym.length > 4) acronym = acronym.slice(0, 4);
+  if (acronym.length < 4) {
+    const firstWord = words[0] ?? title.replace(/\s/g, "");
+    while (acronym.length < 4) {
+      const nextChar =
+        firstWord[acronym.length] ?? firstWord[firstWord.length - 1];
+      acronym += nextChar.toUpperCase();
+    }
+  }
+
+  return acronym;
 }
 
 async function getUniqueAcronym(base: string): Promise<string> {
@@ -41,14 +87,22 @@ async function getUniqueAcronym(base: string): Promise<string> {
     base,
   ]);
   if (!check.rows.length) return base;
-  for (let n = 2; n <= 99; n++) {
-    const candidate = `${base}${n}`;
+
+  for (let n = 1; n <= 9; n++) {
+    const candidate = base.slice(0, 3) + n;
     const r = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
       candidate,
     ]);
     if (!r.rows.length) return candidate;
   }
-  return `${base}${Date.now()}`;
+  for (let n = 10; n <= 99; n++) {
+    const candidate = base.slice(0, 2) + String(n);
+    const r = await pool.query("SELECT 1 FROM journals WHERE acronym = $1", [
+      candidate,
+    ]);
+    if (!r.rows.length) return candidate;
+  }
+  return base.slice(0, 2) + Date.now().toString().slice(-2);
 }
 
 export type PublisherJournalData = {
@@ -189,7 +243,7 @@ export const publisherCreateJournalService = async (
   if (data.issn) {
     const issnCheck = await pool.query(
       `SELECT 1 FROM journals WHERE issn = $1`,
-      [data.issn]
+      [data.issn],
     );
     if (issnCheck.rows.length) {
       const err: any = new Error("A journal with this ISSN already exists");
@@ -198,10 +252,9 @@ export const publisherCreateJournalService = async (
     }
   }
   if (data.doi) {
-    const doiCheck = await pool.query(
-      `SELECT 1 FROM journals WHERE doi = $1`,
-      [data.doi]
-    );
+    const doiCheck = await pool.query(`SELECT 1 FROM journals WHERE doi = $1`, [
+      data.doi,
+    ]);
     if (doiCheck.rows.length) {
       const err: any = new Error("A journal with this DOI already exists");
       err.field = "doi";
@@ -209,11 +262,9 @@ export const publisherCreateJournalService = async (
     }
   }
 
-  // Auto-generate acronym from title if not provided
-  if (!data.acronym) {
-    const base = buildAcronym(data.title);
-    data.acronym = await getUniqueAcronym(base);
-  }
+  // Auto-generate 4-character acronym from title
+  const base = generateAcronym(data.title);
+  data.acronym = await getUniqueAcronym(base);
 
   // Create journal with null chief_editor_id — CE will be linked when they accept invitation
   const journal = await createJournalByPublisher(publisherId, null, data);

@@ -10,17 +10,27 @@ export function generateInvoiceEmailHtml(data: {
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
-  pages: number;
+  pages: number | null;
   pricePerPage: number;
   totalAmount: number;
   currency: string;
   publisherName: string;
 }): string {
   const {
-    authorName, authorEmail, paperTitle, journalName,
-    invoiceNumber, invoiceDate, dueDate,
-    pages, pricePerPage, totalAmount, currency, publisherName,
+    authorName,
+    authorEmail,
+    paperTitle,
+    journalName,
+    invoiceNumber,
+    invoiceDate,
+    dueDate,
+    pages,
+    pricePerPage,
+    totalAmount,
+    currency,
+    publisherName,
   } = data;
+  const pagesDisplay = pages != null ? String(pages) : "TBD";
 
   const paperUrl = `${env.CORS_ORIGIN || "http://localhost:5173"}/author`;
 
@@ -111,7 +121,7 @@ export function generateInvoiceEmailHtml(data: {
               <span style="color:#64748b;font-size:12px;">&ldquo;${paperTitle}&rdquo;</span><br />
               <span style="color:#64748b;font-size:12px;">Journal: ${journalName}</span>
             </td>
-            <td>${pages}</td>
+            <td>${pagesDisplay}</td>
             <td>${currency} ${pricePerPage.toFixed(2)}</td>
             <td><strong>${currency} ${totalAmount.toFixed(2)}</strong></td>
           </tr>
@@ -151,7 +161,7 @@ export const sendInvoiceEmail = async (data: {
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
-  pages: number;
+  pages: number | null;
   pricePerPage: number;
   totalAmount: number;
   currency: string;
@@ -202,7 +212,17 @@ export const sendPaymentReminderEmail = async (data: {
   currency: string;
   paperUrl: string;
 }) => {
-  const { authorName, authorEmail, paperTitle, journalName, invoiceNumber, invoiceDate, totalAmount, currency, paperUrl } = data;
+  const {
+    authorName,
+    authorEmail,
+    paperTitle,
+    journalName,
+    invoiceNumber,
+    invoiceDate,
+    totalAmount,
+    currency,
+    paperUrl,
+  } = data;
 
   await transporter.sendMail({
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
@@ -260,7 +280,10 @@ export const sendPaymentApprovalEmail = async (data: {
     from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
     to: data.authorEmail,
     subject,
-    html: baseEmailTemplate(data.approved ? "Payment Approved" : "Payment Receipt Rejected", content),
+    html: baseEmailTemplate(
+      data.approved ? "Payment Approved" : "Payment Receipt Rejected",
+      content,
+    ),
     text: subject,
   });
 };

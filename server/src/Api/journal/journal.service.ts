@@ -16,6 +16,15 @@ import { sendInvitationEmail } from "../../utils/emails/userEmails";
 import { createInvitation } from "../invitation/invitation.repository";
 import { env } from "../../configs/envs";
 
+function sanitizeHtml(
+  html: string | undefined | null,
+): string | undefined | null {
+  if (!html) return html;
+  return html
+    .replace(/\s+data-path-to-node="[^"]*"/g, "")
+    .replace(/\s+data-index-in-node="[^"]*"/g, "");
+}
+
 export type Journal = {
   title: string;
   acronym: string;
@@ -262,6 +271,12 @@ export const publisherCreateJournalService = async (
     }
   }
 
+  // Strip Quill editor artifacts from rich text fields
+  data.peer_review_policy = sanitizeHtml(data.peer_review_policy) as string;
+  data.oa_policy = sanitizeHtml(data.oa_policy) as string;
+  data.author_guidelines = sanitizeHtml(data.author_guidelines) as string;
+  data.aims_and_scope = sanitizeHtml(data.aims_and_scope);
+
   // Auto-generate 4-character acronym from title
   const base = generateAcronym(data.title);
   data.acronym = await getUniqueAcronym(base);
@@ -275,9 +290,6 @@ export const publisherCreateJournalService = async (
      VALUES ($1, 1, 1, $2, 'Vol 1, Issue 1', 'draft', 1)`,
     [journal.id, new Date().getFullYear()],
   );
-
-  // Grant publisher their journal_manager role for this journal
-  await insertUserRole(publisherId, "journal_manager", journal.id, publisherId);
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const frontendUrl = env.FRONTEND_URL;
@@ -362,6 +374,15 @@ export const updatePublisherJournalService = async (
   // Clear ISSN/DOI if explicitly set to empty string
   if (data.issn === "") data.issn = undefined;
   if (data.doi === "") data.doi = undefined;
+
+  // Strip Quill editor artifacts from rich text fields
+  if (data.peer_review_policy)
+    data.peer_review_policy = sanitizeHtml(data.peer_review_policy) as string;
+  if (data.oa_policy) data.oa_policy = sanitizeHtml(data.oa_policy) as string;
+  if (data.author_guidelines)
+    data.author_guidelines = sanitizeHtml(data.author_guidelines) as string;
+  if (data.aims_and_scope)
+    data.aims_and_scope = sanitizeHtml(data.aims_and_scope);
 
   return updateJournalByPublisher(journalId, data);
 };

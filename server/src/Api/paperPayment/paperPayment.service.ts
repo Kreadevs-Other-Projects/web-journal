@@ -20,7 +20,7 @@ import {
 } from "../../utils/emails/invoiceEmail";
 import { env } from "../../configs/envs";
 
-const DEFAULT_PAGES = 10;
+const DEFAULT_PAGES = 1;
 
 function generateInvoiceNumber(): string {
   const year = new Date().getFullYear();

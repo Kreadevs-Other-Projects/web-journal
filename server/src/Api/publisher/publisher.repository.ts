@@ -384,14 +384,15 @@ export const takedownJournalRepo = async (
     `UPDATE journals SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2 WHERE id = $3`,
     [reason, publisherId, journalId],
   );
-  // Cascade to issues and papers
+  // Cascade to issues and papers, marking source so selective restore works
   await pool.query(
-    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW() WHERE journal_id = $2`,
+    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), takedown_source = 'journal'
+     WHERE journal_id = $2 AND (is_taken_down = false OR is_taken_down IS NULL)`,
     [reason, journalId],
   );
   await pool.query(
-    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2
-     WHERE journal_id = $3`,
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2, takedown_source = 'journal'
+     WHERE journal_id = $3 AND (is_taken_down = false OR is_taken_down IS NULL)`,
     [reason, publisherId, journalId],
   );
 };
@@ -399,6 +400,17 @@ export const takedownJournalRepo = async (
 export const restoreJournalRepo = async (journalId: string) => {
   await pool.query(
     `UPDATE journals SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL WHERE id = $1`,
+    [journalId],
+  );
+  // Only restore issues/papers that were taken down as part of this journal takedown
+  await pool.query(
+    `UPDATE journal_issues SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, takedown_source = NULL
+     WHERE journal_id = $1 AND takedown_source = 'journal'`,
+    [journalId],
+  );
+  await pool.query(
+    `UPDATE papers SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL, takedown_source = NULL
+     WHERE journal_id = $1 AND takedown_source = 'journal'`,
     [journalId],
   );
 };
@@ -409,19 +421,26 @@ export const takedownIssueRepo = async (
   publisherId: string,
 ) => {
   await pool.query(
-    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW() WHERE id = $2`,
+    `UPDATE journal_issues SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), takedown_source = 'manual' WHERE id = $2`,
     [reason, issueId],
   );
+  // Cascade to papers, marking source so selective restore works
   await pool.query(
-    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2
-     WHERE issue_id = $3`,
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2, takedown_source = 'issue'
+     WHERE issue_id = $3 AND (is_taken_down = false OR is_taken_down IS NULL)`,
     [reason, publisherId, issueId],
   );
 };
 
 export const restoreIssueRepo = async (issueId: string) => {
   await pool.query(
-    `UPDATE journal_issues SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL WHERE id = $1`,
+    `UPDATE journal_issues SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, takedown_source = NULL WHERE id = $1`,
+    [issueId],
+  );
+  // Only restore papers that were taken down as part of this issue takedown
+  await pool.query(
+    `UPDATE papers SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL, takedown_source = NULL
+     WHERE issue_id = $1 AND takedown_source = 'issue'`,
     [issueId],
   );
 };
@@ -432,7 +451,7 @@ export const takedownPaperRepo = async (
   publisherId: string,
 ) => {
   const result = await pool.query(
-    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2 WHERE id = $3 RETURNING *`,
+    `UPDATE papers SET is_taken_down = true, takedown_reason = $1, taken_down_at = NOW(), taken_down_by = $2, takedown_source = 'manual' WHERE id = $3 RETURNING *`,
     [reason, publisherId, paperId],
   );
   return result.rows[0];
@@ -440,7 +459,7 @@ export const takedownPaperRepo = async (
 
 export const restorePaperRepo = async (paperId: string) => {
   const result = await pool.query(
-    `UPDATE papers SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL WHERE id = $1 RETURNING *`,
+    `UPDATE papers SET is_taken_down = false, takedown_reason = NULL, taken_down_at = NULL, taken_down_by = NULL, takedown_source = NULL WHERE id = $1 RETURNING *`,
     [paperId],
   );
   return result.rows[0];

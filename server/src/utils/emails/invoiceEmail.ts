@@ -231,19 +231,60 @@ export const sendPaymentReminderEmail = async (data: {
     html: baseEmailTemplate(
       "Payment Reminder",
       `
-        <p>Dear <strong>${authorName}</strong>,</p>
-        <p>This is a friendly reminder that your publication fee for the following paper is still outstanding:</p>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Paper Title</span><span style="font-weight:600;">${paperTitle}</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Journal</span><span style="font-weight:600;">${journalName}</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Invoice #</span><span style="font-weight:600;">${invoiceNumber}</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Amount Due</span><span style="font-weight:600;">${currency} ${Number(totalAmount).toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#64748b;">Invoice Date</span><span style="font-weight:600;">${invoiceDate}</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Status</span><span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;">UNPAID</span></div>
-        </div>
-        <p>Please complete payment and upload your receipt:</p>
-        <a href="${paperUrl}" class="button">Upload Receipt →</a>
-        <p style="font-size:13px;color:#64748b;margin-top:16px;">If you have already made payment, please upload your receipt so we can verify and proceed.</p>
+       <p style="margin:0 0 16px 0;">Dear <strong>${authorName}</strong>,</p>
+
+<p style="margin:0 0 20px 0; line-height:1.6;">
+  This is a friendly reminder that your publication fee for the following paper is still outstanding:
+</p>
+
+<div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin:24px 0;">
+  
+  <div style="margin-bottom:12px;">
+    <div style="color:#64748b;font-size:12px;">Paper Title</div>
+    <div style="font-weight:600;color:#0f172a;">${paperTitle}</div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="color:#64748b;font-size:12px;">Journal</div>
+    <div style="font-weight:600;color:#0f172a;">${journalName}</div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="color:#64748b;font-size:12px;">Invoice #</div>
+    <div style="font-weight:600;color:#0f172a;">${invoiceNumber}</div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="color:#64748b;font-size:12px;">Amount Due</div>
+    <div style="font-weight:600;color:#0f172a;">
+      ${currency} ${Number(totalAmount).toFixed(2)}
+    </div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="color:#64748b;font-size:12px;">Invoice Date</div>
+    <div style="font-weight:600;color:#0f172a;">${invoiceDate}</div>
+  </div>
+
+  <div>
+    <div style="color:#64748b;font-size:12px;margin-bottom:4px;">Status</div>
+    <span style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:700;">
+      UNPAID
+    </span>
+  </div>
+
+</div>
+
+<p style="margin:20px 0 12px 0;">Please complete payment and upload your receipt:</p>
+
+<a href="${paperUrl}" 
+   style="display:inline-block;background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+   Upload Receipt →
+</a>
+
+<p style="font-size:13px;color:#64748b;margin-top:20px;line-height:1.5;">
+  If you have already made payment, please upload your receipt so we can verify and proceed.
+</p>
       `,
     ),
     text: `Payment Reminder | Invoice ${invoiceNumber} | ${currency} ${totalAmount} | Paper: "${paperTitle}"`,

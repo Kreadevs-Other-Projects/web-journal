@@ -11,14 +11,14 @@ export const sendSubmissionConfirmationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Paper Submission Confirmed",
       html: baseEmailTemplate(
         "Submission Confirmed",
         `
           <p>Dear <strong>${username}</strong>,</p>
-          <p>Your paper has been successfully submitted to <strong>GIKI JournalHub</strong>.</p>
+          <p>Your paper has been successfully submitted to <strong>Paperuno</strong>.</p>
           <p><strong>Paper Title:</strong> ${paperTitle}</p>
           <p><strong>Submission ID:</strong> ${submissionId}</p>
           <p>Our editorial team will review your submission and assign an editor shortly.</p>
@@ -43,7 +43,7 @@ export const sendEditorAssignmentEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Editor Assigned to Your Paper",
       html: baseEmailTemplate(
@@ -76,14 +76,14 @@ export const sendReviewerAssignmentEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Invitation to Review a Paper – GIKI JournalHub",
+      subject: "Invitation to Review a Paper – Paperuno",
       html: baseEmailTemplate(
         "Reviewer Invitation",
         `
           <p>Dear <strong>${reviewerName}</strong>,</p>
-          <p>You have been invited to review the following paper submitted to <strong>GIKI JournalHub</strong>:</p>
+          <p>You have been invited to review the following paper submitted to <strong>Paperuno</strong>:</p>
           <p><strong>Paper Title:</strong> ${paperTitle}</p>
           <p><strong>Review Deadline:</strong> ${reviewDeadline}</p>
           <p>Please click the button below to access the paper and submit your review:</p>
@@ -110,9 +110,9 @@ export const sendReviewerReminderEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Reminder: Review Deadline Approaching – GIKI JournalHub",
+      subject: "Reminder: Review Deadline Approaching – Paperuno",
       html: baseEmailTemplate(
         "Review Reminder",
         `
@@ -142,9 +142,9 @@ export const sendReviewSubmissionConfirmationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Review Submitted Successfully – GIKI JournalHub",
+      subject: "Review Submitted Successfully – Paperuno",
       html: baseEmailTemplate(
         "Review Submitted",
         `
@@ -152,7 +152,7 @@ export const sendReviewSubmissionConfirmationEmail = async (
           <p>Thank you for submitting your review for the following paper:</p>
           <p><strong>Paper Title:</strong> ${paperTitle}</p>
           <p>Your review has been received and will be considered by the editorial team in making their decision.</p>
-          <p>We appreciate your contribution to the peer review process at <strong>GIKI JournalHub</strong>.</p>
+          <p>We appreciate your contribution to the peer review process at <strong>Paperuno</strong>.</p>
         `,
       ),
       text: `Dear ${reviewerName}, your review for "${paperTitle}" has been submitted successfully. Thank you.`,
@@ -188,7 +188,7 @@ export const sendEditorialDecisionEmail = async (
 
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: `Editorial Decision on Your Paper – ${decisionLabels[decision]}`,
       html: baseEmailTemplate(
@@ -222,9 +222,9 @@ export const sendRevisionRequestEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: `Revision Requested for Your Paper – GIKI JournalHub`,
+      subject: `Revision Requested for Your Paper – Paperuno`,
       html: baseEmailTemplate(
         `${revisionType === "minor" ? "Minor" : "Major"} Revision Requested`,
         `
@@ -255,7 +255,7 @@ export const sendAcceptanceNoticeEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Congratulations! Your Paper Has Been Accepted",
       html: baseEmailTemplate(
@@ -266,7 +266,7 @@ export const sendAcceptanceNoticeEmail = async (
           <p><strong>Paper Title:</strong> ${paperTitle}</p>
           <p>The next steps include proof review and final publication. You will be notified when your proof is ready.</p>
           <a href="${env.CORS_ORIGIN}/dashboard/submissions" class="button">View Submission</a>
-          <p>Congratulations and thank you for choosing <strong>GIKI JournalHub</strong>!</p>
+          <p>Congratulations and thank you for choosing <strong>Paperuno</strong>!</p>
         `,
       ),
       text: `Dear ${username}, congratulations! Your paper "${paperTitle}" has been accepted for publication in ${journalName}.`,
@@ -288,9 +288,9 @@ export const sendProofAvailabilityEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Proof Ready for Review – GIKI JournalHub",
+      subject: "Proof Ready for Review – Paperuno",
       html: baseEmailTemplate(
         "Proof Available",
         `
@@ -323,9 +323,9 @@ export const sendPublicationConfirmationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Your Paper Has Been Published – GIKI JournalHub",
+      subject: "Your Paper Has Been Published – Paperuno",
       html: baseEmailTemplate(
         "Paper Published 🎉",
         `
@@ -336,7 +336,7 @@ export const sendPublicationConfirmationEmail = async (
           <p><strong>Issue:</strong> ${issueLabel}</p>
           <p>Your work is now accessible to the global research community.</p>
           <a href="${publicationLink}" class="button">View Published Paper</a>
-          <p>Thank you for publishing with <strong>GIKI JournalHub</strong>.</p>
+          <p>Thank you for publishing with <strong>Paperuno</strong>.</p>
         `,
       ),
       text: `Dear ${username}, your paper "${paperTitle}" has been published in ${journalName} (${issueLabel}). View it here: ${publicationLink}`,
@@ -366,7 +366,7 @@ export const sendCorrAuthorApprovalEmail = async (opts: {
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto;">
   <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 30px; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">GIKI JournalHub</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">Paperuno</h1>
     <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 13px;">Corresponding Author Approval Required</p>
   </div>
   <div style="padding: 35px 40px; background: #ffffff;">
@@ -386,26 +386,38 @@ export const sendCorrAuthorApprovalEmail = async (opts: {
           <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">Submitted by:</td>
           <td>${opts.authorName}</td>
         </tr>
-        ${opts.allAuthors ? `<tr>
+        ${
+          opts.allAuthors
+            ? `<tr>
           <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">All Authors:</td>
           <td>${opts.allAuthors}</td>
-        </tr>` : ""}
-        ${opts.submissionDate ? `<tr>
+        </tr>`
+            : ""
+        }
+        ${
+          opts.submissionDate
+            ? `<tr>
           <td style="color: #6b7280; padding: 4px 0; vertical-align: top;">Submission Date:</td>
           <td>${opts.submissionDate}</td>
-        </tr>` : ""}
+        </tr>`
+            : ""
+        }
       </table>
 
-      ${opts.abstract ? `
+      ${
+        opts.abstract
+          ? `
       <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
         <p style="font-size: 12px; font-weight: 600; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">Abstract</p>
         <p style="font-size: 14px; line-height: 1.7; color: #374151; margin: 0;">${opts.abstract}</p>
-      </div>` : ""}
+      </div>`
+          : ""
+      }
     </div>
 
     <p style="font-weight: 500;">As corresponding author, please review and approve or reject this submission:</p>
 
-    ${!opts.hasAccount ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:13px;">You don't have a GIKI JournalHub account yet. Please create one to approve this submission.</p>` : ""}
+    ${!opts.hasAccount ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:13px;">You don't have a Paperuno account yet. Please create one to approve this submission.</p>` : ""}
 
     <div style="text-align: center; margin: 30px 0;">
       <a href="${approvalUrl}"
@@ -417,13 +429,13 @@ export const sendCorrAuthorApprovalEmail = async (opts: {
     <p style="color: #6b7280; font-size: 13px;">This link expires in 7 days. If you did not expect this email, please ignore it.</p>
   </div>
   <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
-    <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} GIKI JournalHub</p>
+    <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} Paperuno</p>
   </div>
 </div>`;
 
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: opts.corrAuthorEmail,
       subject: `Corresponding Author Approval Required — ${opts.paperTitle}`,
       html,
@@ -444,7 +456,7 @@ export const sendCAApprovedNotificationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Your Paper Has Been Approved by the Corresponding Author",
       html: baseEmailTemplate(
@@ -475,7 +487,7 @@ export const sendCARejectedNotificationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Your Paper Submission Was Rejected by the Corresponding Author",
       html: baseEmailTemplate(
@@ -508,9 +520,9 @@ export const sendDOIRegistrationEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "DOI Registered for Your Paper – GIKI JournalHub",
+      subject: "DOI Registered for Your Paper – Paperuno",
       html: baseEmailTemplate(
         "DOI Registration Confirmed",
         `

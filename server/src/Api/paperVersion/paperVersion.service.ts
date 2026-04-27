@@ -93,7 +93,7 @@ export const uploadPaperVersionService = async (
     for (const member of teamRes.rows) {
       transporter
         .sendMail({
-          from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+          from: `"Paperuno" <${env.EMAIL_FROM}>`,
           to: member.email,
           subject: `Revised Version Uploaded — "${paper.title}"`,
           text: `Hi ${member.username},\n\nThe author has uploaded a revised version (v${version.version_number}) of the paper "${paper.title}".\n\nPlease log in to review the new version.`,

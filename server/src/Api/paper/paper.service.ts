@@ -113,7 +113,7 @@ export const createPaperService = async (
       "SELECT title FROM journals WHERE id = $1",
       [data.journal_id],
     );
-    const journalName = journalRes.rows[0]?.title || "GIKI JournalHub";
+    const journalName = journalRes.rows[0]?.title || "Paperuno";
 
     // Check if CA has an account
     const existingUser = await pool.query(

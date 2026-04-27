@@ -25,7 +25,11 @@ const profilePicUpload = multer({
 
 const router = Router();
 
-router.post("/", sendContactMessage);
-router.post("/apply-reviewer", profilePicUpload.single("profile_pic"), applyAsReviewer);
+router.post("/msg", sendContactMessage);
+router.post(
+  "/apply-reviewer",
+  profilePicUpload.single("profile_pic"),
+  applyAsReviewer,
+);
 
 export default router;

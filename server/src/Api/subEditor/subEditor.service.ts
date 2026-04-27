@@ -94,7 +94,9 @@ export const subEditorDecisionService = async (
     throw new Error("Cannot change the status of a published paper.");
   }
   if (paperInfo.rows[0]?.ce_override) {
-    throw new Error("This paper's status has been overridden by the Chief Editor and cannot be changed.");
+    throw new Error(
+      "This paper's status has been overridden by the Chief Editor and cannot be changed.",
+    );
   }
   const currentVersionId = paperInfo.rows[0]?.current_version_id;
 
@@ -137,7 +139,7 @@ export const subEditorDecisionService = async (
     if (action === "revision") {
       transporter
         .sendMail({
-          from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+          from: `"Paperuno" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Revision Required — "${title}"`,
           html: baseEmailTemplate(
@@ -154,7 +156,7 @@ export const subEditorDecisionService = async (
     } else {
       transporter
         .sendMail({
-          from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+          from: `"Paperuno" <${env.EMAIL_FROM}>`,
           to: email,
           subject: `Paper Decision — "${title}"`,
           html: baseEmailTemplate(
@@ -217,7 +219,7 @@ export const suggestReviewerService = async (
     const subName = subRes.rows[0]?.username || "Sub Editor";
     transporter
       .sendMail({
-        from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+        from: `"Paperuno" <${env.EMAIL_FROM}>`,
         to: email,
         subject: `Reviewer Suggestion for "${paper_title}"`,
         html: baseEmailTemplate(
@@ -308,7 +310,7 @@ export const reviewReviewerRequestService = async (
     if (seRes.rows.length) {
       transporter
         .sendMail({
-          from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+          from: `"Paperuno" <${env.EMAIL_FROM}>`,
           to: seRes.rows[0].email,
           subject: "Your Reviewer Suggestion Has Been Approved",
           html: baseEmailTemplate(
@@ -345,7 +347,10 @@ export const remindReviewerFromAEService = async (
     [paperId, reviewerId, subEditorId],
   );
   if (!res.rows.length) {
-    throw Object.assign(new Error("Reviewer not found or not actively assigned to this paper"), { status: 404 });
+    throw Object.assign(
+      new Error("Reviewer not found or not actively assigned to this paper"),
+      { status: 404 },
+    );
   }
 
   const reviewer = res.rows[0];
@@ -356,11 +361,14 @@ export const remindReviewerFromAEService = async (
     [paperId, reviewer.id],
   );
   if (lastReminder.rows.length) {
-    const hoursSince = (Date.now() - new Date(lastReminder.rows[0].sent_at).getTime()) / 3600000;
+    const hoursSince =
+      (Date.now() - new Date(lastReminder.rows[0].sent_at).getTime()) / 3600000;
     if (hoursSince < 24) {
       const hoursLeft = Math.ceil(24 - hoursSince);
       throw Object.assign(
-        new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`),
+        new Error(
+          `Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`,
+        ),
         { status: 429 },
       );
     }
@@ -371,19 +379,21 @@ export const remindReviewerFromAEService = async (
     [paperId, reviewer.id, subEditorId, "reviewer"],
   );
 
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: reviewer.email,
-    subject: `Reminder: Review pending for "${reviewer.title}"`,
-    html: baseEmailTemplate(
-      "Review Reminder",
-      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: reviewer.email,
+      subject: `Reminder: Review pending for "${reviewer.title}"`,
+      html: baseEmailTemplate(
+        "Review Reminder",
+        `<p>Dear <strong>${reviewer.username}</strong>,</p>
        <p>This is a friendly reminder that your peer review is pending for:</p>
        <p><strong>"${reviewer.title}"</strong></p>
        <p>Your timely review is important to the publication process.</p>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { message: `Reminder sent to ${reviewer.username}` };
 };

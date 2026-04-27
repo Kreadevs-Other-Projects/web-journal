@@ -9,18 +9,18 @@ export const sendWelcomeEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "Welcome to GIKI JournalHub",
+      subject: "Welcome to Paperuno",
       html: baseEmailTemplate(
-        "Welcome to GIKI JournalHub",
+        "Welcome to Paperuno",
         `
           <p>Hi <strong>${username}</strong>,</p>
-          <p>Welcome to <strong>GIKI JournalHub</strong> — your platform for scientific publishing and peer review.</p>
+          <p>Welcome to <strong>Paperuno</strong> — your platform for scientific publishing and peer review.</p>
           <p>Your account is now active. You can log in with your email and the password you set when accepting your invitation.</p>
         `,
       ),
-      text: `Hi ${username}, welcome to GIKI JournalHub! You can now log in with your email address.`,
+      text: `Hi ${username}, welcome to Paperuno! You can now log in with your email address.`,
     });
     return true;
   } catch (error) {
@@ -58,9 +58,9 @@ export const sendInvitationEmail = async (params: {
   const roleLabel = ROLE_DISPLAY[role] || role;
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to,
-      subject: `You have been invited to join ${journalName} on GIKI JournalHub`,
+      subject: `You have been invited to join ${journalName} on Paperuno`,
       html: baseEmailTemplate(
         "You've Been Invited",
         `
@@ -89,20 +89,20 @@ export const sendSubEditorInviteEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "You're invited to join GIKI JournalHub as a Sub-Editor",
+      subject: "You're invited to join Paperuno as a Sub-Editor",
       html: baseEmailTemplate(
-        "Invitation to GIKI JournalHub",
+        "Invitation to Paperuno",
         `
           <p>Hello,</p>
-          <p>You have been invited to join <strong>GIKI JournalHub</strong> as a <strong>Sub-Editor</strong>.</p>
+          <p>You have been invited to join <strong>Paperuno</strong> as a <strong>Sub-Editor</strong>.</p>
           <p>Click the button below to complete your signup and start managing papers:</p>
           <a href="${signupLink}" class="button">Complete Signup</a>
           <p>If you didn't expect this email, you can safely ignore it.</p>
         `,
       ),
-      text: `You have been invited to join GIKI JournalHub as a Sub-Editor. Complete your signup here: ${signupLink}`,
+      text: `You have been invited to join Paperuno as a Sub-Editor. Complete your signup here: ${signupLink}`,
     });
     return true;
   } catch (error) {
@@ -117,21 +117,21 @@ export const sendReviewerInviteEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
-      subject: "You're invited to join GIKI JournalHub as a Reviewer",
+      subject: "You're invited to join Paperuno as a Reviewer",
       html: baseEmailTemplate(
-        "Invitation to GIKI JournalHub",
+        "Invitation to Paperuno",
         `
           <p>Hello,</p>
-          <p>You have been invited to join <strong>GIKI JournalHub</strong> as a <strong>Reviewer</strong>.</p>
+          <p>You have been invited to join <strong>Paperuno</strong> as a <strong>Reviewer</strong>.</p>
           <p>As a reviewer, you'll be responsible for evaluating submitted papers and providing feedback.</p>
           <p>Click the button below to complete your signup:</p>
           <a href="${signupLink}" class="button">Complete Signup</a>
           <p>If you didn't expect this email, you can safely ignore it.</p>
         `,
       ),
-      text: `You have been invited to join GIKI JournalHub as a Reviewer. Complete your signup here: ${signupLink}`,
+      text: `You have been invited to join Paperuno as a Reviewer. Complete your signup here: ${signupLink}`,
     });
     return true;
   } catch (error) {

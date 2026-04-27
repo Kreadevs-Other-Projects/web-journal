@@ -81,8 +81,8 @@ export function generateInvoiceEmailHtml(data: {
   <div class="wrapper">
     <div class="header">
       <div class="header-left">
-        <div class="org">GIKI JournalHub</div>
-        <div class="org-sub">${publisherName}</div>
+        <div class="org">Indus Academic Press</div>
+        <div class="org-sub">via Paperuno · ${publisherName}</div>
       </div>
       <div class="header-right">
         <div class="invoice-label">INVOICE</div>
@@ -145,8 +145,8 @@ export function generateInvoiceEmailHtml(data: {
     </div>
 
     <div class="footer">
-      This is an automated invoice from ${publisherName} via GIKI JournalHub.<br />
-      For queries, contact the editorial office. &copy; ${new Date().getFullYear()} GIKI JournalHub.
+      This is an automated invoice from ${publisherName} via Paperuno.<br />
+      For queries, contact the editorial office. &copy; ${new Date().getFullYear()} Paperuno.
     </div>
   </div>
 </body>
@@ -168,7 +168,7 @@ export const sendInvoiceEmail = async (data: {
   publisherName: string;
 }) => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: data.authorEmail,
     subject: `Invoice ${data.invoiceNumber} — Publication Fee for "${data.paperTitle}"`,
     html: generateInvoiceEmailHtml(data),
@@ -184,7 +184,7 @@ export const sendReceiptNotificationEmail = async (data: {
   paperUrl: string;
 }) => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: data.publisherEmail,
     subject: `Receipt Uploaded — ${data.invoiceNumber} | "${data.paperTitle}"`,
     html: baseEmailTemplate(
@@ -225,7 +225,7 @@ export const sendPaymentReminderEmail = async (data: {
   } = data;
 
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: authorEmail,
     subject: `Payment Reminder — Invoice #${invoiceNumber} for "${paperTitle}"`,
     html: baseEmailTemplate(
@@ -318,7 +318,7 @@ export const sendPaymentApprovalEmail = async (data: {
       `;
 
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: data.authorEmail,
     subject,
     html: baseEmailTemplate(

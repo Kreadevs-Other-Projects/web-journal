@@ -22,7 +22,7 @@ export const sendRejectionEmailToApplicant = async (
   journalName: string,
 ): Promise<void> => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_USER}>`,
+    from: `"Paperuno" <${env.EMAIL_USER}>`,
     to: applicantEmail,
     subject: `Regarding your reviewer application for ${journalName}`,
     html: baseEmailTemplate(
@@ -61,7 +61,7 @@ export const sendReviewerApplicationToEditor = async (
     : "";
 
   const mailOptions: any = {
-    from: `"GIKI JournalHub" <${env.EMAIL_USER}>`,
+    from: `"Paperuno" <${env.EMAIL_USER}>`,
     to: editorEmail,
     replyTo: data.applicantEmail,
     subject: `New Reviewer Application for ${data.journalName} — ${data.applicantName}`,
@@ -139,7 +139,7 @@ export const sendReviewerApplicationConfirmation = async (
   submittedAt: string,
 ): Promise<void> => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_USER}>`,
+    from: `"Paperuno" <${env.EMAIL_USER}>`,
     to: applicantEmail,
     subject: `Your reviewer application for ${journalName} has been received`,
     html: baseEmailTemplate(

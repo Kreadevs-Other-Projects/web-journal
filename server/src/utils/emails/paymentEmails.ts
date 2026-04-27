@@ -22,7 +22,7 @@ export const sendInvoiceEmail = async ({
   status: string;
 }) => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: email,
     subject: `Invoice for Journal Issue (${status.toUpperCase()})`,
     html: baseEmailTemplate(
@@ -65,7 +65,7 @@ export const sendPaperPaymentEmail = async ({
   const status = "pending";
 
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: email,
     subject: `Invoice for Paper Payment (${status.toUpperCase()})`,
     html: baseEmailTemplate(
@@ -81,7 +81,7 @@ export const sendPaperPaymentEmail = async ({
         <p>Please complete the payment to proceed with the publication process.</p>
         <a href="${env.CORS_ORIGIN}/dashboard/payments" class="button">Pay Now</a>
         <p>If you have any questions, feel free to contact the editorial office.</p>
-        <p>Best regards,<br/>GIKI JournalHub Editorial Team</p>
+        <p>Best regards,<br/>Paperuno Editorial Team</p>
       `,
     ),
     text: `Invoice ${paymentId} | Amount $${totalAmount} | Status ${status}`,
@@ -108,7 +108,7 @@ export const sendJournalExpiryInvoiceEmail = async ({
   status: string;
 }) => {
   await transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+    from: `"Paperuno" <${env.EMAIL_FROM}>`,
     to: email,
     subject: `Journal Renewal Invoice (${status.toUpperCase()})`,
     html: baseEmailTemplate(

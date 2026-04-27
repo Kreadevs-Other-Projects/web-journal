@@ -33,7 +33,9 @@ export const addJournalIssueService = async (
   journal_id: string,
 ) => {
   if (user.role !== "publisher" && user.role !== "journal_manager") {
-    throw new Error("Only publishers or journal managers can create journal issues");
+    throw new Error(
+      "Only publishers or journal managers can create journal issues",
+    );
   }
 
   const journalResult = await pool.query(
@@ -122,18 +124,20 @@ export const requestNewIssueService = async (
   );
   if (journalRes.rows.length) {
     const { publisher_email, publisher_name, title } = journalRes.rows[0];
-    transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-      to: publisher_email,
-      subject: `New Issue Request — ${title}`,
-      html: baseEmailTemplate(
-        "New Issue Request",
-        `<p>Dear <strong>${publisher_name}</strong>,</p>
+    transporter
+      .sendMail({
+        from: `"Paperuno" <${env.EMAIL_FROM}>`,
+        to: publisher_email,
+        subject: `New Issue Request — ${title}`,
+        html: baseEmailTemplate(
+          "New Issue Request",
+          `<p>Dear <strong>${publisher_name}</strong>,</p>
          <p><strong>${user.username}</strong> (Journal Manager) has requested a new issue for <strong>"${title}"</strong>.</p>
          <p><strong>Requesting:</strong> ${serial.label} (${serial.year})</p>
          <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/publisher" class="button">Review Request →</a>`,
-      ),
-    }).catch(() => {});
+        ),
+      })
+      .catch(() => {});
   }
 
   return request;
@@ -160,7 +164,10 @@ export const reviewIssueRequestService = async (
   request_id: string,
   action: "approved" | "rejected",
 ) => {
-  const reqRes = await pool.query(`SELECT * FROM issue_requests WHERE id = $1`, [request_id]);
+  const reqRes = await pool.query(
+    `SELECT * FROM issue_requests WHERE id = $1`,
+    [request_id],
+  );
   if (!reqRes.rows.length) throw new Error("Request not found");
   const req = reqRes.rows[0];
 
@@ -179,18 +186,20 @@ export const reviewIssueRequestService = async (
     );
     if (notifyRes.rows.length) {
       const { email, username } = notifyRes.rows[0];
-      transporter.sendMail({
-        from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-        to: email,
-        subject: "Your Issue Request Has Been Approved",
-        html: baseEmailTemplate(
-          "Issue Request Approved",
-          `<p>Dear <strong>${username}</strong>,</p>
+      transporter
+        .sendMail({
+          from: `"Paperuno" <${env.EMAIL_FROM}>`,
+          to: email,
+          subject: "Your Issue Request Has Been Approved",
+          html: baseEmailTemplate(
+            "Issue Request Approved",
+            `<p>Dear <strong>${username}</strong>,</p>
            <p>Your issue request has been approved.</p>
            <p><strong>Issue Created:</strong> ${serial.label} (${serial.year})</p>
            <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/journal-manager" class="button">View Issues →</a>`,
-        ),
-      }).catch(() => {});
+          ),
+        })
+        .catch(() => {});
     }
   }
 

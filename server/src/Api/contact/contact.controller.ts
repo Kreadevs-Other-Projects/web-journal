@@ -7,17 +7,31 @@ export const sendContactMessage = async (req: Request, res: Response) => {
   const { name, email, department, subject, message } = req.body;
 
   if (!name || name.trim().length < 2) {
-    return res.status(400).json({ success: false, message: "Name must be at least 2 characters" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Name must be at least 2 characters" });
   }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!email || !emailRegex.test(email)) {
-    return res.status(400).json({ success: false, message: "Valid email is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Valid email is required" });
   }
   if (!subject || subject.trim().length < 3) {
-    return res.status(400).json({ success: false, message: "Subject must be at least 3 characters" });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Subject must be at least 3 characters",
+      });
   }
   if (!message || message.trim().length < 10) {
-    return res.status(400).json({ success: false, message: "Message must be at least 10 characters" });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Message must be at least 10 characters",
+      });
   }
 
   try {
@@ -31,7 +45,7 @@ export const sendContactMessage = async (req: Request, res: Response) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">GIKI JournalHub</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Paperuno</h1>
             <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 13px;">New Contact Form Submission</p>
           </div>
           <div style="padding: 35px 40px; background: #ffffff;">
@@ -45,10 +59,14 @@ export const sendContactMessage = async (req: Request, res: Response) => {
                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Email:</td>
                 <td style="padding: 8px 0; font-size: 14px;"><a href="mailto:${email}" style="color: #2563eb;">${email}</a></td>
               </tr>
-              ${department ? `<tr>
+              ${
+                department
+                  ? `<tr>
                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Department:</td>
                 <td style="padding: 8px 0; font-size: 14px;">${department}</td>
-              </tr>` : ""}
+              </tr>`
+                  : ""
+              }
               <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Subject:</td>
                 <td style="padding: 8px 0; font-size: 14px; font-weight: 500;">${subject}</td>
@@ -63,7 +81,7 @@ export const sendContactMessage = async (req: Request, res: Response) => {
             </div>
           </div>
           <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} GIKI JournalHub · Contact Form Submission</p>
+            <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} Paperuno · Contact Form Submission</p>
           </div>
         </div>
       `,
@@ -72,11 +90,11 @@ export const sendContactMessage = async (req: Request, res: Response) => {
     await transporter.sendMail({
       from: env.EMAIL_USER,
       to: email,
-      subject: `We received your message — GIKI JournalHub`,
+      subject: `We received your message — Paperuno`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">GIKI JournalHub</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Paperuno</h1>
           </div>
           <div style="padding: 35px 40px; background: #ffffff;">
             <h2 style="color: #1e3a5f; margin: 0 0 16px;">Thank you, ${name}!</h2>
@@ -93,7 +111,7 @@ export const sendContactMessage = async (req: Request, res: Response) => {
             </p>
           </div>
           <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} GIKI JournalHub · This is an automated confirmation</p>
+            <p style="color: #64748b; font-size: 12px; margin: 0;">© ${year} Paperuno · This is an automated confirmation</p>
           </div>
         </div>
       `,
@@ -101,22 +119,37 @@ export const sendContactMessage = async (req: Request, res: Response) => {
 
     return res.json({ success: true, message: "Message sent successfully" });
   } catch (e: any) {
-    return res.status(500).json({ success: false, message: "Failed to send message. Please try again." });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to send message. Please try again.",
+      });
   }
 };
 
 export const applyAsReviewer = async (req: Request, res: Response) => {
   try {
     const { journalId, name, email, statement, affiliation, orcid } = req.body;
-    const appliedRole = req.body.applied_role === "associate_editor" ? "associate_editor" : "reviewer";
+    const appliedRole =
+      req.body.applied_role === "associate_editor"
+        ? "associate_editor"
+        : "reviewer";
 
     if (!journalId || !name || !email) {
-      return res.status(400).json({ success: false, message: "journalId, name and email are required" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "journalId, name and email are required",
+        });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ success: false, message: "Invalid email address" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid email address" });
     }
 
     // Parse array fields (sent as JSON strings or repeated fields)
@@ -135,10 +168,14 @@ export const applyAsReviewer = async (req: Request, res: Response) => {
     }
 
     if (keywords.length > 5) {
-      return res.status(400).json({ success: false, message: "Maximum 5 keywords allowed" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Maximum 5 keywords allowed" });
     }
     if (degrees.length > 5) {
-      return res.status(400).json({ success: false, message: "Maximum 5 degrees allowed" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Maximum 5 degrees allowed" });
     }
 
     const profilePicPath = req.file?.path;

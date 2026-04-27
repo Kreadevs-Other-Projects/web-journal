@@ -5,14 +5,14 @@ import { baseEmailTemplate } from "./baseEmailTemplate";
 export const sendOTPEmail = async (email: string, otpCode: string) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: `Your verification code — ${otpCode}`,
       html: baseEmailTemplate(
         "Verification Code",
         `
           <p>Dear User,</p>
-          <p>Use the following code to verify your identity on GIKI JournalHub:</p>
+          <p>Use the following code to verify your identity on Paperuno:</p>
 
           <div style="text-align: center; margin: 30px 0;">
             <div style="display: inline-block; background: #0B1220; border: 2px dashed #2563eb; border-radius: 12px; padding: 20px 40px;">
@@ -43,7 +43,7 @@ export const sendPasswordResetEmail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
       to: email,
       subject: "Password Reset Request",
       html: baseEmailTemplate(

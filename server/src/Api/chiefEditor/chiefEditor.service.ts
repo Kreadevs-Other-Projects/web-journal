@@ -88,7 +88,10 @@ export const makeEditorDecision = async (
   if (!userRes.rows.length) {
     throw new Error("Email does not match your account");
   }
-  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  const passwordValid = await bcrypt.compare(
+    password,
+    userRes.rows[0].password,
+  );
   if (!passwordValid) {
     throw new Error("Incorrect password");
   }
@@ -131,9 +134,17 @@ export const makeEditorDecision = async (
     if (authorRes.rows.length) {
       const author = authorRes.rows[0];
       try {
-        await initiatePaperPaymentService(paperId, author.id, author.email, author.username);
+        await initiatePaperPaymentService(
+          paperId,
+          author.id,
+          author.email,
+          author.username,
+        );
       } catch (err) {
-        console.error("[payment] initiatePaperPaymentService failed on acceptance:", err);
+        console.error(
+          "[payment] initiatePaperPaymentService failed on acceptance:",
+          err,
+        );
       }
       await pool.query(
         `UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`,
@@ -220,36 +231,42 @@ export const replaceSubEditorService = async (
   // Notify old AE
   if (currentRes.rows.length) {
     const { old_ae_email, old_ae_name, title } = currentRes.rows[0];
-    transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-      to: old_ae_email,
-      subject: `You have been removed from paper "${title}"`,
-      html: baseEmailTemplate(
-        "Editor Assignment Update",
-        `<p>Dear <strong>${old_ae_name}</strong>,</p>
+    transporter
+      .sendMail({
+        from: `"Paperuno" <${env.EMAIL_FROM}>`,
+        to: old_ae_email,
+        subject: `You have been removed from paper "${title}"`,
+        html: baseEmailTemplate(
+          "Editor Assignment Update",
+          `<p>Dear <strong>${old_ae_name}</strong>,</p>
          <p>You have been removed as Associate Editor for the paper <strong>"${title}"</strong>.</p>
          <p>Another editor has been assigned to this paper.</p>`,
-      ),
-    }).catch(() => {});
+        ),
+      })
+      .catch(() => {});
   }
 
   // Notify new AE
   const newAE = newAERes.rows[0];
-  const paperRes = await pool.query(`SELECT title FROM papers WHERE id = $1`, [paperId]);
+  const paperRes = await pool.query(`SELECT title FROM papers WHERE id = $1`, [
+    paperId,
+  ]);
   const title = paperRes.rows[0]?.title || "a paper";
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: newAE.email,
-    subject: `You have been assigned to paper "${title}"`,
-    html: baseEmailTemplate(
-      "New Paper Assignment",
-      `<p>Dear <strong>${newAE.username}</strong>,</p>
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: newAE.email,
+      subject: `You have been assigned to paper "${title}"`,
+      html: baseEmailTemplate(
+        "New Paper Assignment",
+        `<p>Dear <strong>${newAE.username}</strong>,</p>
        <p>You have been assigned as Associate Editor for the paper:</p>
        <p><strong>"${title}"</strong></p>
        <p>Please log in to review the manuscript and take appropriate action.</p>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
-    ),
-  }).catch(() => {});
+      ),
+    })
+    .catch(() => {});
 
   return { success: true };
 };
@@ -326,7 +343,10 @@ export const assignPaperToIssueService = async (
   return await repo.assignPaperToIssueRepo(paperId, issueId);
 };
 
-export const getJournalDetailsService = async (journalId: string, chiefEditorId: string) => {
+export const getJournalDetailsService = async (
+  journalId: string,
+  chiefEditorId: string,
+) => {
   const data = await repo.getJournalDetailsRepo(journalId, chiefEditorId);
   if (!data) throw new Error("Journal not found or access denied");
   return data;
@@ -349,8 +369,12 @@ export const overridePaperStatusService = async (
     `SELECT * FROM users WHERE id = $1 AND email = $2`,
     [chiefEditorId, editorEmail],
   );
-  if (!userRes.rows.length) throw new Error("Email does not match your account");
-  const passwordValid = await bcrypt.compare(password, userRes.rows[0].password);
+  if (!userRes.rows.length)
+    throw new Error("Email does not match your account");
+  const passwordValid = await bcrypt.compare(
+    password,
+    userRes.rows[0].password,
+  );
   if (!passwordValid) throw new Error("Incorrect password");
 
   // Verify paper belongs to CE's journal
@@ -362,8 +386,10 @@ export const overridePaperStatusService = async (
      WHERE p.id = $1 AND j.chief_editor_id = $2`,
     [paperId, chiefEditorId],
   );
-  if (!paperRes.rows.length) throw new Error("Paper not found or access denied");
-  if (paperRes.rows[0].status === "published") throw new Error("Cannot override status of a published paper");
+  if (!paperRes.rows.length)
+    throw new Error("Paper not found or access denied");
+  if (paperRes.rows[0].status === "published")
+    throw new Error("Cannot override status of a published paper");
 
   const paper = paperRes.rows[0];
 
@@ -389,8 +415,16 @@ export const overridePaperStatusService = async (
       );
       const fee = feeRes.rows[0]?.publication_fee;
       if (fee != null && parseFloat(fee) > 0) {
-        await initiatePaperPaymentService(paperId, paper.author_id, paper.author_email, paper.author_name);
-        await pool.query(`UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`, [paperId]);
+        await initiatePaperPaymentService(
+          paperId,
+          paper.author_id,
+          paper.author_email,
+          paper.author_name,
+        );
+        await pool.query(
+          `UPDATE papers SET status = 'awaiting_payment', updated_at = NOW() WHERE id = $1`,
+          [paperId],
+        );
         await insertStatusLog({
           paper_id: paperId,
           status: "awaiting_payment",
@@ -398,7 +432,10 @@ export const overridePaperStatusService = async (
           note: "Payment invoice generated after CE acceptance override",
         });
       } else {
-        await pool.query(`UPDATE papers SET status = 'ready_for_publication', updated_at = NOW() WHERE id = $1`, [paperId]);
+        await pool.query(
+          `UPDATE papers SET status = 'ready_for_publication', updated_at = NOW() WHERE id = $1`,
+          [paperId],
+        );
         await insertStatusLog({
           paper_id: paperId,
           status: "ready_for_publication",
@@ -410,23 +447,28 @@ export const overridePaperStatusService = async (
   }
 
   // Email author
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: paper.author_email,
-    subject: `Status update for your paper: "${paper.title}"`,
-    html: baseEmailTemplate(
-      "Paper Status Updated",
-      `<p>Dear <strong>${paper.author_name}</strong>,</p>
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: paper.author_email,
+      subject: `Status update for your paper: "${paper.title}"`,
+      html: baseEmailTemplate(
+        "Paper Status Updated",
+        `<p>Dear <strong>${paper.author_name}</strong>,</p>
        <p>The status of your paper <strong>"${paper.title}"</strong> has been updated to <strong>${newStatus.replace(/_/g, " ")}</strong> by the Chief Editor.</p>
        <p><strong>Reason:</strong> ${reason}</p>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/author" class="button">View Submission →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { success: true };
 };
 
-export const remindAEService = async (paperId: string, chiefEditorId: string) => {
+export const remindAEService = async (
+  paperId: string,
+  chiefEditorId: string,
+) => {
   // Get current AE for this paper
   const aeRes = await pool.query(
     `SELECT u.id, u.email, u.username, p.title
@@ -439,40 +481,49 @@ export const remindAEService = async (paperId: string, chiefEditorId: string) =>
      ORDER BY ea.assigned_at DESC LIMIT 1`,
     [paperId, chiefEditorId],
   );
-  if (!aeRes.rows.length) throw new Error("No active associate editor found for this paper");
+  if (!aeRes.rows.length)
+    throw new Error("No active associate editor found for this paper");
 
   const ae = aeRes.rows[0];
 
   // 24-hour cooldown check
   const lastReminder = await repo.getLastReminderRepo(paperId, ae.id);
   if (lastReminder) {
-    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    const hoursSince =
+      (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
     if (hoursSince < 24) {
       const hoursLeft = Math.ceil(24 - hoursSince);
-      throw new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`);
+      throw new Error(
+        `Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`,
+      );
     }
   }
 
   await repo.insertReminderRepo(paperId, ae.id, chiefEditorId, "sub_editor");
 
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: ae.email,
-    subject: `Reminder: Action required for paper "${ae.title}"`,
-    html: baseEmailTemplate(
-      "Action Required",
-      `<p>Dear <strong>${ae.username}</strong>,</p>
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: ae.email,
+      subject: `Reminder: Action required for paper "${ae.title}"`,
+      html: baseEmailTemplate(
+        "Action Required",
+        `<p>Dear <strong>${ae.username}</strong>,</p>
        <p>This is a friendly reminder that your review and decision is pending for the paper:</p>
        <p><strong>"${ae.title}"</strong></p>
        <p>Please log in to your Associate Editor dashboard to take action at your earliest convenience.</p>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { message: `Reminder sent to ${ae.username}` };
 };
 
-export const remindAllReviewersService = async (paperId: string, chiefEditorId: string) => {
+export const remindAllReviewersService = async (
+  paperId: string,
+  chiefEditorId: string,
+) => {
   // Get all pending (assigned, not submitted) reviewers for this paper under CE's journals
   const res = await pool.query(
     `SELECT u.id, u.email, u.username, p.title
@@ -484,7 +535,8 @@ export const remindAllReviewersService = async (paperId: string, chiefEditorId: 
        AND ra.status = 'assigned'`,
     [paperId, chiefEditorId],
   );
-  if (!res.rows.length) throw new Error("No pending reviewers found for this paper");
+  if (!res.rows.length)
+    throw new Error("No pending reviewers found for this paper");
 
   const reminded: string[] = [];
   const skipped: string[] = [];
@@ -492,35 +544,45 @@ export const remindAllReviewersService = async (paperId: string, chiefEditorId: 
   for (const reviewer of res.rows) {
     const lastReminder = await repo.getLastReminderRepo(paperId, reviewer.id);
     if (lastReminder) {
-      const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+      const hoursSince =
+        (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
       if (hoursSince < 24) {
         skipped.push(reviewer.username);
         continue;
       }
     }
 
-    await repo.insertReminderRepo(paperId, reviewer.id, chiefEditorId, "reviewer");
+    await repo.insertReminderRepo(
+      paperId,
+      reviewer.id,
+      chiefEditorId,
+      "reviewer",
+    );
 
-    transporter.sendMail({
-      from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-      to: reviewer.email,
-      subject: `Reminder: Review pending for paper "${reviewer.title}"`,
-      html: baseEmailTemplate(
-        "Review Reminder",
-        `<p>Dear <strong>${reviewer.username}</strong>,</p>
+    transporter
+      .sendMail({
+        from: `"Paperuno" <${env.EMAIL_FROM}>`,
+        to: reviewer.email,
+        subject: `Reminder: Review pending for paper "${reviewer.title}"`,
+        html: baseEmailTemplate(
+          "Review Reminder",
+          `<p>Dear <strong>${reviewer.username}</strong>,</p>
          <p>This is a friendly reminder that your peer review is pending for the paper:</p>
          <p><strong>"${reviewer.title}"</strong></p>
          <p>Your timely review is critical to the publication process.</p>
          <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
-      ),
-    }).catch(console.error);
+        ),
+      })
+      .catch(console.error);
 
     reminded.push(reviewer.username);
   }
 
   if (reminded.length === 0) {
     const minHours = Math.ceil(24);
-    throw new Error(`All reviewers were reminded recently. Please wait before sending another reminder.`);
+    throw new Error(
+      `All reviewers were reminded recently. Please wait before sending another reminder.`,
+    );
   }
 
   return {
@@ -528,7 +590,10 @@ export const remindAllReviewersService = async (paperId: string, chiefEditorId: 
   };
 };
 
-export const remindAEBulkService = async (aeId: string, chiefEditorId: string) => {
+export const remindAEBulkService = async (
+  aeId: string,
+  chiefEditorId: string,
+) => {
   // Get all pending papers for this AE under CE's journals
   const res = await pool.query(
     `SELECT p.id AS paper_id, p.title
@@ -542,9 +607,13 @@ export const remindAEBulkService = async (aeId: string, chiefEditorId: string) =
        AND sd.id IS NULL`,
     [aeId, chiefEditorId],
   );
-  if (!res.rows.length) throw new Error("No pending papers found for this associate editor");
+  if (!res.rows.length)
+    throw new Error("No pending papers found for this associate editor");
 
-  const aeRes = await pool.query(`SELECT email, username FROM users WHERE id = $1`, [aeId]);
+  const aeRes = await pool.query(
+    `SELECT email, username FROM users WHERE id = $1`,
+    [aeId],
+  );
   if (!aeRes.rows.length) throw new Error("Associate editor not found");
   const ae = aeRes.rows[0];
 
@@ -552,35 +621,52 @@ export const remindAEBulkService = async (aeId: string, chiefEditorId: string) =
   const firstPaperId = res.rows[0].paper_id;
   const lastReminder = await repo.getLastReminderRepo(firstPaperId, aeId);
   if (lastReminder) {
-    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    const hoursSince =
+      (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
     if (hoursSince < 24) {
       const hoursLeft = Math.ceil(24 - hoursSince);
-      throw new Error(`Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`);
+      throw new Error(
+        `Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`,
+      );
     }
   }
 
   for (const row of res.rows) {
-    await repo.insertReminderRepo(row.paper_id, aeId, chiefEditorId, "sub_editor");
+    await repo.insertReminderRepo(
+      row.paper_id,
+      aeId,
+      chiefEditorId,
+      "sub_editor",
+    );
   }
 
-  const paperList = res.rows.map((r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`).join("");
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: ae.email,
-    subject: `Follow-up: ${res.rows.length} paper(s) awaiting your decision`,
-    html: baseEmailTemplate(
-      "Papers Awaiting Your Decision",
-      `<p>Dear <strong>${ae.username}</strong>,</p>
+  const paperList = res.rows
+    .map(
+      (r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`,
+    )
+    .join("");
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: ae.email,
+      subject: `Follow-up: ${res.rows.length} paper(s) awaiting your decision`,
+      html: baseEmailTemplate(
+        "Papers Awaiting Your Decision",
+        `<p>Dear <strong>${ae.username}</strong>,</p>
        <p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your decision:</p>
        <ol style="margin:16px 0;padding-left:20px;">${paperList}</ol>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/sub-editor" class="button">Open Dashboard →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { message: `Reminder sent for ${res.rows.length} pending paper(s)` };
 };
 
-export const remindReviewerBulkService = async (reviewerId: string, chiefEditorId: string) => {
+export const remindReviewerBulkService = async (
+  reviewerId: string,
+  chiefEditorId: string,
+) => {
   // Get all pending review assignments for this reviewer
   const res = await pool.query(
     `SELECT p.id AS paper_id, p.title
@@ -592,39 +678,57 @@ export const remindReviewerBulkService = async (reviewerId: string, chiefEditorI
        AND ra.status = 'assigned'`,
     [reviewerId, chiefEditorId],
   );
-  if (!res.rows.length) throw new Error("No pending reviews found for this reviewer");
+  if (!res.rows.length)
+    throw new Error("No pending reviews found for this reviewer");
 
-  const rvRes = await pool.query(`SELECT email, username FROM users WHERE id = $1`, [reviewerId]);
+  const rvRes = await pool.query(
+    `SELECT email, username FROM users WHERE id = $1`,
+    [reviewerId],
+  );
   if (!rvRes.rows.length) throw new Error("Reviewer not found");
   const reviewer = rvRes.rows[0];
 
   const firstPaperId = res.rows[0].paper_id;
   const lastReminder = await repo.getLastReminderRepo(firstPaperId, reviewerId);
   if (lastReminder) {
-    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    const hoursSince =
+      (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
     if (hoursSince < 24) {
       const hoursLeft = Math.ceil(24 - hoursSince);
-      throw new Error(`Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`);
+      throw new Error(
+        `Reminder already sent recently. Please wait ${hoursLeft} more hour(s).`,
+      );
     }
   }
 
   for (const row of res.rows) {
-    await repo.insertReminderRepo(row.paper_id, reviewerId, chiefEditorId, "reviewer");
+    await repo.insertReminderRepo(
+      row.paper_id,
+      reviewerId,
+      chiefEditorId,
+      "reviewer",
+    );
   }
 
-  const paperList = res.rows.map((r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`).join("");
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: reviewer.email,
-    subject: `Follow-up: ${res.rows.length} review(s) awaiting your submission`,
-    html: baseEmailTemplate(
-      "Reviews Awaiting Your Submission",
-      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+  const paperList = res.rows
+    .map(
+      (r: any, i: number) => `<li style="margin-bottom:4px;">${r.title}</li>`,
+    )
+    .join("");
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: reviewer.email,
+      subject: `Follow-up: ${res.rows.length} review(s) awaiting your submission`,
+      html: baseEmailTemplate(
+        "Reviews Awaiting Your Submission",
+        `<p>Dear <strong>${reviewer.username}</strong>,</p>
        <p>This is a follow-up reminder. The following ${res.rows.length} paper(s) are awaiting your review:</p>
        <ol style="margin:16px 0;padding-left:20px;">${paperList}</ol>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Reviews →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { message: `Reminder sent for ${res.rows.length} pending review(s)` };
 };
@@ -646,34 +750,47 @@ export const remindReviewerService = async (
      ORDER BY ra.assigned_at DESC LIMIT 1`,
     [paperId, reviewerId, chiefEditorId],
   );
-  if (!res.rows.length) throw new Error("Reviewer not found or not actively assigned to this paper");
+  if (!res.rows.length)
+    throw new Error(
+      "Reviewer not found or not actively assigned to this paper",
+    );
 
   const reviewer = res.rows[0];
 
   const lastReminder = await repo.getLastReminderRepo(paperId, reviewer.id);
   if (lastReminder) {
-    const hoursSince = (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
+    const hoursSince =
+      (Date.now() - new Date(lastReminder.sent_at).getTime()) / 3600000;
     if (hoursSince < 24) {
       const hoursLeft = Math.ceil(24 - hoursSince);
-      throw new Error(`Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`);
+      throw new Error(
+        `Reminder already sent. Please wait ${hoursLeft} more hour(s) before sending another.`,
+      );
     }
   }
 
-  await repo.insertReminderRepo(paperId, reviewer.id, chiefEditorId, "reviewer");
+  await repo.insertReminderRepo(
+    paperId,
+    reviewer.id,
+    chiefEditorId,
+    "reviewer",
+  );
 
-  transporter.sendMail({
-    from: `"GIKI JournalHub" <${env.EMAIL_FROM}>`,
-    to: reviewer.email,
-    subject: `Reminder: Review pending for paper "${reviewer.title}"`,
-    html: baseEmailTemplate(
-      "Review Reminder",
-      `<p>Dear <strong>${reviewer.username}</strong>,</p>
+  transporter
+    .sendMail({
+      from: `"Paperuno" <${env.EMAIL_FROM}>`,
+      to: reviewer.email,
+      subject: `Reminder: Review pending for paper "${reviewer.title}"`,
+      html: baseEmailTemplate(
+        "Review Reminder",
+        `<p>Dear <strong>${reviewer.username}</strong>,</p>
        <p>This is a friendly reminder that your peer review is pending for the paper:</p>
        <p><strong>"${reviewer.title}"</strong></p>
        <p>Your timely review is critical to the publication process.</p>
        <a href="${env.CORS_ORIGIN || "http://localhost:5173"}/reviewer" class="button">Submit Review →</a>`,
-    ),
-  }).catch(console.error);
+      ),
+    })
+    .catch(console.error);
 
   return { message: `Reminder sent to ${reviewer.username}` };
 };
@@ -695,8 +812,13 @@ export const updateIssueStatusService = async (
     return await repo.updateIssueStatusRepo(issueId, status);
   } catch (err: any) {
     // Unique constraint: one_open_issue_per_journal
-    if (err.code === "23505" || err.message?.includes("one_open_issue_per_journal")) {
-      throw new Error("Another issue is already open. Close it first before opening a new one.");
+    if (
+      err.code === "23505" ||
+      err.message?.includes("one_open_issue_per_journal")
+    ) {
+      throw new Error(
+        "Another issue is already open. Close it first before opening a new one.",
+      );
     }
     throw err;
   }

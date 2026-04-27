@@ -72,7 +72,7 @@ export const baseEmailTemplate = (title: string, content: string) => `
       ${content}
     </div>
     <div class="footer">
-      © ${new Date().getFullYear()} GIKI JournalHub. This is an automated email.
+      © ${new Date().getFullYear()} Indus Academic Press. Paperuno is a scholarly publishing platform.
     </div>
   </div>
 </body>

@@ -75,6 +75,27 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     manuscript_url = uploaded.url;
   }
 
+  const authorDetails = parse(body.author_details);
+  const firstAuthor = authorDetails?.[0];
+  if (!firstAuthor?.name?.trim()) {
+    return res
+      .status(400)
+      .json({ success: false, message: "First author name is required." });
+  }
+  if (!firstAuthor?.email?.trim()) {
+    return res
+      .status(400)
+      .json({ success: false, message: "First author email is required." });
+  }
+  if (!firstAuthor?.affiliation?.trim()) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "First author affiliation/institution is required.",
+      });
+  }
+
   const data = {
     title: body.title,
     abstract: body.abstract || "",
@@ -86,7 +107,7 @@ export const createPaper = async (req: AuthUser, res: Response) => {
     author_id: req.user!.id,
     author_names: parse(body.author_names),
     corresponding_authors: parse(body.corresponding_authors),
-    author_details: parse(body.author_details),
+    author_details: authorDetails,
     corresponding_author_details: parse(body.corresponding_author_details),
     paper_references: parse(body.paper_references),
     manuscript_url,

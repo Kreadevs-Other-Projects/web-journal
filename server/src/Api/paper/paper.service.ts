@@ -105,7 +105,10 @@ export const createPaperService = async (
     | { name?: string; email?: string }
     | undefined;
 
-  if (corrAuthor?.email) {
+  // CA email matching the submitting author means no external approval needed
+  const isExternalCa = corrAuthor?.email && corrAuthor.email !== authorEmail;
+
+  if (isExternalCa) {
     const approvalToken = crypto.randomBytes(32).toString("hex");
 
     // Look up journal name for the email
@@ -141,7 +144,7 @@ export const createPaperService = async (
     });
 
     sendCorrAuthorApprovalEmail({
-      corrAuthorEmail: corrAuthor.email,
+      corrAuthorEmail: corrAuthor!.email!,
       corrAuthorName: corrAuthor.name || "Author",
       paperTitle: paper.title,
       authorName: authorUsername || "Submitting Author",
@@ -171,7 +174,7 @@ export const createPaperService = async (
 
   return {
     ...paper,
-    status: corrAuthor?.email ? "pending_ca_approval" : "submitted",
+    status: isExternalCa ? "pending_ca_approval" : "submitted",
   };
 };
 

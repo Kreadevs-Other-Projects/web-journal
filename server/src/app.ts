@@ -2,7 +2,12 @@ import express, { NextFunction, Request, Response } from "express";
 import path from "path";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { env } from "./configs/envs";
+import {
+  globalLimiter,
+  apiLimiter,
+  authLimiter,
+  uploadLimiter,
+} from "./configs/rateLimiter";
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { pool } from "./configs/db";
@@ -32,14 +37,21 @@ import conferenceRoutes from "./Api/conference/conference.route";
 import paperApprovalRoutes from "./Api/paperApproval/paperApproval.route";
 
 const app = express();
+app.use(globalLimiter);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
 
 // Keep for backward compatibility with files uploaded before Supabase migration
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
-app.use("/api/uploads/receipts", express.static(path.join(__dirname, "..", "uploads", "receipts")));
-app.use("/api/uploads/profiles", express.static(path.join(__dirname, "..", "uploads", "profiles")));
+app.use(
+  "/api/uploads/receipts",
+  express.static(path.join(__dirname, "..", "uploads", "receipts")),
+);
+app.use(
+  "/api/uploads/profiles",
+  express.static(path.join(__dirname, "..", "uploads", "profiles")),
+);
 
 app.get("/health", (req: Request, res: Response) => {
   return res.json({ success: true, code: 200, message: "Healthy!" });
@@ -49,12 +61,14 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api", apiLimiter);
+
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/author", authorRoutes);
-app.use("/api/profile", profileRoutes);
+app.use("/api/profile", uploadLimiter, profileRoutes);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
-app.use("/api/papers", paperRoutes);
-app.use("/api/paper-versions", paperVersionRoutes);
+app.use("/api/papers", uploadLimiter, paperRoutes);
+app.use("/api/paper-versions", uploadLimiter, paperVersionRoutes);
 app.use("/api/payments", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);

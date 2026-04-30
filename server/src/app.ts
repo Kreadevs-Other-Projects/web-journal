@@ -41,6 +41,7 @@ app.use(globalLimiter);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
+app.set("trust proxy", 1);
 
 // Keep for backward compatibility with files uploaded before Supabase migration
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));

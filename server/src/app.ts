@@ -2,12 +2,12 @@ import express, { NextFunction, Request, Response } from "express";
 import path from "path";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import {
-  globalLimiter,
-  apiLimiter,
-  authLimiter,
-  uploadLimiter,
-} from "./configs/rateLimiter";
+// import {
+//   globalLimiter,
+//   apiLimiter,
+//   authLimiter,
+//   uploadLimiter,
+// } from "./configs/rateLimiter";
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { pool } from "./configs/db";
@@ -37,9 +37,9 @@ import conferenceRoutes from "./Api/conference/conference.route";
 import paperApprovalRoutes from "./Api/paperApproval/paperApproval.route";
 
 const app = express();
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
 
-app.use(globalLimiter);
+// app.use(globalLimiter);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
@@ -63,14 +63,30 @@ app.use("/", (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use("/api", apiLimiter);
+// app.use("/api", apiLimiter);
 
-app.use("/api/auth", authLimiter, authRoutes);
+app.use(
+  "/api/auth",
+  // authLimiter,
+  authRoutes,
+);
 app.use("/api/author", authorRoutes);
-app.use("/api/profile", uploadLimiter, profileRoutes);
+app.use(
+  "/api/profile",
+  // uploadLimiter,
+  profileRoutes,
+);
 app.use("/api/editorAssignment", editorAssignmentRoutes);
-app.use("/api/papers", uploadLimiter, paperRoutes);
-app.use("/api/paper-versions", uploadLimiter, paperVersionRoutes);
+app.use(
+  "/api/papers",
+  //  uploadLimiter,
+  paperRoutes,
+);
+app.use(
+  "/api/paper-versions",
+  //  uploadLimiter,
+  paperVersionRoutes,
+);
 app.use("/api/payments", paperPaymentRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/journal-issue", journalIssueRoutes);

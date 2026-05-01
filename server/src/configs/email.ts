@@ -9,6 +9,8 @@ export const transporter = nodemailer.createTransport({
     user: env.EMAIL_USER,
     pass: env.EMAIL_PASSWORD,
   },
+  logger: true,
+  debug: true,
 });
 
 export const verifyEmailConfig = async () => {

@@ -14,11 +14,13 @@ export const env = {
 
   CORS_ORIGIN: process.env.CORS_ORIGIN,
 
-  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_USER: process.env.EMAIL_USER as string,
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
-  EMAIL_FROM: process.env.EMAIL_USER,
+  EMAIL_FROM: process.env.EMAIL_USER as string,
 
   FRONTEND_URL: process.env.FRONTEND_URL,
+
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
 
   // SUPABASE_DISABLED: Replaced with Cloudflare R2
   // SUPABASE_URL: process.env.SUPABASE_URL as string,

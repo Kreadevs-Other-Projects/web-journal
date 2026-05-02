@@ -1,16 +1,18 @@
-import express, { NextFunction, Request, Response } from "express";
-import path from "path";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-// import {
-//   globalLimiter,
-//   apiLimiter,
-//   authLimiter,
-//   uploadLimiter,
-// } from "./configs/rateLimiter";
+
+import {
+  globalLimiter,
+  apiLimiter,
+  authLimiter,
+  uploadLimiter,
+} from "./configs/rateLimiter";
+
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
-import { pool } from "./configs/db";
+
+// Routes
 import authRoutes from "./Api/auth/auth.route";
 import authorRoutes from "./Api/author/author.route";
 import profileRoutes from "./Api/profile/profile.route";
@@ -22,95 +24,115 @@ import publisherRoutes from "./Api/publisher/publisher.route";
 import editorAssignmentRoutes from "./Api/editorAssignment/editorAssignment.routes";
 import publicationRoutes from "./Api/publication/publication.routes";
 import reviewerRoutes from "./Api/reviewer/reviewer.routes";
-import reviewAssignmentRoutes from "./Api/reviewAssignment/reviewAssignment.routes";
-import chiefEditorRoutes from "./Api/chiefEditor/chiefEditor.routes";
-import ownerRoutes from "./Api/owner/owner.route";
-import subEditorRoutes from "./Api/subEditor/subEditor.routes";
+
+import archiveRoutes from "./Api/archive/archive.route";
 import browseRoutes from "./Api/browse/browse.route";
-import archiveRouter from "./Api/archive/archive.route";
-import invitationRoutes from "./Api/invitation/invitation.routes";
-import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
-import contactRoutes from "./Api/contact/contact.route";
 import categoriesRoutes from "./Api/categories/categories.route";
-import journalCategoriesRoutes from "./Api/journalCategories/journalCategories.route";
+import chiefEditorRoutes from "./Api/chiefEditor/chiefEditor.routes";
 import conferenceRoutes from "./Api/conference/conference.route";
+import contactRoutes from "./Api/contact/contact.route";
+import invitationRoutes from "./Api/invitation/invitation.routes";
+import journalCategoriesRoutes from "./Api/journalCategories/journalCategories.route";
+import ownerRoutes from "./Api/owner/owner.route";
 import paperApprovalRoutes from "./Api/paperApproval/paperApproval.route";
+import paperPaymentRoutes from "./Api/paperPayment/paperPayment.routes";
+import reviewAssignmentRoutes from "./Api/reviewAssignment/reviewAssignment.routes";
+import subEditorRoutes from "./Api/subEditor/subEditor.routes";
+
+import filesRoutes from "./routes/files.routes";
 
 const app = express();
-// app.set("trust proxy", 1);
 
-// app.use(globalLimiter);
-app.use(express.json());
+app.set("trust proxy", 1);
+
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",").map((origin) => origin.trim())
+  : [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.length === 0) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  }),
+);
+
 app.use(cookieParser());
-app.use(cors());
 
-// Keep for backward compatibility with files uploaded before Supabase migration
-app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use(
-  "/api/uploads/receipts",
-  express.static(path.join(__dirname, "..", "uploads", "receipts")),
-);
-app.use(
-  "/api/uploads/profiles",
-  express.static(path.join(__dirname, "..", "uploads", "profiles")),
+  express.json({
+    limit: "10mb",
+  }),
 );
 
-app.get("/health", (req: Request, res: Response) => {
-  return res.json({ success: true, code: 200, message: "Healthy!" });
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb",
+  }),
+);
+
+app.use(globalLimiter);
+
+app.get("/", (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running on Vercel",
+  });
 });
-app.use("/", (req: Request, res: Response, next: NextFunction) => {
-  console.log(`${req.path} ${req.method}`);
-  next();
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// app.use("/api", apiLimiter);
+// API Routes
+app.use("/api/auth", authLimiter, authRoutes);
 
-app.use(
-  "/api/auth",
-  // authLimiter,
-  authRoutes,
-);
-app.use("/api/author", authorRoutes);
-app.use(
-  "/api/profile",
-  // uploadLimiter,
-  profileRoutes,
-);
-app.use("/api/editorAssignment", editorAssignmentRoutes);
-app.use(
-  "/api/papers",
-  //  uploadLimiter,
-  paperRoutes,
-);
-app.use(
-  "/api/paper-versions",
-  //  uploadLimiter,
-  paperVersionRoutes,
-);
-app.use("/api/payments", paperPaymentRoutes);
-app.use("/api/journal", journalRoutes);
-app.use("/api/journal-issue", journalIssueRoutes);
-app.use("/api/publisher", publisherRoutes);
-app.use("/api/publication", publicationRoutes);
-app.use("/api/reviewer", reviewerRoutes);
-app.use("/api/reviewAssignment", reviewAssignmentRoutes);
-app.use("/api/chiefEditor", chiefEditorRoutes);
-app.use("/api/owner", ownerRoutes);
-app.use("/api/subEditor", subEditorRoutes);
-app.use("/api/browse", browseRoutes);
-app.use("/api/archive", archiveRouter);
-app.use("/api/invitations", invitationRoutes);
-app.use("/api/contact", contactRoutes);
-app.use("/api/categories", categoriesRoutes);
-app.use("/api/journal-categories", journalCategoriesRoutes);
-app.use("/api/conferences", conferenceRoutes);
-app.use("/api/paper-approval", paperApprovalRoutes);
+app.use("/api/author", apiLimiter, authorRoutes);
+app.use("/api/profile", apiLimiter, profileRoutes);
+app.use("/api/paper", apiLimiter, paperRoutes);
+app.use("/api/paper-version", apiLimiter, paperVersionRoutes);
+app.use("/api/journal", apiLimiter, journalRoutes);
+app.use("/api/journal-issue", apiLimiter, journalIssueRoutes);
+app.use("/api/publisher", apiLimiter, publisherRoutes);
+app.use("/api/editor-assignment", apiLimiter, editorAssignmentRoutes);
+app.use("/api/publication", apiLimiter, publicationRoutes);
+app.use("/api/reviewer", apiLimiter, reviewerRoutes);
+
+app.use("/api/archive", apiLimiter, archiveRoutes);
+app.use("/api/browse", apiLimiter, browseRoutes);
+app.use("/api/categories", apiLimiter, categoriesRoutes);
+app.use("/api/chief-editor", apiLimiter, chiefEditorRoutes);
+app.use("/api/conference", apiLimiter, conferenceRoutes);
+app.use("/api/contact", apiLimiter, contactRoutes);
+app.use("/api/invitation", apiLimiter, invitationRoutes);
+app.use("/api/journal-categories", apiLimiter, journalCategoriesRoutes);
+app.use("/api/owner", apiLimiter, ownerRoutes);
+app.use("/api/paper-approval", apiLimiter, paperApprovalRoutes);
+app.use("/api/paper-payment", apiLimiter, paperPaymentRoutes);
+app.use("/api/review-assignment", apiLimiter, reviewAssignmentRoutes);
+app.use("/api/sub-editor", apiLimiter, subEditorRoutes);
+
+app.use("/api/files", uploadLimiter, filesRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
-
-pool.on("connect", () => {
-  console.log("Server is connected to Database");
-});
 
 export default app;

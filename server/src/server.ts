@@ -10,7 +10,7 @@ import issueResetCron from "./cron/issueResetCron";
 // journalSuspensionCron();
 invitationExpiryCron();
 issueResetCron();
-verifyEmailConfig();
+// verifyEmailConfig();
 
 app.listen(env.PORT, () => {
   console.log(`Server is running on port: ${env.PORT}`);

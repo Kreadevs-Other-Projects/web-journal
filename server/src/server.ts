@@ -5,12 +5,16 @@ import { supabase } from "./configs/supabase";
 const PORT = env.PORT || process.env.PORT || 4000;
 
 async function checkSupabaseBucket() {
-  const bucket = env.SUPABASE_STORAGE_BUCKET || "paperuno";
+  const bucket = env.SUPABASE_STORAGE_BUCKET || "giki";
   try {
     const { error } = await supabase.storage.getBucket(bucket);
     if (error) {
-      console.error(`❌ Supabase bucket '${bucket}' not found or not accessible`);
-      console.error(`   Create it at: supabase.com → Storage → New Bucket → name: ${bucket} → Public`);
+      console.error(
+        `❌ Supabase bucket '${bucket}' not found or not accessible`,
+      );
+      console.error(
+        `   Create it at: supabase.com → Storage → New Bucket → name: ${bucket} → Public`,
+      );
     } else {
       console.log(`✅ Supabase storage '${bucket}' connected`);
     }

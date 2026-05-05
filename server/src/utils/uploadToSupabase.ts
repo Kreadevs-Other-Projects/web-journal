@@ -4,7 +4,7 @@ import path from "path";
 import https from "https";
 import http from "http";
 
-const BUCKET = env.SUPABASE_STORAGE_BUCKET || "paperuno";
+const BUCKET = env.SUPABASE_STORAGE_BUCKET || "giki";
 
 export type UploadFolder =
   | "manuscripts"
@@ -17,7 +17,8 @@ export type UploadFolder =
 
 const MIME_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
-  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".docx":
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".tex": "application/x-tex",
   ".latex": "application/x-latex",
   ".html": "text/html",
@@ -87,7 +88,8 @@ export async function downloadToBuffer(
   remoteUrl: string,
 ): Promise<{ buffer: Buffer; ext: string }> {
   const urlObj = new URL(remoteUrl);
-  const ext = path.extname(urlObj.pathname).split("?")[0].toLowerCase() || ".bin";
+  const ext =
+    path.extname(urlObj.pathname).split("?")[0].toLowerCase() || ".bin";
   const protocol = remoteUrl.startsWith("https") ? https : http;
 
   return new Promise((resolve, reject) => {

@@ -24,7 +24,7 @@ export const transporter = nodemailer.createTransport({
   port: emailPort,
   secure: emailPort === 465,
   auth: {
-    user: "apikey",
+    user: emailUser,
     pass: emailPassword,
   },
 

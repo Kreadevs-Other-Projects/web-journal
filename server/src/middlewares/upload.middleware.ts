@@ -1,22 +1,10 @@
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 
-const tempDir = path.join(process.cwd(), "temp-uploads");
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
-
-const tempStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, tempDir),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, unique + path.extname(file.originalname));
-  },
-});
+const memStorage = multer.memoryStorage();
 
 export const upload = multer({
-  storage: tempStorage,
+  storage: memStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = [
@@ -36,20 +24,12 @@ export const upload = multer({
 });
 
 export const manuscriptUpload = multer({
-  storage: tempStorage,
+  storage: memStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowedMimeTypes = [
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/pdf",
-      "application/x-tex",
-      "text/x-tex",
-      "application/x-latex",
-      "text/plain",
-    ];
     const ext = path.extname(file.originalname).toLowerCase();
     const allowedExts = [".docx", ".pdf", ".tex", ".latex"];
-    if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+    if (allowedExts.includes(ext)) {
       cb(null, true);
     } else {
       cb(new Error("Only .docx, .pdf and .tex/.latex files are accepted"));
@@ -58,7 +38,7 @@ export const manuscriptUpload = multer({
 });
 
 export const receiptUpload = multer({
-  storage: tempStorage,
+  storage: memStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "application/pdf"];
@@ -68,7 +48,7 @@ export const receiptUpload = multer({
 });
 
 export const logoUpload = multer({
-  storage: tempStorage,
+  storage: memStorage,
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -81,7 +61,7 @@ export const logoUpload = multer({
 });
 
 export const certificationUpload = multer({
-  storage: tempStorage,
+  storage: memStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "application/pdf"];

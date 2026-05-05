@@ -1,12 +1,9 @@
-// SUPABASE_DISABLED: All Supabase storage code below is commented out.
-// Replaced with Cloudflare R2 (S3-compatible). Export names are unchanged
-// so no other files need to be modified.
-
 import { supabase } from "../configs/supabase";
-import fs from "fs";
 import path from "path";
+import https from "https";
+import http from "http";
 
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "journalhub";
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "giki";
 
 export type UploadFolder =
   | "manuscripts"
@@ -19,8 +16,7 @@ export type UploadFolder =
 
 const MIME_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
-  ".docx":
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".tex": "application/x-tex",
   ".latex": "application/x-latex",
   ".html": "text/html",
@@ -32,19 +28,23 @@ const MIME_TYPES: Record<string, string> = {
   ".gif": "image/gif",
 };
 
+/**
+ * Upload a Buffer directly to Supabase Storage.
+ * Used with multer memoryStorage — req.file.buffer is passed here.
+ */
 export async function uploadToSupabase(
-  localFilePath: string,
+  buffer: Buffer,
   folder: UploadFolder,
   fileName: string,
 ): Promise<{ url: string; path: string }> {
-  const fileBuffer = fs.readFileSync(localFilePath);
   const ext = path.extname(fileName).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
-  const storagePath = `${folder}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(storagePath, fileBuffer, { contentType, upsert: false });
+    .upload(storagePath, buffer, { contentType, upsert: false });
 
   if (error) {
     throw new Error(`Supabase upload failed: ${error.message}`);
@@ -54,13 +54,37 @@ export async function uploadToSupabase(
     .from(BUCKET)
     .getPublicUrl(storagePath);
 
-  try {
-    fs.unlinkSync(localFilePath);
-  } catch {
-    console.warn("Could not delete local temp file:", localFilePath);
-  }
-
   return { url: urlData.publicUrl, path: storagePath };
+}
+
+/**
+ * Download a remote URL into an in-memory Buffer.
+ * Used by the HTML conversion service to process Supabase files without disk I/O.
+ */
+export async function downloadToBuffer(
+  url: string,
+): Promise<{ buffer: Buffer; ext: string }> {
+  const ext =
+    path.extname(new URL(url).pathname).split("?")[0].toLowerCase() || ".tmp";
+
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https") ? https : http;
+    const chunks: Buffer[] = [];
+
+    protocol
+      .get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Download failed: HTTP ${response.statusCode}`));
+          return;
+        }
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () =>
+          resolve({ buffer: Buffer.concat(chunks), ext }),
+        );
+        response.on("error", reject);
+      })
+      .on("error", reject);
+  });
 }
 
 export async function deleteFromSupabase(storagePath: string): Promise<void> {
@@ -86,93 +110,3 @@ export function getSupabasePublicUrl(storagePath: string): string {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
 }
-
-// ─── CLOUDFLARE R2 ────────────────────────────────────────────────────────────
-
-// import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-// import fs from "fs";
-// import path from "path";
-// import { r2 } from "../configs/r2";
-// import { env } from "../configs/envs";
-
-// const BUCKET = env.R2_BUCKET;
-
-// export type UploadFolder =
-//   | "manuscripts"
-//   | "profiles"
-//   | "certificates"
-//   | "receipts"
-//   | "journal-logos"
-//   | "publications"
-//   | "other";
-
-// const MIME_TYPES: Record<string, string> = {
-//   ".pdf": "application/pdf",
-//   ".docx":
-//     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-//   ".tex": "application/x-tex",
-//   ".latex": "application/x-latex",
-//   ".html": "text/html",
-//   ".xml": "application/xml",
-//   ".png": "image/png",
-//   ".jpg": "image/jpeg",
-//   ".jpeg": "image/jpeg",
-//   ".webp": "image/webp",
-//   ".gif": "image/gif",
-// };
-
-// export async function uploadToSupabase(
-//   localFilePath: string,
-//   folder: UploadFolder,
-//   fileName: string,
-// ): Promise<{ url: string; path: string }> {
-//   const fileBuffer = fs.readFileSync(localFilePath);
-//   const ext = path.extname(fileName).toLowerCase();
-//   const contentType = MIME_TYPES[ext] || "application/octet-stream";
-//   const storagePath = `${folder}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-
-//   await r2.send(
-//     new PutObjectCommand({
-//       Bucket: BUCKET,
-//       Key: storagePath,
-//       Body: fileBuffer,
-//       ContentType: contentType,
-//     }),
-//   );
-
-//   try {
-//     fs.unlinkSync(localFilePath);
-//   } catch {
-//     console.warn("Could not delete local temp file:", localFilePath);
-//   }
-
-//   const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${storagePath}`;
-//   return { url: publicUrl, path: storagePath };
-// }
-
-// export async function deleteFromSupabase(storagePath: string): Promise<void> {
-//   if (!storagePath) return;
-
-//   let resolvedPath = storagePath;
-//   if (storagePath.startsWith("http")) {
-//     const base = env.R2_PUBLIC_URL.replace(/\/$/, "");
-//     if (!storagePath.startsWith(base)) return;
-//     resolvedPath = storagePath.slice(base.length + 1);
-//   }
-
-//   try {
-//     await r2.send(
-//       new DeleteObjectCommand({
-//         Bucket: BUCKET,
-//         Key: resolvedPath,
-//       }),
-//     );
-//   } catch (err: any) {
-//     console.warn("R2 delete warning:", err.message);
-//   }
-// }
-
-// export function getSupabasePublicUrl(storagePath: string): string {
-//   if (storagePath?.startsWith("http")) return storagePath;
-//   return `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${storagePath}`;
-// }

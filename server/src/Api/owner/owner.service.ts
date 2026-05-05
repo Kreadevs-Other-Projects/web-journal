@@ -9,6 +9,7 @@ import {
 } from "./owner.reository";
 import { sendJournalExpiryInvoiceEmail } from "../../utils/emails/paymentEmails";
 import { generatePassword, hashPassword } from "../../utils/password";
+import { uploadToSupabase } from "../../utils/uploadToSupabase";
 import { createJournalPayment } from "./owner.reository";
 
 export const fetchPublishers = async () => {
@@ -72,9 +73,8 @@ export const sendJournalExpiryInvoice = async (
 export const uploadReceipt = async (paymentId: string, file: any) => {
   if (!file) throw new Error("Receipt file is required");
 
-  // NOTE: uploadpaymentImage endpoint is currently PAYMENT_DISABLED.
-  // When re-enabled, wire this through uploadToSupabase instead.
-  const imagePath = `/uploads/${file.filename}`;
+  // NOTE: endpoint is currently PAYMENT_DISABLED.
+  const { url: imagePath } = await uploadToSupabase(file.path, "receipts", file.originalname);
 
   const updated = await updateReceiptImage(paymentId, imagePath);
 

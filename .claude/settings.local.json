@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(sed -n '200,320p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.controller.ts && echo \"===\" && sed -n '60,100p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.controller.ts)",
+      "Bash(sed -n '40,80p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.controller.ts && echo \"===\" && sed -n '100,165p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.controller.ts)",
+      "Bash(sed -n '100,145p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/profile/profile.controller.ts && echo \"===\" && sed -n '220,245p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/profile/profile.controller.ts)",
+      "Bash(sed -n '18,25p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.service.ts && echo \"===\" && sed -n '75,100p' /Users/kreadevs/Kreadevs/web-journal/server/src/Api/paper/paper.service.ts)"
     ]
   }
 }

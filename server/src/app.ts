@@ -44,6 +44,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
 
+// Legacy local file serving — kept for any files uploaded before Supabase migration.
+// New files go directly to Supabase Storage and are served via CDN.
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use(
   "/api/uploads/receipts",

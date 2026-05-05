@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import { env } from "./envs";
 
 const emailHost = env.EMAIL_HOST || process.env.EMAIL_HOST;
@@ -32,4 +33,4 @@ export const transporter = nodemailer.createTransport({
   socketTimeout: 15000,
 
   pool: false,
-});
+} as SMTPTransport.Options);

@@ -107,28 +107,28 @@ app.use("/api/auth", authLimiter, authRoutes);
 
 app.use("/api/author", apiLimiter, authorRoutes);
 app.use("/api/profile", apiLimiter, profileRoutes);
-app.use("/api/paper", apiLimiter, paperRoutes);
-app.use("/api/paper-version", apiLimiter, paperVersionRoutes);
+app.use("/api/papers", apiLimiter, paperRoutes);
+app.use("/api/paper-versions", apiLimiter, paperVersionRoutes);
 app.use("/api/journal", apiLimiter, journalRoutes);
 app.use("/api/journal-issue", apiLimiter, journalIssueRoutes);
 app.use("/api/publisher", apiLimiter, publisherRoutes);
-app.use("/api/editor-assignment", apiLimiter, editorAssignmentRoutes);
+app.use("/api/editorAssignment", apiLimiter, editorAssignmentRoutes);
 app.use("/api/publication", apiLimiter, publicationRoutes);
 app.use("/api/reviewer", apiLimiter, reviewerRoutes);
 
 app.use("/api/archive", apiLimiter, archiveRoutes);
 app.use("/api/browse", apiLimiter, browseRoutes);
 app.use("/api/categories", apiLimiter, categoriesRoutes);
-app.use("/api/chief-editor", apiLimiter, chiefEditorRoutes);
-app.use("/api/conference", apiLimiter, conferenceRoutes);
+app.use("/api/chiefEditor", apiLimiter, chiefEditorRoutes);
+app.use("/api/conferences", apiLimiter, conferenceRoutes);
 app.use("/api/contact", apiLimiter, contactRoutes);
-app.use("/api/invitation", apiLimiter, invitationRoutes);
+app.use("/api/invitations", apiLimiter, invitationRoutes);
 app.use("/api/journal-categories", apiLimiter, journalCategoriesRoutes);
 app.use("/api/owner", apiLimiter, ownerRoutes);
 app.use("/api/paper-approval", apiLimiter, paperApprovalRoutes);
-app.use("/api/paper-payment", apiLimiter, paperPaymentRoutes);
+app.use("/api/payments", apiLimiter, paperPaymentRoutes);
 app.use("/api/review-assignment", apiLimiter, reviewAssignmentRoutes);
-app.use("/api/sub-editor", apiLimiter, subEditorRoutes);
+app.use("/api/subEditor", apiLimiter, subEditorRoutes);
 
 app.use("/api/files", uploadLimiter, filesRoutes);
 

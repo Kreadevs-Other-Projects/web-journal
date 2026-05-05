@@ -15,6 +15,8 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN,
 
   EMAIL_USER: process.env.EMAIL_USER as string,
+  EMAIL_HOST: process.env.EMAIL_HOST as string,
+  EMAIL_PORT: process.env.EMAIL_PORT as string,
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
   EMAIL_FROM: process.env.EMAIL_USER as string,
 

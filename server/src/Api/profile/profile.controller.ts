@@ -1,8 +1,6 @@
 import { Response } from "express";
-import path from "path";
-import fs from "fs";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { uploadToSupabase, deleteFromSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase, deleteFromSupabase } from "../../utils/uploadToSupabase";
 import {
   getFullProfile,
   updateProfileService,
@@ -110,7 +108,7 @@ export const editProfile = async (req: AuthUser, res: Response) => {
 
     let uploadedPicUrl: string | undefined;
     if (req.file) {
-      const uploaded = await uploadToSupabase(req.file.path, "profiles", req.file.originalname);
+      const uploaded = await uploadBufferToSupabase(req.file.buffer, "profiles", req.file.originalname);
       uploadedPicUrl = uploaded.url;
       userData.profile_pic = uploadedPicUrl;
     }
@@ -229,11 +227,10 @@ export const uploadCertification = async (req: AuthUser, res: Response) => {
 
   const count = await countCertificationsRepo(userId);
   if (count >= 5) {
-    fs.unlink(req.file.path, () => {});
     return res.status(400).json({ success: false, message: "Maximum 5 certifications allowed" });
   }
 
-  const uploaded = await uploadToSupabase(req.file.path, "certificates", req.file.originalname);
+  const uploaded = await uploadBufferToSupabase(req.file.buffer, "certificates", req.file.originalname);
 
   const cert = await createCertificationRepo({
     user_id: userId,
@@ -305,7 +302,7 @@ export const completeProfile = async (req: AuthUser, res: Response) => {
     if (website) profileData.website = website;
 
     if (req.file) {
-      const uploaded = await uploadToSupabase(req.file.path, "profiles", req.file.originalname);
+      const uploaded = await uploadBufferToSupabase(req.file.buffer, "profiles", req.file.originalname);
       userData.profile_pic = uploaded.url;
       profileData.profile_pic_url = uploaded.url;
     }

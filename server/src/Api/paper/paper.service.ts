@@ -499,7 +499,7 @@ const extractLatexMetadata = (
 };
 
 export const extractMetadataService = async (
-  filePath: string,
+  fileBuffer: Buffer,
   ext: string,
 ): Promise<{
   title: string;
@@ -509,23 +509,19 @@ export const extractMetadataService = async (
   references: string[];
 }> => {
   if (ext === "tex" || ext === "latex") {
-    const fs = (await import("fs")).default;
-    const content = fs.readFileSync(filePath, "utf-8");
-    return extractLatexMetadata(content);
+    return extractLatexMetadata(fileBuffer.toString("utf-8"));
   }
 
   if (ext === "pdf") {
     const pdfParse = (await import("pdf-parse")).default;
-    const fs = (await import("fs")).default;
-    const dataBuffer = fs.readFileSync(filePath);
-    const pdfData = await pdfParse(dataBuffer);
+    const pdfData = await pdfParse(fileBuffer);
     const lines = pdfData.text.split(/\r?\n/);
     return parseMetadataFromText(lines);
   }
 
-  // .docx path (existing logic)
+  // .docx — buffer-based conversion
   const mammoth = (await import("mammoth")).default;
-  const result = await mammoth.convertToHtml({ path: filePath });
+  const result = await mammoth.convertToHtml({ buffer: fileBuffer });
   const html = result.value;
 
   const stripTags = (s: string) =>

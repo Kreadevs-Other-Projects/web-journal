@@ -1,4 +1,3 @@
-import fs from "fs";
 import { Request, Response } from "express";
 import {
   createPaperService,
@@ -22,7 +21,7 @@ import {
   getPaperVersionHtmlService,
 } from "../browse/browse.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 
 export const createPaper = async (req: AuthUser, res: Response) => {
   const body = req.body;
@@ -51,24 +50,22 @@ export const createPaper = async (req: AuthUser, res: Response) => {
   let manuscript_html: string | undefined;
 
   if (req.file) {
-    const localPath = req.file.path;
     const lowerName = req.file.originalname.toLowerCase();
 
     try {
       if (lowerName.endsWith(".docx")) {
         const mammoth = (await import("mammoth")).default;
-        const result = await mammoth.convertToHtml({ path: localPath });
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
         if (result.value) manuscript_html = result.value;
       } else if (lowerName.endsWith(".tex") || lowerName.endsWith(".latex")) {
-        const { extractLatexToHtml } =
-          await import("../../utils/latexToHtml.js");
-        const html = extractLatexToHtml(localPath);
+        const { convertLatexToHtml } = await import("../../utils/latexToHtml.js");
+        const html = convertLatexToHtml(req.file.buffer.toString("utf-8"));
         if (html && html.length > 50) manuscript_html = html;
       }
     } catch {}
 
-    const uploaded = await uploadToSupabase(
-      localPath,
+    const uploaded = await uploadBufferToSupabase(
+      req.file.buffer,
       "manuscripts",
       req.file.originalname,
     );
@@ -216,28 +213,20 @@ export const updatePaperStatus = async (req: any, res: Response) => {
 
 export const extractMetadata = async (req: AuthUser, res: Response) => {
   if (!req.file) {
-    return res
-      .status(400)
-      .json({ success: false, message: "No file uploaded" });
+    return res.status(400).json({ success: false, message: "No file uploaded" });
   }
   const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
   if (!["docx", "pdf", "tex", "latex"].includes(ext)) {
-    fs.unlink(req.file.path, () => {});
     return res.status(400).json({
       success: false,
-      message:
-        "Only .docx, .pdf, and .tex/.latex files support metadata extraction",
+      message: "Only .docx, .pdf, and .tex/.latex files support metadata extraction",
     });
   }
   try {
-    const metadata = await extractMetadataService(req.file.path, ext);
-    fs.unlink(req.file.path, () => {});
+    const metadata = await extractMetadataService(req.file.buffer, ext);
     res.json({ success: true, ...metadata });
   } catch {
-    fs.unlink(req.file.path, () => {});
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to extract metadata" });
+    res.status(500).json({ success: false, message: "Failed to extract metadata" });
   }
 };
 
@@ -295,8 +284,8 @@ export const uploadRevisionController = async (
   }
   try {
     const versionNumber = parseInt(req.body.version_number, 10) || 2;
-    const uploaded = await uploadToSupabase(
-      req.file.path,
+    const uploaded = await uploadBufferToSupabase(
+      req.file.buffer,
       "manuscripts",
       req.file.originalname,
     );
@@ -308,10 +297,7 @@ export const uploadRevisionController = async (
     });
     return res.status(201).json({ success: true, version });
   } catch (err: any) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {});
-    return res
-      .status(400)
-      .json({ success: false, message: err.message || "Upload failed." });
+    return res.status(400).json({ success: false, message: err.message || "Upload failed." });
   }
 };
 

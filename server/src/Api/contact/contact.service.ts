@@ -4,6 +4,7 @@ import {
   sendReviewerApplicationToEditor,
   sendReviewerApplicationConfirmation,
 } from "../../utils/emails/reviewerApplicationEmail";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 
 export const applyAsReviewerService = async (data: {
   journalId: string;
@@ -14,7 +15,8 @@ export const applyAsReviewerService = async (data: {
   statement?: string;
   affiliation?: string;
   orcid?: string;
-  profilePicPath?: string;
+  profilePicBuffer?: Buffer;
+  profilePicName?: string;
   appliedRole?: string;
 }) => {
   // 1. Get journal name
@@ -64,10 +66,16 @@ export const applyAsReviewerService = async (data: {
 
   const frontendUrl = env.CORS_ORIGIN || "http://localhost:5173";
 
-  // 3. Store application in DB
-  const profilePicUrl = data.profilePicPath
-    ? `uploads/profiles/${data.profilePicPath.split(/[\\/]/).pop()}`
-    : null;
+  // 3. Upload profile pic to Supabase if provided
+  let profilePicUrl: string | null = null;
+  if (data.profilePicBuffer && data.profilePicName) {
+    try {
+      const uploaded = await uploadBufferToSupabase(data.profilePicBuffer, "profiles", data.profilePicName);
+      profilePicUrl = uploaded.url;
+    } catch (e) {
+      console.warn("Profile pic upload failed (non-fatal):", e);
+    }
+  }
 
   const appliedRole = data.appliedRole === "associate_editor" ? "associate_editor" : "reviewer";
   const appRes = await pool.query(
@@ -100,7 +108,7 @@ export const applyAsReviewerService = async (data: {
     degrees: data.degrees,
     keywords: data.keywords,
     statement: data.statement,
-    profilePicPath: data.profilePicPath,
+    profilePicUrl,
     submittedAt,
     dashboardLink: `${frontendUrl}/chief-editor/applications?journal=${data.journalId}`,
   }, frontendUrl);

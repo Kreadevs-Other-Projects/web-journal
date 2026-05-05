@@ -1,10 +1,9 @@
 import { Response } from "express";
-import fs from "fs";
 import {
   uploadPaperVersionService,
   getPaperVersionsService,
 } from "./paperVersion.service";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 
 export const uploadPaperVersion = async (req: any, res: Response) => {
   try {
@@ -15,7 +14,7 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
       });
     }
 
-    const uploaded = await uploadToSupabase(req.file.path, "manuscripts", req.file.originalname);
+    const uploaded = await uploadBufferToSupabase(req.file.buffer, "manuscripts", req.file.originalname);
     const version = await uploadPaperVersionService(
       req.user,
       req.params.paperId,
@@ -33,13 +32,6 @@ export const uploadPaperVersion = async (req: any, res: Response) => {
       version,
     });
   } catch (err: any) {
-    if (req.file?.path) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr)
-          console.error("Failed to delete orphaned file:", unlinkErr);
-      });
-    }
-
     return res.status(400).json({
       success: false,
       message: err.message || "Failed to upload paper version.",

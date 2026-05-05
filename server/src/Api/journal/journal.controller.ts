@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 import {
   addJournalService,
   getOwnerJournalService,
@@ -107,8 +107,8 @@ export const uploadJournalLogo = async (req: AuthUser, res: Response) => {
       return res
         .status(400)
         .json({ success: false, message: "No file uploaded" });
-    const uploaded = await uploadToSupabase(
-      req.file.path,
+    const uploaded = await uploadBufferToSupabase(
+      req.file.buffer,
       "journal-logos",
       req.file.originalname,
     );
@@ -170,8 +170,8 @@ export const updatePublisherJournal = async (req: AuthUser, res: Response) => {
     const { journalId } = req.params;
     let logo_url: string | undefined;
     if (req.file) {
-      const uploaded = await uploadToSupabase(
-        req.file.path,
+      const uploaded = await uploadBufferToSupabase(
+        req.file.buffer,
         "journal-logos",
         req.file.originalname,
       );
@@ -233,8 +233,8 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
 
     let logo_url: string | null = null;
     if (req.file) {
-      const uploaded = await uploadToSupabase(
-        req.file.path,
+      const uploaded = await uploadBufferToSupabase(
+        req.file.buffer,
         "journal-logos",
         req.file.originalname,
       );

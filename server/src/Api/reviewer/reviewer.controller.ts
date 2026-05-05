@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as service from "./reviewer.service";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 
 export const getReviewerPapers = async (req: AuthUser, res: Response) => {
   const papers = await service.fetchReviewerPapers(req.user!.id);
@@ -15,7 +15,7 @@ export const submitReview = async (req: AuthUser, res: Response) => {
 
     let signatureUrl: string | undefined;
     if (req.file) {
-      const uploaded = await uploadToSupabase(req.file.path, "other", req.file.originalname);
+      const uploaded = await uploadBufferToSupabase(req.file.buffer, "other", req.file.originalname);
       signatureUrl = uploaded.url;
     }
 

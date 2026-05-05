@@ -178,7 +178,8 @@ export const applyAsReviewer = async (req: Request, res: Response) => {
         .json({ success: false, message: "Maximum 5 degrees allowed" });
     }
 
-    const profilePicPath = req.file?.path;
+    const profilePicBuffer = req.file?.buffer;
+    const profilePicName = req.file?.originalname;
 
     const result = await applyAsReviewerService({
       journalId,
@@ -189,7 +190,8 @@ export const applyAsReviewer = async (req: Request, res: Response) => {
       statement,
       affiliation,
       orcid,
-      profilePicPath,
+      profilePicBuffer,
+      profilePicName,
       appliedRole,
     });
 

@@ -1,8 +1,4 @@
 import path from "path";
-import https from "https";
-import http from "http";
-import os from "os";
-import fs from "fs";
 import {
   getBrowseDataRepo,
   getPublicPaperRepo,
@@ -10,42 +6,8 @@ import {
   getVersionForHtmlByIdRepo,
   cacheVersionHtmlRepo,
 } from "./browse.repository";
-import { extractLatexToHtml } from "../../utils/latexToHtml";
-
-async function downloadToTemp(url: string): Promise<string> {
-  const ext =
-    path.extname(new URL(url).pathname).split("?")[0].toLowerCase() || ".tmp";
-  const tempPath = path.join(
-    os.tmpdir(),
-    `paper-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
-  );
-  const protocol = url.startsWith("https") ? https : http;
-  await new Promise<void>((resolve, reject) => {
-    const file = fs.createWriteStream(tempPath);
-    protocol
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          fs.unlink(tempPath, () => {});
-          reject(new Error(`Download failed: HTTP ${response.statusCode}`));
-          return;
-        }
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-        file.on("error", (err) => {
-          fs.unlink(tempPath, () => {});
-          reject(err);
-        });
-      })
-      .on("error", (err) => {
-        fs.unlink(tempPath, () => {});
-        reject(err);
-      });
-  });
-  return tempPath;
-}
+import { downloadToBuffer } from "../../utils/uploadToSupabase";
+import { convertLatexToHtml } from "../../utils/latexToHtml";
 
 export const getBrowseDataService = async (filters: any) => {
   const rows = await getBrowseDataRepo(filters);
@@ -94,11 +56,8 @@ export const getBrowseDataService = async (filters: any) => {
     }
   });
 
-  // Flatten for the frontend — show latest issue label, aggregate all papers
   return Object.values(grouped).map((journal) => {
     const issueList = Object.values(journal.issues) as any[];
-
-    // Sort issues descending (latest first)
     issueList.sort(
       (a, b) => b.published_at?.localeCompare(a.published_at ?? "") ?? 0,
     );
@@ -117,7 +76,7 @@ export const getBrowseDataService = async (filters: any) => {
       category_slug: journal.category_slug,
       issue: latestIssue ? latestIssue.label : "No issues published yet",
       published_at: latestIssue?.published_at ?? journal.published_at,
-      issues: issueList, // full list available if needed
+      issues: issueList,
       papers: allPapers,
     };
   });
@@ -127,12 +86,19 @@ export const getPublicPaperService = async (paperId: string) => {
   return getPublicPaperRepo(paperId);
 };
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function pdfTextToHtml(rawText: string): string {
   if (!rawText || rawText.trim().length < 50) {
     return "<p>Text content could not be extracted from this PDF. Please download the file to view it.</p>";
   }
 
-  // Clean up PDF artifacts before splitting
   const cleaned = rawText
     .replace(/\f/g, "\n\n")
     .replace(/\r\n/g, "\n")
@@ -171,7 +137,6 @@ function pdfTextToHtml(rawText: string): string {
     }
   }
 
-  // Merge consecutive short <p> lines that are likely wrapped sentence continuations
   html = html
     .replace(/<\/p>\n<p>(?=[a-z,;])/g, " ")
     .replace(/<p>\s*<\/p>\n?/g, "");
@@ -179,109 +144,63 @@ function pdfTextToHtml(rawText: string): string {
   return html || "<p>Text content could not be extracted from this PDF.</p>";
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-async function resolveFilePath(
-  fileUrl: string,
-): Promise<{ filePath: string; isTemp: boolean }> {
-  // Remote URL (Supabase etc) — download to temp
-  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
-    console.log("[html] downloading from remote:", fileUrl);
-    const tempPath = await downloadToTemp(fileUrl);
-    console.log("[html] downloaded to temp:", tempPath);
-    return { filePath: tempPath, isTemp: true };
-  }
-
-  // Local path fallback
-  const filename = path.basename(fileUrl);
-  const candidates = [
-    path.resolve(__dirname, "../../../uploads", filename),
-    path.join(process.cwd(), "uploads", filename),
-    path.join(process.cwd(), "src", "uploads", filename),
-    path.join(__dirname, "../../uploads", filename),
-    path.join(__dirname, "../../../../../uploads", filename),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return { filePath: candidate, isTemp: false };
-    }
-  }
-  throw new Error(`File not found locally: ${fileUrl}`);
-}
-
 async function convertVersionToHtml(version: {
   id: string;
   file_url: string | null;
   html_content: string | null;
 }): Promise<string | null> {
-  if (version.html_content) return version.html_content;
+  if (version.html_content && version.html_content.length > 100) {
+    return version.html_content;
+  }
   if (!version.file_url) return null;
 
-  let filePath: string;
-  let isTemp = false;
-
-  try {
-    const resolved = await resolveFilePath(version.file_url);
-    filePath = resolved.filePath;
-    isTemp = resolved.isTemp;
-  } catch (err: any) {
-    console.error("[html] could not resolve file:", err.message);
-    return null;
-  }
-
-  // Determine extension from temp path (reliable) or original URL
-  const ext =
-    path.extname(filePath).toLowerCase() ||
-    path.extname(version.file_url).toLowerCase();
+  const fileUrl = version.file_url;
+  const ext = fileUrl.startsWith("http")
+    ? path.extname(new URL(fileUrl).pathname).split("?")[0].toLowerCase()
+    : path.extname(fileUrl).toLowerCase();
 
   let html: string | null = null;
 
   try {
-    if (ext === ".docx") {
-      try {
+    if (fileUrl.startsWith("http")) {
+      // Supabase/CDN — download to Buffer (no disk writes)
+      const { buffer } = await downloadToBuffer(fileUrl);
+
+      if (ext === ".docx") {
         const mammoth = (await import("mammoth")).default;
-        const result = await mammoth.convertToHtml({ path: filePath });
+        const result = await mammoth.convertToHtml({ buffer });
         if (result.value) html = result.value;
-      } catch (err) {
-        console.error("[html] mammoth conversion failed:", err);
-      }
-    } else if (ext === ".pdf") {
-      try {
+      } else if (ext === ".pdf") {
         const pdfParse = (await import("pdf-parse")).default;
-        const buffer = await import("fs/promises").then((f) =>
-          f.readFile(filePath),
-        );
         const data = await pdfParse(buffer);
-        const converted = pdfTextToHtml(data.text);
-        if (converted) html = converted;
-      } catch (err) {
-        console.error("[html] pdf-parse conversion failed:", err);
-      }
-    } else if (ext === ".tex" || ext === ".latex") {
-      try {
-        const converted = extractLatexToHtml(filePath);
-        if (converted && converted.length > 50) html = converted;
-      } catch (err) {
-        console.error("[html] latex conversion failed:", err);
+        html = pdfTextToHtml(data.text);
+      } else if (ext === ".tex" || ext === ".latex") {
+        html = convertLatexToHtml(buffer.toString("utf-8"));
       }
     } else {
-      console.warn("[html] unsupported extension:", ext);
+      // Legacy local path — dev-only fallback
+      const filename = path.basename(fileUrl);
+      const localPath = path.resolve(process.cwd(), "uploads", filename);
+      const fsPromises = await import("fs/promises");
+      const buffer = await fsPromises.readFile(localPath);
+
+      if (ext === ".docx") {
+        const mammoth = (await import("mammoth")).default;
+        const result = await mammoth.convertToHtml({ buffer });
+        if (result.value) html = result.value;
+      } else if (ext === ".pdf") {
+        const pdfParse = (await import("pdf-parse")).default;
+        const data = await pdfParse(buffer);
+        html = pdfTextToHtml(data.text);
+      } else if (ext === ".tex" || ext === ".latex") {
+        html = convertLatexToHtml(buffer.toString("utf-8"));
+      }
     }
-  } finally {
-    if (isTemp && fs.existsSync(filePath)) {
-      fs.unlink(filePath, (err) => {
-        if (err) console.warn("[html] temp cleanup failed:", err.message);
-      });
-    }
+  } catch (err: any) {
+    console.error("[html] conversion failed:", err.message);
   }
 
-  if (html) {
+  if (html && html.length > 50) {
     await cacheVersionHtmlRepo(version.id, html);
   }
 
@@ -292,9 +211,7 @@ export const getPublicPaperHtmlService = async (
   paperId: string,
 ): Promise<string | null> => {
   const version = await getPaperVersionForHtmlRepo(paperId);
-  if (!version) {
-    return null;
-  }
+  if (!version) return null;
   return convertVersionToHtml(version);
 };
 
@@ -303,8 +220,6 @@ export const getPaperVersionHtmlService = async (
   versionId: string,
 ): Promise<string | null> => {
   const version = await getVersionForHtmlByIdRepo(paperId, versionId);
-  if (!version) {
-    return null;
-  }
+  if (!version) return null;
   return convertVersionToHtml(version);
 };

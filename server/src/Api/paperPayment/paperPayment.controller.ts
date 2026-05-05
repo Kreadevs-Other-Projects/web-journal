@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthUser } from "../../middlewares/auth.middleware";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 import {
   uploadReceiptService,
   approveOrRejectPaymentService,
@@ -18,7 +18,7 @@ export const uploadReceipt = async (req: AuthUser, res: Response) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
     const paperId = req.params.paperId;
-    const uploaded = await uploadToSupabase(req.file.path, "receipts", req.file.originalname);
+    const uploaded = await uploadBufferToSupabase(req.file.buffer, "receipts", req.file.originalname);
 
     const payment = await uploadReceiptService(paperId, req.user.id, uploaded.url);
     res.json({ success: true, payment });

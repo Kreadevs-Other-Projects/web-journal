@@ -1,15 +1,3 @@
-import fs from "fs";
-
-export function extractLatexToHtml(filePath: string): string {
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    return convertLatexToHtml(content);
-  } catch (err) {
-    console.error("LaTeX read error:", err);
-    return "<p>Could not read LaTeX file.</p>";
-  }
-}
-
 export function convertLatexToHtml(latex: string): string {
   let html = latex;
 

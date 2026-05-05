@@ -11,7 +11,7 @@ interface ReviewerApplicationData {
   degrees: string[];
   keywords: string[];
   statement?: string;
-  profilePicPath?: string;
+  profilePicUrl?: string | null;
   submittedAt: string;
   dashboardLink?: string;
 }
@@ -56,8 +56,8 @@ export const sendReviewerApplicationToEditor = async (
         .join("")
     : "<em style='color:#9CA3AF;'>Not provided</em>";
 
-  const profilePicHtml = data.profilePicPath
-    ? `<img src="cid:profilepic" alt="Profile Picture" style="width:100px;height:133px;object-fit:cover;border-radius:6px;border:1px solid #374151;margin-bottom:16px;" />`
+  const profilePicHtml = data.profilePicUrl
+    ? `<img src="${data.profilePicUrl}" alt="Profile Picture" style="width:100px;height:133px;object-fit:cover;border-radius:6px;border:1px solid #374151;margin-bottom:16px;" />`
     : "";
 
   const mailOptions: any = {
@@ -119,15 +119,7 @@ export const sendReviewerApplicationToEditor = async (
     ),
   };
 
-  if (data.profilePicPath) {
-    mailOptions.attachments = [
-      {
-        filename: "profile-picture.jpg",
-        path: data.profilePicPath,
-        cid: "profilepic",
-      },
-    ];
-  }
+  // Profile pic served via Supabase CDN URL — no attachment needed
 
   await transporter.sendMail(mailOptions);
 };

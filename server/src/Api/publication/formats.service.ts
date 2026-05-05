@@ -1,14 +1,10 @@
-import fs from "fs";
-import path from "path";
-import os from "os";
 import { pool } from "../../configs/db";
-import { uploadToSupabase } from "../../utils/uploadToSupabase";
+import { uploadBufferToSupabase } from "../../utils/uploadToSupabase";
 
 export const generateFormatsService = async (
   paperId: string,
   publicationId: string,
 ) => {
-  // Fetch all needed data
   const result = await pool.query(
     `SELECT p.title, p.abstract, p.author_names, p.keywords, p.paper_references,
             pv.html_content, pv.file_url,
@@ -26,22 +22,16 @@ export const generateFormatsService = async (
   if (!result.rows.length) return;
 
   const d = result.rows[0];
-  const tmpDir = os.tmpdir();
 
-  // 1. HTML FORMAT
-  const htmlFilePath = path.join(tmpDir, `${paperId}.html`);
-
-  const authors = Array.isArray(d.author_names)
-    ? d.author_names.join(", ")
-    : "";
+  const authors = Array.isArray(d.author_names) ? d.author_names.join(", ") : "";
   let refs: any[] = [];
   try {
-    refs =
-      typeof d.paper_references === "string"
-        ? JSON.parse(d.paper_references)
-        : d.paper_references || [];
+    refs = typeof d.paper_references === "string"
+      ? JSON.parse(d.paper_references)
+      : d.paper_references || [];
   } catch {}
 
+  // 1. HTML FORMAT — build as string, upload as Buffer (no disk)
   const standaloneHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,17 +62,11 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
 </body>
 </html>`;
 
-  fs.writeFileSync(htmlFilePath, standaloneHtml, "utf8");
-  const htmlUpload = await uploadToSupabase(
-    htmlFilePath,
-    "publications",
-    `${paperId}.html`,
-  );
+  const htmlBuffer = Buffer.from(standaloneHtml, "utf8");
+  const htmlUpload = await uploadBufferToSupabase(htmlBuffer, "publications", `${paperId}.html`);
   const html_url = htmlUpload.url;
 
-  // 2. XML FORMAT (JATS)
-  const xmlFilePath = path.join(tmpDir, `${paperId}.xml`);
-
+  // 2. XML FORMAT (JATS) — build as string, upload as Buffer
   const escapeXml = (s: string) =>
     String(s || "")
       .replace(/&/g, "&amp;")
@@ -142,15 +126,11 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
   }
 </article>`;
 
-  fs.writeFileSync(xmlFilePath, jatsXml, "utf8");
-  const xmlUpload = await uploadToSupabase(
-    xmlFilePath,
-    "publications",
-    `${paperId}.xml`,
-  );
+  const xmlBuffer = Buffer.from(jatsXml, "utf8");
+  const xmlUpload = await uploadBufferToSupabase(xmlBuffer, "publications", `${paperId}.xml`);
   const xml_url = xmlUpload.url;
 
-  // 3. PDF FORMAT (puppeteer, non-fatal if unavailable)
+  // 3. PDF FORMAT (puppeteer, non-fatal — uses Buffer output to avoid temp files)
   let pdf_url: string | null = null;
   try {
     const puppeteer = await import("puppeteer-core");
@@ -159,15 +139,13 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
     });
     const page = await browser.newPage();
     await page.setContent(standaloneHtml, { waitUntil: "networkidle0" });
-    const pdfFilePath = path.join(tmpDir, `${paperId}.pdf`);
-    await page.pdf({
-      path: pdfFilePath,
+    const pdfBuffer = await page.pdf({
       format: "A4",
       margin: { top: "40px", bottom: "40px", left: "40px", right: "40px" },
     });
     await browser.close();
-    const pdfUpload = await uploadToSupabase(
-      pdfFilePath,
+    const pdfUpload = await uploadBufferToSupabase(
+      Buffer.from(pdfBuffer),
       "publications",
       `${paperId}.pdf`,
     );
@@ -176,7 +154,6 @@ ${refs.length > 0 ? `<div class="references"><h2>References</h2><ol>${refs.map((
     // puppeteer not available or failed — non-fatal
   }
 
-  // Save URLs to publications table
   await pool.query(
     `UPDATE publications SET html_url = $1, pdf_url = $2, xml_url = $3 WHERE id = $4`,
     [html_url, pdf_url, xml_url, publicationId],

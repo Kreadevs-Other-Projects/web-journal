@@ -14,7 +14,7 @@ import {
   updateJournalAPCService,
   updatePublisherJournalService,
 } from "./journal.service";
-import { findJournalById } from "./journal.repository";
+import { findJournalById, updateJournalContact } from "./journal.repository";
 
 export const addJournal = async (req: AuthUser, res: Response) => {
   try {
@@ -263,5 +263,23 @@ export const publisherCreateJournal = async (req: AuthUser, res: Response) => {
       success: false,
       message: error.message || "Failed to create journal",
     });
+  }
+};
+
+export const updateContactDetails = async (req: any, res: any) => {
+  try {
+    const { journalId } = req.params;
+    const { contact_email, contact_phone, contact_address } = req.body;
+
+    const updatedJournal = await updateJournalContact(
+      journalId,
+      contact_email,
+      contact_phone,
+      contact_address,
+    );
+
+    res.json({ success: true, journal: updatedJournal });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

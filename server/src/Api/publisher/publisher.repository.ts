@@ -477,3 +477,25 @@ export const getJournalChiefEditorEmail = async (
   );
   return result.rows[0] || null;
 };
+
+export const getGlobalSettingsRepo = async () => {
+  const result = await pool.query(
+    "SELECT * FROM publisher_settings WHERE id = 1",
+  );
+  return result.rows[0];
+};
+
+export const updateGlobalSettingsRepo = async (
+  email: string,
+  phone: string,
+  address: string,
+) => {
+  const result = await pool.query(
+    `UPDATE publisher_settings 
+     SET contact_email = $1, contact_phone = $2, contact_address = $3, updated_at = NOW()
+     WHERE id = 1 
+     RETURNING *`,
+    [email, phone, address],
+  );
+  return result.rows[0];
+};

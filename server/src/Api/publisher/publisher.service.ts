@@ -334,3 +334,20 @@ export const updatePaymentStatus = async (
     client.release();
   }
 };
+
+export const fetchGlobalSettings = async () => {
+  const settings = await repo.getGlobalSettingsRepo();
+  if (!settings) {
+    // Agar DB khali ho to default empty object return karein
+    return { contact_email: "", contact_phone: "", contact_address: "" };
+  }
+  return settings;
+};
+
+export const modifyGlobalSettings = async (
+  email: string,
+  phone: string,
+  address: string,
+) => {
+  return await repo.updateGlobalSettingsRepo(email, phone, address);
+};

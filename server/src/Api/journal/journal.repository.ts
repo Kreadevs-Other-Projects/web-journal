@@ -203,3 +203,19 @@ export const createJournalByPublisher = async (
   );
   return result.rows[0];
 };
+
+export const updateJournalContact = async (
+  journalId: string,
+  email: string,
+  phone: string,
+  address: string,
+) => {
+  const result = await pool.query(
+    `UPDATE journals 
+     SET contact_email = $1, contact_phone = $2, contact_address = $3, updated_at = NOW()
+     WHERE id = $4 
+     RETURNING *`,
+    [email, phone, address, journalId],
+  );
+  return result.rows[0];
+};

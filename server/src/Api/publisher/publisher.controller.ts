@@ -43,12 +43,10 @@ export const replaceChiefEditor = async (req: AuthUser, res: Response) => {
     );
     res.json({ success: true, ...result });
   } catch (err: any) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: err.message || "Failed to replace chief editor",
-      });
+    res.status(400).json({
+      success: false,
+      message: err.message || "Failed to replace chief editor",
+    });
   }
 };
 
@@ -264,12 +262,16 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
   }
 };
 
-import { triggerIssueReset } from '../../cron/issueResetCron';
+import { triggerIssueReset } from "../../cron/issueResetCron";
 
 export const manualIssueReset = async (req: Request, res: Response) => {
   try {
     const count = await triggerIssueReset();
-    return res.json({ success: true, message: `Closed ${count} open issue(s)`, count });
+    return res.json({
+      success: true,
+      message: `Closed ${count} open issue(s)`,
+      count,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -281,7 +283,10 @@ export const takedownJournal = async (req: AuthUser, res: Response) => {
   try {
     const { journalId } = req.params;
     const { reason } = req.body;
-    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    if (!reason?.trim())
+      return res
+        .status(400)
+        .json({ success: false, message: "Reason is required" });
     await service.takedownJournalService(journalId, reason, req.user!.id);
     res.json({ success: true, message: "Journal taken down" });
   } catch (e: any) {
@@ -303,7 +308,10 @@ export const takedownIssue = async (req: AuthUser, res: Response) => {
   try {
     const { issueId } = req.params;
     const { reason } = req.body;
-    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
+    if (!reason?.trim())
+      return res
+        .status(400)
+        .json({ success: false, message: "Reason is required" });
     await service.takedownIssueService(issueId, reason, req.user!.id);
     res.json({ success: true, message: "Issue taken down" });
   } catch (e: any) {
@@ -325,8 +333,15 @@ export const takedownPaper = async (req: AuthUser, res: Response) => {
   try {
     const { paperId } = req.params;
     const { reason } = req.body;
-    if (!reason?.trim()) return res.status(400).json({ success: false, message: "Reason is required" });
-    const paper = await service.takedownPaperService(paperId, reason, req.user!.id);
+    if (!reason?.trim())
+      return res
+        .status(400)
+        .json({ success: false, message: "Reason is required" });
+    const paper = await service.takedownPaperService(
+      paperId,
+      reason,
+      req.user!.id,
+    );
     res.json({ success: true, message: "Paper taken down", data: paper });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
@@ -340,5 +355,32 @@ export const restorePaper = async (req: AuthUser, res: Response) => {
     res.json({ success: true, message: "Paper restored", data: paper });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+export const getGlobalSettings = async (req: Request, res: Response) => {
+  try {
+    const settings = await service.fetchGlobalSettings();
+    res.json({ success: true, settings });
+  } catch (error: any) {
+    console.error("Error fetching global settings:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateGlobalSettings = async (req: Request, res: Response) => {
+  try {
+    const { contact_email, contact_phone, contact_address } = req.body;
+
+    const updatedSettings = await service.modifyGlobalSettings(
+      contact_email,
+      contact_phone,
+      contact_address,
+    );
+
+    res.json({ success: true, settings: updatedSettings });
+  } catch (error: any) {
+    console.error("Error updating global settings:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

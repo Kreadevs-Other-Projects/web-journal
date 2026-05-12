@@ -9,7 +9,12 @@ function xmlHeader() {
   return `<?xml version="1.0" encoding="UTF-8"?>`;
 }
 
-function sitemapUrl(loc: string, lastmod?: string, changefreq?: string, priority?: string) {
+function sitemapUrl(
+  loc: string,
+  lastmod?: string,
+  changefreq?: string,
+  priority?: string,
+) {
   return [
     `  <url>`,
     `    <loc>${loc}</loc>`,
@@ -29,7 +34,10 @@ function toDateString(d: Date | string | null | undefined): string {
 
 // GET /sitemap.xml — index pointing to sub-sitemaps
 router.get("/sitemap.xml", async (_req: Request, res: Response) => {
-  const base = process.env.FRONTEND_URL || "http://localhost:8080";
+  const base = (process.env.FRONTEND_URL || "http://localhost:8080").replace(
+    /\/+$/,
+    "",
+  );
 
   try {
     const { rows } = await pool.query(
@@ -41,8 +49,10 @@ router.get("/sitemap.xml", async (_req: Request, res: Response) => {
     const total = parseInt(rows[0]?.total ?? "0", 10);
     const articlePages = Math.max(1, Math.ceil(total / ARTICLES_PER_PAGE));
 
-    const articleSitemaps = Array.from({ length: articlePages }, (_, i) =>
-      `  <sitemap>\n    <loc>${base}/sitemap-articles-${i + 1}.xml</loc>\n  </sitemap>`,
+    const articleSitemaps = Array.from(
+      { length: articlePages },
+      (_, i) =>
+        `  <sitemap>\n    <loc>${base}/sitemap-articles-${i + 1}.xml</loc>\n  </sitemap>`,
     ).join("\n");
 
     const xml = [
@@ -64,7 +74,10 @@ router.get("/sitemap.xml", async (_req: Request, res: Response) => {
 
 // GET /sitemap-pages.xml — static pages
 router.get("/sitemap-pages.xml", (_req: Request, res: Response) => {
-  const base = process.env.FRONTEND_URL || "http://localhost:8080";
+  const base = (process.env.FRONTEND_URL || "http://localhost:8080").replace(
+    /\/+$/,
+    "",
+  );
   const today = new Date().toISOString().split("T")[0];
 
   const pages = [
@@ -96,7 +109,10 @@ router.get("/sitemap-pages.xml", (_req: Request, res: Response) => {
 
 // GET /sitemap-journals.xml — all active journals
 router.get("/sitemap-journals.xml", async (_req: Request, res: Response) => {
-  const base = process.env.FRONTEND_URL || "http://localhost:8080";
+  const base = (process.env.FRONTEND_URL || "http://localhost:8080").replace(
+    /\/+$/,
+    "",
+  );
 
   try {
     const { rows } = await pool.query(
@@ -132,14 +148,19 @@ router.get("/sitemap-journals.xml", async (_req: Request, res: Response) => {
 });
 
 // GET /sitemap-articles-:page.xml — paginated published articles
-router.get("/sitemap-articles-:page.xml", async (req: Request, res: Response) => {
-  const base = process.env.FRONTEND_URL || "http://localhost:8080";
-  const page = Math.max(1, parseInt(req.params.page ?? "1", 10));
-  const offset = (page - 1) * ARTICLES_PER_PAGE;
+router.get(
+  "/sitemap-articles-:page.xml",
+  async (req: Request, res: Response) => {
+    const base = (process.env.FRONTEND_URL || "http://localhost:8080").replace(
+      /\/+$/,
+      "",
+    );
+    const page = Math.max(1, parseInt(req.params.page ?? "1", 10));
+    const offset = (page - 1) * ARTICLES_PER_PAGE;
 
-  try {
-    const { rows } = await pool.query(
-      `SELECT j.acronym, pub.url_slug, p.published_at, p.updated_at
+    try {
+      const { rows } = await pool.query(
+        `SELECT j.acronym, pub.url_slug, p.published_at, p.updated_at
        FROM papers p
        JOIN publications pub ON pub.paper_id = p.id
        JOIN journals j ON j.id = p.journal_id
@@ -148,36 +169,40 @@ router.get("/sitemap-articles-:page.xml", async (req: Request, res: Response) =>
          AND pub.url_slug IS NOT NULL
        ORDER BY COALESCE(p.published_at, p.updated_at) DESC NULLS LAST
        LIMIT $1 OFFSET $2`,
-      [ARTICLES_PER_PAGE, offset],
-    );
+        [ARTICLES_PER_PAGE, offset],
+      );
 
-    const urls = rows.map((a) =>
-      sitemapUrl(
-        `${base}/${a.acronym.toLowerCase()}/${a.url_slug}`,
-        toDateString(a.published_at ?? a.updated_at),
-        "monthly",
-        "0.7",
-      ),
-    );
+      const urls = rows.map((a) =>
+        sitemapUrl(
+          `${base}/${a.acronym.toLowerCase()}/${a.url_slug}`,
+          toDateString(a.published_at ?? a.updated_at),
+          "monthly",
+          "0.7",
+        ),
+      );
 
-    const xml = [
-      xmlHeader(),
-      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
-      ...urls,
-      `</urlset>`,
-    ].join("\n");
+      const xml = [
+        xmlHeader(),
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+        ...urls,
+        `</urlset>`,
+      ].join("\n");
 
-    res.setHeader("Content-Type", "application/xml");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.send(xml);
-  } catch {
-    res.status(500).send("Failed to generate articles sitemap");
-  }
-});
+      res.setHeader("Content-Type", "application/xml");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    } catch {
+      res.status(500).send("Failed to generate articles sitemap");
+    }
+  },
+);
 
 // GET /robots.txt
 router.get("/robots.txt", (_req: Request, res: Response) => {
-  const base = process.env.FRONTEND_URL || "http://localhost:8080";
+  const base = (process.env.FRONTEND_URL || "http://localhost:8080").replace(
+    /\/+$/,
+    "",
+  );
 
   const content = [
     "User-agent: *",

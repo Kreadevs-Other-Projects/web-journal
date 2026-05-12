@@ -40,6 +40,8 @@ import reviewAssignmentRoutes from "./Api/reviewAssignment/reviewAssignment.rout
 import subEditorRoutes from "./Api/subEditor/subEditor.routes";
 
 import filesRoutes from "./routes/files.routes";
+import sitemapRoutes from "./Api/sitemap/sitemap.route";
+import crossrefRoutes from "./Api/crossref/crossref.route";
 
 const app = express();
 
@@ -85,6 +87,11 @@ app.use(
   }),
 );
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 app.use(globalLimiter);
 
 app.get("/", (_req: Request, res: Response) => {
@@ -101,6 +108,9 @@ app.get("/health", (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Sitemap / robots.txt / GSC verification — no auth, no rate-limit, must be before API routes
+app.use("/", sitemapRoutes);
 
 // API Routes
 app.use("/api/auth", authLimiter, authRoutes);
@@ -131,6 +141,7 @@ app.use("/api/review-assignment", apiLimiter, reviewAssignmentRoutes);
 app.use("/api/subEditor", apiLimiter, subEditorRoutes);
 
 app.use("/api/files", uploadLimiter, filesRoutes);
+app.use("/api/crossref", apiLimiter, crossrefRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

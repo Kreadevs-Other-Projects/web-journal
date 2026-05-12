@@ -155,6 +155,8 @@ router.get(
       /\/+$/,
       "",
     );
+
+    console.log("BASE URL:", base);
     const page = Math.max(1, parseInt(req.params.page ?? "1", 10));
     const offset = (page - 1) * ARTICLES_PER_PAGE;
 

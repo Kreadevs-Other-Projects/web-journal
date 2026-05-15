@@ -28,6 +28,7 @@ export const getReviewerPapers = async (reviewerId: string) => {
 
       r.decision AS review_decision,
       r.comments,
+      r.confidential_comments,
       r.signed_at AS review_submitted_at,
 
       j.title AS journal_name,
